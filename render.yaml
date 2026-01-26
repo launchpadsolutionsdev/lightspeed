@@ -1,0 +1,17 @@
+# Render Blueprint for Lightspeed API
+# This file can be used for automatic deployment via render.yaml
+
+services:
+  - type: web
+    name: lightspeed-api
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false  # You'll set this manually in the dashboard
+      - key: FRONTEND_URL
+        sync: false  # Set to your frontend URL after deploying
+      - key: NODE_ENV
+        value: production

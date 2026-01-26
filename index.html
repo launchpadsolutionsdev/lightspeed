@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lightspeed by Launchpad</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #7c3aed;
+            --primary: #8b5cf6;
+            --primary-light: #a78bfa;
+            --accent: #c4b5fd;
+            --gradient-start: #7c3aed;
+            --gradient-end: #a78bfa;
+            --bg-dark: #0f0a1a;
+            --bg-card: #ffffff;
+            --bg-light: #faf8ff;
+            --bg-input: #f5f3ff;
+            --text-primary: #1e1b4b;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --border: #e5e7eb;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+            --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --max-width: 1200px;
+        }
+
+        /* Dark Mode */
+        [data-theme="dark"] {
+            --bg-dark: #0f0a1a;
+            --bg-card: #1e1b2e;
+            --bg-light: #13101c;
+            --bg-input: #2d2640;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border: #374151;
+            --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.25);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-light);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* ==================== HERO PAGE ==================== */
+        .hero-page {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0f0a1a 0%, #1a1225 50%, #0f0a1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .hero-page.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            text-align: center;
+            animation: fadeInUp 1s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-logo {
+            width: 120px; height: 120px;
+            margin-bottom: 32px;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 40px rgba(139, 92, 246, 0.5));
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 48px;
+        }
+
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 40px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: 100px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.4);
+        }
+
+        .hero-cta:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(139, 92, 246, 0.5);
+        }
+
+        .hero-cta-icon {
+            font-size: 1.3rem;
+            transition: transform 0.3s ease;
+        }
+
+        .hero-cta:hover .hero-cta-icon {
+            transform: translateX(4px);
+        }
+
+        .hero-version {
+            position: absolute;
+            bottom: 32px;
+            color: rgba(255,255,255,0.3);
+            font-size: 0.8rem;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .hero-bg::before {
+            content: '';
+            position: absolute;
+            top: 20%; left: 10%;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        .hero-bg::after {
+            content: '';
+            position: absolute;
+            bottom: 20%; right: 10%;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite 2s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        /* ==================== MAIN APP ==================== */
+        .app {
+            display: none;
+            min-height: 100vh;
+        }
+
+        .app.visible {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 12px 32px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .logo-section:hover { opacity: 0.8; }
+
+        .logo { width: 36px; height: 36px; }
+
+        .brand-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand-tagline {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            background: var(--bg-light);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+        }
+
+        .nav-btn-icon { font-size: 1rem; }
+
+        .nav-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+            margin: 0 8px;
+        }
+
+        .settings-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .settings-btn:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        /* Container */
+        .container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 24px 32px;
+        }
+
+        /* Pages */
+        .page { display: none; }
+        .page.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* ==================== CARDS ==================== */
+        .card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-xl), var(--shadow-glow);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 44px; height: 44px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .icon-input { background: linear-gradient(135deg, #e0f2fe, #bae6fd); }
+        .icon-output { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
+        .icon-feedback { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+        .icon-knowledge { background: linear-gradient(135deg, #ede9fe, #ddd6fe); }
+        .icon-analytics { background: linear-gradient(135deg, #fce7f3, #fbcfe8); }
+        .icon-favorites { background: linear-gradient(135deg, #fee2e2, #fecaca); }
+        .icon-bulk { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-description {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* ==================== FORMS ==================== */
+        .form-group { margin-bottom: 16px; }
+
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        textarea, input[type="text"], input[type="email"], input[type="password"], input[type="file"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        textarea { min-height: 160px; resize: vertical; }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--bg-card);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        }
+
+        select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+        }
+
+        /* Tone Slider */
+        .tone-controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .tone-control {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .tone-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .tone-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .tone-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .checkbox-label input {
+            width: 18px; height: 18px;
+            cursor: pointer;
+        }
+
+        /* ==================== BUTTONS ==================== */
+        .btn-primary {
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 168, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 168, 255, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            padding: 10px 20px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-icon { font-size: 1.1rem; }
+
+        .btn-small {
+            padding: 8px 14px;
+            font-size: 0.8rem;
+        }
+
+        .btn-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-copy:hover {
+            background: var(--bg-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-copy.copied {
+            background: #dcfce7;
+            border-color: var(--success);
+            color: #16a34a;
+        }
+
+        /* ==================== RESPONSE GENERATOR ==================== */
+        .response-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .response-grid { grid-template-columns: 1fr; }
+        }
+
+        .response-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 50px 20px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .placeholder-icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 50px 20px;
+            gap: 14px;
+        }
+
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .response-section { margin-bottom: 16px; }
+
+        .response-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .response-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .response-label-text {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .response-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .response-box {
+            background: linear-gradient(135deg, rgba(0, 168, 255, 0.05), rgba(0, 229, 255, 0.05));
+            border: 1px solid rgba(0, 168, 255, 0.2);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        /* Rating */
+        .rating-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            margin-top: 12px;
+        }
+
+        .rating-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .rating-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: white;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rating-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .rating-btn.thumbs-up:hover, .rating-btn.thumbs-up.selected {
+            border-color: var(--success);
+            background: #dcfce7;
+        }
+
+        .rating-btn.thumbs-down:hover, .rating-btn.thumbs-down.selected {
+            border-color: var(--danger);
+            background: #fee2e2;
+        }
+
+        /* Quality Checks */
+        .quality-checks {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+        }
+
+        .quality-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            padding: 4px 0;
+        }
+
+        .quality-pass { color: var(--success); }
+        .quality-warn { color: var(--warning); }
+        .quality-fail { color: var(--danger); }
+
+        /* Smart Suggestions */
+        .smart-suggestions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .suggestion-chip {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .suggestion-chip:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(0, 168, 255, 0.05);
+        }
+
+        /* ==================== ANALYTICS PAGE ==================== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .chart-container {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .bar-label {
+            width: 120px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 24px;
+            background: var(--bg-light);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 12px;
+            transition: width 0.5s ease;
+        }
+
+        .bar-value {
+            width: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        /* History List */
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 14px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover { background: var(--bg-light); }
+
+        .history-item:last-child { border-bottom: none; }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .history-type {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 100px;
+            background: var(--bg-light);
+            color: var(--text-secondary);
+        }
+
+        .history-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .history-preview {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .history-meta {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* ==================== FAVORITES PAGE ==================== */
+        .favorites-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .favorites-grid { grid-template-columns: 1fr; }
+        }
+
+        .favorite-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .favorite-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+        }
+
+        .favorite-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .favorite-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .favorite-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .favorite-preview {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .favorite-meta {
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* ==================== BULK PROCESSING ==================== */
+        .bulk-upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--bg-light);
+        }
+
+        .bulk-upload-area:hover {
+            border-color: var(--primary);
+            background: rgba(0, 168, 255, 0.05);
+        }
+
+        .bulk-upload-area.dragover {
+            border-color: var(--primary);
+            background: rgba(0, 168, 255, 0.1);
+        }
+
+        .bulk-upload-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        .bulk-upload-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .bulk-progress {
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .bulk-results {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .bulk-result-item {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
+            background: white;
+        }
+
+        .bulk-result-inquiry {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .bulk-result-response {
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+
+        /* ==================== KNOWLEDGE PAGE ==================== */
+        .knowledge-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .knowledge-search {
+            margin-bottom: 20px;
+        }
+
+        .knowledge-filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 6px 14px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border-color: transparent;
+        }
+
+        .knowledge-list { margin-top: 20px; }
+
+        .knowledge-item {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+        }
+
+        .knowledge-item-content { flex: 1; }
+
+        .knowledge-item-question {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .knowledge-item-preview {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .knowledge-item-meta {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .knowledge-tag {
+            padding: 2px 8px;
+            background: white;
+            border-radius: 100px;
+            font-size: 0.7rem;
+        }
+
+        .knowledge-item-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-icon-only {
+            width: 32px; height: 32px;
+            border-radius: var(--radius-sm);
+            background: white;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-icon-only:hover {
+            background: var(--bg-light);
+            border-color: var(--primary);
+        }
+
+        .btn-icon-only.delete:hover {
+            background: #fee2e2;
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* ==================== PAGE HEADERS ==================== */
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .page-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* ==================== FEEDBACK PAGE ==================== */
+        .feedback-form { max-width: 600px; }
+
+        .success-message {
+            background: #dcfce7;
+            border: 1px solid var(--success);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            color: #16a34a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .api-notice {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+        }
+
+        /* ==================== AUTH PAGES ==================== */
+        .auth-page {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0f0a1a 0%, #1a1225 50%, #0f0a1a 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1900;
+        }
+
+        .auth-page.visible {
+            display: flex;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+        }
+
+        .auth-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .auth-logo img {
+            width: 48px;
+            height: 48px;
+        }
+
+        .auth-logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .auth-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .auth-input-group {
+            position: relative;
+        }
+
+        .auth-input-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .auth-input-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-family: inherit;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .auth-input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--bg-card);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        }
+
+        .auth-input-group input.error {
+            border-color: var(--danger);
+        }
+
+        .auth-error {
+            color: var(--danger);
+            font-size: 0.8rem;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .auth-error.show {
+            display: block;
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 8px;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .auth-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .auth-switch {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .auth-switch a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+
+        .auth-message {
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .auth-message.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            display: block;
+        }
+
+        .auth-message.success {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+            display: block;
+        }
+
+        .user-menu {
+            position: relative;
+        }
+
+        .user-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .user-btn:hover {
+            background: var(--border);
+        }
+
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 200px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-xl);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+
+        .user-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .user-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: background 0.2s;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .user-dropdown-item:hover {
+            background: var(--bg-light);
+        }
+
+        .user-dropdown-item.danger {
+            color: var(--danger);
+        }
+
+        .user-dropdown-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
+        /* ==================== FOOTER ==================== */
+        .footer {
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            padding: 40px 32px;
+            margin-top: 60px;
+        }
+
+        .footer-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 40px;
+        }
+
+        .footer-brand {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .footer-logo img {
+            width: 40px;
+            height: 40px;
+        }
+
+        .footer-logo-text {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .footer-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .footer-section h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        .footer-contact {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .footer-contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .footer-contact-item span:first-child {
+            font-size: 1rem;
+        }
+
+        .footer-bottom {
+            max-width: var(--max-width);
+            margin: 32px auto 0;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* ==================== DARK MODE TOGGLE ==================== */
+        .theme-toggle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        /* ==================== LOADING ANIMATION ==================== */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-input) 25%, var(--bg-light) 50%, var(--bg-input) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius-md);
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-text {
+            height: 16px;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-text:last-child {
+            width: 60%;
+        }
+
+        .loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .generating-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* ==================== CHARACTER COUNT ==================== */
+        .char-count {
+            display: flex;
+            justify-content: flex-end;
+            gap: 16px;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .char-count span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ==================== COLLAPSIBLE SECTIONS ==================== */
+        .collapsible-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+            user-select: none;
+        }
+
+        .collapsible-header h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .collapsible-icon {
+            transition: transform 0.3s ease;
+            color: var(--text-secondary);
+        }
+
+        .collapsible-header.collapsed .collapsible-icon {
+            transform: rotate(-90deg);
+        }
+
+        .collapsible-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            max-height: 1000px;
+            opacity: 1;
+        }
+
+        .collapsible-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        /* ==================== TOAST NOTIFICATION ==================== */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 20px;
+            background: var(--text-primary);
+            color: white;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: var(--shadow-xl);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+
+        /* ==================== TEMPLATES DRAWER ==================== */
+        .templates-drawer {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100%;
+            background: var(--bg-card);
+            box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+            z-index: 1500;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .templates-drawer.open {
+            right: 0;
+        }
+
+        .drawer-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .drawer-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .drawer-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-light);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .drawer-close:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .drawer-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+        }
+
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            z-index: 1400;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .drawer-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* ==================== AUTO-SAVE INDICATOR ==================== */
+        .autosave-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .autosave-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .autosave-dot.saving {
+            animation: pulse-dot 1s ease infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ==================== MODAL ==================== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.show { display: flex; }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: modalIn 0.2s ease;
+        }
+
+        .modal.wide { max-width: 700px; }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-header { padding: 20px 24px 0; }
+        .modal-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .modal-body { padding: 20px 24px; }
+        .modal-footer {
+            padding: 0 24px 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-save {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        /* ==================== RESPONSIVE ==================== */
+        @media (max-width: 768px) {
+            .header-inner {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .nav { flex-wrap: wrap; justify-content: center; }
+            .container { padding: 16px; }
+            .hero-title { font-size: 2.5rem; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .knowledge-stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ==================== HERO PAGE ==================== -->
+    <div class="hero-page" id="heroPage">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+            <img class="hero-logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
+            <h1 class="hero-title">Lightspeed</h1>
+            <p class="hero-subtitle">AI-Powered Customer Support by Launchpad Solutions</p>
+            <button class="hero-cta" id="heroCtaBtn">
+                Get Started
+                <span class="hero-cta-icon">→</span>
+            </button>
+        </div>
+        <div class="hero-version">Version 2.1</div>
+    </div>
+
+    <!-- ==================== LOGIN PAGE ==================== -->
+    <div class="auth-page" id="loginPage">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="auth-logo">
+                    <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
+                    <span class="auth-logo-text">Lightspeed</span>
+                </div>
+
+                <h1 class="auth-title">Welcome back</h1>
+                <p class="auth-subtitle">Sign in to your account to continue</p>
+
+                <div class="auth-message" id="loginMessage"></div>
+
+                <form class="auth-form" id="loginForm">
+                    <div class="auth-input-group">
+                        <label for="loginEmail">Email address</label>
+                        <input type="email" id="loginEmail" placeholder="you@example.com" required>
+                        <div class="auth-error" id="loginEmailError">Please enter a valid email</div>
+                    </div>
+
+                    <div class="auth-input-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" placeholder="••••••••" required>
+                        <div class="auth-error" id="loginPasswordError">Password is required</div>
+                    </div>
+
+                    <button type="submit" class="auth-btn" id="loginBtn">
+                        Sign In
+                    </button>
+                </form>
+
+                <div class="auth-divider">or</div>
+
+                <p class="auth-switch">
+                    Don't have an account? <a id="showRegister">Create one</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== REGISTER PAGE ==================== -->
+    <div class="auth-page" id="registerPage">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="auth-logo">
+                    <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
+                    <span class="auth-logo-text">Lightspeed</span>
+                </div>
+
+                <h1 class="auth-title">Create your account</h1>
+                <p class="auth-subtitle">Get started with Lightspeed today</p>
+
+                <div class="auth-message" id="registerMessage"></div>
+
+                <form class="auth-form" id="registerForm">
+                    <div class="auth-input-group">
+                        <label for="registerName">Full name</label>
+                        <input type="text" id="registerName" placeholder="Jane Smith" required>
+                        <div class="auth-error" id="registerNameError">Please enter your name</div>
+                    </div>
+
+                    <div class="auth-input-group">
+                        <label for="registerEmail">Email address</label>
+                        <input type="email" id="registerEmail" placeholder="you@example.com" required>
+                        <div class="auth-error" id="registerEmailError">Please enter a valid email</div>
+                    </div>
+
+                    <div class="auth-input-group">
+                        <label for="registerPassword">Password</label>
+                        <input type="password" id="registerPassword" placeholder="At least 6 characters" required minlength="6">
+                        <div class="auth-error" id="registerPasswordError">Password must be at least 6 characters</div>
+                    </div>
+
+                    <div class="auth-input-group">
+                        <label for="registerConfirm">Confirm password</label>
+                        <input type="password" id="registerConfirm" placeholder="••••••••" required>
+                        <div class="auth-error" id="registerConfirmError">Passwords do not match</div>
+                    </div>
+
+                    <button type="submit" class="auth-btn" id="registerBtn">
+                        Create Account
+                    </button>
+                </form>
+
+                <div class="auth-divider">or</div>
+
+                <p class="auth-switch">
+                    Already have an account? <a id="showLogin">Sign in</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MAIN APP ==================== -->
+    <div class="app" id="mainApp">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-inner">
+                <div class="logo-section" id="logoHome">
+                    <img class="logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
+                    <div class="brand">
+                        <div class="brand-name">Lightspeed</div>
+                        <div class="brand-tagline">by Launchpad Solutions</div>
+                    </div>
+                </div>
+
+                <nav class="nav">
+                    <button class="nav-btn active" data-page="response">
+                        <span class="nav-btn-icon">⚡</span>
+                        Generator
+                    </button>
+                    <button class="nav-btn" data-page="favorites">
+                        <span class="nav-btn-icon">⭐</span>
+                        Favorites
+                    </button>
+                    <button class="nav-btn" data-page="analytics">
+                        <span class="nav-btn-icon">📊</span>
+                        Analytics
+                    </button>
+                    <button class="nav-btn" data-page="knowledge">
+                        <span class="nav-btn-icon">📚</span>
+                        Knowledge
+                    </button>
+                    <button class="nav-btn" data-page="feedback">
+                        <span class="nav-btn-icon">💬</span>
+                        Feedback
+                    </button>
+                    <div class="nav-divider"></div>
+                    <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">🌙</button>
+                    <button class="settings-btn" id="settingsToggle" title="Settings">⚙️</button>
+                    <div class="user-menu">
+                        <button class="user-btn" id="userMenuBtn">
+                            <div class="user-avatar" id="userAvatar">U</div>
+                            <span class="user-name" id="userName">User</span>
+                            <span style="font-size: 0.7rem; color: var(--text-muted);">▼</span>
+                        </button>
+                        <div class="user-dropdown" id="userDropdown">
+                            <button class="user-dropdown-item" id="accountBtn">
+                                <span>👤</span> My Account
+                            </button>
+                            <div class="user-dropdown-divider"></div>
+                            <button class="user-dropdown-item danger" id="logoutBtn">
+                                <span>🚪</span> Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Container -->
+        <div class="container">
+            <!-- ==================== RESPONSE GENERATOR PAGE ==================== -->
+            <div class="page active" id="page-response">
+                <div class="response-grid">
+                    <!-- Input Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-input">📧</div>
+                            <div>
+                                <div class="card-title">Customer Inquiry</div>
+                                <div class="card-description">Paste the email or message below</div>
+                            </div>
+                        </div>
+
+                        <!-- Smart Suggestions -->
+                        <div class="smart-suggestions" id="smartSuggestions">
+                            <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;">Quick fill:</span>
+                            <button class="suggestion-chip" data-template="tickets">Can't find tickets</button>
+                            <button class="suggestion-chip" data-template="subscription">Subscription issue</button>
+                            <button class="suggestion-chip" data-template="location">Location blocked</button>
+                            <button class="suggestion-chip" data-template="refund">Refund request</button>
+                            <button class="suggestion-chip" data-template="winner">Winner question</button>
+                        </div>
+
+                        <div class="form-group">
+                            <textarea id="customerEmail" placeholder="Paste the customer's email or message here...
+
+The AI will automatically detect which lottery the inquiry is about and generate an appropriate response."></textarea>
+                            <div class="char-count" id="inputCharCount">
+                                <span>📝 <span id="inputChars">0</span> characters</span>
+                                <span>📄 <span id="inputWords">0</span> words</span>
+                            </div>
+                            <div class="autosave-indicator" id="autosaveIndicator" style="display: none;">
+                                <div class="autosave-dot"></div>
+                                <span>Draft auto-saved</span>
+                            </div>
+                        </div>
+
+                        <!-- Collapsible Options Section -->
+                        <div class="collapsible-header" id="optionsHeader">
+                            <h3>⚙️ Response Options</h3>
+                            <span class="collapsible-icon">▼</span>
+                        </div>
+                        <div class="collapsible-content" id="optionsContent">
+                        <!-- Tone Controls -->
+                        <div class="tone-controls">
+                            <div class="tone-control">
+                                <label class="form-label">Tone</label>
+                                <input type="range" class="tone-slider" id="toneSlider" min="0" max="100" value="50">
+                                <div class="tone-labels">
+                                    <span>Formal</span>
+                                    <span>Friendly</span>
+                                </div>
+                            </div>
+                            <div class="tone-control">
+                                <label class="form-label">Length</label>
+                                <input type="range" class="tone-slider" id="lengthSlider" min="0" max="100" value="50">
+                                <div class="tone-labels">
+                                    <span>Brief</span>
+                                    <span>Detailed</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="checkbox-group" style="margin-bottom: 16px;">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="includeLinks" checked>
+                                Include relevant links
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="includeSteps">
+                                Include step-by-step
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Sign response as</label>
+                            <input type="text" id="staffName" placeholder="Your name" value="Bella">
+                        </div>
+                        </div><!-- End collapsible content -->
+
+                        <button class="btn-primary" id="generateBtn">
+                            <span class="btn-icon">⚡</span>
+                            Generate Response
+                        </button>
+                    </div>
+
+                    <!-- Output Card -->
+                    <div class="card">
+                        <div class="card-header" style="justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="card-icon icon-output">✨</div>
+                                <div>
+                                    <div class="card-title">AI-Generated Response</div>
+                                    <div class="card-description">Powered by your knowledge base</div>
+                                </div>
+                            </div>
+                            <button class="btn-secondary" onclick="openTemplatesDrawer()" style="padding: 8px 12px; font-size: 0.8rem;">
+                                ⭐ Templates
+                            </button>
+                        </div>
+
+                        <div id="responseArea">
+                            <div class="response-placeholder">
+                                <div class="placeholder-icon">💡</div>
+                                <div class="placeholder-text">
+                                    Paste a customer inquiry and click<br>"Generate Response" to get started
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== BULK PROCESSING PAGE ==================== -->
+            <div class="page" id="page-bulk">
+                <div class="page-header">
+                    <h1 class="page-title">Bulk Processing</h1>
+                    <p class="page-description">Upload a CSV file to generate responses for multiple inquiries at once</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon icon-bulk">📦</div>
+                        <div>
+                            <div class="card-title">Upload Inquiries</div>
+                            <div class="card-description">CSV with one inquiry per row (column: "inquiry" or first column)</div>
+                        </div>
+                    </div>
+
+                    <div class="bulk-upload-area" id="bulkUploadArea">
+                        <div class="bulk-upload-icon">📄</div>
+                        <div class="bulk-upload-text">
+                            <strong>Drop CSV file here</strong> or click to browse<br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Maximum 50 inquiries per batch</span>
+                        </div>
+                        <input type="file" id="bulkFileInput" accept=".csv" style="display: none;">
+                    </div>
+
+                    <div class="bulk-progress" id="bulkProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">Processing 0 of 0...</div>
+                    </div>
+
+                    <div class="bulk-results" id="bulkResults"></div>
+
+                    <div style="margin-top: 16px; display: flex; gap: 12px;" id="bulkActions" style="display: none;">
+                        <button class="btn-secondary" id="exportCsvBtn" style="display: none;">
+                            📥 Export as CSV
+                        </button>
+                        <button class="btn-secondary" id="clearBulkBtn" style="display: none;">
+                            🗑️ Clear Results
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== FAVORITES PAGE ==================== -->
+            <div class="page" id="page-favorites">
+                <div class="page-header">
+                    <h1 class="page-title">Saved Templates</h1>
+                    <p class="page-description">Your favorite responses for quick reuse</p>
+                </div>
+
+                <div id="favoritesEmpty" class="card" style="text-align: center; padding: 60px 20px;">
+                    <div style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;">⭐</div>
+                    <p style="color: var(--text-muted);">No saved templates yet.</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Click the star icon on any generated response to save it here.</p>
+                </div>
+
+                <div class="favorites-grid" id="favoritesGrid"></div>
+            </div>
+
+            <!-- ==================== ANALYTICS PAGE ==================== -->
+            <div class="page" id="page-analytics">
+                <div class="page-header">
+                    <h1 class="page-title">Analytics Dashboard</h1>
+                    <p class="page-description">Track response performance and identify trends</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="analyticsTotal">0</div>
+                        <div class="stat-label">Total Responses</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="analyticsToday">0</div>
+                        <div class="stat-label">Today</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="analyticsPositive">0%</div>
+                        <div class="stat-label">Positive Ratings</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="analyticsAvgTime">0s</div>
+                        <div class="stat-label">Avg Response Time</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="chart-container">
+                        <div class="chart-title">Top Question Categories</div>
+                        <div class="bar-chart" id="categoryChart"></div>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-title">Response History</div>
+                        <div class="history-list" id="historyList">
+                            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                No response history yet.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container" style="margin-top: 20px;">
+                    <div class="chart-title">Knowledge Gaps (Questions without good matches)</div>
+                    <div id="knowledgeGaps">
+                        <div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.85rem;">
+                            As you use the tool, we'll identify common questions that aren't well covered by your knowledge base.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== KNOWLEDGE PAGE ==================== -->
+            <div class="page" id="page-knowledge">
+                <div class="page-header">
+                    <h1 class="page-title">Knowledge Base</h1>
+                    <p class="page-description">Add and manage the information that powers your AI responses</p>
+                </div>
+
+                <div class="knowledge-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotal">0</div>
+                        <div class="stat-label">Total Entries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat5050">0</div>
+                        <div class="stat-label">50/50 Entries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statCta">0</div>
+                        <div class="stat-label">Catch the Ace</div>
+                    </div>
+                </div>
+
+                <div class="knowledge-search">
+                    <input type="text" id="knowledgeSearchInput" placeholder="🔍 Search knowledge base...">
+                </div>
+
+                <div class="knowledge-filters">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="5050">50/50</button>
+                    <button class="filter-btn" data-filter="cta">Catch the Ace</button>
+                    <button class="filter-btn" data-filter="custom">Custom Only</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon icon-knowledge">➕</div>
+                        <div>
+                            <div class="card-title">Add New Knowledge</div>
+                            <div class="card-description">Teach the AI how to respond to new questions</div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label class="form-label">Which lottery?</label>
+                            <select id="knowledgeLottery">
+                                <option value="both">Both Lotteries</option>
+                                <option value="5050">50/50 Lottery</option>
+                                <option value="cta">Catch the Ace</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select id="knowledgeCategory">
+                                <option value="general">General</option>
+                                <option value="tickets">Tickets</option>
+                                <option value="subscription">Subscription</option>
+                                <option value="payment">Payment</option>
+                                <option value="technical">Technical</option>
+                                <option value="winners">Winners</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Question or Topic</label>
+                        <input type="text" id="knowledgeQuestion" placeholder="e.g., How do I update my email address?">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Keywords (comma-separated)</label>
+                        <input type="text" id="knowledgeKeywords" placeholder="e.g., email, update, change, address">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ideal Response</label>
+                        <textarea id="knowledgeResponse" placeholder="Write the ideal response. Use {NAME} where the staff name should go."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn-primary" id="addKnowledgeBtn" style="flex: 1;">
+                            <span class="btn-icon">➕</span>
+                            Add to Knowledge Base
+                        </button>
+                        <button class="btn-secondary" id="importKnowledgeBtn">
+                            📥 Import
+                        </button>
+                    </div>
+                </div>
+
+                <div class="knowledge-list" id="knowledgeList"></div>
+            </div>
+
+            <!-- ==================== FEEDBACK PAGE ==================== -->
+            <div class="page" id="page-feedback">
+                <div class="page-header">
+                    <h1 class="page-title">Share Your Feedback</h1>
+                    <p class="page-description">Help us improve Lightspeed with your suggestions</p>
+                </div>
+
+                <div class="card feedback-form">
+                    <div class="card-header">
+                        <div class="card-icon icon-feedback">💬</div>
+                        <div>
+                            <div class="card-title">Submit Feedback</div>
+                            <div class="card-description">We read every submission</div>
+                        </div>
+                    </div>
+
+                    <div id="feedbackSuccess" class="success-message" style="display: none;">
+                        <span style="font-size: 1.2rem;">✅</span>
+                        <div>
+                            <strong>Thank you for your feedback!</strong><br>
+                            <span style="font-size: 0.8rem;">We'll review it and use it to improve Lightspeed.</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Your Name</label>
+                        <input type="text" id="feedbackName" placeholder="Enter your name">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Email (optional)</label>
+                        <input type="email" id="feedbackEmail" placeholder="Enter your email for follow-up">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Feedback Type</label>
+                        <select id="feedbackType">
+                            <option value="suggestion">Feature Suggestion</option>
+                            <option value="bug">Bug Report</option>
+                            <option value="improvement">Improvement Idea</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Your Feedback</label>
+                        <textarea id="feedbackMessage" placeholder="Tell us what you think..."></textarea>
+                    </div>
+
+                    <button class="btn-primary" id="submitFeedbackBtn">
+                        <span class="btn-icon">📤</span>
+                        Submit Feedback
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== FOOTER ==================== -->
+        <footer class="footer">
+            <div class="footer-inner">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <img src="launchpad-logo.svg" alt="Launchpad" style="width: 40px; height: 40px;" onerror="this.style.display='none'">
+                        <span class="footer-logo-text">Launchpad Solutions</span>
+                    </div>
+                    <p class="footer-description">
+                        Empowering hospital lotteries and charitable gaming organizations with intelligent customer support tools.
+                    </p>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul class="footer-links">
+                        <li><a href="#" onclick="showPage('response'); return false;">Response Generator</a></li>
+                        <li><a href="#" onclick="showPage('knowledge'); return false;">Knowledge Base</a></li>
+                        <li><a href="#" onclick="showPage('analytics'); return false;">Analytics</a></li>
+                        <li><a href="#" onclick="showPage('feedback'); return false;">Feedback</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <div class="footer-contact">
+                        <div class="footer-contact-item">
+                            <span>📧</span>
+                            <a href="mailto:info@launchpadsolutions.ca" style="color: inherit; text-decoration: none;">info@launchpadsolutions.ca</a>
+                        </div>
+                        <div class="footer-contact-item">
+                            <span>🌐</span>
+                            <a href="https://launchpadsolutions.ca" target="_blank" style="color: inherit; text-decoration: none;">launchpadsolutions.ca</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span>© 2025 Launchpad Solutions. All rights reserved.</span>
+                <span>Developed with ⚡ by Launchpad Solutions</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ==================== TEMPLATES DRAWER ==================== -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="templates-drawer" id="templatesDrawer">
+        <div class="drawer-header">
+            <h3>⭐ Quick Templates</h3>
+            <button class="drawer-close" id="closeDrawer">✕</button>
+        </div>
+        <div class="drawer-content" id="drawerContent">
+            <p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 40px 20px;">
+                No saved templates yet.<br>Save responses using the ⭐ button!
+            </p>
+        </div>
+    </div>
+
+    <!-- ==================== TOAST NOTIFICATION ==================== -->
+    <div class="toast" id="toast">
+        <span class="toast-icon">✓</span>
+        <span class="toast-message">Copied to clipboard!</span>
+    </div>
+
+    <!-- ==================== SETTINGS MODAL ==================== -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Default Staff Name</label>
+                    <input type="text" id="defaultName" placeholder="Bella">
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">This name will be used to sign responses</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Organization Name</label>
+                    <input type="text" id="orgName" placeholder="Your Hospital Lottery Name">
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">Used to replace [ORGANIZATION] placeholders in responses</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="closeSettings">Cancel</button>
+                <button class="btn-save" id="saveSettings">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== HISTORY DETAIL MODAL ==================== -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal wide">
+            <div class="modal-header">
+                <h2 class="modal-title">Response Details</h2>
+            </div>
+            <div class="modal-body" id="historyModalContent"></div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="closeHistoryModal">Close</button>
+                <button class="btn-save" id="copyHistoryResponse">📋 Copy Response</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== IMPORT MODAL ==================== -->
+    <div class="modal-overlay" id="importModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Import Knowledge</h2>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">
+                    Paste content from a Word document or text file. The AI will parse and extract Q&A pairs.
+                </p>
+                <div class="form-group">
+                    <label class="form-label">Paste Document Content</label>
+                    <textarea id="importContent" placeholder="Paste your FAQ document content here..." style="min-height: 200px;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="closeImportModal">Cancel</button>
+                <button class="btn-save" id="parseImportBtn">Parse & Import</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="knowledge-base.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
