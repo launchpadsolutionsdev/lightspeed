@@ -541,8 +541,6 @@ function setupEventListeners() {
 let dataAnalysisListenersSetup = false;
 let dataPendingFileData = null;
 let dataAnalysisResults = {};
-const DATA_HISTORY_KEY = 'lightspeed_data_history';
-const MAX_HISTORY_ITEMS = 10;
 
 // Northern Ontario cities database
 const NORTHERN_ONTARIO_CITIES = new Set([
@@ -667,9 +665,6 @@ function setupDataAnalysisListeners() {
 
     if (resetBtn) resetBtn.addEventListener("click", resetDataAnalysis);
 
-    // Render history on load
-    renderDataHistory();
-
     console.log("Data analysis listeners attached successfully");
 }
 
@@ -708,221 +703,8 @@ function processNamedDataFile() {
     document.getElementById("dataNamingSection").style.display = "none";
     document.getElementById("dataNavTabs").style.display = "flex";
     document.getElementById("dataHeaderActions").style.display = "flex";
-
-    // Store the analysis results for history
-    const analysisResult = analyzeDataFull(dataPendingFileData);
-
-    // Save to history
-    saveToDataHistory(reportName, dataPendingFileData, analysisResult);
-
+    analyzeDataFull(dataPendingFileData);
     document.getElementById("dataDashboard").classList.add("visible");
-    document.getElementById("dataHistorySection").style.display = "none";
-}
-
-// ==================== DATA HISTORY FUNCTIONS ====================
-function getDataHistory() {
-    try {
-        const history = localStorage.getItem(DATA_HISTORY_KEY);
-        return history ? JSON.parse(history) : [];
-    } catch (e) {
-        console.error("Error reading history:", e);
-        return [];
-    }
-}
-
-function saveToDataHistory(reportName, rawData, analysisResult) {
-    try {
-        let history = getDataHistory();
-
-        const historyItem = {
-            id: Date.now(),
-            name: reportName,
-            date: new Date().toISOString(),
-            totalRevenue: analysisResult.totalRevenue,
-            totalTransactions: analysisResult.totalTransactions,
-            analysisResult: analysisResult  // Store only the computed results, not raw data
-        };
-
-        // Add to beginning of array
-        history.unshift(historyItem);
-
-        // Keep only last 10
-        if (history.length > MAX_HISTORY_ITEMS) {
-            history = history.slice(0, MAX_HISTORY_ITEMS);
-        }
-
-        localStorage.setItem(DATA_HISTORY_KEY, JSON.stringify(history));
-        renderDataHistory();
-    } catch (e) {
-        console.error("Error saving to history:", e);
-        showToast("Could not save to history", "error");
-    }
-}
-
-function renderDataHistory() {
-    const historyList = document.getElementById("dataHistoryList");
-    if (!historyList) return;
-
-    const history = getDataHistory();
-
-    if (history.length === 0) {
-        historyList.innerHTML = '<p class="data-history-empty">No previous reports yet</p>';
-        return;
-    }
-
-    historyList.innerHTML = history.map(item => {
-        const date = new Date(item.date);
-        const formattedDate = date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit'
-        });
-
-        return `
-            <div class="data-history-item" onclick="loadFromDataHistory(${item.id})">
-                <div class="data-history-item-info">
-                    <span class="data-history-item-name">${item.name}</span>
-                    <span class="data-history-item-date">${formattedDate}</span>
-                </div>
-                <div class="data-history-item-stats">
-                    <span>${formatDataCurrency(item.totalRevenue)}</span>
-                    <span>${item.totalTransactions.toLocaleString()} transactions</span>
-                </div>
-                <button class="data-history-item-delete" onclick="event.stopPropagation(); deleteFromDataHistory(${item.id})" title="Delete">🗑️</button>
-            </div>
-        `;
-    }).join('');
-}
-
-function loadFromDataHistory(id) {
-    const history = getDataHistory();
-    const item = history.find(h => h.id === id);
-
-    if (!item) {
-        showToast("Report not found", "error");
-        return;
-    }
-
-    // Hide upload section, show dashboard
-    document.getElementById("dataUploadSection").style.display = "none";
-    document.getElementById("dataHistorySection").style.display = "none";
-    document.getElementById("dataNamingSection").style.display = "none";
-    document.getElementById("dataNavTabs").style.display = "flex";
-    document.getElementById("dataHeaderActions").style.display = "flex";
-    document.getElementById("dataReportName").textContent = item.name;
-
-    // Render from stored analysis results
-    renderFromStoredAnalysis(item.analysisResult);
-
-    document.getElementById("dataDashboard").classList.add("visible");
-    showToast(`Loaded: ${item.name}`, "success");
-}
-
-function renderFromStoredAnalysis(results) {
-    const {
-        totalRevenue, totalTransactions, uniqueCustomers, avgSale, avgPerCustomer,
-        repeatBuyersCount, totalPackageCount, northernRevenue, northernCount,
-        rsuRevenue, rsuCount, tierData, packageCounts, cityDataArray, postalDataArray, customerSpendingArray
-    } = results;
-
-    // Calculate derived values
-    const southernRevenue = totalRevenue - northernRevenue;
-    const repeatBuyerRate = totalTransactions > 0 ? (repeatBuyersCount / totalTransactions * 100) : 0;
-    const northernPercentage = totalRevenue > 0 ? (northernRevenue / totalRevenue * 100) : 0;
-
-    // Update metric cards
-    document.getElementById("dataMetricRevenue").textContent = formatDataCurrency(totalRevenue);
-    document.getElementById("dataMetricTransactions").textContent = totalTransactions.toLocaleString();
-    document.getElementById("dataMetricCustomers").textContent = uniqueCustomers.toLocaleString();
-    document.getElementById("dataMetricAvgSale").textContent = formatDataCurrency(avgSale);
-    document.getElementById("dataMetricAvgPerCustomer").textContent = formatDataCurrency(avgPerCustomer);
-    document.getElementById("dataMetricRepeat").textContent = repeatBuyerRate.toFixed(1) + '%';
-    document.getElementById("dataMetricNorthern").textContent = northernPercentage.toFixed(1) + '%';
-
-    // RSU metric
-    const rsuPercentage = totalRevenue > 0 ? (rsuRevenue / totalRevenue * 100) : 0;
-    document.getElementById("dataMetricRSU").textContent = rsuPercentage.toFixed(1) + '%';
-
-    // Render charts
-    renderDataChartsFull(tierData, packageCounts, northernRevenue, southernRevenue);
-
-    // Render tables from stored arrays
-    // Cities table
-    const citiesTable = document.getElementById("dataCitiesTable");
-    citiesTable.innerHTML = cityDataArray.slice(0, 10).map((item, i) => {
-        const [city, data] = item;
-        return `<tr>
-            <td>${i + 1}</td>
-            <td>${city}</td>
-            <td>${formatDataCurrency(data.revenue)}</td>
-            <td>${data.count.toLocaleString()}</td>
-        </tr>`;
-    }).join('');
-
-    // Tiers table
-    const tiersTable = document.getElementById("dataTiersTable");
-    const sortedTiers = Object.entries(tierData).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 10);
-    tiersTable.innerHTML = sortedTiers.map(([amount, data]) => {
-        const pct = totalRevenue > 0 ? (data.revenue / totalRevenue * 100) : 0;
-        return `<tr>
-            <td>$${amount}</td>
-            <td>${data.count.toLocaleString()}</td>
-            <td>${formatDataCurrency(data.revenue)}</td>
-            <td>${pct.toFixed(1)}%</td>
-        </tr>`;
-    }).join('');
-
-    // Postal codes
-    const postalGrid = document.getElementById("dataPostalGrid");
-    postalGrid.innerHTML = postalDataArray.map(([code, revenue], i) => `
-        <div class="data-postal-item">
-            <span class="data-postal-rank">${i + 1}</span>
-            <span class="data-postal-code">${code}</span>
-            <span class="data-postal-revenue">${formatDataCurrency(revenue)}</span>
-        </div>
-    `).join('');
-
-    // Heatmap
-    const heatmapGrid = document.getElementById("dataHeatmapGrid");
-    const maxRevenue = cityDataArray.length > 0 ? cityDataArray[0][1].revenue : 1;
-    heatmapGrid.innerHTML = cityDataArray.map(([city, data]) => {
-        const intensity = Math.min(data.revenue / maxRevenue, 1);
-        const r = Math.round(139 + (255 - 139) * (1 - intensity));
-        const g = Math.round(92 + (255 - 92) * (1 - intensity));
-        const b = Math.round(246 + (255 - 246) * (1 - intensity));
-        return `<div class="data-heatmap-cell" style="background: rgb(${r},${g},${b})" title="${city}: ${formatDataCurrency(data.revenue)}">
-            <span class="data-heatmap-city">${city}</span>
-            <span class="data-heatmap-value">${formatDataCurrency(data.revenue)}</span>
-        </div>`;
-    }).join('');
-
-    // Whale table
-    const whaleTable = document.getElementById("dataWhaleTable");
-    whaleTable.innerHTML = customerSpendingArray.map((item, i) => {
-        const [email, data] = item;
-        return `<tr>
-            <td>${i + 1}</td>
-            <td>${data.name || 'N/A'}</td>
-            <td>${email}</td>
-            <td>${data.phone || 'N/A'}</td>
-            <td>${data.city || 'N/A'}</td>
-            <td><strong>${formatDataCurrency(data.totalSpent)}</strong></td>
-        </tr>`;
-    }).join('');
-
-    // Generate insights
-    generateDataInsights(totalRevenue, avgSale, uniqueCustomers, repeatBuyersCount, tierData,
-        new Map(cityDataArray), totalTransactions, totalPackageCount, northernRevenue, northernCount, packageCounts, rsuRevenue, rsuCount);
-}
-
-function deleteFromDataHistory(id) {
-    let history = getDataHistory();
-    history = history.filter(h => h.id !== id);
-    localStorage.setItem(DATA_HISTORY_KEY, JSON.stringify(history));
-    renderDataHistory();
-    showToast("Report deleted", "success");
 }
 
 function analyzeDataFull(data) {
@@ -1081,39 +863,6 @@ function analyzeDataFull(data) {
     renderDataWhaleTable(customerSpending);
     generateDataInsights(totalRevenue, avgSale, uniqueCustomers, repeatBuyersCount, tierData, cityData,
                         totalTransactions, totalPackageCount, northernRevenue, northernCount, packageCounts, rsuRevenue, rsuCount);
-
-    // Return analysis results for history storage (only store what's needed for display)
-    // Convert Maps and limit data size
-    const cityDataArray = Array.from(cityData.entries())
-        .sort((a, b) => b[1].revenue - a[1].revenue)
-        .slice(0, 50); // Top 50 cities only
-
-    const postalDataArray = Array.from(postalData.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 20); // Top 20 postal codes
-
-    const customerSpendingArray = Array.from(customerSpending.entries())
-        .sort((a, b) => b[1].totalSpent - a[1].totalSpent)
-        .slice(0, 50); // Top 50 customers
-
-    return {
-        totalRevenue,
-        totalTransactions,
-        uniqueCustomers,
-        avgSale,
-        avgPerCustomer,
-        repeatBuyersCount,
-        totalPackageCount,
-        northernRevenue,
-        northernCount,
-        rsuRevenue,
-        rsuCount,
-        tierData,
-        packageCounts,
-        cityDataArray,
-        postalDataArray,
-        customerSpendingArray
-    };
 }
 
 function formatDataCurrency(value) {
@@ -1370,14 +1119,10 @@ function resetDataAnalysis() {
     document.getElementById("dataNamingSection").style.display = "none";
     document.getElementById("dataLoading").style.display = "none";
     document.getElementById("dataUploadSection").style.display = "block";
-    document.getElementById("dataHistorySection").style.display = "block";
     document.getElementById("dataNavTabs").style.display = "none";
     document.getElementById("dataHeaderActions").style.display = "none";
     document.getElementById("dataFileInput").value = '';
     document.getElementById("dataReportNameInput").value = '';
-
-    // Re-render history in case it changed
-    renderDataHistory();
 
     // Reset to overview page
     document.querySelectorAll('.data-nav-tab').forEach(t => t.classList.remove('active'));
