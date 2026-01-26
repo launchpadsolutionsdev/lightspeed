@@ -2086,7 +2086,7 @@ let currentDraftType = null;
 let currentDraftTone = 'balanced';
 let lastDraftRequest = null;
 
-const DRAFT_API_KEY_STORAGE = 'lightspeed_draft_api_key';
+// Draft Assistant uses server-side API (no client-side key needed)
 
 const DRAFT_TYPE_LABELS = {
     'social': 'Social Media Copy',
@@ -2158,12 +2158,6 @@ function setupDraftAssistant() {
     if (draftAssistantInitialized) return;
     draftAssistantInitialized = true;
 
-    // Check for API key
-    const apiKey = localStorage.getItem(DRAFT_API_KEY_STORAGE);
-    if (!apiKey) {
-        showDraftApiSetup();
-    }
-
     // Content type buttons
     document.querySelectorAll('.draft-type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -2221,25 +2215,6 @@ function setupDraftAssistant() {
     // New draft button
     document.getElementById('draftNewBtn').addEventListener('click', resetDraftAssistant);
 
-    // Save API key button
-    document.getElementById('draftSaveApiKey').addEventListener('click', () => {
-        const key = document.getElementById('draftApiKeyInput').value.trim();
-        if (key) {
-            localStorage.setItem(DRAFT_API_KEY_STORAGE, key);
-            document.getElementById('draftApiSetup').style.display = 'none';
-            document.getElementById('draftTypeSection').style.display = 'block';
-            showToast('API key saved!', 'success');
-        } else {
-            showToast('Please enter a valid API key', 'error');
-        }
-    });
-}
-
-function showDraftApiSetup() {
-    document.getElementById('draftTypeSection').style.display = 'none';
-    document.getElementById('draftInputSection').style.display = 'none';
-    document.getElementById('draftOutputSection').style.display = 'none';
-    document.getElementById('draftApiSetup').style.display = 'block';
 }
 
 function selectDraftType(type) {
@@ -2262,12 +2237,6 @@ function selectDraftType(type) {
 }
 
 async function generateDraft() {
-    const apiKey = localStorage.getItem(DRAFT_API_KEY_STORAGE);
-    if (!apiKey) {
-        showDraftApiSetup();
-        return;
-    }
-
     const topic = document.getElementById('draftTopicInput').value.trim();
     if (!topic) {
         showToast('Please enter a topic or announcement', 'error');
@@ -2308,25 +2277,21 @@ async function generateDraft() {
     document.getElementById('draftHeaderActions').style.display = 'none';
 
     try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        const response = await fetch(API_BASE_URL + '/api/generate', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-                'anthropic-dangerous-direct-browser-access': 'true'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 1024,
                 system: DRAFT_SYSTEM_PROMPT,
-                messages: [{ role: 'user', content: userPrompt }]
+                messages: [{ role: 'user', content: userPrompt }],
+                max_tokens: 1024
             })
         });
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error?.message || 'API request failed');
+            throw new Error(error.error || 'API request failed');
         }
 
         const data = await response.json();
@@ -2355,11 +2320,6 @@ async function generateDraft() {
         document.getElementById('draftLoading').style.display = 'none';
         document.getElementById('draftInputSection').style.display = 'block';
         showToast('Error generating draft: ' + error.message, 'error');
-
-        if (error.message.includes('invalid x-api-key') || error.message.includes('401')) {
-            localStorage.removeItem(DRAFT_API_KEY_STORAGE);
-            showDraftApiSetup();
-        }
     }
 }
 
