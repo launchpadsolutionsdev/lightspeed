@@ -2103,6 +2103,99 @@
             box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
         }
 
+        /* Upload History Section */
+        .data-history-section {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            margin-top: 24px;
+        }
+
+        .data-history-section h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .data-history-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .data-history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .data-history-empty {
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .data-history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .data-history-item:hover {
+            background: white;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+        }
+
+        .data-history-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .data-history-item-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .data-history-item-date {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .data-history-item-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .data-history-item-delete {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .data-history-item-delete:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
         /* Naming Section */
         .data-naming-section {
             background: white;
@@ -3469,11 +3562,20 @@
                 <div class="data-upload-section" id="dataUploadSection">
                     <input type="file" id="dataFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
                     <div class="data-upload-icon">📊</div>
-                    <h2>Upload Monthly Report</h2>
+                    <h2>Upload BUMP Customer Purchases Report</h2>
                     <p>Drag and drop your Excel file here, or click to browse</p>
                     <button class="data-upload-btn" onclick="document.getElementById('dataFileInput').click()">
                         Select Excel File
                     </button>
+                </div>
+
+                <!-- Upload History Section -->
+                <div class="data-history-section" id="dataHistorySection">
+                    <h3>📜 Recent Reports</h3>
+                    <p class="data-history-subtitle">Click to view a previous report</p>
+                    <div class="data-history-list" id="dataHistoryList">
+                        <p class="data-history-empty">No previous reports yet</p>
+                    </div>
                 </div>
 
                 <!-- Naming Section -->

@@ -541,6 +541,8 @@ function setupEventListeners() {
 let dataAnalysisListenersSetup = false;
 let dataPendingFileData = null;
 let dataAnalysisResults = {};
+const DATA_HISTORY_KEY = 'lightspeed_data_history';
+const MAX_HISTORY_ITEMS = 10;
 
 // Northern Ontario cities database
 const NORTHERN_ONTARIO_CITIES = new Set([
@@ -665,6 +667,9 @@ function setupDataAnalysisListeners() {
 
     if (resetBtn) resetBtn.addEventListener("click", resetDataAnalysis);
 
+    // Render history on load
+    renderDataHistory();
+
     console.log("Data analysis listeners attached successfully");
 }
 
@@ -703,8 +708,125 @@ function processNamedDataFile() {
     document.getElementById("dataNamingSection").style.display = "none";
     document.getElementById("dataNavTabs").style.display = "flex";
     document.getElementById("dataHeaderActions").style.display = "flex";
-    analyzeDataFull(dataPendingFileData);
+
+    // Store the analysis results for history
+    const analysisResult = analyzeDataFull(dataPendingFileData);
+
+    // Save to history
+    saveToDataHistory(reportName, dataPendingFileData, analysisResult);
+
     document.getElementById("dataDashboard").classList.add("visible");
+    document.getElementById("dataHistorySection").style.display = "none";
+}
+
+// ==================== DATA HISTORY FUNCTIONS ====================
+function getDataHistory() {
+    try {
+        const history = localStorage.getItem(DATA_HISTORY_KEY);
+        return history ? JSON.parse(history) : [];
+    } catch (e) {
+        console.error("Error reading history:", e);
+        return [];
+    }
+}
+
+function saveToDataHistory(reportName, rawData, analysisResult) {
+    try {
+        let history = getDataHistory();
+
+        const historyItem = {
+            id: Date.now(),
+            name: reportName,
+            date: new Date().toISOString(),
+            totalRevenue: analysisResult.totalRevenue,
+            totalTransactions: analysisResult.totalTransactions,
+            rawData: rawData,
+            analysisResult: analysisResult
+        };
+
+        // Add to beginning of array
+        history.unshift(historyItem);
+
+        // Keep only last 10
+        if (history.length > MAX_HISTORY_ITEMS) {
+            history = history.slice(0, MAX_HISTORY_ITEMS);
+        }
+
+        localStorage.setItem(DATA_HISTORY_KEY, JSON.stringify(history));
+        renderDataHistory();
+    } catch (e) {
+        console.error("Error saving to history:", e);
+        showToast("Could not save to history", "error");
+    }
+}
+
+function renderDataHistory() {
+    const historyList = document.getElementById("dataHistoryList");
+    if (!historyList) return;
+
+    const history = getDataHistory();
+
+    if (history.length === 0) {
+        historyList.innerHTML = '<p class="data-history-empty">No previous reports yet</p>';
+        return;
+    }
+
+    historyList.innerHTML = history.map(item => {
+        const date = new Date(item.date);
+        const formattedDate = date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+
+        return `
+            <div class="data-history-item" onclick="loadFromDataHistory(${item.id})">
+                <div class="data-history-item-info">
+                    <span class="data-history-item-name">${item.name}</span>
+                    <span class="data-history-item-date">${formattedDate}</span>
+                </div>
+                <div class="data-history-item-stats">
+                    <span>${formatDataCurrency(item.totalRevenue)}</span>
+                    <span>${item.totalTransactions.toLocaleString()} transactions</span>
+                </div>
+                <button class="data-history-item-delete" onclick="event.stopPropagation(); deleteFromDataHistory(${item.id})" title="Delete">🗑️</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function loadFromDataHistory(id) {
+    const history = getDataHistory();
+    const item = history.find(h => h.id === id);
+
+    if (!item) {
+        showToast("Report not found", "error");
+        return;
+    }
+
+    // Hide upload section, show dashboard
+    document.getElementById("dataUploadSection").style.display = "none";
+    document.getElementById("dataHistorySection").style.display = "none";
+    document.getElementById("dataNamingSection").style.display = "none";
+    document.getElementById("dataNavTabs").style.display = "flex";
+    document.getElementById("dataHeaderActions").style.display = "flex";
+    document.getElementById("dataReportName").textContent = item.name;
+
+    // Re-analyze with stored data to render charts
+    analyzeDataFull(item.rawData);
+
+    document.getElementById("dataDashboard").classList.add("visible");
+    showToast(`Loaded: ${item.name}`, "success");
+}
+
+function deleteFromDataHistory(id) {
+    let history = getDataHistory();
+    history = history.filter(h => h.id !== id);
+    localStorage.setItem(DATA_HISTORY_KEY, JSON.stringify(history));
+    renderDataHistory();
+    showToast("Report deleted", "success");
 }
 
 function analyzeDataFull(data) {
@@ -863,6 +985,15 @@ function analyzeDataFull(data) {
     renderDataWhaleTable(customerSpending);
     generateDataInsights(totalRevenue, avgSale, uniqueCustomers, repeatBuyersCount, tierData, cityData,
                         totalTransactions, totalPackageCount, northernRevenue, northernCount, packageCounts, rsuRevenue, rsuCount);
+
+    // Return analysis results for history storage
+    return {
+        totalRevenue,
+        totalTransactions,
+        uniqueCustomers,
+        avgSale,
+        avgPerCustomer
+    };
 }
 
 function formatDataCurrency(value) {
@@ -1119,10 +1250,14 @@ function resetDataAnalysis() {
     document.getElementById("dataNamingSection").style.display = "none";
     document.getElementById("dataLoading").style.display = "none";
     document.getElementById("dataUploadSection").style.display = "block";
+    document.getElementById("dataHistorySection").style.display = "block";
     document.getElementById("dataNavTabs").style.display = "none";
     document.getElementById("dataHeaderActions").style.display = "none";
     document.getElementById("dataFileInput").value = '';
     document.getElementById("dataReportNameInput").value = '';
+
+    // Re-render history in case it changed
+    renderDataHistory();
 
     // Reset to overview page
     document.querySelectorAll('.data-nav-tab').forEach(t => t.classList.remove('active'));
