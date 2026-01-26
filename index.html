@@ -7,6 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- SheetJS for Excel parsing (Data Analysis Tool) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --primary-dark: #7c3aed;
@@ -188,6 +194,389 @@
             50% { transform: scale(1.2); opacity: 0.7; }
         }
 
+        /* ==================== AUTH PAGES ==================== */
+        .auth-page {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0f0a1a 0%, #1a1225 50%, #0f0a1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1500;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .auth-page.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 24px;
+        }
+
+        .auth-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            padding: 40px;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .auth-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .auth-logo img {
+            width: 48px; height: 48px;
+        }
+
+        .auth-logo-text {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .auth-subtitle {
+            font-size: 0.9rem;
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .auth-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .auth-input-group label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .auth-input-group input {
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        .auth-input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--bg-card);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        }
+
+        .auth-input-group input.error {
+            border-color: var(--danger);
+        }
+
+        .auth-error {
+            font-size: 0.8rem;
+            color: var(--danger);
+            display: none;
+        }
+
+        .auth-error.show {
+            display: block;
+        }
+
+        .auth-btn {
+            padding: 14px 20px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 8px;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .auth-divider {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 24px 0;
+            position: relative;
+        }
+
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .auth-divider::before { left: 0; }
+        .auth-divider::after { right: 0; }
+
+        .auth-switch {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .auth-switch a {
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+
+        .auth-message {
+            padding: 12px;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            text-align: center;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .auth-message.error {
+            display: block;
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .auth-message.success {
+            display: block;
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+
+        /* ==================== TOOL MENU PAGE ==================== */
+        .tool-menu-page {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--bg-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+            overflow-y: auto;
+        }
+
+        .tool-menu-page.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tool-menu-header {
+            width: 100%;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tool-menu-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tool-menu-logo img {
+            width: 36px;
+            height: 36px;
+        }
+
+        .tool-menu-brand {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tool-menu-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tool-menu-user-info {
+            text-align: right;
+        }
+
+        .tool-menu-user-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .tool-menu-user-email {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .tool-menu-logout {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .tool-menu-logout:hover {
+            background: var(--bg-light);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .tool-menu-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 32px;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .tool-menu-hero {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .tool-menu-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .tool-menu-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+        }
+
+        .tool-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            width: 100%;
+        }
+
+        .tool-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .tool-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl), var(--shadow-glow);
+        }
+
+        .tool-card-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+        }
+
+        .tool-card-icon.response {
+            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+        }
+
+        .tool-card-icon.data {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+        }
+
+        .tool-card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .tool-card-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .tool-card-badge {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 4px 12px;
+            background: var(--bg-light);
+            border-radius: 100px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
         /* ==================== MAIN APP ==================== */
         .app {
             display: none;
@@ -251,6 +640,32 @@
             letter-spacing: 0.5px;
         }
 
+        /* Back to Menu Button */
+        .back-to-menu {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-weight: 500;
+        }
+
+        .back-to-menu:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .back-to-menu-icon {
+            font-size: 1rem;
+        }
+
         /* Navigation */
         .nav {
             display: flex;
@@ -293,7 +708,7 @@
             margin: 0 8px;
         }
 
-        .settings-btn {
+        .settings-btn, .theme-toggle {
             width: 36px; height: 36px;
             border-radius: 50%;
             background: var(--bg-light);
@@ -307,9 +722,103 @@
             transition: all 0.2s ease;
         }
 
-        .settings-btn:hover {
+        .settings-btn:hover, .theme-toggle:hover {
             background: var(--border);
             color: var(--text-primary);
+        }
+
+        /* User Menu */
+        .user-menu {
+            position: relative;
+            margin-left: 8px;
+        }
+
+        .user-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .user-btn:hover {
+            background: var(--border);
+        }
+
+        .user-avatar {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            min-width: 180px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            z-index: 200;
+        }
+
+        .user-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .user-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 14px;
+            background: transparent;
+            border: none;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-family: inherit;
+            text-align: left;
+            transition: background 0.2s ease;
+        }
+
+        .user-dropdown-item:hover {
+            background: var(--bg-light);
+        }
+
+        .user-dropdown-item.danger {
+            color: var(--danger);
+        }
+
+        .user-dropdown-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
         }
 
         /* Container */
@@ -499,98 +1008,101 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            box-shadow: 0 4px 15px rgba(0, 168, 255, 0.3);
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 168, 255, 0.4);
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
         }
 
         .btn-primary:disabled {
-            opacity: 0.7;
+            opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
         }
 
         .btn-secondary {
-            padding: 10px 20px;
+            padding: 10px 16px;
             background: var(--bg-light);
+            color: var(--text-primary);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             font-size: 0.85rem;
             font-weight: 500;
-            color: var(--text-secondary);
-            cursor: pointer;
             font-family: inherit;
+            cursor: pointer;
             transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .btn-secondary:hover {
             background: var(--border);
-            color: var(--text-primary);
         }
 
-        .btn-icon { font-size: 1.1rem; }
-
-        .btn-small {
-            padding: 8px 14px;
-            font-size: 0.8rem;
-        }
+        .btn-icon { font-size: 1rem; }
 
         .btn-copy {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            background: white;
+            padding: 6px 12px;
+            background: var(--bg-light);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             font-size: 0.8rem;
-            font-weight: 500;
-            color: var(--text-secondary);
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
         }
 
         .btn-copy:hover {
-            background: var(--bg-light);
-            border-color: var(--primary);
-            color: var(--primary);
+            background: var(--border);
         }
 
         .btn-copy.copied {
-            background: #dcfce7;
+            background: var(--success);
+            color: white;
             border-color: var(--success);
-            color: #16a34a;
         }
 
-        /* ==================== RESPONSE GENERATOR ==================== */
+        .btn-icon-only {
+            width: 32px; height: 32px;
+            padding: 0;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-icon-only:hover {
+            background: var(--bg-light);
+        }
+
+        .btn-icon-only.delete:hover {
+            background: #fee2e2;
+        }
+
+        /* ==================== RESPONSE AREA ==================== */
         .response-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 900px) {
-            .response-grid { grid-template-columns: 1fr; }
+            gap: 24px;
         }
 
         .response-placeholder {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 50px 20px;
-            color: var(--text-muted);
             text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
         }
 
         .placeholder-icon {
-            font-size: 2.5rem;
+            font-size: 3rem;
             margin-bottom: 12px;
             opacity: 0.5;
+        }
+
+        .placeholder-text {
+            font-size: 0.9rem;
         }
 
         .loading {
@@ -598,151 +1110,372 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 50px 20px;
-            gap: 14px;
+            padding: 60px 20px;
         }
 
         .spinner {
             width: 40px; height: 40px;
-            border: 4px solid var(--border);
+            border: 3px solid var(--border);
             border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
         }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
 
-        .response-section { margin-bottom: 16px; }
+        .loading-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .response-section {
+            margin-bottom: 20px;
+        }
 
         .response-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-            gap: 8px;
+            margin-bottom: 12px;
         }
 
         .response-label {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+        }
+
+        .response-label-icon {
+            font-size: 1rem;
         }
 
         .response-label-text {
             font-size: 0.85rem;
             font-weight: 600;
-            color: var(--text-primary);
+            color: var(--success);
         }
 
         .response-actions {
             display: flex;
             gap: 8px;
-            flex-wrap: wrap;
         }
 
         .response-box {
-            background: linear-gradient(135deg, rgba(0, 168, 255, 0.05), rgba(0, 229, 255, 0.05));
-            border: 1px solid rgba(0, 168, 255, 0.2);
+            background: var(--bg-light);
+            border: 1px solid var(--border);
             border-radius: var(--radius-md);
             padding: 16px;
-            font-size: 0.85rem;
-            line-height: 1.8;
-            color: var(--text-primary);
+            font-size: 0.9rem;
+            line-height: 1.7;
             white-space: pre-wrap;
-            max-height: 350px;
+            max-height: 400px;
             overflow-y: auto;
         }
 
-        /* Rating */
         .rating-section {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 16px;
+            padding: 16px;
             background: var(--bg-light);
             border-radius: var(--radius-md);
-            margin-top: 12px;
+            margin-bottom: 16px;
         }
 
         .rating-label {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: var(--text-secondary);
         }
 
         .rating-btn {
-            width: 36px; height: 36px;
+            width: 40px; height: 40px;
             border-radius: 50%;
             border: 2px solid var(--border);
             background: white;
+            font-size: 1.2rem;
             cursor: pointer;
-            font-size: 1.1rem;
             transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .rating-btn:hover {
             transform: scale(1.1);
         }
 
-        .rating-btn.thumbs-up:hover, .rating-btn.thumbs-up.selected {
+        .rating-btn.thumbs-up:hover,
+        .rating-btn.thumbs-up.selected {
             border-color: var(--success);
             background: #dcfce7;
         }
 
-        .rating-btn.thumbs-down:hover, .rating-btn.thumbs-down.selected {
+        .rating-btn.thumbs-down:hover,
+        .rating-btn.thumbs-down.selected {
             border-color: var(--danger);
             background: #fee2e2;
         }
 
-        /* Quality Checks */
         .quality-checks {
-            margin-top: 12px;
-            padding: 12px;
-            background: var(--bg-light);
-            border-radius: var(--radius-md);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .quality-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 0.8rem;
-            padding: 4px 0;
+            gap: 6px;
+            padding: 6px 10px;
+            background: var(--bg-light);
+            border-radius: 100px;
+            font-size: 0.75rem;
         }
 
-        .quality-pass { color: var(--success); }
-        .quality-warn { color: var(--warning); }
-        .quality-fail { color: var(--danger); }
+        .quality-item.quality-pass { color: var(--success); }
+        .quality-item.quality-warn { color: var(--warning); }
+        .quality-item.quality-fail { color: var(--danger); }
 
-        /* Smart Suggestions */
+        /* ==================== SMART SUGGESTIONS ==================== */
         .smart-suggestions {
             display: flex;
-            gap: 8px;
             flex-wrap: wrap;
-            margin-bottom: 12px;
+            gap: 8px;
+            margin-bottom: 16px;
+            align-items: center;
         }
 
         .suggestion-chip {
             padding: 6px 12px;
-            background: white;
+            background: var(--bg-light);
             border: 1px solid var(--border);
             border-radius: 100px;
             font-size: 0.75rem;
             color: var(--text-secondary);
             cursor: pointer;
             transition: all 0.2s ease;
+            font-family: inherit;
         }
 
         .suggestion-chip:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            background: rgba(0, 168, 255, 0.05);
+            background: var(--primary-light);
+            color: white;
+            border-color: var(--primary-light);
         }
 
-        /* ==================== ANALYTICS PAGE ==================== */
+        /* ==================== OPTIONS SECTION ==================== */
+        .options-section {
+            margin-bottom: 16px;
+        }
+
+        .options-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .options-header:hover {
+            background: var(--border);
+        }
+
+        .options-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .options-toggle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+        }
+
+        .options-header.collapsed .options-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .options-content {
+            padding: 16px 0 0;
+            max-height: 500px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .options-content.collapsed {
+            max-height: 0;
+            padding-top: 0;
+            opacity: 0;
+        }
+
+        /* ==================== INPUT AREA ENHANCEMENTS ==================== */
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .char-count span {
+            font-weight: 500;
+        }
+
+        .autosave-indicator {
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .autosave-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .autosave-dot.saving {
+            animation: pulse-dot 1s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ==================== MODALS ==================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: var(--bg-light);
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--border);
+        }
+
+        /* ==================== TOAST ==================== */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(100px);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .toast-icon {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .toast.success .toast-icon {
+            background: #dcfce7;
+            color: var(--success);
+        }
+
+        .toast.error .toast-icon {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+
+        .toast-message {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        /* ==================== STATS ==================== */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -750,45 +1483,155 @@
             margin-bottom: 24px;
         }
 
-        @media (max-width: 900px) {
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-
         .stat-card {
             background: white;
             border: 1px solid var(--border);
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-lg);
             padding: 20px;
             text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .stat-value {
             font-size: 2rem;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--text-primary);
         }
 
         .stat-label {
             font-size: 0.8rem;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             margin-top: 4px;
         }
 
-        .chart-container {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 20px;
+        /* ==================== KNOWLEDGE PAGE ==================== */
+        .knowledge-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .knowledge-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
             margin-bottom: 20px;
         }
 
-        .chart-title {
+        .knowledge-stat {
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .knowledge-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .knowledge-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .knowledge-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .knowledge-item {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s ease;
+        }
+
+        .knowledge-item:hover {
+            background: var(--bg-light);
+        }
+
+        .knowledge-item:last-child {
+            border-bottom: none;
+        }
+
+        .knowledge-item-content {
+            flex: 1;
+        }
+
+        .knowledge-item-question {
             font-size: 0.9rem;
             font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .knowledge-item-preview {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .knowledge-item-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .knowledge-tag {
+            padding: 2px 8px;
+            background: var(--bg-input);
+            border-radius: 100px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .knowledge-item-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
             margin-bottom: 16px;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .filter-btn:hover {
+            background: var(--border);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* ==================== ANALYTICS PAGE ==================== */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
         }
 
         .bar-chart {
@@ -804,7 +1647,7 @@
         }
 
         .bar-label {
-            width: 120px;
+            width: 80px;
             font-size: 0.8rem;
             color: var(--text-secondary);
         }
@@ -813,40 +1656,40 @@
             flex: 1;
             height: 24px;
             background: var(--bg-light);
-            border-radius: 12px;
+            border-radius: 100px;
             overflow: hidden;
         }
 
         .bar-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
-            border-radius: 12px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 100px;
             transition: width 0.5s ease;
         }
 
         .bar-value {
             width: 40px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: 600;
+            color: var(--text-primary);
             text-align: right;
         }
 
-        /* History List */
         .history-list {
             max-height: 400px;
             overflow-y: auto;
         }
 
         .history-item {
-            padding: 14px;
+            padding: 12px;
             border-bottom: 1px solid var(--border);
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s ease;
         }
 
-        .history-item:hover { background: var(--bg-light); }
-
-        .history-item:last-child { border-bottom: none; }
+        .history-item:hover {
+            background: var(--bg-light);
+        }
 
         .history-header {
             display: flex;
@@ -856,31 +1699,27 @@
         }
 
         .history-type {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             padding: 2px 8px;
+            background: var(--primary-light);
+            color: white;
             border-radius: 100px;
-            background: var(--bg-light);
-            color: var(--text-secondary);
         }
 
         .history-date {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
         }
 
         .history-preview {
             font-size: 0.8rem;
             color: var(--text-secondary);
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
         }
 
         .history-meta {
             display: flex;
             gap: 12px;
-            margin-top: 8px;
+            margin-top: 6px;
             font-size: 0.75rem;
             color: var(--text-muted);
         }
@@ -888,19 +1727,15 @@
         /* ==================== FAVORITES PAGE ==================== */
         .favorites-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
-        @media (max-width: 768px) {
-            .favorites-grid { grid-template-columns: 1fr; }
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
         }
 
         .favorite-card {
             background: white;
             border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 16px;
+            border-radius: var(--radius-lg);
+            padding: 20px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -914,33 +1749,37 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         .favorite-title {
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-weight: 600;
             color: var(--text-primary);
         }
 
-        .favorite-actions {
-            display: flex;
-            gap: 6px;
-        }
-
         .favorite-preview {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: var(--text-secondary);
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            line-height: 1.5;
         }
 
         .favorite-meta {
-            margin-top: 10px;
+            margin-top: 12px;
             font-size: 0.75rem;
             color: var(--text-muted);
+        }
+
+        .favorites-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .favorites-empty-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
         }
 
         /* ==================== BULK PROCESSING ==================== */
@@ -951,783 +1790,106 @@
             text-align: center;
             cursor: pointer;
             transition: all 0.2s ease;
-            background: var(--bg-light);
+            margin-bottom: 20px;
         }
 
-        .bulk-upload-area:hover {
-            border-color: var(--primary);
-            background: rgba(0, 168, 255, 0.05);
-        }
-
+        .bulk-upload-area:hover,
         .bulk-upload-area.dragover {
             border-color: var(--primary);
-            background: rgba(0, 168, 255, 0.1);
+            background: var(--bg-input);
         }
 
         .bulk-upload-icon {
             font-size: 3rem;
             margin-bottom: 12px;
+            opacity: 0.5;
         }
 
         .bulk-upload-text {
-            color: var(--text-secondary);
             font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .bulk-upload-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
         }
 
         .bulk-progress {
-            margin-top: 20px;
+            display: none;
+            margin-bottom: 20px;
         }
 
         .progress-bar {
             height: 8px;
-            background: var(--border);
-            border-radius: 4px;
+            background: var(--bg-light);
+            border-radius: 100px;
             overflow: hidden;
+            margin-bottom: 8px;
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 100px;
             transition: width 0.3s ease;
+            width: 0%;
         }
 
         .progress-text {
             font-size: 0.8rem;
             color: var(--text-secondary);
-            margin-top: 8px;
             text-align: center;
         }
 
         .bulk-results {
-            margin-top: 20px;
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
         }
 
         .bulk-result-item {
             padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            margin-bottom: 10px;
-            background: white;
+            border-bottom: 1px solid var(--border);
         }
 
         .bulk-result-inquiry {
             font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .bulk-result-response {
-            font-size: 0.8rem;
-            color: var(--text-primary);
-        }
-
-        /* ==================== KNOWLEDGE PAGE ==================== */
-        .knowledge-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .knowledge-search {
-            margin-bottom: 20px;
-        }
-
-        .knowledge-filters {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            padding: 6px 14px;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 100px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
-        }
-
-        .filter-btn:hover, .filter-btn.active {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            border-color: transparent;
-        }
-
-        .knowledge-list { margin-top: 20px; }
-
-        .knowledge-item {
-            background: var(--bg-light);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 14px 18px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 14px;
-        }
-
-        .knowledge-item-content { flex: 1; }
-
-        .knowledge-item-question {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: var(--text-primary);
+            color: var(--text-muted);
             margin-bottom: 4px;
         }
 
-        .knowledge-item-preview {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .knowledge-item-meta {
-            display: flex;
-            gap: 12px;
-            margin-top: 8px;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
-
-        .knowledge-tag {
-            padding: 2px 8px;
-            background: white;
-            border-radius: 100px;
-            font-size: 0.7rem;
-        }
-
-        .knowledge-item-actions {
-            display: flex;
-            gap: 6px;
-        }
-
-        .btn-icon-only {
-            width: 32px; height: 32px;
-            border-radius: var(--radius-sm);
-            background: white;
-            border: 1px solid var(--border);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-            transition: all 0.2s ease;
-        }
-
-        .btn-icon-only:hover {
-            background: var(--bg-light);
-            border-color: var(--primary);
-        }
-
-        .btn-icon-only.delete:hover {
-            background: #fee2e2;
-            border-color: var(--danger);
-            color: var(--danger);
-        }
-
-        /* ==================== PAGE HEADERS ==================== */
-        .page-header {
-            margin-bottom: 24px;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 700;
+        .bulk-result-response {
+            font-size: 0.85rem;
             color: var(--text-primary);
-            margin-bottom: 6px;
-        }
-
-        .page-description {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
         }
 
         /* ==================== FEEDBACK PAGE ==================== */
-        .feedback-form { max-width: 600px; }
-
-        .success-message {
-            background: #dcfce7;
-            border: 1px solid var(--success);
-            border-radius: var(--radius-md);
-            padding: 16px;
-            color: #16a34a;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-
-        .api-notice {
-            background: #fef3c7;
-            border: 1px solid #fcd34d;
-            color: #92400e;
-        }
-
-        /* ==================== AUTH PAGES ==================== */
-        .auth-page {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: linear-gradient(135deg, #0f0a1a 0%, #1a1225 50%, #0f0a1a 100%);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1900;
-        }
-
-        .auth-page.visible {
-            display: flex;
-        }
-
-        .auth-container {
-            width: 100%;
-            max-width: 420px;
-            padding: 20px;
-        }
-
-        .auth-card {
-            background: var(--bg-card);
-            border-radius: var(--radius-xl);
-            padding: 40px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
-        }
-
-        .auth-logo {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            margin-bottom: 32px;
-        }
-
-        .auth-logo img {
-            width: 48px;
-            height: 48px;
-        }
-
-        .auth-logo-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .auth-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            text-align: center;
-            margin-bottom: 8px;
-        }
-
-        .auth-subtitle {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            text-align: center;
-            margin-bottom: 32px;
-        }
-
-        .auth-form {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .auth-input-group {
-            position: relative;
-        }
-
-        .auth-input-group label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-        }
-
-        .auth-input-group input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid var(--border);
-            border-radius: var(--radius-md);
-            font-size: 1rem;
-            font-family: inherit;
-            background: var(--bg-input);
-            color: var(--text-primary);
-            transition: all 0.2s;
-        }
-
-        .auth-input-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: var(--bg-card);
-            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
-        }
-
-        .auth-input-group input.error {
-            border-color: var(--danger);
-        }
-
-        .auth-error {
-            color: var(--danger);
-            font-size: 0.8rem;
-            margin-top: 4px;
-            display: none;
-        }
-
-        .auth-error.show {
-            display: block;
-        }
-
-        .auth-btn {
-            width: 100%;
-            padding: 14px 24px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            border: none;
-            border-radius: var(--radius-md);
-            font-size: 1rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 8px;
-        }
-
-        .auth-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
-        }
-
-        .auth-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .auth-divider {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin: 24px 0;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        .auth-divider::before,
-        .auth-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-
-        .auth-switch {
-            text-align: center;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
-        .auth-switch a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 500;
-            cursor: pointer;
-        }
-
-        .auth-switch a:hover {
-            text-decoration: underline;
-        }
-
-        .auth-message {
-            padding: 12px 16px;
-            border-radius: var(--radius-md);
-            font-size: 0.85rem;
-            margin-bottom: 16px;
-            display: none;
-        }
-
-        .auth-message.error {
-            background: #fef2f2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-            display: block;
-        }
-
-        .auth-message.success {
-            background: #f0fdf4;
-            color: #16a34a;
-            border: 1px solid #bbf7d0;
-            display: block;
-        }
-
-        .user-menu {
-            position: relative;
-        }
-
-        .user-btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            background: var(--bg-light);
-            border: 1px solid var(--border);
-            border-radius: 100px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-        }
-
-        .user-btn:hover {
-            background: var(--border);
-        }
-
-        .user-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .user-name {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            max-width: 120px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .user-dropdown {
-            position: absolute;
-            top: calc(100% + 8px);
-            right: 0;
-            width: 200px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-xl);
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: all 0.2s;
-            z-index: 1000;
-        }
-
-        .user-dropdown.show {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-
-        .user-dropdown-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 16px;
-            font-size: 0.9rem;
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: background 0.2s;
-            border: none;
-            background: none;
-            width: 100%;
-            text-align: left;
-            font-family: inherit;
-        }
-
-        .user-dropdown-item:hover {
-            background: var(--bg-light);
-        }
-
-        .user-dropdown-item.danger {
-            color: var(--danger);
-        }
-
-        .user-dropdown-divider {
-            height: 1px;
-            background: var(--border);
-            margin: 4px 0;
-        }
-
-        /* ==================== FOOTER ==================== */
-        .footer {
-            background: var(--bg-card);
-            border-top: 1px solid var(--border);
-            padding: 40px 32px;
-            margin-top: 60px;
-        }
-
-        .footer-inner {
-            max-width: var(--max-width);
-            margin: 0 auto;
+        .feedback-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr;
-            gap: 40px;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
         }
 
-        .footer-brand {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .footer-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .footer-logo img {
-            width: 40px;
-            height: 40px;
-        }
-
-        .footer-logo-text {
-            font-size: 1.1rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .footer-description {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        .footer-section h4 {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 16px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .footer-links {
-            list-style: none;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .footer-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
-        }
-
-        .footer-links a:hover {
-            color: var(--primary);
-        }
-
-        .footer-contact {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .footer-contact-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .footer-contact-item span:first-child {
-            font-size: 1rem;
-        }
-
-        .footer-bottom {
-            max-width: var(--max-width);
-            margin: 32px auto 0;
-            padding-top: 24px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
-
-        /* ==================== DARK MODE TOGGLE ==================== */
-        .theme-toggle {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: var(--bg-light);
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            transition: all 0.2s ease;
-            margin-right: 8px;
-        }
-
-        .theme-toggle:hover {
-            background: var(--border);
-            color: var(--text-primary);
-        }
-
-        /* ==================== LOADING ANIMATION ==================== */
-        .skeleton {
-            background: linear-gradient(90deg, var(--bg-input) 25%, var(--bg-light) 50%, var(--bg-input) 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
+        .feedback-success {
+            display: none;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
             border-radius: var(--radius-md);
-        }
-
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        .skeleton-text {
-            height: 16px;
-            margin-bottom: 8px;
-        }
-
-        .skeleton-text:last-child {
-            width: 60%;
-        }
-
-        .loading-spinner {
-            width: 24px;
-            height: 24px;
-            border: 3px solid var(--border);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .generating-indicator {
-            display: flex;
-            align-items: center;
-            gap: 12px;
             padding: 16px;
-            background: var(--bg-input);
-            border-radius: var(--radius-md);
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        /* ==================== CHARACTER COUNT ==================== */
-        .char-count {
-            display: flex;
-            justify-content: flex-end;
-            gap: 16px;
-            margin-top: 8px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .char-count span {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* ==================== COLLAPSIBLE SECTIONS ==================== */
-        .collapsible-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border);
             margin-bottom: 16px;
-            user-select: none;
-        }
-
-        .collapsible-header h3 {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .collapsible-icon {
-            transition: transform 0.3s ease;
-            color: var(--text-secondary);
-        }
-
-        .collapsible-header.collapsed .collapsible-icon {
-            transform: rotate(-90deg);
-        }
-
-        .collapsible-content {
-            overflow: hidden;
-            transition: max-height 0.3s ease, opacity 0.3s ease;
-            max-height: 1000px;
-            opacity: 1;
-        }
-
-        .collapsible-content.collapsed {
-            max-height: 0;
-            opacity: 0;
-        }
-
-        /* ==================== TOAST NOTIFICATION ==================== */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            padding: 14px 20px;
-            background: var(--text-primary);
-            color: white;
-            border-radius: var(--radius-md);
-            font-size: 0.9rem;
-            font-weight: 500;
-            box-shadow: var(--shadow-xl);
-            transform: translateY(100px);
-            opacity: 0;
-            transition: all 0.3s ease;
-            z-index: 3000;
-            display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
+        .feedback-success-icon {
+            font-size: 1.5rem;
         }
 
-        .toast.success { background: var(--success); }
-        .toast.error { background: var(--danger); }
+        .feedback-success-text {
+            font-size: 0.9rem;
+            color: #166534;
+        }
 
         /* ==================== TEMPLATES DRAWER ==================== */
         .templates-drawer {
@@ -1737,8 +1899,8 @@
             width: 400px;
             height: 100%;
             background: var(--bg-card);
-            box-shadow: -4px 0 20px rgba(0,0,0,0.15);
-            z-index: 1500;
+            box-shadow: var(--shadow-xl);
+            z-index: 500;
             transition: right 0.3s ease;
             display: flex;
             flex-direction: column;
@@ -1749,42 +1911,30 @@
         }
 
         .drawer-header {
-            padding: 20px 24px;
+            padding: 20px;
             border-bottom: 1px solid var(--border);
             display: flex;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
         }
 
-        .drawer-header h3 {
-            font-size: 1.1rem;
+        .drawer-title {
+            font-size: 1rem;
             font-weight: 600;
-            color: var(--text-primary);
         }
 
         .drawer-close {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: var(--bg-light);
+            background: none;
             border: none;
+            font-size: 1.2rem;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            transition: all 0.2s;
-        }
-
-        .drawer-close:hover {
-            background: var(--border);
-            color: var(--text-primary);
+            color: var(--text-muted);
         }
 
         .drawer-content {
             flex: 1;
+            padding: 20px;
             overflow-y: auto;
-            padding: 20px 24px;
         }
 
         .drawer-overlay {
@@ -1793,8 +1943,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.3);
-            z-index: 1400;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 400;
             opacity: 0;
             visibility: hidden;
             transition: all 0.3s ease;
@@ -1805,103 +1955,213 @@
             visibility: visible;
         }
 
-        /* ==================== AUTO-SAVE INDICATOR ==================== */
-        .autosave-indicator {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 8px;
+        /* ==================== DATA ANALYSIS TOOL STYLES ==================== */
+        .data-analysis-container {
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
-        .autosave-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--success);
+        .data-upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            margin-bottom: 24px;
         }
 
-        .autosave-dot.saving {
-            animation: pulse-dot 1s ease infinite;
+        .data-upload-area:hover {
+            border-color: var(--primary);
+            background: var(--bg-light);
         }
 
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+        .data-upload-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.4;
         }
 
-        /* ==================== MODAL ==================== */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal-overlay.show { display: flex; }
-
-        .modal {
-            background: var(--bg-card);
-            border-radius: var(--radius-xl);
-            width: 100%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-xl);
-            animation: modalIn 0.2s ease;
-        }
-
-        .modal.wide { max-width: 700px; }
-
-        @keyframes modalIn {
-            from { opacity: 0; transform: scale(0.95) translateY(10px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        .modal-header { padding: 20px 24px 0; }
-        .modal-title {
-            font-size: 1.15rem;
-            font-weight: 700;
+        .data-upload-title {
+            font-size: 1.25rem;
+            font-weight: 600;
             color: var(--text-primary);
-        }
-        .modal-body { padding: 20px 24px; }
-        .modal-footer {
-            padding: 0 24px 20px;
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
+            margin-bottom: 8px;
         }
 
-        .btn-save {
-            padding: 10px 20px;
+        .data-upload-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .data-dashboard {
+            display: none;
+        }
+
+        .data-dashboard.visible {
+            display: block;
+        }
+
+        .data-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .data-metric-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .data-metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .data-metric-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .data-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .data-chart-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+        }
+
+        .data-chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .data-chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .data-table-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .data-table-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .data-table th {
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--bg-light);
+        }
+
+        .data-table td {
+            color: var(--text-secondary);
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--bg-light);
+        }
+
+        .data-export-btn {
+            padding: 12px 24px;
             background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
             border: none;
             border-radius: var(--radius-md);
-            font-size: 0.85rem;
+            font-size: 0.95rem;
             font-weight: 600;
-            color: white;
             cursor: pointer;
-            font-family: inherit;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .data-export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .data-action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .data-reset-btn {
+            padding: 10px 20px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .data-reset-btn:hover {
+            background: var(--border);
         }
 
         /* ==================== RESPONSIVE ==================== */
         @media (max-width: 768px) {
+            .response-grid,
+            .knowledge-grid,
+            .analytics-grid,
+            .feedback-grid,
+            .data-charts-grid {
+                grid-template-columns: 1fr;
+            }
+
             .header-inner {
-                flex-direction: column;
+                flex-wrap: wrap;
                 gap: 12px;
             }
+
             .nav { flex-wrap: wrap; justify-content: center; }
             .container { padding: 16px; }
             .hero-title { font-size: 2.5rem; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .knowledge-stats { grid-template-columns: 1fr; }
+            .tool-menu-title { font-size: 1.8rem; }
+            .tool-cards-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -1918,7 +2178,7 @@
                 <span class="hero-cta-icon">→</span>
             </button>
         </div>
-        <div class="hero-version">Version 2.1</div>
+        <div class="hero-version">Version 3.0</div>
     </div>
 
     <!-- ==================== LOGIN PAGE ==================== -->
@@ -2015,16 +2275,64 @@
         </div>
     </div>
 
-    <!-- ==================== MAIN APP ==================== -->
+    <!-- ==================== TOOL MENU PAGE ==================== -->
+    <div class="tool-menu-page" id="toolMenuPage">
+        <header class="tool-menu-header">
+            <div class="tool-menu-logo">
+                <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
+                <span class="tool-menu-brand">Lightspeed</span>
+            </div>
+            <div class="tool-menu-user">
+                <div class="tool-menu-user-info">
+                    <div class="tool-menu-user-name" id="menuUserName">User</div>
+                    <div class="tool-menu-user-email" id="menuUserEmail">user@example.com</div>
+                </div>
+                <button class="tool-menu-logout" id="menuLogoutBtn">Sign Out</button>
+            </div>
+        </header>
+
+        <div class="tool-menu-content">
+            <div class="tool-menu-hero">
+                <h1 class="tool-menu-title">What are we going to accomplish today?</h1>
+                <p class="tool-menu-subtitle">Select a tool to get started</p>
+            </div>
+
+            <div class="tool-cards-grid">
+                <!-- Customer Response Utility -->
+                <div class="tool-card" id="toolCustomerResponse">
+                    <div class="tool-card-icon response">📧</div>
+                    <h3 class="tool-card-title">Customer Response Utility</h3>
+                    <p class="tool-card-description">Generate professional, AI-powered responses to customer inquiries with customizable tone and templates.</p>
+                    <span class="tool-card-badge">AI-Powered</span>
+                </div>
+
+                <!-- Data Analysis Utility -->
+                <div class="tool-card" id="toolDataAnalysis">
+                    <div class="tool-card-icon data">📊</div>
+                    <h3 class="tool-card-title">Data Analysis Utility</h3>
+                    <p class="tool-card-description">Upload Excel files and instantly generate visual dashboards with charts, metrics, and exportable PDF reports.</p>
+                    <span class="tool-card-badge">Visual Analytics</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MAIN APP (Customer Response Tool) ==================== -->
     <div class="app" id="mainApp">
         <!-- Header -->
         <header class="header">
             <div class="header-inner">
-                <div class="logo-section" id="logoHome">
-                    <img class="logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
-                    <div class="brand">
-                        <div class="brand-name">Lightspeed</div>
-                        <div class="brand-tagline">by Launchpad Solutions</div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="back-to-menu" id="backToMenuBtn">
+                        <span class="back-to-menu-icon">←</span>
+                        Back to Menu
+                    </button>
+                    <div class="logo-section" id="logoHome">
+                        <img class="logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
+                        <div class="brand">
+                            <div class="brand-name">Customer Response Utility</div>
+                            <div class="brand-tagline">Lightspeed by Launchpad</div>
+                        </div>
                     </div>
                 </div>
 
@@ -2074,10 +2382,9 @@
 
         <!-- Main Container -->
         <div class="container">
-            <!-- ==================== RESPONSE GENERATOR PAGE ==================== -->
+            <!-- Response Generator Page content goes here -->
             <div class="page active" id="page-response">
                 <div class="response-grid">
-                    <!-- Input Card -->
                     <div class="card">
                         <div class="card-header">
                             <div class="card-icon icon-input">📧</div>
@@ -2087,7 +2394,6 @@
                             </div>
                         </div>
 
-                        <!-- Smart Suggestions -->
                         <div class="smart-suggestions" id="smartSuggestions">
                             <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;">Quick fill:</span>
                             <button class="suggestion-chip" data-template="tickets">Can't find tickets</button>
@@ -2098,61 +2404,62 @@
                         </div>
 
                         <div class="form-group">
-                            <textarea id="customerEmail" placeholder="Paste the customer's email or message here...
-
-The AI will automatically detect which lottery the inquiry is about and generate an appropriate response."></textarea>
-                            <div class="char-count" id="inputCharCount">
-                                <span>📝 <span id="inputChars">0</span> characters</span>
-                                <span>📄 <span id="inputWords">0</span> words</span>
-                            </div>
-                            <div class="autosave-indicator" id="autosaveIndicator" style="display: none;">
-                                <div class="autosave-dot"></div>
-                                <span>Draft auto-saved</span>
-                            </div>
-                        </div>
-
-                        <!-- Collapsible Options Section -->
-                        <div class="collapsible-header" id="optionsHeader">
-                            <h3>⚙️ Response Options</h3>
-                            <span class="collapsible-icon">▼</span>
-                        </div>
-                        <div class="collapsible-content" id="optionsContent">
-                        <!-- Tone Controls -->
-                        <div class="tone-controls">
-                            <div class="tone-control">
-                                <label class="form-label">Tone</label>
-                                <input type="range" class="tone-slider" id="toneSlider" min="0" max="100" value="50">
-                                <div class="tone-labels">
-                                    <span>Formal</span>
-                                    <span>Friendly</span>
-                                </div>
-                            </div>
-                            <div class="tone-control">
-                                <label class="form-label">Length</label>
-                                <input type="range" class="tone-slider" id="lengthSlider" min="0" max="100" value="50">
-                                <div class="tone-labels">
-                                    <span>Brief</span>
-                                    <span>Detailed</span>
+                            <div class="input-wrapper">
+                                <textarea id="customerEmail" placeholder="Paste the customer's email or inquiry here..."></textarea>
+                                <div class="input-footer">
+                                    <div class="char-count">
+                                        <span id="inputChars">0</span> characters • <span id="inputWords">0</span> words
+                                    </div>
+                                    <div class="autosave-indicator" id="autosaveIndicator">
+                                        <span class="autosave-dot"></span>
+                                        Draft saved
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="checkbox-group" style="margin-bottom: 16px;">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="includeLinks" checked>
-                                Include relevant links
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="includeSteps">
-                                Include step-by-step
-                            </label>
-                        </div>
+                        <div class="options-section">
+                            <div class="options-header" id="optionsHeader">
+                                <span class="options-title">⚙️ Response Options</span>
+                                <span class="options-toggle">▼</span>
+                            </div>
+                            <div class="options-content" id="optionsContent">
+                                <div class="form-group">
+                                    <label class="form-label">Your Name</label>
+                                    <input type="text" id="staffName" placeholder="Your name for sign-off">
+                                </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Sign response as</label>
-                            <input type="text" id="staffName" placeholder="Your name" value="Bella">
+                                <div class="tone-controls">
+                                    <div class="tone-control">
+                                        <label class="form-label">Tone</label>
+                                        <input type="range" class="tone-slider" id="toneSlider" min="0" max="100" value="50">
+                                        <div class="tone-labels">
+                                            <span>Formal</span>
+                                            <span>Friendly</span>
+                                        </div>
+                                    </div>
+                                    <div class="tone-control">
+                                        <label class="form-label">Length</label>
+                                        <input type="range" class="tone-slider" id="lengthSlider" min="0" max="100" value="50">
+                                        <div class="tone-labels">
+                                            <span>Brief</span>
+                                            <span>Detailed</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="includeLinks" checked>
+                                        Include helpful links
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="includeSteps">
+                                        Include step-by-step instructions
+                                    </label>
+                                </div>
+                            </div>
                         </div>
-                        </div><!-- End collapsible content -->
 
                         <button class="btn-primary" id="generateBtn">
                             <span class="btn-icon">⚡</span>
@@ -2160,101 +2467,88 @@ The AI will automatically detect which lottery the inquiry is about and generate
                         </button>
                     </div>
 
-                    <!-- Output Card -->
                     <div class="card">
-                        <div class="card-header" style="justify-content: space-between;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div class="card-icon icon-output">✨</div>
-                                <div>
-                                    <div class="card-title">AI-Generated Response</div>
-                                    <div class="card-description">Powered by your knowledge base</div>
-                                </div>
+                        <div class="card-header">
+                            <div class="card-icon icon-output">✨</div>
+                            <div>
+                                <div class="card-title">Generated Response</div>
+                                <div class="card-description">AI-powered customer response</div>
                             </div>
-                            <button class="btn-secondary" onclick="openTemplatesDrawer()" style="padding: 8px 12px; font-size: 0.8rem;">
-                                ⭐ Templates
-                            </button>
                         </div>
 
                         <div id="responseArea">
                             <div class="response-placeholder">
-                                <div class="placeholder-icon">💡</div>
-                                <div class="placeholder-text">
-                                    Paste a customer inquiry and click<br>"Generate Response" to get started
-                                </div>
+                                <div class="placeholder-icon">💬</div>
+                                <div class="placeholder-text">Your generated response will appear here</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ==================== BULK PROCESSING PAGE ==================== -->
+            <!-- Bulk Processing Page -->
             <div class="page" id="page-bulk">
-                <div class="page-header">
-                    <h1 class="page-title">Bulk Processing</h1>
-                    <p class="page-description">Upload a CSV file to generate responses for multiple inquiries at once</p>
-                </div>
-
                 <div class="card">
                     <div class="card-header">
                         <div class="card-icon icon-bulk">📦</div>
                         <div>
-                            <div class="card-title">Upload Inquiries</div>
-                            <div class="card-description">CSV with one inquiry per row (column: "inquiry" or first column)</div>
+                            <div class="card-title">Bulk Processing</div>
+                            <div class="card-description">Process multiple inquiries at once</div>
                         </div>
                     </div>
 
                     <div class="bulk-upload-area" id="bulkUploadArea">
-                        <div class="bulk-upload-icon">📄</div>
-                        <div class="bulk-upload-text">
-                            <strong>Drop CSV file here</strong> or click to browse<br>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">Maximum 50 inquiries per batch</span>
-                        </div>
+                        <div class="bulk-upload-icon">📁</div>
+                        <div class="bulk-upload-text">Drop a CSV file here or click to upload</div>
+                        <div class="bulk-upload-hint">CSV should have an "inquiry" column</div>
                         <input type="file" id="bulkFileInput" accept=".csv" style="display: none;">
                     </div>
 
-                    <div class="bulk-progress" id="bulkProgress" style="display: none;">
+                    <div class="bulk-progress" id="bulkProgress">
                         <div class="progress-bar">
-                            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                            <div class="progress-fill" id="progressFill"></div>
                         </div>
-                        <div class="progress-text" id="progressText">Processing 0 of 0...</div>
+                        <div class="progress-text" id="progressText">Processing...</div>
                     </div>
 
                     <div class="bulk-results" id="bulkResults"></div>
 
-                    <div style="margin-top: 16px; display: flex; gap: 12px;" id="bulkActions" style="display: none;">
+                    <div style="display: flex; gap: 12px; margin-top: 16px;">
                         <button class="btn-secondary" id="exportCsvBtn" style="display: none;">
-                            📥 Export as CSV
+                            <span class="btn-icon">📥</span>
+                            Export Results
                         </button>
                         <button class="btn-secondary" id="clearBulkBtn" style="display: none;">
-                            🗑️ Clear Results
+                            <span class="btn-icon">🗑️</span>
+                            Clear Results
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- ==================== FAVORITES PAGE ==================== -->
+            <!-- Favorites Page -->
             <div class="page" id="page-favorites">
-                <div class="page-header">
-                    <h1 class="page-title">Saved Templates</h1>
-                    <p class="page-description">Your favorite responses for quick reuse</p>
-                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon icon-favorites">⭐</div>
+                        <div>
+                            <div class="card-title">Saved Templates</div>
+                            <div class="card-description">Your favorite responses for quick access</div>
+                        </div>
+                    </div>
 
-                <div id="favoritesEmpty" class="card" style="text-align: center; padding: 60px 20px;">
-                    <div style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;">⭐</div>
-                    <p style="color: var(--text-muted);">No saved templates yet.</p>
-                    <p style="font-size: 0.85rem; color: var(--text-muted);">Click the star icon on any generated response to save it here.</p>
-                </div>
+                    <div class="favorites-empty" id="favoritesEmpty">
+                        <div class="favorites-empty-icon">⭐</div>
+                        <p>No saved templates yet</p>
+                        <p style="font-size: 0.85rem; margin-top: 8px;">Save responses using the ⭐ button when generating</p>
+                    </div>
 
-                <div class="favorites-grid" id="favoritesGrid"></div>
+                    <div class="favorites-grid" id="favoritesGrid"></div>
+                </div>
             </div>
 
-            <!-- ==================== ANALYTICS PAGE ==================== -->
+            <!-- Analytics Page -->
             <div class="page" id="page-analytics">
-                <div class="page-header">
-                    <h1 class="page-title">Analytics Dashboard</h1>
-                    <p class="page-description">Track response performance and identify trends</p>
-                </div>
-
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value" id="analyticsTotal">0</div>
@@ -2266,7 +2560,7 @@ The AI will automatically detect which lottery the inquiry is about and generate
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="analyticsPositive">0%</div>
-                        <div class="stat-label">Positive Ratings</div>
+                        <div class="stat-label">Positive Rating</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="analyticsAvgTime">0s</div>
@@ -2274,280 +2568,309 @@ The AI will automatically detect which lottery the inquiry is about and generate
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div class="chart-container">
-                        <div class="chart-title">Top Question Categories</div>
+                <div class="analytics-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-analytics">📊</div>
+                            <div>
+                                <div class="card-title">Category Breakdown</div>
+                                <div class="card-description">Most common inquiry types</div>
+                            </div>
+                        </div>
                         <div class="bar-chart" id="categoryChart"></div>
                     </div>
 
-                    <div class="chart-container">
-                        <div class="chart-title">Response History</div>
-                        <div class="history-list" id="historyList">
-                            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-                                No response history yet.
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-knowledge">📜</div>
+                            <div>
+                                <div class="card-title">Recent History</div>
+                                <div class="card-description">Your latest generated responses</div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="chart-container" style="margin-top: 20px;">
-                    <div class="chart-title">Knowledge Gaps (Questions without good matches)</div>
-                    <div id="knowledgeGaps">
-                        <div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.85rem;">
-                            As you use the tool, we'll identify common questions that aren't well covered by your knowledge base.
-                        </div>
+                        <div class="history-list" id="historyList"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- ==================== KNOWLEDGE PAGE ==================== -->
+            <!-- Knowledge Page -->
             <div class="page" id="page-knowledge">
-                <div class="page-header">
-                    <h1 class="page-title">Knowledge Base</h1>
-                    <p class="page-description">Add and manage the information that powers your AI responses</p>
-                </div>
-
-                <div class="knowledge-stats">
-                    <div class="stat-card">
-                        <div class="stat-value" id="statTotal">0</div>
-                        <div class="stat-label">Total Entries</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat5050">0</div>
-                        <div class="stat-label">50/50 Entries</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statCta">0</div>
-                        <div class="stat-label">Catch the Ace</div>
-                    </div>
-                </div>
-
-                <div class="knowledge-search">
-                    <input type="text" id="knowledgeSearchInput" placeholder="🔍 Search knowledge base...">
-                </div>
-
-                <div class="knowledge-filters">
-                    <button class="filter-btn active" data-filter="all">All</button>
-                    <button class="filter-btn" data-filter="5050">50/50</button>
-                    <button class="filter-btn" data-filter="cta">Catch the Ace</button>
-                    <button class="filter-btn" data-filter="custom">Custom Only</button>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-icon icon-knowledge">➕</div>
-                        <div>
-                            <div class="card-title">Add New Knowledge</div>
-                            <div class="card-description">Teach the AI how to respond to new questions</div>
+                <div class="knowledge-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-knowledge">📚</div>
+                            <div>
+                                <div class="card-title">Knowledge Base</div>
+                                <div class="card-description">Browse and search existing entries</div>
+                            </div>
                         </div>
+
+                        <div class="knowledge-stats">
+                            <div class="knowledge-stat">
+                                <div class="knowledge-stat-value" id="statTotal">0</div>
+                                <div class="knowledge-stat-label">Total Entries</div>
+                            </div>
+                            <div class="knowledge-stat">
+                                <div class="knowledge-stat-value" id="stat5050">0</div>
+                                <div class="knowledge-stat-label">50/50</div>
+                            </div>
+                            <div class="knowledge-stat">
+                                <div class="knowledge-stat-value" id="statCta">0</div>
+                                <div class="knowledge-stat-label">CTA</div>
+                            </div>
+                        </div>
+
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="5050">50/50</button>
+                            <button class="filter-btn" data-filter="cta">CTA</button>
+                            <button class="filter-btn" data-filter="custom">Custom</button>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="text" id="knowledgeSearchInput" placeholder="Search knowledge base...">
+                        </div>
+
+                        <div class="knowledge-list" id="knowledgeList"></div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-input">➕</div>
+                            <div>
+                                <div class="card-title">Add Knowledge</div>
+                                <div class="card-description">Teach the AI new responses</div>
+                            </div>
+                        </div>
+
                         <div class="form-group">
-                            <label class="form-label">Which lottery?</label>
+                            <label class="form-label">Lottery Type</label>
                             <select id="knowledgeLottery">
-                                <option value="both">Both Lotteries</option>
-                                <option value="5050">50/50 Lottery</option>
-                                <option value="cta">Catch the Ace</option>
+                                <option value="both">Both 50/50 and CTA</option>
+                                <option value="5050">50/50 Only</option>
+                                <option value="cta">CTA Only</option>
                             </select>
                         </div>
+
                         <div class="form-group">
                             <label class="form-label">Category</label>
                             <select id="knowledgeCategory">
                                 <option value="general">General</option>
                                 <option value="tickets">Tickets</option>
-                                <option value="subscription">Subscription</option>
                                 <option value="payment">Payment</option>
                                 <option value="technical">Technical</option>
                                 <option value="winners">Winners</option>
+                                <option value="subscription">Subscription</option>
                             </select>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Question or Topic</label>
-                        <input type="text" id="knowledgeQuestion" placeholder="e.g., How do I update my email address?">
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">Question/Topic</label>
+                            <input type="text" id="knowledgeQuestion" placeholder="e.g., How do I cancel my subscription?">
+                        </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Keywords (comma-separated)</label>
-                        <input type="text" id="knowledgeKeywords" placeholder="e.g., email, update, change, address">
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">Keywords (comma-separated)</label>
+                            <input type="text" id="knowledgeKeywords" placeholder="e.g., cancel, subscription, stop">
+                        </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Ideal Response</label>
-                        <textarea id="knowledgeResponse" placeholder="Write the ideal response. Use {NAME} where the staff name should go."></textarea>
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">Response Template</label>
+                            <textarea id="knowledgeResponse" placeholder="The response the AI should give..."></textarea>
+                        </div>
 
-                    <div style="display: flex; gap: 12px;">
-                        <button class="btn-primary" id="addKnowledgeBtn" style="flex: 1;">
+                        <button class="btn-primary" id="addKnowledgeBtn">
                             <span class="btn-icon">➕</span>
                             Add to Knowledge Base
                         </button>
-                        <button class="btn-secondary" id="importKnowledgeBtn">
-                            📥 Import
+
+                        <div style="margin-top: 16px;">
+                            <button class="btn-secondary" id="importKnowledgeBtn">
+                                <span class="btn-icon">📥</span>
+                                Bulk Import
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feedback Page -->
+            <div class="page" id="page-feedback">
+                <div class="feedback-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-feedback">💬</div>
+                            <div>
+                                <div class="card-title">Send Feedback</div>
+                                <div class="card-description">Help us improve Lightspeed</div>
+                            </div>
+                        </div>
+
+                        <div class="feedback-success" id="feedbackSuccess">
+                            <span class="feedback-success-icon">✅</span>
+                            <span class="feedback-success-text">Thank you! Your feedback has been submitted.</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Your Name</label>
+                            <input type="text" id="feedbackName" placeholder="Your name">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Email (optional)</label>
+                            <input type="email" id="feedbackEmail" placeholder="your@email.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Feedback Type</label>
+                            <select id="feedbackType">
+                                <option value="suggestion">Suggestion</option>
+                                <option value="bug">Bug Report</option>
+                                <option value="feature">Feature Request</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Your Feedback</label>
+                            <textarea id="feedbackMessage" placeholder="Tell us what's on your mind..."></textarea>
+                        </div>
+
+                        <button class="btn-primary" id="submitFeedbackBtn">
+                            <span class="btn-icon">📤</span>
+                            Submit Feedback
                         </button>
                     </div>
-                </div>
 
-                <div class="knowledge-list" id="knowledgeList"></div>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-analytics">📖</div>
+                            <div>
+                                <div class="card-title">Quick Tips</div>
+                                <div class="card-description">Get the most out of Lightspeed</div>
+                            </div>
+                        </div>
+
+                        <div style="font-size: 0.9rem; line-height: 1.8; color: var(--text-secondary);">
+                            <p><strong>💡 Pro Tips:</strong></p>
+                            <ul style="margin-left: 20px; margin-top: 12px;">
+                                <li>Use the quick-fill buttons for common scenarios</li>
+                                <li>Adjust tone slider for formal vs casual responses</li>
+                                <li>Save great responses as templates</li>
+                                <li>Add custom knowledge for organization-specific info</li>
+                                <li>Use Ctrl+Enter to quickly generate responses</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
 
-            <!-- ==================== FEEDBACK PAGE ==================== -->
-            <div class="page" id="page-feedback">
-                <div class="page-header">
-                    <h1 class="page-title">Share Your Feedback</h1>
-                    <p class="page-description">Help us improve Lightspeed with your suggestions</p>
-                </div>
-
-                <div class="card feedback-form">
-                    <div class="card-header">
-                        <div class="card-icon icon-feedback">💬</div>
-                        <div>
-                            <div class="card-title">Submit Feedback</div>
-                            <div class="card-description">We read every submission</div>
-                        </div>
-                    </div>
-
-                    <div id="feedbackSuccess" class="success-message" style="display: none;">
-                        <span style="font-size: 1.2rem;">✅</span>
-                        <div>
-                            <strong>Thank you for your feedback!</strong><br>
-                            <span style="font-size: 0.8rem;">We'll review it and use it to improve Lightspeed.</span>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Your Name</label>
-                        <input type="text" id="feedbackName" placeholder="Enter your name">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Email (optional)</label>
-                        <input type="email" id="feedbackEmail" placeholder="Enter your email for follow-up">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Feedback Type</label>
-                        <select id="feedbackType">
-                            <option value="suggestion">Feature Suggestion</option>
-                            <option value="bug">Bug Report</option>
-                            <option value="improvement">Improvement Idea</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Your Feedback</label>
-                        <textarea id="feedbackMessage" placeholder="Tell us what you think..."></textarea>
-                    </div>
-
-                    <button class="btn-primary" id="submitFeedbackBtn">
-                        <span class="btn-icon">📤</span>
-                        Submit Feedback
+    <!-- ==================== DATA ANALYSIS TOOL ==================== -->
+    <div class="app" id="dataAnalysisApp">
+        <header class="header">
+            <div class="header-inner">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="back-to-menu" id="dataBackToMenuBtn">
+                        <span class="back-to-menu-icon">←</span>
+                        Back to Menu
                     </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ==================== FOOTER ==================== -->
-        <footer class="footer">
-            <div class="footer-inner">
-                <div class="footer-brand">
-                    <div class="footer-logo">
-                        <img src="launchpad-logo.svg" alt="Launchpad" style="width: 40px; height: 40px;" onerror="this.style.display='none'">
-                        <span class="footer-logo-text">Launchpad Solutions</span>
-                    </div>
-                    <p class="footer-description">
-                        Empowering hospital lotteries and charitable gaming organizations with intelligent customer support tools.
-                    </p>
-                </div>
-                <div class="footer-section">
-                    <h4>Product</h4>
-                    <ul class="footer-links">
-                        <li><a href="#" onclick="showPage('response'); return false;">Response Generator</a></li>
-                        <li><a href="#" onclick="showPage('knowledge'); return false;">Knowledge Base</a></li>
-                        <li><a href="#" onclick="showPage('analytics'); return false;">Analytics</a></li>
-                        <li><a href="#" onclick="showPage('feedback'); return false;">Feedback</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact</h4>
-                    <div class="footer-contact">
-                        <div class="footer-contact-item">
-                            <span>📧</span>
-                            <a href="mailto:info@launchpadsolutions.ca" style="color: inherit; text-decoration: none;">info@launchpadsolutions.ca</a>
-                        </div>
-                        <div class="footer-contact-item">
-                            <span>🌐</span>
-                            <a href="https://launchpadsolutions.ca" target="_blank" style="color: inherit; text-decoration: none;">launchpadsolutions.ca</a>
+                    <div class="logo-section">
+                        <img class="logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
+                        <div class="brand">
+                            <div class="brand-name">Data Analysis Utility</div>
+                            <div class="brand-tagline">Lightspeed by Launchpad</div>
                         </div>
                     </div>
                 </div>
+                <nav class="nav">
+                    <button class="theme-toggle" id="dataThemeToggle" title="Toggle dark mode">🌙</button>
+                </nav>
             </div>
-            <div class="footer-bottom">
-                <span>© 2025 Launchpad Solutions. All rights reserved.</span>
-                <span>Developed with ⚡ by Launchpad Solutions</span>
+        </header>
+
+        <div class="container">
+            <div class="data-analysis-container">
+                <!-- Hidden file input (outside clickable area to prevent event conflicts) -->
+                <input type="file" id="dataFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+
+                <!-- Upload Area -->
+                <div class="data-upload-area" id="dataUploadArea">
+                    <div class="data-upload-icon">📊</div>
+                    <h2 class="data-upload-title">Upload Your Data</h2>
+                    <p class="data-upload-subtitle">Drop an Excel file here or click to browse</p>
+                </div>
+
+                <!-- Dashboard (hidden until data uploaded) -->
+                <div class="data-dashboard" id="dataDashboard">
+                    <div class="data-action-bar">
+                        <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">📊 Data Dashboard</h2>
+                        <div style="display: flex; gap: 12px;">
+                            <button class="data-reset-btn" id="dataResetBtn">
+                                🔄 Upload New File
+                            </button>
+                            <button class="data-export-btn" id="dataExportBtn">
+                                📥 Export PDF Report
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="data-metrics-grid" id="dataMetricsGrid"></div>
+
+                    <!-- Charts Grid -->
+                    <div class="data-charts-grid" id="dataChartsGrid"></div>
+
+                    <!-- Data Table -->
+                    <div class="data-table-section" id="dataTableSection">
+                        <h3 class="data-table-title">📋 Data Preview</h3>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table" id="dataTable"></table>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </footer>
-    </div>
-
-    <!-- ==================== TEMPLATES DRAWER ==================== -->
-    <div class="drawer-overlay" id="drawerOverlay"></div>
-    <div class="templates-drawer" id="templatesDrawer">
-        <div class="drawer-header">
-            <h3>⭐ Quick Templates</h3>
-            <button class="drawer-close" id="closeDrawer">✕</button>
         </div>
-        <div class="drawer-content" id="drawerContent">
-            <p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 40px 20px;">
-                No saved templates yet.<br>Save responses using the ⭐ button!
-            </p>
-        </div>
-    </div>
-
-    <!-- ==================== TOAST NOTIFICATION ==================== -->
-    <div class="toast" id="toast">
-        <span class="toast-icon">✓</span>
-        <span class="toast-message">Copied to clipboard!</span>
     </div>
 
     <!-- ==================== SETTINGS MODAL ==================== -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
             <div class="modal-header">
-                <h2 class="modal-title">Settings</h2>
+                <h2 class="modal-title">⚙️ Settings</h2>
+                <button class="modal-close" id="closeSettings">×</button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Default Staff Name</label>
-                    <input type="text" id="defaultName" placeholder="Bella">
-                    <small style="color: var(--text-muted); font-size: 0.8rem;">This name will be used to sign responses</small>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Organization Name</label>
-                    <input type="text" id="orgName" placeholder="Your Hospital Lottery Name">
-                    <small style="color: var(--text-muted); font-size: 0.8rem;">Used to replace [ORGANIZATION] placeholders in responses</small>
-                </div>
+
+            <div class="form-group">
+                <label class="form-label">Default Name</label>
+                <input type="text" id="defaultName" placeholder="Your name for sign-offs">
             </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" id="closeSettings">Cancel</button>
-                <button class="btn-save" id="saveSettings">Save Settings</button>
+
+            <div class="form-group">
+                <label class="form-label">Organization Name</label>
+                <input type="text" id="orgName" placeholder="Your organization name">
             </div>
+
+            <button class="btn-primary" id="saveSettings" style="margin-top: 16px;">
+                Save Settings
+            </button>
         </div>
     </div>
 
-    <!-- ==================== HISTORY DETAIL MODAL ==================== -->
+    <!-- ==================== HISTORY MODAL ==================== -->
     <div class="modal-overlay" id="historyModal">
-        <div class="modal wide">
+        <div class="modal" style="max-width: 600px;">
             <div class="modal-header">
-                <h2 class="modal-title">Response Details</h2>
+                <h2 class="modal-title">📜 Response Details</h2>
+                <button class="modal-close" id="closeHistoryModal">×</button>
             </div>
-            <div class="modal-body" id="historyModalContent"></div>
-            <div class="modal-footer">
-                <button class="btn-secondary" id="closeHistoryModal">Close</button>
-                <button class="btn-save" id="copyHistoryResponse">📋 Copy Response</button>
-            </div>
+
+            <div id="historyModalContent"></div>
+
+            <button class="btn-secondary" id="copyHistoryResponse" style="margin-top: 16px;">
+                📋 Copy Response
+            </button>
         </div>
     </div>
 
@@ -2555,24 +2878,44 @@ The AI will automatically detect which lottery the inquiry is about and generate
     <div class="modal-overlay" id="importModal">
         <div class="modal">
             <div class="modal-header">
-                <h2 class="modal-title">Import Knowledge</h2>
+                <h2 class="modal-title">📥 Bulk Import</h2>
+                <button class="modal-close" id="closeImportModal">×</button>
             </div>
-            <div class="modal-body">
-                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">
-                    Paste content from a Word document or text file. The AI will parse and extract Q&A pairs.
-                </p>
-                <div class="form-group">
-                    <label class="form-label">Paste Document Content</label>
-                    <textarea id="importContent" placeholder="Paste your FAQ document content here..." style="min-height: 200px;"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" id="closeImportModal">Cancel</button>
-                <button class="btn-save" id="parseImportBtn">Parse & Import</button>
-            </div>
+
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">
+                Paste Q&A content below. Format questions with <strong>**bold**</strong> or ending with <strong>?</strong>
+            </p>
+
+            <textarea id="importContent" placeholder="**Question 1?**
+Answer to question 1...
+
+**Question 2?**
+Answer to question 2..."></textarea>
+
+            <button class="btn-primary" id="parseImportBtn" style="margin-top: 16px;">
+                <span class="btn-icon">📥</span>
+                Parse & Import
+            </button>
         </div>
     </div>
 
+    <!-- ==================== TOAST ==================== -->
+    <div class="toast" id="toast">
+        <span class="toast-icon">✓</span>
+        <span class="toast-message"></span>
+    </div>
+
+    <!-- ==================== TEMPLATES DRAWER ==================== -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="templates-drawer" id="templatesDrawer">
+        <div class="drawer-header">
+            <span class="drawer-title">⭐ Saved Templates</span>
+            <button class="drawer-close" id="closeDrawer">×</button>
+        </div>
+        <div class="drawer-content" id="drawerContent"></div>
+    </div>
+
+    <!-- JavaScript -->
     <script src="knowledge-base.js"></script>
     <script src="app.js"></script>
 </body>
