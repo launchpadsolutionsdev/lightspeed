@@ -1,16 +1,17 @@
-// Lightspeed by Launchpad Solutions v2.2
-// AI-Powered Customer Support Tool with User Authentication
+// Lightspeed by Launchpad Solutions v3.0
+// Multi-Tool Platform with Customer Response & Data Analysis
 
 // ==================== API CONFIGURATION ====================
-// Change this to your deployed backend URL (e.g., https://lightspeed-api.onrender.com)
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3001'  // Local development
     : 'https://lightspeed-api-a1t9.onrender.com';  // Production
+
 // ==================== AUTH STATE ====================
 let currentUser = null;
 let users = JSON.parse(localStorage.getItem("lightspeed_users") || "[]");
 
 // ==================== APP STATE ====================
+let currentTool = null; // 'customer-response' or 'data-analysis'
 let defaultName = "Bella";
 let orgName = "";
 let customKnowledge = [];
@@ -22,6 +23,10 @@ let currentInquiry = null;
 let bulkResults = [];
 let currentFilter = "all";
 let currentHistoryItem = null;
+
+// Data Analysis State
+let dataAnalysisData = null;
+let dataCharts = [];
 
 // Smart suggestion templates
 const SUGGESTION_TEMPLATES = {
@@ -70,6 +75,7 @@ function init() {
 
     // Setup all event listeners
     setupEventListeners();
+    setupDataAnalysisListeners();
 }
 
 function setupAuthEventListeners() {
@@ -90,13 +96,16 @@ function setupAuthEventListeners() {
     // Register form
     document.getElementById("registerForm").addEventListener("submit", handleRegister);
 
-    // User menu
+    // User menu (in main app)
     document.getElementById("userMenuBtn").addEventListener("click", toggleUserDropdown);
     document.getElementById("logoutBtn").addEventListener("click", handleLogout);
     document.getElementById("accountBtn").addEventListener("click", () => {
         closeUserDropdown();
         document.getElementById("settingsModal").classList.add("show");
     });
+
+    // Tool Menu logout
+    document.getElementById("menuLogoutBtn").addEventListener("click", handleLogout);
 
     // Close dropdown when clicking outside
     document.addEventListener("click", (e) => {
@@ -106,12 +115,22 @@ function setupAuthEventListeners() {
             closeUserDropdown();
         }
     });
+
+    // Tool selection cards
+    document.getElementById("toolCustomerResponse").addEventListener("click", () => openTool('customer-response'));
+    document.getElementById("toolDataAnalysis").addEventListener("click", () => openTool('data-analysis'));
+
+    // Back to menu buttons
+    document.getElementById("backToMenuBtn").addEventListener("click", goBackToMenu);
+    document.getElementById("dataBackToMenuBtn").addEventListener("click", goBackToMenu);
 }
 
 function showLoginPage() {
     document.getElementById("loginPage").classList.add("visible");
     document.getElementById("registerPage").classList.remove("visible");
     document.getElementById("mainApp").classList.remove("visible");
+    document.getElementById("dataAnalysisApp").classList.remove("visible");
+    document.getElementById("toolMenuPage").classList.remove("visible");
     clearAuthForms();
 }
 
@@ -119,7 +138,44 @@ function showRegisterPage() {
     document.getElementById("registerPage").classList.add("visible");
     document.getElementById("loginPage").classList.remove("visible");
     document.getElementById("mainApp").classList.remove("visible");
+    document.getElementById("dataAnalysisApp").classList.remove("visible");
+    document.getElementById("toolMenuPage").classList.remove("visible");
     clearAuthForms();
+}
+
+function showToolMenu() {
+    document.getElementById("heroPage").classList.add("hidden");
+    document.getElementById("loginPage").classList.remove("visible");
+    document.getElementById("registerPage").classList.remove("visible");
+    document.getElementById("mainApp").classList.remove("visible");
+    document.getElementById("dataAnalysisApp").classList.remove("visible");
+    document.getElementById("toolMenuPage").classList.add("visible");
+
+    // Update user info in menu
+    if (currentUser) {
+        document.getElementById("menuUserName").textContent = currentUser.name;
+        document.getElementById("menuUserEmail").textContent = currentUser.email;
+    }
+}
+
+function openTool(toolId) {
+    currentTool = toolId;
+    document.getElementById("toolMenuPage").classList.remove("visible");
+
+    if (toolId === 'customer-response') {
+        document.getElementById("mainApp").classList.add("visible");
+        document.getElementById("dataAnalysisApp").classList.remove("visible");
+    } else if (toolId === 'data-analysis') {
+        document.getElementById("dataAnalysisApp").classList.add("visible");
+        document.getElementById("mainApp").classList.remove("visible");
+    }
+}
+
+function goBackToMenu() {
+    currentTool = null;
+    document.getElementById("mainApp").classList.remove("visible");
+    document.getElementById("dataAnalysisApp").classList.remove("visible");
+    showToolMenu();
 }
 
 function clearAuthForms() {
@@ -227,11 +283,13 @@ function loginUser(user, showMessage = true) {
     document.getElementById("userAvatar").textContent = user.name.charAt(0).toUpperCase();
     document.getElementById("userName").textContent = user.name.split(" ")[0];
 
-    // Hide auth pages, show app
+    // Hide auth pages, show tool menu
     document.getElementById("heroPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
     document.getElementById("registerPage").classList.remove("visible");
-    document.getElementById("mainApp").classList.add("visible");
+
+    // Show tool menu instead of directly going to main app
+    showToolMenu();
 
     // Setup main app event listeners if not already done
     setupEventListeners();
@@ -284,6 +342,7 @@ function handleLogout() {
 
     // Clear current user
     currentUser = null;
+    currentTool = null;
     localStorage.removeItem("lightspeed_current_user");
 
     // Reset state
@@ -294,8 +353,12 @@ function handleLogout() {
     responseHistory = [];
     favorites = [];
 
-    // Show login page
+    // Hide all app pages
     document.getElementById("mainApp").classList.remove("visible");
+    document.getElementById("dataAnalysisApp").classList.remove("visible");
+    document.getElementById("toolMenuPage").classList.remove("visible");
+
+    // Show login page
     showLoginPage();
 
     showToast("You've been signed out", "success");
@@ -352,7 +415,7 @@ function setupEventListeners() {
         btn.addEventListener("click", () => switchPage(btn.dataset.page));
     });
 
-    // Logo click - just go to generator page (don't log out)
+    // Logo click - go to generator page
     document.getElementById("logoHome").addEventListener("click", () => {
         switchPage("response");
     });
@@ -482,13 +545,448 @@ function setupEventListeners() {
     document.getElementById("drawerOverlay").addEventListener("click", closeTemplatesDrawer);
 }
 
-// ==================== HERO / NAVIGATION ====================
-function enterApp() {
-    localStorage.setItem("has_visited", "true");
-    document.getElementById("heroPage").classList.add("hidden");
-    document.getElementById("mainApp").classList.add("visible");
+// ==================== DATA ANALYSIS TOOL ====================
+function setupDataAnalysisListeners() {
+    const uploadArea = document.getElementById("dataUploadArea");
+    const fileInput = document.getElementById("dataFileInput");
+
+    // Check if elements exist before attaching listeners
+    if (!uploadArea || !fileInput) {
+        console.error("Data analysis elements not found");
+        return;
+    }
+
+    // Click to upload - stop propagation to prevent issues with nested input
+    uploadArea.addEventListener("click", (e) => {
+        // Only trigger if we didn't click on the file input itself
+        if (e.target !== fileInput) {
+            e.preventDefault();
+            e.stopPropagation();
+            fileInput.click();
+        }
+    });
+
+    // Drag over styling
+    uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.style.borderColor = "var(--primary)";
+        uploadArea.style.background = "var(--bg-light)";
+    });
+
+    // Drag leave - reset styling
+    uploadArea.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.style.borderColor = "var(--border)";
+        uploadArea.style.background = "white";
+    });
+
+    // Drop file
+    uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.style.borderColor = "var(--border)";
+        uploadArea.style.background = "white";
+        if (e.dataTransfer.files && e.dataTransfer.files.length) {
+            handleDataFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener("change", (e) => {
+        if (e.target.files && e.target.files.length) {
+            handleDataFile(e.target.files[0]);
+        }
+    });
+
+    // Reset and export buttons
+    const resetBtn = document.getElementById("dataResetBtn");
+    const exportBtn = document.getElementById("dataExportBtn");
+
+    if (resetBtn) resetBtn.addEventListener("click", resetDataAnalysis);
+    if (exportBtn) exportBtn.addEventListener("click", exportDataPDF);
+
+    // Data analysis dark mode toggle
+    const dataThemeToggle = document.getElementById("dataThemeToggle");
+    if (dataThemeToggle) {
+        dataThemeToggle.addEventListener("click", toggleDarkMode);
+    }
+
+    console.log("Data analysis listeners attached successfully");
 }
 
+function handleDataFile(file) {
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+            if (jsonData.length < 2) {
+                showToast("File appears to be empty or has no data rows", "error");
+                return;
+            }
+
+            dataAnalysisData = {
+                headers: jsonData[0],
+                rows: jsonData.slice(1),
+                fileName: file.name
+            };
+
+            renderDataDashboard();
+        } catch (error) {
+            console.error("Error parsing file:", error);
+            showToast("Error reading file. Please ensure it's a valid Excel file.", "error");
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+function renderDataDashboard() {
+    if (!dataAnalysisData) return;
+
+    // Show dashboard, hide upload
+    document.getElementById("dataUploadArea").style.display = "none";
+    document.getElementById("dataDashboard").classList.add("visible");
+
+    const { headers, rows } = dataAnalysisData;
+
+    // Render metrics
+    renderDataMetrics(headers, rows);
+
+    // Render charts
+    renderDataCharts(headers, rows);
+
+    // Render table preview
+    renderDataTable(headers, rows);
+
+    showToast(`Loaded ${rows.length} rows of data`, "success");
+}
+
+function renderDataMetrics(headers, rows) {
+    const metricsGrid = document.getElementById("dataMetricsGrid");
+
+    // Calculate basic metrics
+    const totalRows = rows.length;
+    const totalColumns = headers.length;
+
+    // Find numeric columns and calculate stats
+    const numericStats = [];
+    headers.forEach((header, colIndex) => {
+        const values = rows.map(row => parseFloat(row[colIndex])).filter(v => !isNaN(v));
+        if (values.length > rows.length * 0.5) { // At least 50% numeric
+            const sum = values.reduce((a, b) => a + b, 0);
+            const avg = sum / values.length;
+            const max = Math.max(...values);
+            const min = Math.min(...values);
+            numericStats.push({ header, sum, avg, max, min, count: values.length });
+        }
+    });
+
+    let metricsHTML = `
+        <div class="data-metric-card">
+            <div class="data-metric-value">${totalRows.toLocaleString()}</div>
+            <div class="data-metric-label">Total Rows</div>
+        </div>
+        <div class="data-metric-card">
+            <div class="data-metric-value">${totalColumns}</div>
+            <div class="data-metric-label">Columns</div>
+        </div>
+    `;
+
+    // Add top numeric column stats
+    if (numericStats.length > 0) {
+        const mainStat = numericStats[0];
+        metricsHTML += `
+            <div class="data-metric-card">
+                <div class="data-metric-value">${formatNumber(mainStat.sum)}</div>
+                <div class="data-metric-label">Total ${mainStat.header}</div>
+            </div>
+            <div class="data-metric-card">
+                <div class="data-metric-value">${formatNumber(mainStat.avg)}</div>
+                <div class="data-metric-label">Avg ${mainStat.header}</div>
+            </div>
+        `;
+    }
+
+    metricsGrid.innerHTML = metricsHTML;
+}
+
+function renderDataCharts(headers, rows) {
+    const chartsGrid = document.getElementById("dataChartsGrid");
+    chartsGrid.innerHTML = '';
+
+    // Destroy existing charts
+    dataCharts.forEach(chart => chart.destroy());
+    dataCharts = [];
+
+    // Find categorical and numeric columns
+    const categoricalCols = [];
+    const numericCols = [];
+
+    headers.forEach((header, colIndex) => {
+        const values = rows.map(row => row[colIndex]).filter(v => v !== undefined && v !== null && v !== '');
+        const numericValues = values.filter(v => !isNaN(parseFloat(v)));
+
+        if (numericValues.length > values.length * 0.7) {
+            numericCols.push({ header, index: colIndex });
+        } else if (values.length > 0) {
+            const uniqueValues = [...new Set(values)];
+            if (uniqueValues.length <= 20 && uniqueValues.length > 1) {
+                categoricalCols.push({ header, index: colIndex, values: uniqueValues });
+            }
+        }
+    });
+
+    // Create a bar chart for first categorical column
+    if (categoricalCols.length > 0 && numericCols.length > 0) {
+        const catCol = categoricalCols[0];
+        const numCol = numericCols[0];
+
+        // Aggregate data
+        const aggregated = {};
+        rows.forEach(row => {
+            const cat = row[catCol.index] || 'Unknown';
+            const num = parseFloat(row[numCol.index]) || 0;
+            aggregated[cat] = (aggregated[cat] || 0) + num;
+        });
+
+        const sortedEntries = Object.entries(aggregated).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+        chartsGrid.innerHTML += `
+            <div class="data-chart-card">
+                <h3 class="data-chart-title">${numCol.header} by ${catCol.header}</h3>
+                <div class="data-chart-container">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+        `;
+
+        // Create after DOM update
+        setTimeout(() => {
+            const ctx = document.getElementById('barChart');
+            if (ctx) {
+                const chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedEntries.map(e => e[0]),
+                        datasets: [{
+                            label: numCol.header,
+                            data: sortedEntries.map(e => e[1]),
+                            backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                            borderColor: 'rgba(139, 92, 246, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+                dataCharts.push(chart);
+            }
+        }, 100);
+    }
+
+    // Create a pie chart if we have categorical data
+    if (categoricalCols.length > 0) {
+        const catCol = categoricalCols[0];
+        const counts = {};
+        rows.forEach(row => {
+            const cat = row[catCol.index] || 'Unknown';
+            counts[cat] = (counts[cat] || 0) + 1;
+        });
+
+        const sortedEntries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+        chartsGrid.innerHTML += `
+            <div class="data-chart-card">
+                <h3 class="data-chart-title">${catCol.header} Distribution</h3>
+                <div class="data-chart-container">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        `;
+
+        setTimeout(() => {
+            const ctx = document.getElementById('pieChart');
+            if (ctx) {
+                const colors = [
+                    'rgba(139, 92, 246, 0.8)',
+                    'rgba(167, 139, 250, 0.8)',
+                    'rgba(196, 181, 253, 0.8)',
+                    'rgba(124, 58, 237, 0.8)',
+                    'rgba(109, 40, 217, 0.8)',
+                    'rgba(91, 33, 182, 0.8)',
+                    'rgba(76, 29, 149, 0.8)',
+                    'rgba(59, 130, 246, 0.8)'
+                ];
+
+                const chart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: sortedEntries.map(e => e[0]),
+                        datasets: [{
+                            data: sortedEntries.map(e => e[1]),
+                            backgroundColor: colors,
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+                dataCharts.push(chart);
+            }
+        }, 100);
+    }
+
+    // If we have at least 2 numeric columns, create a line/scatter chart
+    if (numericCols.length >= 2) {
+        const xCol = numericCols[0];
+        const yCol = numericCols[1];
+
+        chartsGrid.innerHTML += `
+            <div class="data-chart-card">
+                <h3 class="data-chart-title">${yCol.header} vs ${xCol.header}</h3>
+                <div class="data-chart-container">
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+        `;
+
+        setTimeout(() => {
+            const ctx = document.getElementById('lineChart');
+            if (ctx) {
+                const dataPoints = rows.slice(0, 100).map((row, i) => ({
+                    x: i,
+                    y: parseFloat(row[yCol.index]) || 0
+                }));
+
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dataPoints.map((_, i) => i + 1),
+                        datasets: [{
+                            label: yCol.header,
+                            data: dataPoints.map(p => p.y),
+                            borderColor: 'rgba(139, 92, 246, 1)',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+                dataCharts.push(chart);
+            }
+        }, 100);
+    }
+}
+
+function renderDataTable(headers, rows) {
+    const table = document.getElementById("dataTable");
+
+    // Create header row
+    let tableHTML = '<thead><tr>';
+    headers.forEach(header => {
+        tableHTML += `<th>${escapeHtml(String(header || ''))}</th>`;
+    });
+    tableHTML += '</tr></thead>';
+
+    // Create body rows (limit to 50 for preview)
+    tableHTML += '<tbody>';
+    rows.slice(0, 50).forEach(row => {
+        tableHTML += '<tr>';
+        headers.forEach((_, colIndex) => {
+            const value = row[colIndex];
+            tableHTML += `<td>${escapeHtml(String(value || ''))}</td>`;
+        });
+        tableHTML += '</tr>';
+    });
+    tableHTML += '</tbody>';
+
+    table.innerHTML = tableHTML;
+
+    if (rows.length > 50) {
+        document.getElementById("dataTableSection").insertAdjacentHTML('beforeend',
+            `<p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 12px; text-align: center;">
+                Showing first 50 of ${rows.length} rows
+            </p>`
+        );
+    }
+}
+
+function resetDataAnalysis() {
+    dataAnalysisData = null;
+    dataCharts.forEach(chart => chart.destroy());
+    dataCharts = [];
+
+    document.getElementById("dataUploadArea").style.display = "block";
+    document.getElementById("dataDashboard").classList.remove("visible");
+    document.getElementById("dataFileInput").value = '';
+}
+
+function exportDataPDF() {
+    if (!dataAnalysisData) {
+        showToast("No data to export", "error");
+        return;
+    }
+
+    const dashboard = document.getElementById("dataDashboard");
+
+    const opt = {
+        margin: 10,
+        filename: `data-analysis-${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    showToast("Generating PDF...", "success");
+
+    html2pdf().set(opt).from(dashboard).save().then(() => {
+        showToast("PDF exported successfully!", "success");
+    }).catch(err => {
+        console.error("PDF export error:", err);
+        showToast("Error exporting PDF", "error");
+    });
+}
+
+function formatNumber(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    } else if (Number.isInteger(num)) {
+        return num.toLocaleString();
+    } else {
+        return num.toFixed(2);
+    }
+}
+
+// ==================== NAVIGATION ====================
 function switchPage(pageId) {
     document.querySelectorAll(".nav-btn").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.page === pageId);
@@ -1302,15 +1800,18 @@ function copyToClipboard(elementId, button) {
 // ==================== DARK MODE ====================
 function toggleDarkMode() {
     const html = document.documentElement;
-    const btn = document.getElementById("themeToggle");
+    const themeBtn = document.getElementById("themeToggle");
+    const dataThemeBtn = document.getElementById("dataThemeToggle");
 
     if (html.getAttribute("data-theme") === "dark") {
         html.removeAttribute("data-theme");
-        btn.textContent = "🌙";
+        if (themeBtn) themeBtn.textContent = "🌙";
+        if (dataThemeBtn) dataThemeBtn.textContent = "🌙";
         localStorage.setItem("theme", "light");
     } else {
         html.setAttribute("data-theme", "dark");
-        btn.textContent = "☀️";
+        if (themeBtn) themeBtn.textContent = "☀️";
+        if (dataThemeBtn) dataThemeBtn.textContent = "☀️";
         localStorage.setItem("theme", "dark");
     }
 }
@@ -1390,7 +1891,7 @@ function renderDrawerFavorites() {
     container.innerHTML = favorites.map((fav, index) => `
         <div class="drawer-item" style="padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; cursor: pointer; transition: all 0.2s;" onclick="useDrawerFavorite(${index})">
             <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">
-                ${new Date(fav.date).toLocaleDateString()}
+                ${new Date(fav.dateAdded).toLocaleDateString()}
             </div>
             <div style="font-size: 0.85rem; color: var(--text-primary); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                 ${escapeHtml(fav.response.substring(0, 150))}...
@@ -1424,13 +1925,6 @@ function showToast(message, type = "") {
     }, 3000);
 }
 
-// Helper function to escape HTML
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 // ==================== NAVIGATION HELPER ====================
 function showPage(pageId) {
     switchPage(pageId);
@@ -1451,6 +1945,3 @@ window.useDrawerFavorite = useDrawerFavorite;
 
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", init);
-
-
-
