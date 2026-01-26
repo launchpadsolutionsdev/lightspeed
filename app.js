@@ -512,16 +512,6 @@ function setupEventListeners() {
         }
     });
 
-    // Dark mode toggle
-    document.getElementById("themeToggle").addEventListener("click", toggleDarkMode);
-
-    // Load saved theme
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark") {
-        document.documentElement.setAttribute("data-theme", "dark");
-        document.getElementById("themeToggle").textContent = "☀️";
-    }
-
     // Character count for input
     const customerEmailInput = document.getElementById("customerEmail");
     customerEmailInput.addEventListener("input", () => {
@@ -1950,25 +1940,6 @@ function copyToClipboard(elementId, button) {
             button.classList.remove("copied");
         }, 2000);
     });
-}
-
-// ==================== DARK MODE ====================
-function toggleDarkMode() {
-    const html = document.documentElement;
-    const themeBtn = document.getElementById("themeToggle");
-    const dataThemeBtn = document.getElementById("dataThemeToggle");
-
-    if (html.getAttribute("data-theme") === "dark") {
-        html.removeAttribute("data-theme");
-        if (themeBtn) themeBtn.textContent = "🌙";
-        if (dataThemeBtn) dataThemeBtn.textContent = "🌙";
-        localStorage.setItem("theme", "light");
-    } else {
-        html.setAttribute("data-theme", "dark");
-        if (themeBtn) themeBtn.textContent = "☀️";
-        if (dataThemeBtn) dataThemeBtn.textContent = "☀️";
-        localStorage.setItem("theme", "dark");
-    }
 }
 
 // ==================== CHARACTER COUNT ====================

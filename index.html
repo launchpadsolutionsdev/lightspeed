@@ -44,19 +44,6 @@
             --max-width: 1200px;
         }
 
-        /* Dark Mode */
-        [data-theme="dark"] {
-            --bg-dark: #0f0a1a;
-            --bg-card: #1e1b2e;
-            --bg-light: #13101c;
-            --bg-input: #2d2640;
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
-            --text-muted: #6b7280;
-            --border: #374151;
-            --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.25);
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -398,7 +385,7 @@
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background: var(--bg-light);
+            background: linear-gradient(135deg, #0f0a1a 0%, #1a1225 50%, #0f0a1a 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -414,14 +401,44 @@
             visibility: visible;
         }
 
+        /* Tool menu background effects */
+        .tool-menu-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .tool-menu-bg::before {
+            content: '';
+            position: absolute;
+            top: 20%; left: 10%;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        .tool-menu-bg::after {
+            content: '';
+            position: absolute;
+            bottom: 20%; right: 10%;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite 2s;
+        }
+
         .tool-menu-header {
             width: 100%;
             padding: 16px 32px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: white;
-            border-bottom: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
         }
 
         .tool-menu-logo {
@@ -433,12 +450,13 @@
         .tool-menu-logo img {
             width: 36px;
             height: 36px;
+            filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.4));
         }
 
         .tool-menu-brand {
             font-size: 1.1rem;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -457,30 +475,30 @@
         .tool-menu-user-name {
             font-size: 0.9rem;
             font-weight: 600;
-            color: var(--text-primary);
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .tool-menu-user-email {
             font-size: 0.75rem;
-            color: var(--text-muted);
+            color: rgba(255, 255, 255, 0.5);
         }
 
         .tool-menu-logout {
             padding: 8px 16px;
             background: transparent;
-            border: 1px solid var(--border);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: var(--radius-md);
             font-size: 0.85rem;
-            color: var(--text-secondary);
+            color: rgba(255, 255, 255, 0.7);
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
         }
 
         .tool-menu-logout:hover {
-            background: var(--bg-light);
-            color: var(--danger);
-            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border-color: #ef4444;
         }
 
         .tool-menu-content {
@@ -492,6 +510,8 @@
             padding: 60px 32px;
             max-width: 900px;
             width: 100%;
+            position: relative;
+            z-index: 1;
         }
 
         .tool-menu-hero {
@@ -502,13 +522,16 @@
         .tool-menu-title {
             font-size: 2.5rem;
             font-weight: 800;
-            color: var(--text-primary);
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 12px;
         }
 
         .tool-menu-subtitle {
             font-size: 1.1rem;
-            color: var(--text-secondary);
+            color: rgba(255, 255, 255, 0.6);
         }
 
         .tool-cards-grid {
@@ -519,19 +542,21 @@
         }
 
         .tool-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: var(--radius-xl);
             padding: 32px;
-            border: 2px solid var(--border);
             cursor: pointer;
             transition: all 0.3s ease;
             text-align: center;
+            backdrop-filter: blur(10px);
         }
 
         .tool-card:hover {
-            border-color: var(--primary);
+            border-color: var(--accent);
             transform: translateY(-4px);
-            box-shadow: var(--shadow-xl), var(--shadow-glow);
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+            background: rgba(255, 255, 255, 0.12);
         }
 
         .tool-card-icon {
@@ -546,23 +571,23 @@
         }
 
         .tool-card-icon.response {
-            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(14, 165, 233, 0.3));
         }
 
         .tool-card-icon.data {
-            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            background: linear-gradient(135deg, rgba(74, 222, 128, 0.3), rgba(34, 197, 94, 0.3));
         }
 
         .tool-card-title {
             font-size: 1.25rem;
             font-weight: 700;
-            color: var(--text-primary);
+            color: rgba(255, 255, 255, 0.95);
             margin-bottom: 8px;
         }
 
         .tool-card-description {
             font-size: 0.9rem;
-            color: var(--text-secondary);
+            color: rgba(255, 255, 255, 0.6);
             line-height: 1.5;
         }
 
@@ -626,10 +651,7 @@
         .brand-name {
             font-size: 1.1rem;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #1a1a1a;
         }
 
         .brand-tagline {
@@ -708,7 +730,7 @@
             margin: 0 8px;
         }
 
-        .settings-btn, .theme-toggle {
+        .settings-btn {
             width: 36px; height: 36px;
             border-radius: 50%;
             background: var(--bg-light);
@@ -722,7 +744,7 @@
             transition: all 0.2s ease;
         }
 
-        .settings-btn:hover, .theme-toggle:hover {
+        .settings-btn:hover {
             background: var(--border);
             color: var(--text-primary);
         }
@@ -1891,6 +1913,68 @@
             color: #166534;
         }
 
+        /* ==================== SITE FOOTER ==================== */
+        .site-footer {
+            background: #1a1a1a;
+            padding: 24px 32px;
+            margin-top: auto;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .footer-brand img {
+            width: 28px;
+            height: 28px;
+            filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.3));
+        }
+
+        .footer-brand-text {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .footer-links {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .footer-link {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            transition: color 0.2s ease;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+        }
+
+        .footer-link:hover {
+            color: var(--accent);
+        }
+
+        .footer-copyright {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
         /* ==================== TEMPLATES DRAWER ==================== */
         .templates-drawer {
             position: fixed;
@@ -2836,6 +2920,7 @@
 
     <!-- ==================== TOOL MENU PAGE ==================== -->
     <div class="tool-menu-page" id="toolMenuPage">
+        <div class="tool-menu-bg"></div>
         <header class="tool-menu-header">
             <div class="tool-menu-logo">
                 <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
@@ -2865,15 +2950,31 @@
                     <span class="tool-card-badge">AI-Powered</span>
                 </div>
 
-                <!-- Data Analysis Utility -->
+                <!-- Insights Engine -->
                 <div class="tool-card" id="toolDataAnalysis">
                     <div class="tool-card-icon data">📊</div>
-                    <h3 class="tool-card-title">Data Analysis Utility</h3>
+                    <h3 class="tool-card-title">Insights Engine</h3>
                     <p class="tool-card-description">Upload Excel files and instantly generate visual dashboards with charts, metrics, and key insights.</p>
                     <span class="tool-card-badge">Visual Analytics</span>
                 </div>
             </div>
         </div>
+
+        <!-- Footer for Tool Menu -->
+        <footer class="site-footer" style="background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.1);">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
+                    <span class="footer-brand-text">Lightspeed by Launchpad</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://launchpadsolutions.ca" target="_blank" class="footer-link">Visit Launchpad</a>
+                </div>
+                <div class="footer-copyright">
+                    © 2025 Launchpad Solutions. All rights reserved.
+                </div>
+            </div>
+        </footer>
     </div>
 
     <!-- ==================== MAIN APP (Customer Response Tool) ==================== -->
@@ -2912,12 +3013,7 @@
                         <span class="nav-btn-icon">📚</span>
                         Knowledge
                     </button>
-                    <button class="nav-btn" data-page="feedback">
-                        <span class="nav-btn-icon">💬</span>
-                        Feedback
-                    </button>
                     <div class="nav-divider"></div>
-                    <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">🌙</button>
                     <button class="settings-btn" id="settingsToggle" title="Settings">⚙️</button>
                     <div class="user-menu">
                         <button class="user-btn" id="userMenuBtn">
@@ -3324,6 +3420,23 @@
                 </div>
             </div>
         </div>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
+                    <span class="footer-brand-text">Lightspeed by Launchpad</span>
+                </div>
+                <div class="footer-links">
+                    <button class="footer-link" onclick="switchPage('feedback')">💬 Feedback</button>
+                    <a href="https://launchpadsolutions.ca" target="_blank" class="footer-link">Visit Launchpad</a>
+                </div>
+                <div class="footer-copyright">
+                    © 2025 Launchpad Solutions. All rights reserved.
+                </div>
+            </div>
+        </footer>
     </div>
 
     <!-- ==================== DATA ANALYSIS TOOL ==================== -->
@@ -3338,7 +3451,7 @@
                     <div class="logo-section">
                         <img class="logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
                         <div class="brand">
-                            <div class="brand-name">Data Analysis Utility</div>
+                            <div class="brand-name">Insights Engine</div>
                             <div class="brand-tagline">Lightspeed by Launchpad</div>
                         </div>
                     </div>
@@ -3574,6 +3687,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
+                    <span class="footer-brand-text">Lightspeed by Launchpad</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://launchpadsolutions.ca" target="_blank" class="footer-link">Visit Launchpad</a>
+                </div>
+                <div class="footer-copyright">
+                    © 2025 Launchpad Solutions. All rights reserved.
+                </div>
+            </div>
+        </footer>
     </div>
 
     <!-- ==================== SETTINGS MODAL ==================== -->
