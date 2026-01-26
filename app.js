@@ -2284,20 +2284,20 @@ async function generateDraft() {
         const quoteTitle = document.getElementById('draftQuoteTitle').value.trim();
         const quoteText = document.getElementById('draftQuoteText').value.trim();
         if (quoteName && quoteText) {
-            quoteInfo = \`\\n\\nInclude this quote from \${quoteName}\${quoteTitle ? ', ' + quoteTitle : ''}: "\${quoteText}"\`;
+            quoteInfo = "\n\nInclude this quote from " + quoteName + (quoteTitle ? ', ' + quoteTitle : '') + ': "' + quoteText + '"';
         }
     }
 
     // Build the user prompt
-    let userPrompt = \`Write a \${DRAFT_TYPE_LABELS[currentDraftType]} about: \${topic}\`;
+    let userPrompt = "Write a " + DRAFT_TYPE_LABELS[currentDraftType] + " about: " + topic;
     if (details) {
-        userPrompt += \`\\n\\nKey details to include: \${details}\`;
+        userPrompt += "\n\nKey details to include: " + details;
     }
     userPrompt += quoteInfo;
-    userPrompt += \`\\n\\nTone: \${currentDraftTone}\`;
+    userPrompt += "\n\nTone: " + currentDraftTone;
 
     if (currentDraftType === 'ad') {
-        userPrompt += \`\\n\\nREMEMBER: Maximum 120 characters and MUST include www.thunderbay5050.ca\`;
+        userPrompt += "\n\nREMEMBER: Maximum 120 characters and MUST include www.thunderbay5050.ca";
     }
 
     lastDraftRequest = { topic, details, quoteInfo };
@@ -2343,7 +2343,7 @@ async function generateDraft() {
         const disclaimer = document.getElementById('draftDisclaimer');
         if (currentDraftType === 'ad') {
             const charCount = generatedContent.length;
-            disclaimer.innerHTML = \`Character count: \${charCount}/120 \${charCount > 120 ? '⚠️ Over limit!' : '✅'}\`;
+            disclaimer.innerHTML = 'Character count: ' + charCount + '/120 ' + (charCount > 120 ? '⚠️ Over limit!' : '✅');
             disclaimer.style.display = 'block';
         } else {
             disclaimer.innerHTML = '⚠️ Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
