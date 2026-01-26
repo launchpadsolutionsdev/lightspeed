@@ -1963,6 +1963,7 @@
 
         .data-upload-area {
             display: block;
+            position: relative;
             border: 2px dashed var(--border);
             border-radius: var(--radius-lg);
             padding: 60px 40px;
@@ -2793,11 +2794,9 @@
 
         <div class="container">
             <div class="data-analysis-container">
-                <!-- Hidden file input -->
-                <input type="file" id="dataFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
-
-                <!-- Upload Area - wrapped in label for reliable click handling -->
-                <label for="dataFileInput" class="data-upload-area" id="dataUploadArea">
+                <!-- Upload Area - label with file input INSIDE for guaranteed click handling -->
+                <label class="data-upload-area" id="dataUploadArea">
+                    <input type="file" id="dataFileInput" accept=".xlsx,.xls,.csv" style="position: absolute; opacity: 0; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer;">
                     <div class="data-upload-icon">📊</div>
                     <h2 class="data-upload-title">Upload Your Data</h2>
                     <p class="data-upload-subtitle">Drop an Excel file here or click to browse</p>
