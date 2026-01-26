@@ -168,6 +168,8 @@ function openTool(toolId) {
     } else if (toolId === 'data-analysis') {
         document.getElementById("dataAnalysisApp").classList.add("visible");
         document.getElementById("mainApp").classList.remove("visible");
+        // Re-attach listeners when opening Data Analysis tool
+        setupDataAnalysisListeners();
     }
 }
 
@@ -546,7 +548,12 @@ function setupEventListeners() {
 }
 
 // ==================== DATA ANALYSIS TOOL ====================
+let dataAnalysisListenersSetup = false;
+
 function setupDataAnalysisListeners() {
+    // Prevent duplicate listeners
+    if (dataAnalysisListenersSetup) return;
+
     const uploadArea = document.getElementById("dataUploadArea");
     const fileInput = document.getElementById("dataFileInput");
 
@@ -556,8 +563,8 @@ function setupDataAnalysisListeners() {
         return;
     }
 
-    // NOTE: Click handling is done via <label for="dataFileInput"> in HTML
-    // This is the most reliable cross-browser method for triggering file inputs
+    dataAnalysisListenersSetup = true;
+    console.log("Setting up data analysis listeners...");
 
     // Drag over styling
     uploadArea.addEventListener("dragover", (e) => {
