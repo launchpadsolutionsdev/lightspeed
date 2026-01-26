@@ -549,16 +549,81 @@ function setupEventListeners() {
 
 // ==================== DATA ANALYSIS TOOL ====================
 let dataAnalysisListenersSetup = false;
+let dataPendingFileData = null;
+let dataAnalysisResults = {};
+
+// Northern Ontario cities database
+const NORTHERN_ONTARIO_CITIES = new Set([
+    'thunder bay', 'sudbury', 'greater sudbury', 'grand sudbury', 'sault ste. marie', 'sault ste marie',
+    'sault saint marie', 'sault st marie', 'sault st. marie', 'north bay', 'timmins', 'kenora',
+    'dryden', 'fort frances', 'sioux lookout', 'kapuskasing', 'hearst', 'elliot lake', 'temiskaming shores',
+    'kirkland lake', 'cochrane', 'iroquois falls', 'espanola', 'blind river', 'marathon', 'geraldton',
+    'longlac', 'nipigon', 'red rock', 'terrace bay', 'white river', 'wawa', 'chapleau', 'hornepayne',
+    'mattawa', 'powassan', 'sturgeon falls', 'west nipissing', 'smooth rock falls', 'moosonee',
+    'shuniah', 'neebing', 'oliver paipoonge', 'oliver-paipoonge', 'gillies', 'conmee', 'oshea',
+    "o'connor", 'murillo', 'kakabeka falls', 'kakabeka', 'rosslyn', 'hymers', 'slate river',
+    'south gillies', 'pass lake', 'dorion', 'pearl', 'cloud bay', 'nolalu',
+    'hanmer', 'val caron', 'val therese', 'azilda', 'chelmsford', 'dowling', 'onaping', 'levack',
+    'capreol', 'garson', 'falconbridge', 'lively', 'naughton', 'whitefish', 'copper cliff',
+    'coniston', 'wahnapitae', 'skead', 'estaire',
+    'prince township', 'goulais river', 'searchmont', 'batchawana bay', 'dubreuilville',
+    'garden river', 'echo bay', 'bruce mines', 'hilton beach',
+    'richards landing', 'thessalon', 'iron bridge', 'spanish', 'massey', 'webbwood',
+    'callander', 'corbeil', 'astorville', 'bonfield', 'rutherglen', 'cache bay', 'warren',
+    'markstay', 'hagar', 'field', 'verner', 'lavigne', 'noelville',
+    'south porcupine', 'porcupine', 'schumacher', 'matheson', 'larder lake',
+    'virginiatown', 'englehart', 'earlton', 'new liskeard', 'haileybury', 'cobalt', 'latchford',
+    'atikokan', 'rainy river', 'emo', 'devlin', 'stratton', 'mine centre',
+    'ear falls', 'red lake', 'pickle lake', 'ignace', 'upsala', 'savant lake',
+    'armstrong', 'nakina', 'beardmore', 'jellicoe', 'orient bay', 'caramat',
+    'keewatin', 'jaffray melick', 'sioux narrows', 'nestor falls', 'morson', 'bergland',
+    'vermilion bay', 'eagle river', 'wabigoon', 'dinorwic', 'hudson', 'minaki', 'redditt',
+    'parry sound', 'huntsville', 'bracebridge', 'gravenhurst', 'bala', 'port carling',
+    'rosseau', 'windermere', 'minett', 'burks falls', 'sundridge', 'south river',
+    'trout creek', 'magnetawan', 'kearney', 'emsdale', 'novar', 'katrine',
+    'sprucedale', 'port loring', 'loring', 'restoule', 'commanda', 'nipissing',
+    'muskoka', 'muskoka lakes', 'lake of bays', 'georgian bay', 'seguin', 'mcdougall',
+    'carling', 'archipelago', 'the archipelago', 'french river', 'killarney',
+    'alban', 'monetville', 'bigwood', 'cosby mason', 'baldwin', 'merritt',
+    'nairn centre', 'nairn and hyman', 'sables-spanish rivers', 'st. charles', 'st charles',
+    'manitoulin', 'little current', 'gore bay', 'mindemoya', 'providence bay', 'south baymouth',
+    'manitowaning', 'wikwemikong', 'sheguiandah', 'meldrum bay', 'silver water', 'kagawong',
+    'moosonee', 'moose factory', 'fort albany', 'kashechewan', 'attawapiskat', 'peawanuck',
+    'big trout lake', 'sandy lake', 'sachigo lake', 'cat lake', 'webequie',
+    'opasatika', 'mattice', 'val rita', 'moonbeam', 'fauquier', 'strickland', 'jogues',
+    'constance lake', 'calstock', 'harty', 'tunis', 'dana', 'holtyre', 'ramore', 'bourke',
+    'thornloe', 'harley', 'hilliardton', 'kenabeek', 'chamberlain', 'elk lake', 'gowganda',
+    'matachewan', 'shining tree', 'gogama', 'biscotasing', 'sultan', 'ramsey', 'britt',
+    'byng inlet', 'pointe au baril', 'depot harbour', 'mactier', 'honey harbour'
+]);
+
+function normalizeCity(city) {
+    if (!city) return '';
+    return city.toString().toLowerCase().trim()
+        .replace(/\s+/g, ' ')
+        .replace(/['']/g, "'")
+        .replace(/\./g, '')
+        .replace(/^st\s/g, 'st ')
+        .replace(/\bste\b/g, 'ste')
+        .replace(/\bsaint\b/g, 'st');
+}
+
+function isNorthernOntario(city) {
+    const normalized = normalizeCity(city);
+    if (NORTHERN_ONTARIO_CITIES.has(normalized)) return true;
+    for (const northern of NORTHERN_ONTARIO_CITIES) {
+        if (normalized.includes(northern) || northern.includes(normalized)) return true;
+    }
+    return false;
+}
 
 function setupDataAnalysisListeners() {
-    // Prevent duplicate listeners
     if (dataAnalysisListenersSetup) return;
 
-    const uploadArea = document.getElementById("dataUploadArea");
+    const uploadSection = document.getElementById("dataUploadSection");
     const fileInput = document.getElementById("dataFileInput");
 
-    // Check if elements exist before attaching listeners
-    if (!uploadArea || !fileInput) {
+    if (!uploadSection || !fileInput) {
         console.error("Data analysis elements not found");
         return;
     }
@@ -566,39 +631,44 @@ function setupDataAnalysisListeners() {
     dataAnalysisListenersSetup = true;
     console.log("Setting up data analysis listeners...");
 
-    // Drag over styling
-    uploadArea.addEventListener("dragover", (e) => {
+    // Drag and drop handlers
+    uploadSection.addEventListener("dragover", (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        uploadArea.style.borderColor = "var(--primary)";
-        uploadArea.style.background = "var(--bg-light)";
+        uploadSection.classList.add("dragover");
     });
 
-    // Drag leave - reset styling
-    uploadArea.addEventListener("dragleave", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        uploadArea.style.borderColor = "var(--border)";
-        uploadArea.style.background = "white";
+    uploadSection.addEventListener("dragleave", () => {
+        uploadSection.classList.remove("dragover");
     });
 
-    // Drop file
-    uploadArea.addEventListener("drop", (e) => {
+    uploadSection.addEventListener("drop", (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        uploadArea.style.borderColor = "var(--border)";
-        uploadArea.style.background = "white";
-        if (e.dataTransfer.files && e.dataTransfer.files.length) {
-            handleDataFile(e.dataTransfer.files[0]);
-        }
+        uploadSection.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file) processDataFile(file);
     });
 
-    // File input change - handles both click and drag/drop file selection
+    // File input change
     fileInput.addEventListener("change", (e) => {
-        if (e.target.files && e.target.files.length) {
-            handleDataFile(e.target.files[0]);
-        }
+        const file = e.target.files[0];
+        if (file) processDataFile(file);
     });
+
+    // Navigation tabs
+    document.querySelectorAll('.data-nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.data-nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.data-page').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('data-page-' + tab.dataset.page).classList.add('active');
+        });
+    });
+
+    // Generate button
+    const generateBtn = document.getElementById("dataGenerateBtn");
+    if (generateBtn) {
+        generateBtn.addEventListener("click", processNamedDataFile);
+    }
 
     // Reset and export buttons
     const resetBtn = document.getElementById("dataResetBtn");
@@ -607,383 +677,491 @@ function setupDataAnalysisListeners() {
     if (resetBtn) resetBtn.addEventListener("click", resetDataAnalysis);
     if (exportBtn) exportBtn.addEventListener("click", exportDataPDF);
 
-    // Data analysis dark mode toggle
-    const dataThemeToggle = document.getElementById("dataThemeToggle");
-    if (dataThemeToggle) {
-        dataThemeToggle.addEventListener("click", toggleDarkMode);
-    }
-
     console.log("Data analysis listeners attached successfully");
 }
 
-function handleDataFile(file) {
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-            if (jsonData.length < 2) {
-                showToast("File appears to be empty or has no data rows", "error");
-                return;
-            }
-
-            dataAnalysisData = {
-                headers: jsonData[0],
-                rows: jsonData.slice(1),
-                fileName: file.name
-            };
-
-            renderDataDashboard();
-        } catch (error) {
-            console.error("Error parsing file:", error);
-            showToast("Error reading file. Please ensure it's a valid Excel file.", "error");
-        }
-    };
-
-    reader.readAsArrayBuffer(file);
-}
-
-function renderDataDashboard() {
-    if (!dataAnalysisData) return;
-
-    // Show dashboard, hide upload
-    document.getElementById("dataUploadArea").style.display = "none";
-    document.getElementById("dataDashboard").classList.add("visible");
-
-    const { headers, rows } = dataAnalysisData;
-
-    // Render metrics
-    renderDataMetrics(headers, rows);
-
-    // Render charts
-    renderDataCharts(headers, rows);
-
-    // Render table preview
-    renderDataTable(headers, rows);
-
-    showToast(`Loaded ${rows.length} rows of data`, "success");
-}
-
-function renderDataMetrics(headers, rows) {
-    const metricsGrid = document.getElementById("dataMetricsGrid");
-
-    // Calculate basic metrics
-    const totalRows = rows.length;
-    const totalColumns = headers.length;
-
-    // Find numeric columns and calculate stats
-    const numericStats = [];
-    headers.forEach((header, colIndex) => {
-        const values = rows.map(row => parseFloat(row[colIndex])).filter(v => !isNaN(v));
-        if (values.length > rows.length * 0.5) { // At least 50% numeric
-            const sum = values.reduce((a, b) => a + b, 0);
-            const avg = sum / values.length;
-            const max = Math.max(...values);
-            const min = Math.min(...values);
-            numericStats.push({ header, sum, avg, max, min, count: values.length });
-        }
-    });
-
-    let metricsHTML = `
-        <div class="data-metric-card">
-            <div class="data-metric-value">${totalRows.toLocaleString()}</div>
-            <div class="data-metric-label">Total Rows</div>
-        </div>
-        <div class="data-metric-card">
-            <div class="data-metric-value">${totalColumns}</div>
-            <div class="data-metric-label">Columns</div>
-        </div>
-    `;
-
-    // Add top numeric column stats
-    if (numericStats.length > 0) {
-        const mainStat = numericStats[0];
-        metricsHTML += `
-            <div class="data-metric-card">
-                <div class="data-metric-value">${formatNumber(mainStat.sum)}</div>
-                <div class="data-metric-label">Total ${mainStat.header}</div>
-            </div>
-            <div class="data-metric-card">
-                <div class="data-metric-value">${formatNumber(mainStat.avg)}</div>
-                <div class="data-metric-label">Avg ${mainStat.header}</div>
-            </div>
-        `;
-    }
-
-    metricsGrid.innerHTML = metricsHTML;
-}
-
-function renderDataCharts(headers, rows) {
-    const chartsGrid = document.getElementById("dataChartsGrid");
-    chartsGrid.innerHTML = '';
-
-    // Destroy existing charts
-    dataCharts.forEach(chart => chart.destroy());
-    dataCharts = [];
-
-    // Find categorical and numeric columns
-    const categoricalCols = [];
-    const numericCols = [];
-
-    headers.forEach((header, colIndex) => {
-        const values = rows.map(row => row[colIndex]).filter(v => v !== undefined && v !== null && v !== '');
-        const numericValues = values.filter(v => !isNaN(parseFloat(v)));
-
-        if (numericValues.length > values.length * 0.7) {
-            numericCols.push({ header, index: colIndex });
-        } else if (values.length > 0) {
-            const uniqueValues = [...new Set(values)];
-            if (uniqueValues.length <= 20 && uniqueValues.length > 1) {
-                categoricalCols.push({ header, index: colIndex, values: uniqueValues });
-            }
-        }
-    });
-
-    // Create a bar chart for first categorical column
-    if (categoricalCols.length > 0 && numericCols.length > 0) {
-        const catCol = categoricalCols[0];
-        const numCol = numericCols[0];
-
-        // Aggregate data
-        const aggregated = {};
-        rows.forEach(row => {
-            const cat = row[catCol.index] || 'Unknown';
-            const num = parseFloat(row[numCol.index]) || 0;
-            aggregated[cat] = (aggregated[cat] || 0) + num;
-        });
-
-        const sortedEntries = Object.entries(aggregated).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-        chartsGrid.innerHTML += `
-            <div class="data-chart-card">
-                <h3 class="data-chart-title">${numCol.header} by ${catCol.header}</h3>
-                <div class="data-chart-container">
-                    <canvas id="barChart"></canvas>
-                </div>
-            </div>
-        `;
-
-        // Create after DOM update
-        setTimeout(() => {
-            const ctx = document.getElementById('barChart');
-            if (ctx) {
-                const chart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: sortedEntries.map(e => e[0]),
-                        datasets: [{
-                            label: numCol.header,
-                            data: sortedEntries.map(e => e[1]),
-                            backgroundColor: 'rgba(139, 92, 246, 0.7)',
-                            borderColor: 'rgba(139, 92, 246, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        }
-                    }
-                });
-                dataCharts.push(chart);
-            }
-        }, 100);
-    }
-
-    // Create a pie chart if we have categorical data
-    if (categoricalCols.length > 0) {
-        const catCol = categoricalCols[0];
-        const counts = {};
-        rows.forEach(row => {
-            const cat = row[catCol.index] || 'Unknown';
-            counts[cat] = (counts[cat] || 0) + 1;
-        });
-
-        const sortedEntries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-
-        chartsGrid.innerHTML += `
-            <div class="data-chart-card">
-                <h3 class="data-chart-title">${catCol.header} Distribution</h3>
-                <div class="data-chart-container">
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </div>
-        `;
-
-        setTimeout(() => {
-            const ctx = document.getElementById('pieChart');
-            if (ctx) {
-                const colors = [
-                    'rgba(139, 92, 246, 0.8)',
-                    'rgba(167, 139, 250, 0.8)',
-                    'rgba(196, 181, 253, 0.8)',
-                    'rgba(124, 58, 237, 0.8)',
-                    'rgba(109, 40, 217, 0.8)',
-                    'rgba(91, 33, 182, 0.8)',
-                    'rgba(76, 29, 149, 0.8)',
-                    'rgba(59, 130, 246, 0.8)'
-                ];
-
-                const chart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: sortedEntries.map(e => e[0]),
-                        datasets: [{
-                            data: sortedEntries.map(e => e[1]),
-                            backgroundColor: colors,
-                            borderWidth: 2,
-                            borderColor: '#fff'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'right'
-                            }
-                        }
-                    }
-                });
-                dataCharts.push(chart);
-            }
-        }, 100);
-    }
-
-    // If we have at least 2 numeric columns, create a line/scatter chart
-    if (numericCols.length >= 2) {
-        const xCol = numericCols[0];
-        const yCol = numericCols[1];
-
-        chartsGrid.innerHTML += `
-            <div class="data-chart-card">
-                <h3 class="data-chart-title">${yCol.header} vs ${xCol.header}</h3>
-                <div class="data-chart-container">
-                    <canvas id="lineChart"></canvas>
-                </div>
-            </div>
-        `;
-
-        setTimeout(() => {
-            const ctx = document.getElementById('lineChart');
-            if (ctx) {
-                const dataPoints = rows.slice(0, 100).map((row, i) => ({
-                    x: i,
-                    y: parseFloat(row[yCol.index]) || 0
-                }));
-
-                const chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dataPoints.map((_, i) => i + 1),
-                        datasets: [{
-                            label: yCol.header,
-                            data: dataPoints.map(p => p.y),
-                            borderColor: 'rgba(139, 92, 246, 1)',
-                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        }
-                    }
-                });
-                dataCharts.push(chart);
-            }
-        }, 100);
-    }
-}
-
-function renderDataTable(headers, rows) {
-    const table = document.getElementById("dataTable");
-
-    // Create header row
-    let tableHTML = '<thead><tr>';
-    headers.forEach(header => {
-        tableHTML += `<th>${escapeHtml(String(header || ''))}</th>`;
-    });
-    tableHTML += '</tr></thead>';
-
-    // Create body rows (limit to 50 for preview)
-    tableHTML += '<tbody>';
-    rows.slice(0, 50).forEach(row => {
-        tableHTML += '<tr>';
-        headers.forEach((_, colIndex) => {
-            const value = row[colIndex];
-            tableHTML += `<td>${escapeHtml(String(value || ''))}</td>`;
-        });
-        tableHTML += '</tr>';
-    });
-    tableHTML += '</tbody>';
-
-    table.innerHTML = tableHTML;
-
-    if (rows.length > 50) {
-        document.getElementById("dataTableSection").insertAdjacentHTML('beforeend',
-            `<p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 12px; text-align: center;">
-                Showing first 50 of ${rows.length} rows
-            </p>`
-        );
-    }
-}
-
-function resetDataAnalysis() {
-    dataAnalysisData = null;
-    dataCharts.forEach(chart => chart.destroy());
-    dataCharts = [];
-
-    document.getElementById("dataUploadArea").style.display = "block";
-    document.getElementById("dataDashboard").classList.remove("visible");
-    document.getElementById("dataFileInput").value = '';
-}
-
-function exportDataPDF() {
-    if (!dataAnalysisData) {
-        showToast("No data to export", "error");
+function processDataFile(file) {
+    if (!file.name.match(/\.xlsx?$/i) && !file.name.match(/\.csv$/i)) {
+        showToast("Please upload an Excel file (.xlsx or .xls)", "error");
         return;
     }
 
-    const dashboard = document.getElementById("dataDashboard");
+    document.getElementById("dataUploadSection").style.display = "none";
+    document.getElementById("dataLoading").style.display = "block";
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            dataPendingFileData = XLSX.utils.sheet_to_json(sheet);
+
+            document.getElementById("dataLoading").style.display = "none";
+            document.getElementById("dataNamingSection").style.display = "block";
+            document.getElementById("dataReportNameInput").focus();
+        } catch (error) {
+            showToast("Error reading file: " + error.message, "error");
+            resetDataAnalysis();
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function processNamedDataFile() {
+    const reportName = document.getElementById("dataReportNameInput").value.trim() || "Untitled Report";
+    document.getElementById("dataReportName").textContent = reportName;
+    document.getElementById("dataNamingSection").style.display = "none";
+    document.getElementById("dataNavTabs").style.display = "flex";
+    document.getElementById("dataHeaderActions").style.display = "flex";
+    analyzeDataFull(dataPendingFileData);
+    document.getElementById("dataDashboard").classList.add("visible");
+}
+
+function analyzeDataFull(data) {
+    // Auto-detect column names
+    const columns = Object.keys(data[0] || {});
+    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+
+    const emailCol = findCol(['e-mail', 'email']);
+    const spentCol = findCol(['total spent', 'totalspent', 'spent', 'amount', 'total']);
+    const cityCol = findCol(['city']);
+    const nameCol = findCol(['customer name', 'name']);
+    const ticketCol = findCol(['number count', 'tickets', 'quantity']);
+    const phoneCol = findCol(['phone']);
+    const zipCol = findCol(['zip', 'postal', 'zip code']);
+
+    const PACKAGES = [100, 75, 50, 20, 10];
+    const SINGLE_PACKAGE_AMOUNTS = new Set([10, 20, 50, 75, 100]);
+
+    function estimatePackages(totalSpent) {
+        let remaining = totalSpent;
+        let packages = [];
+        for (const pkg of PACKAGES) {
+            while (remaining >= pkg) {
+                packages.push(pkg);
+                remaining -= pkg;
+            }
+        }
+        return packages;
+    }
+
+    // Basic metrics
+    const totalRevenue = data.reduce((sum, row) => sum + (Number(row[spentCol]) || 0), 0);
+    const totalTransactions = data.length;
+
+    // Package-level analysis
+    let totalPackageValue = 0;
+    let totalPackageCount = 0;
+    let packageCounts = { 10: 0, 20: 0, 50: 0, 75: 0, 100: 0 };
+
+    data.forEach(row => {
+        const spent = Number(row[spentCol]) || 0;
+        const packages = estimatePackages(spent);
+        totalPackageCount += packages.length;
+        totalPackageValue += packages.reduce((sum, p) => sum + p, 0);
+        packages.forEach(p => {
+            if (packageCounts[p] !== undefined) packageCounts[p]++;
+        });
+    });
+
+    const avgSale = totalPackageCount > 0 ? totalPackageValue / totalPackageCount : 0;
+
+    // Unique customers by email
+    const emails = new Set(data.map(row => (row[emailCol] || '').toString().toLowerCase().trim()).filter(e => e));
+    const uniqueCustomers = emails.size;
+    const avgPerCustomer = uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0;
+
+    // Repeat buyers
+    let repeatBuyersCount = 0;
+    data.forEach(row => {
+        const spent = Number(row[spentCol]) || 0;
+        if (!SINGLE_PACKAGE_AMOUNTS.has(spent)) repeatBuyersCount++;
+    });
+
+    // Total tickets
+    const totalTickets = data.reduce((sum, row) => sum + (Number(row[ticketCol]) || 0), 0);
+
+    // Geographic analysis
+    let northernRevenue = 0, northernCount = 0, southernRevenue = 0, southernCount = 0;
+    let rsuRevenue = 0, rsuCount = 0;
+
+    const cityData = {};
+    const postalData = {};
+    const customerSpending = {};
+    const tierData = {};
+
+    data.forEach(row => {
+        let rawCity = (row[cityCol] || '').toString().trim();
+        const amount = Number(row[spentCol]) || 0;
+        const email = (row[emailCol] || '').toString().toLowerCase().trim();
+        const name = row[nameCol] || 'Unknown';
+        const phone = row[phoneCol] || '';
+        const postal = (row[zipCol] || '').toString().toUpperCase().trim().substring(0, 3);
+
+        // RSU detection
+        const isRSU = !rawCity || rawCity.toLowerCase() === 'unknown' || rawCity === '';
+        if (isRSU) {
+            rsuRevenue += amount;
+            rsuCount++;
+            rawCity = 'Thunder Bay';
+        }
+
+        const normalizedCity = normalizeCity(rawCity);
+        const displayCity = rawCity.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+        // City aggregation
+        if (!cityData[normalizedCity]) {
+            cityData[normalizedCity] = { revenue: 0, count: 0, displayName: displayCity };
+        }
+        cityData[normalizedCity].revenue += amount;
+        cityData[normalizedCity].count++;
+
+        // Postal code aggregation
+        if (postal && postal.length >= 3) {
+            if (!postalData[postal]) postalData[postal] = { revenue: 0, count: 0 };
+            postalData[postal].revenue += amount;
+            postalData[postal].count++;
+        }
+
+        // Customer spending for whale analysis
+        if (email) {
+            if (!customerSpending[email]) {
+                customerSpending[email] = { name, email, phone, city: displayCity, total: 0 };
+            }
+            customerSpending[email].total += amount;
+        }
+
+        // Purchase tier analysis
+        if (!tierData[amount]) tierData[amount] = { count: 0, revenue: 0 };
+        tierData[amount].count++;
+        tierData[amount].revenue += amount;
+
+        // Northern vs Southern Ontario
+        if (isNorthernOntario(rawCity) || isRSU) {
+            northernRevenue += amount;
+            northernCount++;
+        } else {
+            southernRevenue += amount;
+            southernCount++;
+        }
+    });
+
+    // Store for other pages
+    dataAnalysisResults = { cityData, customerSpending, totalRevenue };
+
+    // Update UI
+    document.getElementById('dataTotalRevenue').textContent = formatDataCurrency(totalRevenue);
+    document.getElementById('dataRevenueSubtext').textContent = `from ${totalTransactions.toLocaleString()} transactions`;
+    document.getElementById('dataAvgSale').textContent = formatDataCurrency(avgSale);
+    document.getElementById('dataAvgSaleSubtext').textContent = `from ${totalPackageCount.toLocaleString()} packages`;
+    document.getElementById('dataUniqueCustomers').textContent = uniqueCustomers.toLocaleString();
+    document.getElementById('dataAvgPerCustomer').textContent = formatDataCurrency(avgPerCustomer);
+    document.getElementById('dataRepeatBuyers').textContent = repeatBuyersCount.toLocaleString();
+    document.getElementById('dataRepeatSubtext').textContent = `bought multiple packages`;
+    document.getElementById('dataTotalTickets').textContent = totalTickets.toLocaleString();
+    document.getElementById('dataNorthernSales').textContent = formatDataCurrency(northernRevenue);
+    document.getElementById('dataNorthernSubtext').textContent = `${northernCount.toLocaleString()} customers (${((northernRevenue/totalRevenue)*100).toFixed(1)}%)`;
+    document.getElementById('dataRsuSales').textContent = formatDataCurrency(rsuRevenue);
+    document.getElementById('dataRsuSubtext').textContent = `${rsuCount.toLocaleString()} in-venue transactions`;
+
+    // Render all visualizations
+    renderDataChartsFull(tierData, packageCounts, northernRevenue, southernRevenue);
+    renderDataCitiesTable(cityData);
+    renderDataTiersTable(tierData, totalRevenue);
+    renderDataPostalCodes(postalData);
+    renderDataHeatmap(cityData);
+    renderDataWhaleTable(customerSpending);
+    generateDataInsights(totalRevenue, avgSale, uniqueCustomers, repeatBuyersCount, tierData, cityData,
+                        totalTransactions, totalPackageCount, northernRevenue, northernCount, packageCounts, rsuRevenue, rsuCount);
+}
+
+function formatDataCurrency(value) {
+    if (value >= 1000000) return '$' + (value / 1000000).toFixed(2) + 'M';
+    if (value >= 1000) return '$' + (value / 1000).toFixed(1) + 'K';
+    return '$' + value.toFixed(2);
+}
+
+function renderDataChartsFull(tierData, packageCounts, northernRevenue, southernRevenue) {
+    dataCharts.forEach(chart => chart.destroy());
+    dataCharts = [];
+
+    const chartColors = ['#8b5cf6', '#7c3aed', '#a78bfa', '#c4b5fd', '#ddd6fe'];
+
+    // Revenue by Purchase Amount
+    const topTiersByRevenue = Object.entries(tierData).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 8);
+    const revenueChart = new Chart(document.getElementById('dataRevenueChart'), {
+        type: 'bar',
+        data: {
+            labels: topTiersByRevenue.map(t => '$' + t[0]),
+            datasets: [{
+                label: 'Revenue',
+                data: topTiersByRevenue.map(t => t[1].revenue),
+                backgroundColor: chartColors[0],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + (v/1000) + 'K' } } }
+        }
+    });
+    dataCharts.push(revenueChart);
+
+    // Transactions by Purchase Amount
+    const topTiersByCount = Object.entries(tierData).sort((a, b) => b[1].count - a[1].count).slice(0, 8);
+    const transactionsChart = new Chart(document.getElementById('dataTransactionsChart'), {
+        type: 'bar',
+        data: {
+            labels: topTiersByCount.map(t => '$' + t[0]),
+            datasets: [{
+                label: 'Transactions',
+                data: topTiersByCount.map(t => t[1].count),
+                backgroundColor: chartColors[1],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+    dataCharts.push(transactionsChart);
+
+    // Package Distribution
+    const packageLabels = ['$10', '$20', '$50', '$75', '$100'];
+    const packageValues = [packageCounts[10], packageCounts[20], packageCounts[50], packageCounts[75], packageCounts[100]];
+    const packageChart = new Chart(document.getElementById('dataPackageChart'), {
+        type: 'bar',
+        data: {
+            labels: packageLabels,
+            datasets: [{
+                label: 'Packages Sold',
+                data: packageValues,
+                backgroundColor: chartColors,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+    dataCharts.push(packageChart);
+
+    // Northern vs Southern Ontario
+    const regionChart = new Chart(document.getElementById('dataRegionChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Northern Ontario', 'Southern Ontario'],
+            datasets: [{
+                data: [northernRevenue, southernRevenue],
+                backgroundColor: ['#059669', '#8b5cf6']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
+        }
+    });
+    dataCharts.push(regionChart);
+}
+
+function renderDataCitiesTable(cityData) {
+    const topCities = Object.entries(cityData).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 10);
+    document.getElementById('dataCitiesTable').innerHTML = topCities.map(([_, data], i) => `
+        <tr>
+            <td><span class="data-rank-badge ${i < 3 ? 'data-rank-' + (i+1) : 'data-rank-default'}">${i + 1}</span></td>
+            <td>${data.displayName}</td>
+            <td><strong>${formatDataCurrency(data.revenue)}</strong></td>
+            <td>${data.count.toLocaleString()}</td>
+        </tr>
+    `).join('');
+}
+
+function renderDataTiersTable(tierData, totalRevenue) {
+    const topTiers = Object.entries(tierData).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 10);
+    document.getElementById('dataTiersTable').innerHTML = topTiers.map(([amount, data]) => `
+        <tr>
+            <td><strong>$${Number(amount).toLocaleString()}</strong></td>
+            <td>${data.count.toLocaleString()}</td>
+            <td>${formatDataCurrency(data.revenue)}</td>
+            <td>${((data.revenue / totalRevenue) * 100).toFixed(1)}%</td>
+        </tr>
+    `).join('');
+}
+
+function renderDataPostalCodes(postalData) {
+    const topPostal = Object.entries(postalData).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 20);
+    document.getElementById('dataPostalGrid').innerHTML = topPostal.map(([code, data]) => `
+        <div class="data-postal-item">
+            <span class="data-postal-code">${code}</span>
+            <div class="data-postal-stats">
+                <div class="data-postal-revenue">${formatDataCurrency(data.revenue)}</div>
+                <div class="data-postal-count">${data.count.toLocaleString()} orders</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderDataHeatmap(cityData) {
+    const sortedCities = Object.entries(cityData).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 50);
+    const maxRevenue = sortedCities[0] ? sortedCities[0][1].revenue : 1;
+
+    document.getElementById('dataHeatmapGrid').innerHTML = sortedCities.map(([_, data]) => {
+        const intensity = data.revenue / maxRevenue;
+        // Interpolate from light purple to dark purple
+        const r = Math.round(139 + (1 - intensity) * 100);
+        const g = Math.round(92 - intensity * 50);
+        const b = Math.round(246 - intensity * 50);
+        const textColor = intensity > 0.5 ? 'white' : '#1e1b4b';
+        return `
+            <div class="data-heatmap-cell" style="background: rgb(${r}, ${g}, ${b}); color: ${textColor};" title="${data.displayName}: ${formatDataCurrency(data.revenue)}">
+                <div class="data-heatmap-city">${data.displayName}</div>
+                <div class="data-heatmap-value">${formatDataCurrency(data.revenue)}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderDataWhaleTable(customerSpending) {
+    const whales = Object.values(customerSpending).sort((a, b) => b.total - a.total).slice(0, 50);
+    document.getElementById('dataWhaleTable').innerHTML = whales.map((w, i) => `
+        <tr>
+            <td>
+                <div class="data-whale-rank">
+                    <span class="data-rank-badge ${i < 3 ? 'data-rank-' + (i+1) : 'data-rank-default'}">${i + 1}</span>
+                </div>
+            </td>
+            <td><strong>${w.name}</strong></td>
+            <td>${w.email}</td>
+            <td>${w.phone || '-'}</td>
+            <td>${w.city}</td>
+            <td class="data-whale-amount">${formatDataCurrency(w.total)}</td>
+        </tr>
+    `).join('');
+}
+
+function generateDataInsights(totalRevenue, avgSale, uniqueCustomers, repeatBuyersCount, tierData, cityData,
+                              totalTransactions, totalPackageCount, northernRevenue, northernCount, packageCounts, rsuRevenue, rsuCount) {
+    const insights = [];
+
+    // Insight 1: Top revenue tier
+    const topTier = Object.entries(tierData).sort((a, b) => b[1].revenue - a[1].revenue)[0];
+    if (topTier) {
+        const pct = ((topTier[1].revenue / totalRevenue) * 100).toFixed(0);
+        insights.push({ icon: '💰', title: `$${topTier[0]} purchases drive ${pct}% of revenue`, text: `${topTier[1].count.toLocaleString()} transactions at this price point.` });
+    }
+
+    // Insight 2: Top city
+    const topCity = Object.entries(cityData).sort((a, b) => b[1].revenue - a[1].revenue)[0];
+    if (topCity) {
+        const pct = ((topCity[1].revenue / totalRevenue) * 100).toFixed(0);
+        insights.push({ icon: '📍', title: `${topCity[1].displayName} leads with ${pct}% of revenue`, text: `${topCity[1].count.toLocaleString()} customers contributed ${formatDataCurrency(topCity[1].revenue)}.` });
+    }
+
+    // Insight 3: Northern Ontario percentage
+    const northernPct = ((northernRevenue / totalRevenue) * 100).toFixed(1);
+    insights.push({ icon: '🌲', title: `Northern Ontario: ${northernPct}% of revenue`, text: `${northernCount.toLocaleString()} customers from north of Orillia.` });
+
+    // Insight 4: RSU sales
+    const rsuPct = ((rsuRevenue / totalRevenue) * 100).toFixed(1);
+    insights.push({ icon: '🏪', title: `RSU in-venue sales: ${formatDataCurrency(rsuRevenue)} (${rsuPct}%)`, text: `${rsuCount.toLocaleString()} transactions from in-venue POS.` });
+
+    // Insight 5: Most popular package
+    const mostPopularPkg = Object.entries(packageCounts).sort((a, b) => b[1] - a[1])[0];
+    if (mostPopularPkg) {
+        const pkgPct = ((mostPopularPkg[1] / totalPackageCount) * 100).toFixed(0);
+        insights.push({ icon: '🎟️', title: `$${mostPopularPkg[0]} is the most popular package (${pkgPct}%)`, text: `${mostPopularPkg[1].toLocaleString()} packages sold at this price point.` });
+    }
+
+    // Insight 6: Repeat buyers
+    const repeatPct = ((repeatBuyersCount / totalTransactions) * 100).toFixed(1);
+    insights.push({ icon: '🔄', title: `${repeatBuyersCount.toLocaleString()} repeat buyers (${repeatPct}%)`, text: `Customers who purchased multiple ticket packages.` });
+
+    // Insight 7: Average package value
+    insights.push({ icon: '📊', title: `Average package value: ${formatDataCurrency(avgSale)}`, text: `${totalPackageCount.toLocaleString()} packages sold to ${uniqueCustomers.toLocaleString()} customers.` });
+
+    // Insight 8: Second largest city
+    const sortedCities = Object.entries(cityData).sort((a, b) => b[1].revenue - a[1].revenue);
+    if (sortedCities.length > 1) {
+        const secondCity = sortedCities[1];
+        const pct = ((secondCity[1].revenue / totalRevenue) * 100).toFixed(1);
+        insights.push({ icon: '🏙️', title: `${secondCity[1].displayName} is #2 with ${pct}% of revenue`, text: `${secondCity[1].count.toLocaleString()} customers from this city.` });
+    }
+
+    // Insight 9: $100 package impact
+    const hundredPkgRevenue = packageCounts[100] * 100;
+    const hundredPct = totalRevenue > 0 ? ((hundredPkgRevenue / totalRevenue) * 100).toFixed(0) : 0;
+    insights.push({ icon: '💎', title: `$100 packages generate ${hundredPct}% of revenue`, text: `${packageCounts[100].toLocaleString()} premium packages sold.` });
+
+    // Insight 10: Entry-level vs premium ratio
+    const entryLevel = packageCounts[10] + packageCounts[20];
+    const premium = packageCounts[75] + packageCounts[100];
+    const ratio = premium > 0 ? (entryLevel / premium).toFixed(1) : 'N/A';
+    insights.push({ icon: '⚖️', title: `Entry-level to premium ratio: ${ratio}:1`, text: `${entryLevel.toLocaleString()} entry ($10-$20) vs ${premium.toLocaleString()} premium ($75-$100).` });
+
+    // Render insights
+    document.getElementById('dataInsightsList').innerHTML = insights.map(i => `
+        <div class="data-insight-item">
+            <div class="data-insight-icon">${i.icon}</div>
+            <div class="data-insight-text">
+                <strong>${i.title}</strong>
+                <span>${i.text}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function resetDataAnalysis() {
+    dataPendingFileData = null;
+    dataAnalysisResults = {};
+    dataCharts.forEach(chart => chart.destroy());
+    dataCharts = [];
+
+    document.getElementById("dataDashboard").classList.remove("visible");
+    document.getElementById("dataNamingSection").style.display = "none";
+    document.getElementById("dataLoading").style.display = "none";
+    document.getElementById("dataUploadSection").style.display = "block";
+    document.getElementById("dataNavTabs").style.display = "none";
+    document.getElementById("dataHeaderActions").style.display = "none";
+    document.getElementById("dataFileInput").value = '';
+    document.getElementById("dataReportNameInput").value = '';
+
+    // Reset to overview page
+    document.querySelectorAll('.data-nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.data-page').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-page="overview"]')?.classList.add('active');
+    document.getElementById('data-page-overview')?.classList.add('active');
+}
+
+function exportDataPDF() {
+    const element = document.getElementById('data-page-overview');
+    const reportName = document.getElementById('dataReportName').textContent;
 
     const opt = {
         margin: 10,
-        filename: `data-analysis-${new Date().toISOString().split('T')[0]}.pdf`,
+        filename: `Data-Analysis-${reportName.replace(/\s+/g, '-')}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     showToast("Generating PDF...", "success");
-
-    html2pdf().set(opt).from(dashboard).save().then(() => {
+    html2pdf().set(opt).from(element).save().then(() => {
         showToast("PDF exported successfully!", "success");
     }).catch(err => {
         console.error("PDF export error:", err);
         showToast("Error exporting PDF", "error");
     });
-}
-
-function formatNumber(num) {
-    if (num >= 1000000) {
-        return (num / 1000000).toFixed(1) + 'M';
-    } else if (num >= 1000) {
-        return (num / 1000).toFixed(1) + 'K';
-    } else if (Number.isInteger(num)) {
-        return num.toLocaleString();
-    } else {
-        return num.toFixed(2);
-    }
 }
 
 // ==================== NAVIGATION ====================
