@@ -556,15 +556,8 @@ function setupDataAnalysisListeners() {
         return;
     }
 
-    // Click to upload - stop propagation to prevent issues with nested input
-    uploadArea.addEventListener("click", (e) => {
-        // Only trigger if we didn't click on the file input itself
-        if (e.target !== fileInput) {
-            e.preventDefault();
-            e.stopPropagation();
-            fileInput.click();
-        }
-    });
+    // NOTE: Click handling is done via <label for="dataFileInput"> in HTML
+    // This is the most reliable cross-browser method for triggering file inputs
 
     // Drag over styling
     uploadArea.addEventListener("dragover", (e) => {
@@ -593,7 +586,7 @@ function setupDataAnalysisListeners() {
         }
     });
 
-    // File input change
+    // File input change - handles both click and drag/drop file selection
     fileInput.addEventListener("change", (e) => {
         if (e.target.files && e.target.files.length) {
             handleDataFile(e.target.files[0]);
