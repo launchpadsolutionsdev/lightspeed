@@ -670,12 +670,10 @@ function setupDataAnalysisListeners() {
         generateBtn.addEventListener("click", processNamedDataFile);
     }
 
-    // Reset and export buttons
+    // Reset button
     const resetBtn = document.getElementById("dataResetBtn");
-    const exportBtn = document.getElementById("dataExportBtn");
 
     if (resetBtn) resetBtn.addEventListener("click", resetDataAnalysis);
-    if (exportBtn) exportBtn.addEventListener("click", exportDataPDF);
 
     console.log("Data analysis listeners attached successfully");
 }
@@ -1141,27 +1139,6 @@ function resetDataAnalysis() {
     document.querySelectorAll('.data-page').forEach(p => p.classList.remove('active'));
     document.querySelector('[data-page="overview"]')?.classList.add('active');
     document.getElementById('data-page-overview')?.classList.add('active');
-}
-
-function exportDataPDF() {
-    const element = document.getElementById('data-page-overview');
-    const reportName = document.getElementById('dataReportName').textContent;
-
-    const opt = {
-        margin: 10,
-        filename: `Data-Analysis-${reportName.replace(/\s+/g, '-')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    showToast("Generating PDF...", "success");
-    html2pdf().set(opt).from(element).save().then(() => {
-        showToast("PDF exported successfully!", "success");
-    }).catch(err => {
-        console.error("PDF export error:", err);
-        showToast("Error exporting PDF", "error");
-    });
 }
 
 // ==================== NAVIGATION ====================
