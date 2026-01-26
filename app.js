@@ -5,8 +5,7 @@
 // Change this to your deployed backend URL (e.g., https://lightspeed-api.onrender.com)
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3001'  // Local development
-    : 'https://your-backend-url.onrender.com';  // Production - UPDATE THIS!
-
+    : 'https://lightspeed-api-af19.onrender.com';  // Production
 // ==================== AUTH STATE ====================
 let currentUser = null;
 let users = JSON.parse(localStorage.getItem("lightspeed_users") || "[]");
@@ -1452,3 +1451,4 @@ window.useDrawerFavorite = useDrawerFavorite;
 
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", init);
+
