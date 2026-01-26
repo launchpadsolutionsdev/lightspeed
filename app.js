@@ -117,12 +117,14 @@ function setupAuthEventListeners() {
     });
 
     // Tool selection cards
+    document.getElementById("toolDraftAssistant").addEventListener("click", () => openTool('draft-assistant'));
     document.getElementById("toolCustomerResponse").addEventListener("click", () => openTool('customer-response'));
     document.getElementById("toolDataAnalysis").addEventListener("click", () => openTool('data-analysis'));
 
     // Back to menu buttons
     document.getElementById("backToMenuBtn").addEventListener("click", goBackToMenu);
     document.getElementById("dataBackToMenuBtn").addEventListener("click", goBackToMenu);
+    document.getElementById("draftBackToMenuBtn").addEventListener("click", goBackToMenu);
 }
 
 function showLoginPage() {
@@ -130,6 +132,7 @@ function showLoginPage() {
     document.getElementById("registerPage").classList.remove("visible");
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
+    document.getElementById("draftAssistantApp").classList.remove("visible");
     document.getElementById("toolMenuPage").classList.remove("visible");
     clearAuthForms();
 }
@@ -162,14 +165,21 @@ function openTool(toolId) {
     currentTool = toolId;
     document.getElementById("toolMenuPage").classList.remove("visible");
 
+    // Hide all tool apps first
+    document.getElementById("mainApp").classList.remove("visible");
+    document.getElementById("dataAnalysisApp").classList.remove("visible");
+    document.getElementById("draftAssistantApp").classList.remove("visible");
+
     if (toolId === 'customer-response') {
         document.getElementById("mainApp").classList.add("visible");
-        document.getElementById("dataAnalysisApp").classList.remove("visible");
     } else if (toolId === 'data-analysis') {
         document.getElementById("dataAnalysisApp").classList.add("visible");
-        document.getElementById("mainApp").classList.remove("visible");
         // Re-attach listeners when opening Data Analysis tool
         setupDataAnalysisListeners();
+    } else if (toolId === 'draft-assistant') {
+        document.getElementById("draftAssistantApp").classList.add("visible");
+        // Initialize Draft Assistant
+        setupDraftAssistant();
     }
 }
 
@@ -177,6 +187,7 @@ function goBackToMenu() {
     currentTool = null;
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
+    document.getElementById("draftAssistantApp").classList.remove("visible");
     showToolMenu();
 }
 
@@ -2068,6 +2079,317 @@ window.showPage = showPage;
 window.openTemplatesDrawer = openTemplatesDrawer;
 window.closeTemplatesDrawer = closeTemplatesDrawer;
 window.useDrawerFavorite = useDrawerFavorite;
+
+// ==================== DRAFT ASSISTANT ====================
+let draftAssistantInitialized = false;
+let currentDraftType = null;
+let currentDraftTone = 'balanced';
+let lastDraftRequest = null;
+
+const DRAFT_API_KEY_STORAGE = 'lightspeed_draft_api_key';
+
+const DRAFT_TYPE_LABELS = {
+    'social': 'Social Media Copy',
+    'email': 'Email Copy',
+    'media-release': 'Media Release',
+    'newsletter': 'Newsletter',
+    'ad': 'Facebook/Instagram Ad'
+};
+
+const DRAFT_SYSTEM_PROMPT = `You are a professional copywriter for the Thunder Bay Regional Health Sciences Foundation and their Thunder Bay 50/50 lottery program. You write content that is warm, professional, optimistic, exciting, community-focused, trustworthy, fun/playful, and can be urgent when appropriate.
+
+CRITICAL RULES YOU MUST ALWAYS FOLLOW:
+- NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
+- NEVER say how much has been "raised" - instead say "nearly $100 million in prizes have been awarded since January 2021"
+- When mentioning impact, ALWAYS use: "Thanks to our donors, event participants, and Thunder Bay 50/50 supporters..." before describing the impact
+- Website is always: www.thunderbay5050.ca
+- In-store location: Thunder Bay 50/50 store inside the Intercity Shopping Centre
+- Must be 18 years or older to purchase
+- Must be physically present in Ontario at time of purchase
+- The Thunder Bay 50/50 launched in January 2021
+- Monthly draws with Early Bird Prizes throughout the month, Grand Prize draw on the last Friday of the month
+- Largest Grand Prize ever was $7,720,930 in December 2025
+- The Foundation supports capital equipment purchases at the Thunder Bay Regional Health Sciences Centre
+- Over $81 million in lifetime contributions to the Hospital
+- 11 multi-millionaire winners created to date
+
+KEY PHRASES TO USE:
+- "You LOVE the Thunder Bay 50/50, and you might LOVE our other raffles just as much!"
+- "Purchase tickets at www.thunderbay5050.ca or inside the Thunder Bay 50/50 store inside the Intercity Shopping Centre!"
+
+PEOPLE WHO GET QUOTED:
+- Glenn Craig, President & CEO, Thunder Bay Regional Health Sciences Foundation
+- Torin Gunnell, Director, Lotteries
+
+EMOJI USAGE: Minimal - usually just one emoji after the first sentence/paragraph. Never overuse.
+
+CONTENT TYPE SPECIFIC RULES:
+
+FOR SOCIAL MEDIA:
+- Lead with excitement or key announcement
+- Keep it punchy but informative
+- Include the disclaimer: "Must be 18 years or older to purchase: Lottery Licence RAF1500864" (or current licence number)
+- One emoji max, placed after first paragraph
+
+FOR EMAIL:
+- Less "corporate" - more fun and conversational
+- Personal tone, like writing to a friend who supports healthcare
+- Can be longer and more detailed
+
+FOR MEDIA RELEASES:
+- Professional journalistic style
+- Include quotes from Glenn Craig or Torin Gunnell
+- Structure: Lead paragraph with key news, supporting details, quotes, background info
+- End with "About" boilerplate if appropriate
+
+FOR NEWSLETTERS:
+- Similar to media releases but more promotional
+- Can include bullet points for highlights
+- More professional tone than emails
+
+FOR FACEBOOK/INSTAGRAM ADS:
+- MAXIMUM 120 characters
+- MUST include www.thunderbay5050.ca
+- Focus on urgency and excitement
+- Goal is always ticket sales
+- One emoji allowed`;
+
+function setupDraftAssistant() {
+    if (draftAssistantInitialized) return;
+    draftAssistantInitialized = true;
+
+    // Check for API key
+    const apiKey = localStorage.getItem(DRAFT_API_KEY_STORAGE);
+    if (!apiKey) {
+        showDraftApiSetup();
+    }
+
+    // Content type buttons
+    document.querySelectorAll('.draft-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            selectDraftType(btn.dataset.type);
+        });
+    });
+
+    // Tone buttons
+    document.querySelectorAll('.draft-tone-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.draft-tone-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentDraftTone = btn.dataset.tone;
+        });
+    });
+
+    // Change type button
+    document.getElementById('draftChangeType').addEventListener('click', () => {
+        document.getElementById('draftInputSection').style.display = 'none';
+        document.getElementById('draftTypeSection').style.display = 'block';
+        document.getElementById('draftHeaderActions').style.display = 'none';
+    });
+
+    // Quote toggle
+    document.getElementById('draftQuoteToggle').addEventListener('click', () => {
+        const fields = document.getElementById('draftQuoteFields');
+        const toggle = document.getElementById('draftQuoteToggle');
+        if (fields.style.display === 'none') {
+            fields.style.display = 'flex';
+            toggle.textContent = '− Remove Quote';
+        } else {
+            fields.style.display = 'none';
+            toggle.textContent = '+ Add Quote';
+        }
+    });
+
+    // Generate button
+    document.getElementById('draftGenerateBtn').addEventListener('click', generateDraft);
+
+    // Copy button
+    document.getElementById('draftCopyBtn').addEventListener('click', () => {
+        const content = document.getElementById('draftOutputContent').textContent;
+        navigator.clipboard.writeText(content).then(() => {
+            showToast('Copied to clipboard!', 'success');
+        });
+    });
+
+    // Regenerate button
+    document.getElementById('draftRegenerateBtn').addEventListener('click', () => {
+        if (lastDraftRequest) {
+            generateDraft();
+        }
+    });
+
+    // New draft button
+    document.getElementById('draftNewBtn').addEventListener('click', resetDraftAssistant);
+
+    // Save API key button
+    document.getElementById('draftSaveApiKey').addEventListener('click', () => {
+        const key = document.getElementById('draftApiKeyInput').value.trim();
+        if (key) {
+            localStorage.setItem(DRAFT_API_KEY_STORAGE, key);
+            document.getElementById('draftApiSetup').style.display = 'none';
+            document.getElementById('draftTypeSection').style.display = 'block';
+            showToast('API key saved!', 'success');
+        } else {
+            showToast('Please enter a valid API key', 'error');
+        }
+    });
+}
+
+function showDraftApiSetup() {
+    document.getElementById('draftTypeSection').style.display = 'none';
+    document.getElementById('draftInputSection').style.display = 'none';
+    document.getElementById('draftOutputSection').style.display = 'none';
+    document.getElementById('draftApiSetup').style.display = 'block';
+}
+
+function selectDraftType(type) {
+    currentDraftType = type;
+    document.getElementById('draftTypeSection').style.display = 'none';
+    document.getElementById('draftInputSection').style.display = 'block';
+    document.getElementById('draftTypeBadge').textContent = DRAFT_TYPE_LABELS[type];
+
+    // Show/hide quote section for media releases and newsletters
+    const quoteSection = document.getElementById('draftQuoteSection');
+    if (type === 'media-release' || type === 'newsletter') {
+        quoteSection.style.display = 'block';
+    } else {
+        quoteSection.style.display = 'none';
+    }
+
+    // Reset quote fields
+    document.getElementById('draftQuoteFields').style.display = 'none';
+    document.getElementById('draftQuoteToggle').textContent = '+ Add Quote';
+}
+
+async function generateDraft() {
+    const apiKey = localStorage.getItem(DRAFT_API_KEY_STORAGE);
+    if (!apiKey) {
+        showDraftApiSetup();
+        return;
+    }
+
+    const topic = document.getElementById('draftTopicInput').value.trim();
+    if (!topic) {
+        showToast('Please enter a topic or announcement', 'error');
+        return;
+    }
+
+    const details = document.getElementById('draftDetailsInput').value.trim();
+
+    // Get quote info if applicable
+    let quoteInfo = '';
+    if ((currentDraftType === 'media-release' || currentDraftType === 'newsletter') &&
+        document.getElementById('draftQuoteFields').style.display !== 'none') {
+        const quoteName = document.getElementById('draftQuoteName').value.trim();
+        const quoteTitle = document.getElementById('draftQuoteTitle').value.trim();
+        const quoteText = document.getElementById('draftQuoteText').value.trim();
+        if (quoteName && quoteText) {
+            quoteInfo = \`\\n\\nInclude this quote from \${quoteName}\${quoteTitle ? ', ' + quoteTitle : ''}: "\${quoteText}"\`;
+        }
+    }
+
+    // Build the user prompt
+    let userPrompt = \`Write a \${DRAFT_TYPE_LABELS[currentDraftType]} about: \${topic}\`;
+    if (details) {
+        userPrompt += \`\\n\\nKey details to include: \${details}\`;
+    }
+    userPrompt += quoteInfo;
+    userPrompt += \`\\n\\nTone: \${currentDraftTone}\`;
+
+    if (currentDraftType === 'ad') {
+        userPrompt += \`\\n\\nREMEMBER: Maximum 120 characters and MUST include www.thunderbay5050.ca\`;
+    }
+
+    lastDraftRequest = { topic, details, quoteInfo };
+
+    // Show loading
+    document.getElementById('draftInputSection').style.display = 'none';
+    document.getElementById('draftLoading').style.display = 'block';
+    document.getElementById('draftHeaderActions').style.display = 'none';
+
+    try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 1024,
+                system: DRAFT_SYSTEM_PROMPT,
+                messages: [{ role: 'user', content: userPrompt }]
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || 'API request failed');
+        }
+
+        const data = await response.json();
+        const generatedContent = data.content[0].text;
+
+        // Show output
+        document.getElementById('draftLoading').style.display = 'none';
+        document.getElementById('draftOutputSection').style.display = 'block';
+        document.getElementById('draftOutputBadge').textContent = DRAFT_TYPE_LABELS[currentDraftType];
+        document.getElementById('draftOutputContent').textContent = generatedContent;
+        document.getElementById('draftHeaderActions').style.display = 'flex';
+
+        // Show disclaimer for ads
+        const disclaimer = document.getElementById('draftDisclaimer');
+        if (currentDraftType === 'ad') {
+            const charCount = generatedContent.length;
+            disclaimer.innerHTML = \`Character count: \${charCount}/120 \${charCount > 120 ? '⚠️ Over limit!' : '✅'}\`;
+            disclaimer.style.display = 'block';
+        } else {
+            disclaimer.innerHTML = '⚠️ Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
+            disclaimer.style.display = 'block';
+        }
+
+    } catch (error) {
+        console.error('Draft generation error:', error);
+        document.getElementById('draftLoading').style.display = 'none';
+        document.getElementById('draftInputSection').style.display = 'block';
+        showToast('Error generating draft: ' + error.message, 'error');
+
+        if (error.message.includes('invalid x-api-key') || error.message.includes('401')) {
+            localStorage.removeItem(DRAFT_API_KEY_STORAGE);
+            showDraftApiSetup();
+        }
+    }
+}
+
+function resetDraftAssistant() {
+    currentDraftType = null;
+    currentDraftTone = 'balanced';
+    lastDraftRequest = null;
+
+    // Reset form fields
+    document.getElementById('draftTopicInput').value = '';
+    document.getElementById('draftDetailsInput').value = '';
+    document.getElementById('draftQuoteName').value = '';
+    document.getElementById('draftQuoteTitle').value = '';
+    document.getElementById('draftQuoteText').value = '';
+
+    // Reset tone buttons
+    document.querySelectorAll('.draft-tone-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.draft-tone-btn[data-tone="balanced"]').classList.add('active');
+
+    // Reset quote section
+    document.getElementById('draftQuoteFields').style.display = 'none';
+    document.getElementById('draftQuoteToggle').textContent = '+ Add Quote';
+
+    // Show type selection
+    document.getElementById('draftOutputSection').style.display = 'none';
+    document.getElementById('draftInputSection').style.display = 'none';
+    document.getElementById('draftLoading').style.display = 'none';
+    document.getElementById('draftTypeSection').style.display = 'block';
+    document.getElementById('draftHeaderActions').style.display = 'none';
+}
 
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", init);

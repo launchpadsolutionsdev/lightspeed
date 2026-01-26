@@ -565,6 +565,10 @@
             font-size: 2.5rem;
         }
 
+        .tool-card-icon.draft {
+            background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+        }
+
         .tool-card-icon.response {
             background: linear-gradient(135deg, #e0f2fe, #bae6fd);
         }
@@ -2034,6 +2038,396 @@
             visibility: visible;
         }
 
+        /* ==================== DRAFT ASSISTANT TOOL STYLES ==================== */
+        .draft-assistant-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .draft-type-section {
+            text-align: center;
+        }
+
+        .draft-type-header h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .draft-type-header p {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .draft-type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .draft-type-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 24px 16px;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .draft-type-btn:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+        }
+
+        .draft-type-btn.active {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(167, 139, 250, 0.05));
+        }
+
+        .draft-type-icon {
+            font-size: 2rem;
+        }
+
+        .draft-type-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        /* Input Section */
+        .draft-input-section {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .draft-input-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .draft-type-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .draft-change-type {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .draft-change-type:hover {
+            text-decoration: underline;
+        }
+
+        .draft-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .draft-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .draft-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .draft-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+
+        .draft-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .draft-textarea-sm {
+            min-height: 80px;
+        }
+
+        .draft-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .draft-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Quote Section */
+        .draft-quote-section {
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            padding: 16px;
+        }
+
+        .draft-quote-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .draft-quote-toggle {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .draft-quote-fields {
+            margin-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .draft-quote-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Tone Options */
+        .draft-tone-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .draft-tone-btn {
+            padding: 8px 16px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .draft-tone-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .draft-tone-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Generate Button */
+        .draft-generate-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+
+        .draft-generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .draft-generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading */
+        .draft-loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .draft-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            animation: spin 1s linear infinite;
+        }
+
+        .draft-loading p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        /* Output Section */
+        .draft-output-section {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .draft-output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .draft-output-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .draft-action-btn {
+            padding: 8px 16px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .draft-action-btn:hover {
+            background: white;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .draft-output-content {
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+        }
+
+        .draft-disclaimer {
+            margin-top: 16px;
+            padding: 12px;
+            background: #fef3c7;
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+            color: #92400e;
+        }
+
+        /* API Setup */
+        .draft-api-setup {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .draft-api-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .draft-api-setup h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .draft-api-setup p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .draft-api-setup .draft-input {
+            max-width: 400px;
+            margin: 0 auto 16px;
+        }
+
+        .draft-api-note {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 16px;
+        }
+
+        .draft-new-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .draft-new-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
         /* ==================== DATA ANALYSIS TOOL STYLES ==================== */
         .data-analysis-container {
             max-width: 1600px;
@@ -2937,6 +3331,14 @@
             </div>
 
             <div class="tool-cards-grid">
+                <!-- Draft Assistant -->
+                <div class="tool-card" id="toolDraftAssistant">
+                    <div class="tool-card-icon draft">✍️</div>
+                    <h3 class="tool-card-title">Draft Assistant</h3>
+                    <p class="tool-card-description">Create on-brand social media posts, emails, media releases, newsletters, and ads with AI assistance.</p>
+                    <span class="tool-card-badge">AI-Powered</span>
+                </div>
+
                 <!-- Response Assistant -->
                 <div class="tool-card" id="toolCustomerResponse">
                     <div class="tool-card-icon response">📧</div>
@@ -3679,6 +4081,160 @@
                         </table>
                     </div>
 
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
+                    <span class="footer-brand-text">Lightspeed by Launchpad</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://launchpadsolutions.ca" target="_blank" class="footer-link">Visit Launchpad</a>
+                </div>
+                <div class="footer-copyright">
+                    © 2025 Launchpad Solutions. All rights reserved.
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ==================== DRAFT ASSISTANT TOOL ==================== -->
+    <div class="app" id="draftAssistantApp">
+        <header class="header">
+            <div class="header-inner">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="back-to-menu" id="draftBackToMenuBtn">
+                        <span class="back-to-menu-icon">←</span>
+                        Back to Menu
+                    </button>
+                    <div class="logo-section">
+                        <img class="logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
+                        <div class="brand">
+                            <div class="brand-name">Draft Assistant</div>
+                            <div class="brand-tagline">Lightspeed by Launchpad</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="draft-header-actions" id="draftHeaderActions" style="display: none;">
+                    <button class="draft-new-btn" id="draftNewBtn">✨ New Draft</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="container">
+            <div class="draft-assistant-container">
+                <!-- Content Type Selection -->
+                <div class="draft-type-section" id="draftTypeSection">
+                    <div class="draft-type-header">
+                        <h2>What would you like to create?</h2>
+                        <p>Select a content type to get started</p>
+                    </div>
+                    <div class="draft-type-grid">
+                        <button class="draft-type-btn" data-type="social">
+                            <span class="draft-type-icon">📱</span>
+                            <span class="draft-type-label">Social Media Copy</span>
+                        </button>
+                        <button class="draft-type-btn" data-type="email">
+                            <span class="draft-type-icon">📧</span>
+                            <span class="draft-type-label">Email Copy</span>
+                        </button>
+                        <button class="draft-type-btn" data-type="media-release">
+                            <span class="draft-type-icon">📰</span>
+                            <span class="draft-type-label">Media Release</span>
+                        </button>
+                        <button class="draft-type-btn" data-type="newsletter">
+                            <span class="draft-type-icon">📬</span>
+                            <span class="draft-type-label">Newsletter</span>
+                        </button>
+                        <button class="draft-type-btn" data-type="ad">
+                            <span class="draft-type-icon">📣</span>
+                            <span class="draft-type-label">Facebook/Instagram Ad</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Input Section -->
+                <div class="draft-input-section" id="draftInputSection" style="display: none;">
+                    <div class="draft-input-header">
+                        <span class="draft-type-badge" id="draftTypeBadge">Social Media</span>
+                        <button class="draft-change-type" id="draftChangeType">Change type</button>
+                    </div>
+
+                    <div class="draft-form">
+                        <div class="draft-form-group">
+                            <label class="draft-label">What's the topic or announcement?</label>
+                            <textarea id="draftTopicInput" class="draft-textarea" placeholder="E.g., January Grand Prize has crossed $2,000,000, Early Bird draws happening Wednesday, New winner announcement..."></textarea>
+                        </div>
+
+                        <div class="draft-form-group">
+                            <label class="draft-label">Key details to include (optional)</label>
+                            <textarea id="draftDetailsInput" class="draft-textarea draft-textarea-sm" placeholder="E.g., Prize amounts, dates, winner name, location..."></textarea>
+                        </div>
+
+                        <!-- Quote Section (for Media Releases & Newsletters) -->
+                        <div class="draft-quote-section" id="draftQuoteSection" style="display: none;">
+                            <div class="draft-quote-header">
+                                <label class="draft-label">Add a Quote (optional)</label>
+                                <button class="draft-quote-toggle" id="draftQuoteToggle">+ Add Quote</button>
+                            </div>
+                            <div class="draft-quote-fields" id="draftQuoteFields" style="display: none;">
+                                <div class="draft-quote-row">
+                                    <input type="text" id="draftQuoteName" class="draft-input" placeholder="Person's name (e.g., Glenn Craig)">
+                                    <input type="text" id="draftQuoteTitle" class="draft-input" placeholder="Title (e.g., President & CEO)">
+                                </div>
+                                <textarea id="draftQuoteText" class="draft-textarea draft-textarea-sm" placeholder="Paste or type the quote here..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Tone Selector -->
+                        <div class="draft-form-group">
+                            <label class="draft-label">Tone</label>
+                            <div class="draft-tone-options">
+                                <button class="draft-tone-btn active" data-tone="balanced">Balanced</button>
+                                <button class="draft-tone-btn" data-tone="exciting">Exciting</button>
+                                <button class="draft-tone-btn" data-tone="professional">Professional</button>
+                                <button class="draft-tone-btn" data-tone="urgent">Urgent</button>
+                            </div>
+                        </div>
+
+                        <button class="draft-generate-btn" id="draftGenerateBtn">
+                            <span class="draft-generate-icon">✨</span>
+                            Generate Draft
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div class="draft-loading" id="draftLoading" style="display: none;">
+                    <div class="draft-spinner"></div>
+                    <p>Crafting your draft...</p>
+                </div>
+
+                <!-- Output Section -->
+                <div class="draft-output-section" id="draftOutputSection" style="display: none;">
+                    <div class="draft-output-header">
+                        <span class="draft-type-badge" id="draftOutputBadge">Social Media</span>
+                        <div class="draft-output-actions">
+                            <button class="draft-action-btn" id="draftCopyBtn">📋 Copy</button>
+                            <button class="draft-action-btn" id="draftRegenerateBtn">🔄 Regenerate</button>
+                        </div>
+                    </div>
+                    <div class="draft-output-content" id="draftOutputContent"></div>
+                    <div class="draft-disclaimer" id="draftDisclaimer"></div>
+                </div>
+
+                <!-- API Key Setup (if not configured) -->
+                <div class="draft-api-setup" id="draftApiSetup" style="display: none;">
+                    <div class="draft-api-icon">🔑</div>
+                    <h3>API Key Required</h3>
+                    <p>Enter your Claude API key to enable AI-powered drafting</p>
+                    <input type="password" id="draftApiKeyInput" class="draft-input" placeholder="sk-ant-api...">
+                    <button class="draft-generate-btn" id="draftSaveApiKey">Save API Key</button>
+                    <p class="draft-api-note">Your API key is stored locally and never sent to our servers.</p>
                 </div>
             </div>
         </div>
