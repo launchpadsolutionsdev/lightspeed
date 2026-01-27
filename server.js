@@ -26,6 +26,9 @@ const allowedOrigins = [
     'http://localhost:8000',
     'http://localhost:3000',
     'http://127.0.0.1:8000',
+    'https://www.lightspeedutility.ca',
+    'https://lightspeedutility.ca',
+    'https://lightspeed-s07c.onrender.com',
     process.env.FRONTEND_URL // Set this in Render to your frontend URL
 ].filter(Boolean);
 
