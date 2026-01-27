@@ -2182,6 +2182,40 @@
             min-height: 80px;
         }
 
+        .draft-select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 16px;
+        }
+
+        .draft-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .draft-hint {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .draft-generate-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .draft-input {
             width: 100%;
             padding: 12px 14px;
@@ -4157,7 +4191,46 @@
                     </div>
                 </div>
 
-                <!-- Input Section -->
+                <!-- Email Type Selection Section -->
+                <div class="draft-email-type-section" id="draftEmailTypeSection" style="display: none;">
+                    <div class="draft-input-header">
+                        <span class="draft-type-badge">📧 Email Copy</span>
+                        <button class="draft-change-type" id="draftEmailChangeType">Change type</button>
+                    </div>
+                    <div class="draft-form">
+                        <div class="draft-form-group">
+                            <label class="draft-label">What type of email are you drafting?</label>
+                            <select id="draftEmailTypeSelect" class="draft-select">
+                                <option value="">Select an email type...</option>
+                                <option value="new-draw">New Draw Announcement</option>
+                                <option value="draw-reminder">Draw Reminder</option>
+                                <option value="winners">Winner(s) Announcement</option>
+                                <option value="impact-sunday">Impact Sunday</option>
+                                <option value="last-chance">Last Chance</option>
+                            </select>
+                        </div>
+
+                        <!-- Impact Sunday Context (only shown when Impact Sunday is selected) -->
+                        <div class="draft-form-group" id="impactSundayContext" style="display: none;">
+                            <label class="draft-label">Paste the context about the equipment/funding</label>
+                            <textarea id="draftImpactContext" class="draft-textarea" placeholder="Paste the newspaper article, notes, press release, or other context about the equipment purchase or funding story you want to highlight..."></textarea>
+                            <p class="draft-hint">This will help generate an Impact Sunday email that tells the story of how donor support made this possible.</p>
+                        </div>
+
+                        <!-- Key Details for other email types -->
+                        <div class="draft-form-group" id="emailKeyDetails" style="display: none;">
+                            <label class="draft-label" id="emailDetailsLabel">Key details to include</label>
+                            <textarea id="draftEmailDetails" class="draft-textarea" placeholder=""></textarea>
+                        </div>
+
+                        <button class="draft-generate-btn" id="draftEmailGenerateBtn" disabled>
+                            <span class="draft-generate-icon">✨</span>
+                            Generate Email Draft
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Input Section (for non-email types) -->
                 <div class="draft-input-section" id="draftInputSection" style="display: none;">
                     <div class="draft-input-header">
                         <span class="draft-type-badge" id="draftTypeBadge">Social Media</span>

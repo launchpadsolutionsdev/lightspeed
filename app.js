@@ -2085,6 +2085,7 @@ let draftAssistantInitialized = false;
 let currentDraftType = null;
 let currentDraftTone = 'balanced';
 let lastDraftRequest = null;
+let currentEmailType = null;
 
 // Draft Assistant uses server-side API (no client-side key needed)
 
@@ -2094,6 +2095,28 @@ const DRAFT_TYPE_LABELS = {
     'media-release': 'Media Release',
     'newsletter': 'Newsletter',
     'ad': 'Facebook/Instagram Ad'
+};
+
+const EMAIL_TYPE_LABELS = {
+    'new-draw': 'New Draw Announcement',
+    'draw-reminder': 'Draw Reminder',
+    'winners': 'Winner(s) Announcement',
+    'impact-sunday': 'Impact Sunday',
+    'last-chance': 'Last Chance'
+};
+
+const EMAIL_DETAILS_PLACEHOLDERS = {
+    'new-draw': 'E.g., Draw month (January), total Early Bird prizes ($125,000), number of draws (18 winners), Grand Prize draw date...',
+    'draw-reminder': 'E.g., Which draw (10K Early Bird), draw date (tomorrow), current Grand Prize amount, deadline for tickets...',
+    'winners': 'E.g., Winning ticket number, prize amount, winner name and city if available, current Grand Prize amount...',
+    'last-chance': 'E.g., Grand Prize amount, deadline date/time, number of remaining draws, urgency messaging...'
+};
+
+const EMAIL_DETAILS_LABELS = {
+    'new-draw': 'Key details about the new draw',
+    'draw-reminder': 'Details about the upcoming draw',
+    'winners': 'Winner information',
+    'last-chance': 'Deadline and prize information'
 };
 
 const DRAFT_SYSTEM_PROMPT = `You are a professional copywriter for the Thunder Bay Regional Health Sciences Foundation and their Thunder Bay 50/50 lottery program. You write content that is warm, professional, optimistic, exciting, community-focused, trustworthy, fun/playful, and can be urgent when appropriate.
@@ -2154,6 +2177,190 @@ FOR FACEBOOK/INSTAGRAM ADS:
 - Goal is always ticket sales
 - One emoji allowed`;
 
+// Email-specific system prompts based on category
+const EMAIL_SYSTEM_PROMPTS = {
+    'new-draw': `You are a professional email copywriter for the Thunder Bay 50/50 lottery. You write NEW DRAW ANNOUNCEMENT emails that announce the launch of a new monthly draw.
+
+CRITICAL RULES:
+- NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
+- Website: www.thunderbay5050.ca
+- In-store: Thunder Bay 50/50 store inside the Intercity Shopping Centre
+- Must be 18+ and physically in Ontario to purchase
+- The Thunder Bay 50/50 launched in January 2021
+- Grand Prize draw is on the last Friday of the month
+
+TONE & STYLE for New Draw Announcements:
+- Lead with excitement about the new month's draw
+- Highlight total Early Bird prizes available
+- List key draws and dates in an easy-to-read format (numbered list works well)
+- Create urgency around early ticket purchases
+- Mention if there's a significant prize early in the month
+- Use emojis sparingly (1-2 per email, typically in subject or first line)
+- End with a call to action: buy tickets link
+
+COMMON PHRASES TO USE:
+- "Ring in the new [month] with plenty of chances to WIN!"
+- "Here's everything you need to know about this month's draw"
+- "Don't wait to get your tickets!"
+- "Check out our two other raffles! You LOVE the Thunder Bay 50/50, and you might LOVE our other raffles just as much!"
+
+SUBJECT LINE STYLE:
+- Use dollar amounts and emojis
+- Examples: "$125K IN EARLY BIRDS!❄️" or "$70K IN EARLY BIRDS THIS WEEK!💰"
+
+EMAIL STRUCTURE:
+1. Exciting opener with key announcement
+2. Numbered list of key details about the draw
+3. Buy tickets CTA button/link
+4. Mention other raffles (Catch The Ace, Pink Jeep if applicable)
+5. Standard footer with lottery licence`,
+
+    'draw-reminder': `You are a professional email copywriter for the Thunder Bay 50/50 lottery. You write DRAW REMINDER emails that remind subscribers about upcoming draws.
+
+CRITICAL RULES:
+- NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
+- Website: www.thunderbay5050.ca
+- Draws happen at 11AM - winners get called
+- Must be 18+ and physically in Ontario to purchase
+
+TONE & STYLE for Draw Reminders:
+- Create urgency - there's a deadline tonight at 11:59PM
+- Be direct about what draw is happening and when
+- Mention the current Grand Prize amount to build excitement
+- Remind them to have their ringer on for the winner call at 11AM
+- Use countdown/timer reference when applicable
+- Keep it shorter than new draw announcements
+
+COMMON PHRASES TO USE:
+- "DEADLINE: TONIGHT 11:59PM!"
+- "TOMORROW there is a $X Early Bird draw!"
+- "We're calling the winner tomorrow at 11AM, make sure you have your ringer turned on"
+- "Purchase tickets before the timer runs out"
+- "There's still a ton of winning left this month!"
+
+SUBJECT LINE STYLE:
+- Mention the draw type and timing
+- Examples: "There's a 10K Early Bird draw TOMORROW!🙂" or "5K EARLY BIRD TOMORROW!☃️"
+
+EMAIL STRUCTURE:
+1. Urgent opener about tomorrow's draw
+2. Prize amount and deadline
+3. Current Grand Prize amount
+4. Timer/countdown reference
+5. Buy tickets CTA
+6. Mention Catch The Ace
+7. Standard footer`,
+
+    'winners': `You are a professional email copywriter for the Thunder Bay 50/50 lottery. You write WINNER ANNOUNCEMENT emails that celebrate and announce draw winners.
+
+CRITICAL RULES:
+- NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
+- Website: www.thunderbay5050.ca
+- Winners get called at 11AM after the draw
+- Include winning ticket numbers when announcing
+
+TONE & STYLE for Winner Announcements:
+- Celebratory and exciting!
+- Share the winning ticket number prominently
+- If you have winner details (name, city), share their story
+- For Grand Prize winners, make it a BIG announcement with video links if available
+- Encourage engagement: "What do you think the final Grand Prize amount is going to be? Reply to this email!"
+- Remind there's more winning to come
+
+COMMON PHRASES TO USE:
+- "We just drew the winner of today's [X]K Early Bird draw and we're calling them RIGHT NOW!"
+- "Make sure you have your ringer turned on; there's still a ton of winning left this month!"
+- "Congratulations to [WINNER NAME] from [CITY]!"
+- For video announcements: "Click the play button below to watch the winner call video!"
+
+SUBJECT LINE STYLE:
+- Announce the win with excitement
+- Examples: "We just drew today's 10K WINNER!🤑" or "VIDEO: HE JUST WON $7.7 MILLION!🤯"
+
+EMAIL STRUCTURE:
+1. Winning ticket number announcement
+2. Prize amount and draw type
+3. Current Grand Prize amount (if Early Bird)
+4. Call to action to keep playing
+5. Mention Catch The Ace
+6. Standard footer`,
+
+    'impact-sunday': `You are a professional email copywriter for the Thunder Bay Regional Health Sciences Foundation. You write IMPACT SUNDAY emails that show donors how their 50/50 ticket purchases make a real difference in healthcare.
+
+CRITICAL RULES:
+- This is about DONOR IMPACT, not about winning money
+- Focus on the equipment purchased or program funded
+- Include quotes from hospital staff whenever possible
+- Link to the Impact page: https://www.healthsciencesfoundation.ca/our-impact
+- NEVER use the word "jackpot" - ALWAYS say "Grand Prize"
+- Always thank donors for making this possible
+
+TONE & STYLE for Impact Sunday:
+- Warm, grateful, and inspiring
+- Tell the STORY of the equipment/funding and its impact
+- Make it personal - mention specific departments, staff names, patient benefits
+- Use phrases like "Thanks to our donors, event participants, and Thunder Bay 50/50 supporters..."
+- Show the connection between ticket purchases and healthcare improvements
+
+COMMON PHRASES TO USE:
+- "IMPACT SUNDAY: You helped make this possible!💙"
+- "Thanks to our donors, event participants, and Thunder Bay 50/50 supporters..."
+- "Your support of the Thunder Bay 50/50 directly funds..."
+- "See how your support is making a difference"
+- Link text: "See Your Impact" pointing to impact page
+
+SUBJECT LINE STYLE:
+- Always start with "IMPACT SUNDAY:"
+- Include heart emoji 💙
+- Example: "IMPACT SUNDAY: You helped make this possible!💙"
+
+EMAIL STRUCTURE:
+1. Headline about the equipment/funding
+2. Story about what was purchased and why it matters
+3. Quote from hospital staff (name and title)
+4. Impact statistics if available
+5. "See Your Impact" link to impact page
+6. Reminder about current 50/50 with link to winners area
+7. Standard footer with lottery licence`,
+
+    'last-chance': `You are a professional email copywriter for the Thunder Bay 50/50 lottery. You write LAST CHANCE emails that create urgency for final ticket purchases before major deadlines.
+
+CRITICAL RULES:
+- NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
+- Website: www.thunderbay5050.ca
+- Deadline is typically 11:59PM the night before the draw
+- Grand Prize draw is at 11AM on the last Friday of the month
+
+TONE & STYLE for Last Chance emails:
+- MAXIMUM URGENCY - this is the final opportunity
+- Emphasize the size of the Grand Prize
+- Use countdown timers and deadline language
+- Make it clear this is their LAST CHANCE
+- Be exciting about the potential - "We're going to make a MULTI-MILLIONAIRE!"
+
+COMMON PHRASES TO USE:
+- "THIS IS YOUR LAST CHANCE TO GET TICKETS!"
+- "DEADLINE: TONIGHT 11:59PM!"
+- "We are going to be making a MULTI-MILLIONAIRE!"
+- "If you still haven't got your tickets, this is your LAST CHANCE!"
+- "Don't miss out!"
+- "The deadline to purchase tickets is [DAY] at 11:59PM!"
+
+SUBJECT LINE STYLE:
+- Create maximum urgency
+- Examples: "LAST CALL FOR $2.56 MILLION+!⏰" or "WE JUST HIT $2 MILLION!🎊" or "THE [MONTH] 50/50 IS $2 MILLION+!🤩"
+
+EMAIL STRUCTURE:
+1. URGENT opener about deadline
+2. Grand Prize amount (big and bold)
+3. Deadline clearly stated
+4. Timer/countdown if applicable
+5. What's coming next (next month's draw preview if end of month)
+6. Buy tickets CTA
+7. Subscription reminder if applicable
+8. Standard footer`
+};
+
 function setupDraftAssistant() {
     if (draftAssistantInitialized) return;
     draftAssistantInitialized = true;
@@ -2174,12 +2381,52 @@ function setupDraftAssistant() {
         });
     });
 
-    // Change type button
+    // Change type button (for non-email types)
     document.getElementById('draftChangeType').addEventListener('click', () => {
         document.getElementById('draftInputSection').style.display = 'none';
         document.getElementById('draftTypeSection').style.display = 'block';
         document.getElementById('draftHeaderActions').style.display = 'none';
     });
+
+    // Change type button for email section
+    document.getElementById('draftEmailChangeType').addEventListener('click', () => {
+        document.getElementById('draftEmailTypeSection').style.display = 'none';
+        document.getElementById('draftTypeSection').style.display = 'block';
+        document.getElementById('draftHeaderActions').style.display = 'none';
+        currentEmailType = null;
+    });
+
+    // Email type dropdown change handler
+    document.getElementById('draftEmailTypeSelect').addEventListener('change', (e) => {
+        const emailType = e.target.value;
+        currentEmailType = emailType;
+
+        const impactContext = document.getElementById('impactSundayContext');
+        const keyDetails = document.getElementById('emailKeyDetails');
+        const generateBtn = document.getElementById('draftEmailGenerateBtn');
+
+        if (emailType === '') {
+            // No selection
+            impactContext.style.display = 'none';
+            keyDetails.style.display = 'none';
+            generateBtn.disabled = true;
+        } else if (emailType === 'impact-sunday') {
+            // Show Impact Sunday context, hide key details
+            impactContext.style.display = 'block';
+            keyDetails.style.display = 'none';
+            generateBtn.disabled = false;
+        } else {
+            // Show key details with appropriate placeholder
+            impactContext.style.display = 'none';
+            keyDetails.style.display = 'block';
+            document.getElementById('emailDetailsLabel').textContent = EMAIL_DETAILS_LABELS[emailType];
+            document.getElementById('draftEmailDetails').placeholder = EMAIL_DETAILS_PLACEHOLDERS[emailType];
+            generateBtn.disabled = false;
+        }
+    });
+
+    // Email generate button
+    document.getElementById('draftEmailGenerateBtn').addEventListener('click', generateEmailDraft);
 
     // Quote toggle
     document.getElementById('draftQuoteToggle').addEventListener('click', () => {
@@ -2194,7 +2441,7 @@ function setupDraftAssistant() {
         }
     });
 
-    // Generate button
+    // Generate button (for non-email types)
     document.getElementById('draftGenerateBtn').addEventListener('click', generateDraft);
 
     // Copy button
@@ -2208,7 +2455,11 @@ function setupDraftAssistant() {
     // Regenerate button
     document.getElementById('draftRegenerateBtn').addEventListener('click', () => {
         if (lastDraftRequest) {
-            generateDraft();
+            if (lastDraftRequest.isEmail) {
+                generateEmailDraft();
+            } else {
+                generateDraft();
+            }
         }
     });
 
@@ -2220,6 +2471,24 @@ function setupDraftAssistant() {
 function selectDraftType(type) {
     currentDraftType = type;
     document.getElementById('draftTypeSection').style.display = 'none';
+
+    // For email type, show the email-specific workflow
+    if (type === 'email') {
+        document.getElementById('draftEmailTypeSection').style.display = 'block';
+        document.getElementById('draftInputSection').style.display = 'none';
+        // Reset email form
+        document.getElementById('draftEmailTypeSelect').value = '';
+        document.getElementById('impactSundayContext').style.display = 'none';
+        document.getElementById('emailKeyDetails').style.display = 'none';
+        document.getElementById('draftEmailGenerateBtn').disabled = true;
+        document.getElementById('draftImpactContext').value = '';
+        document.getElementById('draftEmailDetails').value = '';
+        currentEmailType = null;
+        return;
+    }
+
+    // For other types, show the regular input section
+    document.getElementById('draftEmailTypeSection').style.display = 'none';
     document.getElementById('draftInputSection').style.display = 'block';
     document.getElementById('draftTypeBadge').textContent = DRAFT_TYPE_LABELS[type];
 
@@ -2323,10 +2592,89 @@ async function generateDraft() {
     }
 }
 
+async function generateEmailDraft() {
+    if (!currentEmailType) {
+        showToast('Please select an email type', 'error');
+        return;
+    }
+
+    let userPrompt = '';
+    let details = '';
+
+    if (currentEmailType === 'impact-sunday') {
+        const context = document.getElementById('draftImpactContext').value.trim();
+        if (!context) {
+            showToast('Please paste the context about the equipment/funding', 'error');
+            return;
+        }
+        userPrompt = "Write an Impact Sunday email based on this context about equipment or funding:\n\n" + context;
+        userPrompt += "\n\nInclude a subject line at the beginning. The email should tell the story of how donor support made this possible, and include a staff quote if the context provides one.";
+        details = context;
+    } else {
+        details = document.getElementById('draftEmailDetails').value.trim();
+        if (!details) {
+            showToast('Please enter the key details for the email', 'error');
+            return;
+        }
+        userPrompt = "Write a " + EMAIL_TYPE_LABELS[currentEmailType] + " email with these details:\n\n" + details;
+        userPrompt += "\n\nInclude a subject line at the beginning.";
+    }
+
+    lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details };
+
+    // Show loading
+    document.getElementById('draftEmailTypeSection').style.display = 'none';
+    document.getElementById('draftLoading').style.display = 'block';
+    document.getElementById('draftHeaderActions').style.display = 'none';
+
+    try {
+        const systemPrompt = EMAIL_SYSTEM_PROMPTS[currentEmailType];
+
+        const response = await fetch(API_BASE_URL + '/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                system: systemPrompt,
+                messages: [{ role: 'user', content: userPrompt }],
+                max_tokens: 2048
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'API request failed');
+        }
+
+        const data = await response.json();
+        const generatedContent = data.content[0].text;
+
+        // Show output
+        document.getElementById('draftLoading').style.display = 'none';
+        document.getElementById('draftOutputSection').style.display = 'block';
+        document.getElementById('draftOutputBadge').textContent = '📧 ' + EMAIL_TYPE_LABELS[currentEmailType];
+        document.getElementById('draftOutputContent').textContent = generatedContent;
+        document.getElementById('draftHeaderActions').style.display = 'flex';
+
+        // Show disclaimer
+        const disclaimer = document.getElementById('draftDisclaimer');
+        disclaimer.innerHTML = '⚠️ Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
+        disclaimer.style.display = 'block';
+
+    } catch (error) {
+        console.error('Email draft generation error:', error);
+        document.getElementById('draftLoading').style.display = 'none';
+        document.getElementById('draftEmailTypeSection').style.display = 'block';
+        showToast('Error generating email draft: ' + error.message, 'error');
+    }
+}
+
 function resetDraftAssistant() {
     currentDraftType = null;
     currentDraftTone = 'balanced';
     lastDraftRequest = null;
+    currentEmailType = null;
 
     // Reset form fields
     document.getElementById('draftTopicInput').value = '';
@@ -2334,6 +2682,14 @@ function resetDraftAssistant() {
     document.getElementById('draftQuoteName').value = '';
     document.getElementById('draftQuoteTitle').value = '';
     document.getElementById('draftQuoteText').value = '';
+
+    // Reset email-specific fields
+    document.getElementById('draftEmailTypeSelect').value = '';
+    document.getElementById('draftImpactContext').value = '';
+    document.getElementById('draftEmailDetails').value = '';
+    document.getElementById('impactSundayContext').style.display = 'none';
+    document.getElementById('emailKeyDetails').style.display = 'none';
+    document.getElementById('draftEmailGenerateBtn').disabled = true;
 
     // Reset tone buttons
     document.querySelectorAll('.draft-tone-btn').forEach(b => b.classList.remove('active'));
@@ -2346,6 +2702,7 @@ function resetDraftAssistant() {
     // Show type selection
     document.getElementById('draftOutputSection').style.display = 'none';
     document.getElementById('draftInputSection').style.display = 'none';
+    document.getElementById('draftEmailTypeSection').style.display = 'none';
     document.getElementById('draftLoading').style.display = 'none';
     document.getElementById('draftTypeSection').style.display = 'block';
     document.getElementById('draftHeaderActions').style.display = 'none';
