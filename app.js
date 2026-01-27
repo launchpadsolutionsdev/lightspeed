@@ -1,6 +1,13 @@
 // Lightspeed by Launchpad Solutions v3.0
 // Multi-Tool Platform with Customer Response & Data Analysis
 
+// ==================== DOMAIN REDIRECT ====================
+// Ensure consistent domain to prevent localStorage issues
+// Redirect www to non-www for consistent localStorage
+if (window.location.hostname === 'www.lightspeedutility.ca') {
+    window.location.href = window.location.href.replace('www.lightspeedutility.ca', 'lightspeedutility.ca');
+}
+
 // ==================== API CONFIGURATION ====================
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3001'  // Local development
@@ -8,7 +15,19 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
 
 // ==================== AUTH STATE ====================
 let currentUser = null;
-let users = JSON.parse(localStorage.getItem("lightspeed_users") || "[]");
+let users = [];
+
+// Load users from localStorage with error handling
+try {
+    const storedUsers = localStorage.getItem("lightspeed_users");
+    if (storedUsers) {
+        users = JSON.parse(storedUsers);
+        console.log("Loaded " + users.length + " users from localStorage");
+    }
+} catch (e) {
+    console.error("Failed to load users from localStorage:", e);
+    users = [];
+}
 
 // ==================== APP STATE ====================
 let currentTool = null; // 'customer-response' or 'data-analysis'
@@ -54,11 +73,19 @@ function init() {
 
     // Check if user is logged in
     const savedUserId = localStorage.getItem("lightspeed_current_user");
+    console.log("Init - savedUserId:", savedUserId);
+    console.log("Init - users count:", users.length);
+
     if (savedUserId) {
         const user = users.find(u => u.id === savedUserId);
+        console.log("Init - found user:", user ? user.email : "not found");
         if (user) {
             loginUser(user, false); // false = don't show message
             return;
+        } else {
+            // User ID exists but user not found - clear stale session
+            console.log("Clearing stale session - user not found in users array");
+            localStorage.removeItem("lightspeed_current_user");
         }
     }
 
@@ -2629,6 +2656,7 @@ async function generateEmailDraft() {
 
     try {
         const systemPrompt = EMAIL_SYSTEM_PROMPTS[currentEmailType];
+        console.log('Calling API at:', API_BASE_URL + '/api/generate');
 
         const response = await fetch(API_BASE_URL + '/api/generate', {
             method: 'POST',
@@ -2642,9 +2670,11 @@ async function generateEmailDraft() {
             })
         });
 
+        console.log('API response status:', response.status);
+
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'API request failed');
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || 'API request failed with status ' + response.status);
         }
 
         const data = await response.json();
