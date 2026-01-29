@@ -1293,6 +1293,135 @@
         .quality-item.quality-warn { color: var(--warning); }
         .quality-item.quality-fail { color: var(--danger); }
 
+        /* ==================== INQUIRY TYPE TOGGLE ==================== */
+        .inquiry-type-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+        }
+
+        .toggle-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .toggle-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .toggle-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .toggle-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-color: transparent;
+            color: white;
+        }
+
+        .facebook-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #e3f2fd;
+            border-radius: var(--radius-sm);
+            display: none;
+        }
+
+        .facebook-hint.show {
+            display: block;
+        }
+
+        /* ==================== DRAW SCHEDULE ==================== */
+        .draw-schedule-card {
+            margin-top: 24px;
+        }
+
+        .draw-schedule-content {
+            padding: 0;
+        }
+
+        .draw-info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            color: white;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .draw-prize-badge {
+            font-size: 0.85rem;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 100px;
+        }
+
+        .early-bird-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+        }
+
+        .early-bird-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--bg-light);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            border-left: 3px solid var(--primary);
+        }
+
+        .early-bird-item.passed {
+            opacity: 0.5;
+            border-left-color: var(--text-muted);
+        }
+
+        .early-bird-item.upcoming {
+            background: #f3e8ff;
+        }
+
+        .eb-date {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .eb-prize {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .icon-calendar {
+            background: linear-gradient(135deg, #ec4899, #f43f5e);
+        }
+
         /* ==================== SMART SUGGESTIONS ==================== */
         .smart-suggestions {
             display: flex;
@@ -3527,6 +3656,14 @@
                             </div>
                         </div>
 
+                        <div class="inquiry-type-toggle">
+                            <span class="toggle-label">Inquiry Type:</span>
+                            <div class="toggle-buttons">
+                                <button class="toggle-btn active" data-type="email" id="toggleEmail">📧 Email</button>
+                                <button class="toggle-btn" data-type="facebook" id="toggleFacebook">💬 Facebook</button>
+                            </div>
+                        </div>
+
                         <div class="smart-suggestions" id="smartSuggestions">
                             <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;">Quick fill:</span>
                             <button class="suggestion-chip" data-template="tickets">Can't find tickets</button>
@@ -3615,6 +3752,20 @@
                                 <div class="placeholder-text">Your generated response will appear here</div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Draw Schedule Container -->
+                <div class="card draw-schedule-card">
+                    <div class="card-header">
+                        <div class="card-icon icon-calendar">📅</div>
+                        <div>
+                            <div class="card-title">Current Draw Schedule</div>
+                            <div class="card-description">February 2026 Early Bird & Grand Prize dates</div>
+                        </div>
+                    </div>
+                    <div id="drawScheduleContainer">
+                        <!-- Draw schedule will be populated by JavaScript -->
                     </div>
                 </div>
             </div>
@@ -4450,6 +4601,7 @@ Answer to question 2..."></textarea>
 
     <!-- JavaScript -->
     <script src="knowledge-base.js"></script>
+    <script src="draw-schedule.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

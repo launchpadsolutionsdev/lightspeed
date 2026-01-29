@@ -45,6 +45,7 @@ let currentInquiry = null;
 let bulkResults = [];
 let currentFilter = "all";
 let currentHistoryItem = null;
+let inquiryType = "email"; // "email" or "facebook"
 
 // Data Analysis State
 let dataAnalysisData = null;
@@ -68,6 +69,49 @@ const CATEGORY_KEYWORDS = {
     winners: ["winner", "won", "winning", "draw", "prize", "jackpot"],
     general: []
 };
+
+// ==================== INQUIRY TYPE FUNCTIONS ====================
+function setInquiryType(type) {
+    inquiryType = type;
+
+    // Update toggle buttons
+    document.getElementById("toggleEmail").classList.toggle("active", type === "email");
+    document.getElementById("toggleFacebook").classList.toggle("active", type === "facebook");
+
+    // Show/hide Facebook hint
+    let hint = document.querySelector(".facebook-hint");
+    if (!hint) {
+        // Create hint element if it doesn't exist
+        hint = document.createElement("div");
+        hint.className = "facebook-hint";
+        hint.textContent = "📝 Facebook responses are kept short (under 400 characters) with a -Name signature.";
+        document.querySelector(".inquiry-type-toggle").appendChild(hint);
+    }
+    hint.classList.toggle("show", type === "facebook");
+
+    // Update generate button text
+    const generateBtn = document.getElementById("generateBtn");
+    if (type === "facebook") {
+        generateBtn.innerHTML = `<span class="btn-icon">⚡</span> Generate Facebook Reply`;
+    } else {
+        generateBtn.innerHTML = `<span class="btn-icon">⚡</span> Generate Response`;
+    }
+}
+
+// ==================== DRAW SCHEDULE FUNCTIONS ====================
+function renderDrawSchedule() {
+    const container = document.getElementById("drawScheduleContainer");
+    if (!container) return;
+
+    if (typeof DRAW_SCHEDULE !== 'undefined') {
+        container.innerHTML = DRAW_SCHEDULE.getFormattedSchedule();
+    } else {
+        container.innerHTML = `<div class="response-placeholder">
+            <div class="placeholder-icon">📅</div>
+            <div class="placeholder-text">Draw schedule not loaded</div>
+        </div>`;
+    }
+}
 
 // ==================== INITIALIZATION ====================
 function init() {
@@ -600,6 +644,13 @@ function setupEventListeners() {
             document.getElementById("customerEmail").value = SUGGESTION_TEMPLATES[chip.dataset.template];
         });
     });
+
+    // Inquiry type toggle (Email vs Facebook)
+    document.getElementById("toggleEmail").addEventListener("click", () => setInquiryType("email"));
+    document.getElementById("toggleFacebook").addEventListener("click", () => setInquiryType("facebook"));
+
+    // Initialize draw schedule display
+    renderDrawSchedule();
 
     // Settings
     document.getElementById("settingsToggle").addEventListener("click", () =>
@@ -1436,22 +1487,44 @@ function getAllKnowledge() {
 
 async function generateCustomResponse(customerEmail, knowledge, staffName, options) {
     const { toneValue, lengthValue, includeLinks, includeSteps } = options;
+    const isFacebook = inquiryType === "facebook";
 
     const toneDesc = toneValue < 33 ? "formal and professional" :
                      toneValue > 66 ? "warm and friendly" : "balanced";
-    const lengthDesc = lengthValue < 33 ? "brief and concise" :
+    const lengthDesc = isFacebook ? "very brief (MUST be under 400 characters total)" :
+                       lengthValue < 33 ? "brief and concise" :
                        lengthValue > 66 ? "detailed and thorough" : "moderate length";
 
     const knowledgeContext = knowledge.slice(0, 30).map(k =>
         `Topic: ${k.question}\nKeywords: ${k.keywords.join(", ")}\nResponse:\n${k.response}`
     ).join("\n\n---\n\n");
 
+    // Get draw schedule context
+    let drawScheduleContext = "";
+    if (typeof DRAW_SCHEDULE !== 'undefined') {
+        drawScheduleContext = DRAW_SCHEDULE.getAIContext();
+    }
+
+    // Format instructions based on inquiry type
+    let formatInstructions = "";
+    if (isFacebook) {
+        formatInstructions = `FORMAT: This is a FACEBOOK COMMENT response.
+- CRITICAL: Response MUST be under 400 characters total (including signature)
+- Write in a single paragraph - NO line breaks, NO bullet points, NO numbered lists
+- Be friendly but concise
+- End with a dash and the staff name (e.g., "-${staffName}")
+- Do NOT include greetings like "Hi" or "Hello" - jump right into the response
+- Do NOT include email signatures, contact info, or closing phrases like "Best regards"`;
+    } else {
+        formatInstructions = `${includeLinks ? "LINKS: Include relevant website links when helpful. Use placeholder [WEBSITE] or [ACCOUNT_URL] if specific URLs aren't known." : "LINKS: Minimize links unless essential."}
+${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : "FORMAT: Use flowing paragraphs, avoid numbered lists unless necessary."}`;
+    }
+
     const systemPrompt = `You are a helpful customer support assistant for hospital lotteries and charitable gaming raffles. These are AGCO-licensed lotteries supporting healthcare organizations.
 
 TONE: Write in a ${toneDesc} tone.
 LENGTH: Keep the response ${lengthDesc}.
-${includeLinks ? "LINKS: Include relevant website links when helpful. Use placeholder [WEBSITE] or [ACCOUNT_URL] if specific URLs aren't known." : "LINKS: Minimize links unless essential."}
-${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : "FORMAT: Use flowing paragraphs, avoid numbered lists unless necessary."}
+${formatInstructions}
 
 IMPORTANT - PLACEHOLDERS: The knowledge base uses placeholders that should be kept in responses:
 - [ORGANIZATION] = The charity/foundation name
@@ -1459,6 +1532,8 @@ IMPORTANT - PLACEHOLDERS: The knowledge base uses placeholders that should be ke
 - [ACCOUNT_URL] = Account management portal
 - [DRAW_DAY] = Day of weekly/monthly draws
 - [DRAW_TIME] = Time of draws
+
+${drawScheduleContext}
 
 Key facts about AGCO-licensed lotteries:
 - 50/50 lotteries: Typically monthly, tickets valid for one draw period only
@@ -1469,18 +1544,28 @@ Key facts about AGCO-licensed lotteries:
 - EastLink internet users experiencing location issues should contact EastLink at 1-888-345-1111
 - Customers CANNOT log in to view their tickets - they can only log in to manage their subscription. Tickets are only available via the confirmation email.
 
+DRAW DATE AWARENESS: If the customer asks about draw dates, Early Birds, or when the next draw is, use the draw schedule information above to give them accurate, specific dates. If there's an Early Bird draw happening today or tomorrow and it's relevant to mention, include that information naturally (e.g., "Don't forget there's a $10,000 Early Bird draw tomorrow!").
+
 ESCALATION: If the inquiry is unclear, bizarre, nonsensical, confrontational, threatening, or simply cannot be answered with the knowledge available, write a polite response explaining that you will pass the email along to your manager who can look into it further. Do not attempt to answer questions you don't have information for.
 
 Knowledge base:
 
 ${knowledgeContext}`;
 
-    const userPrompt = `Write a response to this inquiry. Detect which lottery it's about from context.
+    let userPrompt;
+    if (isFacebook) {
+        userPrompt = `Write a FACEBOOK COMMENT reply to this inquiry. Remember: under 400 characters, single paragraph, end with -${staffName}
+
+INQUIRY:
+${customerEmail}`;
+    } else {
+        userPrompt = `Write a response to this inquiry. Detect which lottery it's about from context.
 
 INQUIRY:
 ${customerEmail}
 
 Sign as: ${staffName}`;
+    }
 
     const response = await fetch(`${API_BASE_URL}/api/generate`, {
         method: "POST",
@@ -1490,7 +1575,7 @@ Sign as: ${staffName}`;
         body: JSON.stringify({
             system: systemPrompt,
             messages: [{ role: "user", content: userPrompt }],
-            max_tokens: 1024
+            max_tokens: isFacebook ? 200 : 1024
         })
     });
 
