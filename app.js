@@ -1521,7 +1521,14 @@ async function generateCustomResponse(customerEmail, knowledge, staffName, optio
 - Be friendly but concise
 - End with a dash and the staff name (e.g., "-${staffName}")
 - Do NOT include greetings like "Hi" or "Hello" - jump right into the response
-- Do NOT include email signatures, contact info, or closing phrases like "Best regards"`;
+- Do NOT include email signatures, contact info, or closing phrases like "Best regards"
+
+FACEBOOK PRIVACY RULE - VERY IMPORTANT:
+- NEVER offer to take direct action on Facebook (e.g., "I'll resend your tickets", "I've forwarded this to our team", "Let me look into your account")
+- Facebook is a public platform where we cannot verify identity or handle sensitive account matters
+- Instead, ALWAYS direct the customer to email us: "Please email us at info@thunderbay5050.ca and our team will assist you as soon as possible."
+- You can acknowledge their concern briefly, but the solution must be to email us
+- Example: "Sorry to hear you're having trouble! Please email us at info@thunderbay5050.ca and our team will assist you as soon as possible. -${staffName}"`;
     } else {
         formatInstructions = `${includeLinks ? "LINKS: Include relevant website links when helpful (www.thunderbay5050.ca for main site, https://account.tbay5050draw.ca for subscription management)." : "LINKS: Minimize links unless essential."}
 ${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : "FORMAT: Use flowing paragraphs, avoid numbered lists unless necessary."}`;
@@ -1565,6 +1572,8 @@ ${knowledgeContext}`;
     let userPrompt;
     if (isFacebook) {
         userPrompt = `Write a FACEBOOK COMMENT reply to this inquiry. Remember: under 400 characters, single paragraph, end with -${staffName}
+
+IMPORTANT: Do NOT offer to take any direct action. Instead, direct them to email info@thunderbay5050.ca for assistance.
 
 INQUIRY:
 ${customerEmail}`;

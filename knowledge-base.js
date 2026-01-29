@@ -11,6 +11,14 @@
 // [DRAW_DAY] - Day of the week for draws (e.g., "Friday")
 // [DRAW_TIME] - Time of draw (e.g., "12:00 PM EST")
 
+// ==================== FACEBOOK COMMENT GUIDELINES ====================
+// IMPORTANT: For Facebook comments, NEVER offer to take direct action like resending tickets,
+// processing refunds, or making account changes. Instead, direct customers to email for assistance.
+// Facebook is a public platform and we cannot verify identity or handle sensitive account matters there.
+//
+// Standard Facebook redirect response:
+// "Please email us at info@thunderbay5050.ca and our team will assist you as soon as possible."
+
 const KNOWLEDGE_BASE = {
     // ==================== 50/50 LOTTERY KNOWLEDGE ====================
     "5050": [
