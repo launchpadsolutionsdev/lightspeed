@@ -1962,62 +1962,282 @@
             color: var(--text-muted);
         }
 
-        /* ==================== FAVORITES PAGE ==================== */
-        .favorites-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+        /* ==================== QUICK REPLIES / TEMPLATES PAGE ==================== */
+        .icon-templates { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+
+        .templates-filter {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
-        .favorite-card {
+        .template-filter-btn {
+            padding: 8px 16px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .template-filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .template-filter-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .template-card {
             background: white;
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
-            padding: 20px;
-            cursor: pointer;
+            padding: 16px;
             transition: all 0.2s ease;
         }
 
-        .favorite-card:hover {
+        .template-card:hover {
             border-color: var(--primary);
             box-shadow: var(--shadow-md);
         }
 
-        .favorite-header {
+        .template-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
-        .favorite-title {
-            font-size: 1rem;
+        .template-title {
+            font-size: 0.95rem;
             font-weight: 600;
             color: var(--text-primary);
         }
 
-        .favorite-preview {
-            font-size: 0.85rem;
+        .template-category {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            background: var(--bg-light);
+            border-radius: 100px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .template-preview {
+            font-size: 0.8rem;
             color: var(--text-secondary);
             line-height: 1.5;
+            max-height: 80px;
+            overflow: hidden;
+            margin-bottom: 12px;
         }
 
-        .favorite-meta {
+        .template-copy-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .template-copy-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .template-copy-btn.copied {
+            background: var(--success);
+        }
+
+        /* ==================== SENTIMENT DETECTION ==================== */
+        .sentiment-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+
+        .sentiment-badge.sentiment-angry {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .sentiment-badge.sentiment-frustrated {
+            background: #fff7ed;
+            color: #ea580c;
+            border: 1px solid #fed7aa;
+        }
+
+        .sentiment-badge.sentiment-neutral {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+
+        .sentiment-badge.sentiment-positive {
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+        }
+
+        /* ==================== INLINE EDIT MODE ==================== */
+        .response-box.editable {
+            border: 2px solid var(--primary);
+            background: white;
+            outline: none;
+        }
+
+        .response-box.editable:focus {
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        }
+
+        .edit-mode-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #fef3c7;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            color: #92400e;
+            margin-bottom: 12px;
+        }
+
+        .edit-actions {
+            display: flex;
+            gap: 8px;
             margin-top: 12px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
         }
 
-        .favorites-empty {
+        .btn-edit-save {
+            padding: 8px 16px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-edit-cancel {
+            padding: 8px 16px;
+            background: var(--bg-light);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        /* ==================== LEADERBOARD ==================== */
+        .leaderboard-container {
+            margin-top: 24px;
+        }
+
+        .leaderboard-podium {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .podium-item {
             text-align: center;
-            padding: 60px 20px;
+            padding: 16px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            min-width: 120px;
+        }
+
+        .podium-item.first {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-color: #f59e0b;
+            transform: scale(1.1);
+        }
+
+        .podium-item.second {
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            border-color: #94a3b8;
+        }
+
+        .podium-item.third {
+            background: linear-gradient(135deg, #fed7aa, #fdba74);
+            border-color: #ea580c;
+        }
+
+        .podium-rank {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .podium-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .podium-count {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .leaderboard-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+        }
+
+        .leaderboard-rank {
+            width: 30px;
+            font-weight: 600;
             color: var(--text-muted);
         }
 
-        .favorites-empty-icon {
-            font-size: 4rem;
-            margin-bottom: 16px;
-            opacity: 0.3;
+        .leaderboard-name {
+            flex: 1;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .leaderboard-count {
+            font-weight: 600;
+            color: var(--primary);
         }
 
         /* ==================== BULK PROCESSING ==================== */
@@ -3660,9 +3880,9 @@
                         <span class="nav-btn-icon">⚡</span>
                         Generator
                     </button>
-                    <button class="nav-btn" data-page="favorites">
-                        <span class="nav-btn-icon">⭐</span>
-                        Favorites
+                    <button class="nav-btn" data-page="templates">
+                        <span class="nav-btn-icon">📋</span>
+                        Quick Replies
                     </button>
                     <button class="nav-btn" data-page="analytics">
                         <span class="nav-btn-icon">📊</span>
@@ -3862,24 +4082,27 @@
                 </div>
             </div>
 
-            <!-- Favorites Page -->
-            <div class="page" id="page-favorites">
+            <!-- Quick Replies / Templates Page -->
+            <div class="page" id="page-templates">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-icon icon-favorites">⭐</div>
+                        <div class="card-icon icon-templates">📋</div>
                         <div>
-                            <div class="card-title">Saved Templates</div>
-                            <div class="card-description">Your favorite responses for quick access</div>
+                            <div class="card-title">Quick Replies</div>
+                            <div class="card-description">One-click copy for common responses</div>
                         </div>
                     </div>
 
-                    <div class="favorites-empty" id="favoritesEmpty">
-                        <div class="favorites-empty-icon">⭐</div>
-                        <p>No saved templates yet</p>
-                        <p style="font-size: 0.85rem; margin-top: 8px;">Save responses using the ⭐ button when generating</p>
+                    <div class="templates-filter">
+                        <button class="template-filter-btn active" data-filter="all">All</button>
+                        <button class="template-filter-btn" data-filter="tickets">Tickets</button>
+                        <button class="template-filter-btn" data-filter="subscription">Subscription</button>
+                        <button class="template-filter-btn" data-filter="general">General</button>
                     </div>
 
-                    <div class="favorites-grid" id="favoritesGrid"></div>
+                    <div class="templates-grid" id="templatesGrid">
+                        <!-- Templates will be populated by JavaScript -->
+                    </div>
                 </div>
             </div>
 
@@ -3929,6 +4152,17 @@
                             </div>
                         </div>
                         <div class="monthly-breakdown" id="monthlyBreakdown"></div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-analytics">🏆</div>
+                            <div>
+                                <div class="card-title">Leaderboard</div>
+                                <div class="card-description">Top response generators</div>
+                            </div>
+                        </div>
+                        <div class="leaderboard-container" id="leaderboardContainer"></div>
                     </div>
 
                     <div class="card" style="grid-column: 1 / -1;">

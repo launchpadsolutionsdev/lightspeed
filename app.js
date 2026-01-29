@@ -752,6 +752,11 @@ function setupEventListeners() {
     // Templates drawer
     document.getElementById("closeDrawer").addEventListener("click", closeTemplatesDrawer);
     document.getElementById("drawerOverlay").addEventListener("click", closeTemplatesDrawer);
+
+    // Quick Reply template filters
+    document.querySelectorAll(".template-filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => setTemplateFilter(btn.dataset.filter, btn));
+    });
 }
 
 // ==================== DATA ANALYSIS TOOL ====================
@@ -1365,6 +1370,8 @@ function switchPage(pageId) {
         updateAnalytics();
     } else if (pageId === "favorites") {
         renderFavorites();
+    } else if (pageId === "templates") {
+        renderTemplates();
     }
 }
 
@@ -1594,7 +1601,11 @@ Sign as: ${staffName}`;
 function displayResults(response, historyId) {
     const qualityChecks = performQualityChecks(response);
 
+    // Get sentiment from the original inquiry
+    const sentimentHtml = currentInquiry ? displaySentimentBadge(currentInquiry) : '';
+
     document.getElementById("responseArea").innerHTML = `
+        ${sentimentHtml}
         <div class="response-section">
             <div class="response-header">
                 <div class="response-label">
@@ -1602,11 +1613,20 @@ function displayResults(response, historyId) {
                     <span class="response-label-text">Ready to Send</span>
                 </div>
                 <div class="response-actions">
+                    <button class="btn-copy" id="editModeBtn" onclick="toggleEditMode()">✏️ Edit</button>
                     <button class="btn-copy" onclick="copyToClipboard('responseText', this)">📋 Copy</button>
                     <button class="btn-copy" onclick="saveToFavorites()">⭐ Save</button>
                 </div>
             </div>
+            <div class="edit-mode-indicator" id="editModeIndicator" style="display: none;">
+                <span>✏️</span>
+                <span>Edit Mode - Click in the response to make changes</span>
+            </div>
             <div class="response-box" id="responseText">${escapeHtml(response)}</div>
+            <div class="edit-actions" id="editActions" style="display: none;">
+                <button class="btn-edit-save" onclick="saveEdit()">💾 Save Changes</button>
+                <button class="btn-edit-cancel" onclick="cancelEdit()">Cancel</button>
+            </div>
         </div>
 
         <div class="rating-section">
@@ -1979,6 +1999,9 @@ function updateAnalytics() {
 
     document.getElementById("historyList").innerHTML = historyHtml ||
         '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No response history yet.</div>';
+
+    // Render leaderboard
+    renderLeaderboard();
 }
 
 function showHistoryDetail(id) {
@@ -3036,6 +3059,389 @@ function resetDraftAssistant() {
     document.getElementById('draftLoading').style.display = 'none';
     document.getElementById('draftTypeSection').style.display = 'block';
     document.getElementById('draftHeaderActions').style.display = 'none';
+}
+
+// ==================== QUICK REPLY TEMPLATES ====================
+const QUICK_REPLY_TEMPLATES = [
+    {
+        id: "tpl-1",
+        category: "tickets",
+        title: "Ticket Confirmation Email",
+        content: `Hi there,
+
+Thanks for reaching out! Your tickets were sent to your email immediately after purchase. Please check your spam/junk folder if you don't see them in your inbox.
+
+The confirmation email comes from our lottery provider and contains all your ticket numbers. If you still can't find it, let me know and I can have it resent.
+
+Best,
+[NAME]`
+    },
+    {
+        id: "tpl-2",
+        category: "tickets",
+        title: "Resend Ticket Request",
+        content: `Hi there,
+
+I'd be happy to have your tickets resent! I've forwarded your request to our team and they will resend your confirmation email within the next few hours.
+
+Please check your spam/junk folder as well, as sometimes the emails get filtered there.
+
+Best,
+[NAME]`
+    },
+    {
+        id: "tpl-3",
+        category: "subscription",
+        title: "Cancel Subscription",
+        content: `Hi there,
+
+I understand you'd like to cancel your subscription. You can manage your subscription directly at https://account.tbay5050draw.ca - simply log in with your email and click "Manage Subscription" to cancel.
+
+If you need any assistance with the process, please don't hesitate to reach out!
+
+Best,
+[NAME]`
+    },
+    {
+        id: "tpl-4",
+        category: "subscription",
+        title: "Modify Subscription",
+        content: `Hi there,
+
+You can modify your subscription (change the amount or update payment info) by visiting https://account.tbay5050draw.ca and logging in with your email.
+
+From there, you can update your subscription amount, payment method, or pause/cancel as needed.
+
+Let me know if you have any questions!
+
+Best,
+[NAME]`
+    },
+    {
+        id: "tpl-5",
+        category: "general",
+        title: "Location Block (Ontario)",
+        content: `Hi there,
+
+I'm sorry you're experiencing location issues! Our lottery requires you to be physically located in Ontario to purchase tickets.
+
+If you're using a VPN, please disable it. If you're on EastLink internet, there's a known issue where their network shows incorrect locations - you can call EastLink at 1-888-345-1111 to have them update your location.
+
+Let me know if you continue to have trouble after trying these steps.
+
+Best,
+[NAME]`
+    },
+    {
+        id: "tpl-6",
+        category: "general",
+        title: "Winner Notification Process",
+        content: `Hi there,
+
+Congratulations on your interest in our draws! Winners are always contacted directly by phone using the number provided during purchase. We also post winners on our website.
+
+You don't need to check your numbers manually - if you win, we'll reach out to you!
+
+Best,
+[NAME]`
+    },
+    {
+        id: "tpl-7",
+        category: "tickets",
+        title: "Can't Log In to View Tickets",
+        content: `Hi there,
+
+I understand the confusion! The account login at https://account.tbay5050draw.ca is only for managing your subscription - you cannot view your ticket numbers there.
+
+Your ticket numbers are only available in the confirmation email you received when you made your purchase. If you need that email resent, please let me know!
+
+Best,
+[NAME]`
+    },
+    {
+        id: "tpl-8",
+        category: "general",
+        title: "Tax Receipt Request",
+        content: `Hi there,
+
+Unfortunately, we're unable to provide tax receipts for lottery ticket purchases. Under CRA rules, lottery tickets are not considered charitable donations, even when the lottery supports a charity.
+
+Thank you for your understanding and for supporting the Thunder Bay Regional Health Sciences Foundation!
+
+Best,
+[NAME]`
+    }
+];
+
+let currentTemplateFilter = "all";
+
+function renderTemplates() {
+    const container = document.getElementById("templatesGrid");
+    if (!container) return;
+
+    const staffName = defaultName || "Name";
+
+    // Filter templates
+    const filtered = currentTemplateFilter === "all"
+        ? QUICK_REPLY_TEMPLATES
+        : QUICK_REPLY_TEMPLATES.filter(t => t.category === currentTemplateFilter);
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
+                No templates in this category.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map(template => {
+        const content = template.content.replace(/\[NAME\]/g, staffName);
+        return `
+            <div class="template-card">
+                <div class="template-category">${template.category}</div>
+                <div class="template-title">${template.title}</div>
+                <div class="template-preview">${escapeHtml(content.substring(0, 120))}...</div>
+                <button class="template-copy-btn" onclick="copyTemplate('${template.id}', this)">📋 Copy to Clipboard</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function copyTemplate(templateId, btn) {
+    const template = QUICK_REPLY_TEMPLATES.find(t => t.id === templateId);
+    if (!template) return;
+
+    const staffName = defaultName || "Name";
+    const content = template.content.replace(/\[NAME\]/g, staffName);
+
+    navigator.clipboard.writeText(content).then(() => {
+        btn.classList.add("copied");
+        btn.textContent = "✓ Copied!";
+        setTimeout(() => {
+            btn.classList.remove("copied");
+            btn.textContent = "📋 Copy to Clipboard";
+        }, 2000);
+    });
+}
+
+function setTemplateFilter(filter, btn) {
+    currentTemplateFilter = filter;
+
+    // Update active button
+    document.querySelectorAll(".template-filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    renderTemplates();
+}
+
+// ==================== SENTIMENT DETECTION ====================
+function detectSentiment(text) {
+    const lowerText = text.toLowerCase();
+
+    // Angry indicators
+    const angryWords = ["furious", "outraged", "ridiculous", "unacceptable", "disgusted", "infuriated", "livid", "scam", "fraud", "steal", "stolen", "theft", "criminal", "sue", "lawyer", "legal action", "report you", "bbb", "better business"];
+    const angryPunctuation = (text.match(/!{2,}/g) || []).length + (text.match(/\?{2,}/g) || []).length;
+    const allCaps = (text.match(/[A-Z]{4,}/g) || []).length;
+
+    // Frustrated indicators
+    const frustratedWords = ["frustrated", "annoyed", "disappointed", "upset", "confused", "irritated", "fed up", "again", "still", "multiple times", "keep", "several", "third time", "fourth time", "already", "never", "won't", "can't", "doesn't work"];
+
+    // Positive indicators
+    const positiveWords = ["thank", "thanks", "appreciate", "grateful", "great", "wonderful", "excellent", "amazing", "love", "helpful", "awesome", "fantastic", "pleased"];
+
+    // Count matches
+    let angryScore = 0;
+    let frustratedScore = 0;
+    let positiveScore = 0;
+
+    angryWords.forEach(word => {
+        if (lowerText.includes(word)) angryScore += 2;
+    });
+    angryScore += angryPunctuation * 1.5;
+    angryScore += allCaps * 1.5;
+
+    frustratedWords.forEach(word => {
+        if (lowerText.includes(word)) frustratedScore += 1;
+    });
+
+    positiveWords.forEach(word => {
+        if (lowerText.includes(word)) positiveScore += 1;
+    });
+
+    // Determine sentiment
+    if (angryScore >= 3) {
+        return { sentiment: "angry", label: "😠 Angry Customer", class: "sentiment-angry", tip: "Use extra empathy and apologize for their frustration. Keep response calm and solution-focused." };
+    } else if (frustratedScore >= 2 || angryScore >= 1) {
+        return { sentiment: "frustrated", label: "😤 Frustrated", class: "sentiment-frustrated", tip: "Acknowledge their difficulty and provide clear, direct solutions." };
+    } else if (positiveScore >= 2) {
+        return { sentiment: "positive", label: "😊 Positive", class: "sentiment-positive", tip: "Customer seems happy! Match their positive energy." };
+    } else {
+        return { sentiment: "neutral", label: "😐 Neutral", class: "sentiment-neutral", tip: "Standard inquiry - respond with helpful, friendly tone." };
+    }
+}
+
+function displaySentimentBadge(text) {
+    const sentiment = detectSentiment(text);
+    return `
+        <div class="sentiment-badge ${sentiment.class}" title="${sentiment.tip}">
+            ${sentiment.label}
+        </div>
+    `;
+}
+
+// ==================== INLINE EDIT MODE ====================
+let isEditMode = false;
+let originalResponse = "";
+
+function toggleEditMode() {
+    const responseBox = document.getElementById("responseText");
+    const editBtn = document.getElementById("editModeBtn");
+    const editIndicator = document.getElementById("editModeIndicator");
+    const editActions = document.getElementById("editActions");
+
+    if (!responseBox) return;
+
+    if (!isEditMode) {
+        // Enter edit mode
+        isEditMode = true;
+        originalResponse = responseBox.innerText;
+        responseBox.contentEditable = true;
+        responseBox.classList.add("editable");
+        responseBox.focus();
+
+        if (editBtn) {
+            editBtn.innerHTML = "✏️ Editing...";
+            editBtn.classList.add("active");
+        }
+        if (editIndicator) editIndicator.style.display = "flex";
+        if (editActions) editActions.style.display = "flex";
+    } else {
+        // Exit edit mode
+        exitEditMode(false);
+    }
+}
+
+function saveEdit() {
+    const responseBox = document.getElementById("responseText");
+    if (responseBox) {
+        currentResponse = responseBox.innerText;
+    }
+    exitEditMode(true);
+    showToast("Changes saved!", "success");
+}
+
+function cancelEdit() {
+    const responseBox = document.getElementById("responseText");
+    if (responseBox && originalResponse) {
+        responseBox.innerText = originalResponse;
+    }
+    exitEditMode(false);
+}
+
+function exitEditMode(saved) {
+    isEditMode = false;
+    const responseBox = document.getElementById("responseText");
+    const editBtn = document.getElementById("editModeBtn");
+    const editIndicator = document.getElementById("editModeIndicator");
+    const editActions = document.getElementById("editActions");
+
+    if (responseBox) {
+        responseBox.contentEditable = false;
+        responseBox.classList.remove("editable");
+    }
+    if (editBtn) {
+        editBtn.innerHTML = "✏️ Edit";
+        editBtn.classList.remove("active");
+    }
+    if (editIndicator) editIndicator.style.display = "none";
+    if (editActions) editActions.style.display = "none";
+}
+
+// ==================== LEADERBOARD ====================
+function getLeaderboard() {
+    const userCounts = {};
+
+    // Get all users from localStorage
+    const storedUsers = localStorage.getItem("lightspeed_users");
+    if (storedUsers) {
+        try {
+            const allUsers = JSON.parse(storedUsers);
+            allUsers.forEach(user => {
+                const count = user.data && user.data.responseHistory ? user.data.responseHistory.length : 0;
+                if (count > 0) {
+                    userCounts[user.name] = count;
+                }
+            });
+        } catch (e) {
+            console.error("Error loading leaderboard data:", e);
+        }
+    }
+
+    // Sort by count descending
+    return Object.entries(userCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count], index) => ({
+            rank: index + 1,
+            name: name,
+            count: count
+        }));
+}
+
+function renderLeaderboard() {
+    const container = document.getElementById("leaderboardContainer");
+    if (!container) return;
+
+    const leaderboard = getLeaderboard();
+
+    if (leaderboard.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                No data yet. Generate some responses to see the leaderboard!
+            </div>
+        `;
+        return;
+    }
+
+    // Top 3 for podium
+    const podiumHtml = leaderboard.length >= 1 ? `
+        <div class="leaderboard-podium">
+            ${leaderboard[1] ? `
+                <div class="podium-item second">
+                    <div class="podium-rank">🥈</div>
+                    <div class="podium-name">${escapeHtml(leaderboard[1].name)}</div>
+                    <div class="podium-count">${leaderboard[1].count} responses</div>
+                </div>
+            ` : ''}
+            <div class="podium-item first">
+                <div class="podium-rank">🥇</div>
+                <div class="podium-name">${escapeHtml(leaderboard[0].name)}</div>
+                <div class="podium-count">${leaderboard[0].count} responses</div>
+            </div>
+            ${leaderboard[2] ? `
+                <div class="podium-item third">
+                    <div class="podium-rank">🥉</div>
+                    <div class="podium-name">${escapeHtml(leaderboard[2].name)}</div>
+                    <div class="podium-count">${leaderboard[2].count} responses</div>
+                </div>
+            ` : ''}
+        </div>
+    ` : '';
+
+    // Rest of the list (4th place and below)
+    const listHtml = leaderboard.length > 3 ? `
+        <div class="leaderboard-list">
+            ${leaderboard.slice(3).map(entry => `
+                <div class="leaderboard-row">
+                    <div class="leaderboard-rank">#${entry.rank}</div>
+                    <div class="leaderboard-name">${escapeHtml(entry.name)}</div>
+                    <div class="leaderboard-count">${entry.count}</div>
+                </div>
+            `).join('')}
+        </div>
+    ` : '';
+
+    container.innerHTML = podiumHtml + listHtml;
 }
 
 // ==================== INIT ====================
