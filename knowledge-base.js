@@ -2,10 +2,10 @@
 // Generic Knowledge Base for Hospital Lotteries & Charitable Gaming
 //
 // PLACEHOLDERS USED:
-// [ORGANIZATION] - The lottery/charity name (e.g., "Thunder Bay Regional Health Sciences Foundation")
+// Thunder Bay Regional Health Sciences Foundation - The lottery/charity name (e.g., "Thunder Bay Regional Health Sciences Foundation")
 // [LOTTERY_NAME] - The specific lottery name (e.g., "Thunder Bay 50/50")
-// [WEBSITE] - Main lottery website
-// [ACCOUNT_URL] - Account management portal URL
+// www.thunderbay5050.ca - Main lottery website
+// your subscription account (click here: https://account.tbay5050draw.ca) - Account management portal URL
 // [SUPPORT_EMAIL] - Support email address
 // [SUPPORT_PHONE] - Support phone number
 // [DRAW_DAY] - Day of the week for draws (e.g., "Friday")
@@ -21,7 +21,7 @@ const KNOWLEDGE_BASE = {
             question: "Customer didn't receive their ticket confirmation email",
             response: `Hi there,
 
-Thank you for reaching out and for your support of [ORGANIZATION]!
+Thank you for reaching out and for your support of Thunder Bay Regional Health Sciences Foundation!
 
 I'm sorry to hear your ticket confirmation didn't arrive. Sometimes these emails can end up in spam or junk folders, so please check there first.
 
@@ -45,7 +45,7 @@ I've just forwarded your ticket confirmation to the email address on file. Pleas
 
 If you'd like me to send them to a different email address, just let me know and I'll update that for you.
 
-Thank you for supporting [ORGANIZATION]!
+Thank you for supporting Thunder Bay Regional Health Sciences Foundation!
 
 Best regards`
         },
@@ -97,7 +97,7 @@ Here's how it works:
 • Your tickets are purchased and emailed to you automatically
 • You're entered into every draw without having to remember to buy tickets
 
-You can cancel or modify your subscription at any time through your account at [ACCOUNT_URL], or just reach out to us and we'll help you make changes.
+You can cancel or modify your subscription at any time through your account at your subscription account (click here: https://account.tbay5050draw.ca), or just reach out to us and we'll help you make changes.
 
 Would you like help setting up a subscription?
 
@@ -111,7 +111,7 @@ Best regards`
 
 Thank you for reaching out!
 
-When you go to purchase your tickets on [WEBSITE], you'll see a checkbox option at the bottom of the page, just above the "Buy Tickets" button. Selecting this box will sign you up for a subscription.
+When you go to purchase your tickets on www.thunderbay5050.ca, you'll see a checkbox option at the bottom of the page, just above the "Buy Tickets" button. Selecting this box will sign you up for a subscription.
 
 Your tickets will then be automatically purchased and sent to you each draw period, and your payment method will be charged automatically.
 
@@ -127,7 +127,7 @@ Best regards`
 
 I can help you with that!
 
-You can cancel your subscription anytime by logging into your account at [ACCOUNT_URL] and going to the subscription management section.
+You can cancel your subscription anytime by logging into your account at your subscription account (click here: https://account.tbay5050draw.ca) and going to the subscription management section.
 
 Alternatively, I can cancel it for you right now. Could you please confirm your account email address so I can locate your subscription?
 
@@ -163,7 +163,7 @@ Best regards`
 
 Of course! You can modify your subscription at any time.
 
-The easiest way is to log into your account at [ACCOUNT_URL] and adjust your subscription settings there.
+The easiest way is to log into your account at your subscription account (click here: https://account.tbay5050draw.ca) and adjust your subscription settings there.
 
 If you'd prefer, I can make the change for you. Just let me know:
 • Your account email address
@@ -261,7 +261,7 @@ Best regards`
 
 Thank you for reaching out!
 
-You can update your payment method at any time by logging into your account at [ACCOUNT_URL].
+You can update your payment method at any time by logging into your account at your subscription account (click here: https://account.tbay5050draw.ca).
 
 Once logged in, navigate to your profile or account settings. From there, you'll be able to add, remove, or modify your payment methods and billing information.
 
@@ -285,7 +285,7 @@ If you win:
 • We never ask winners to pay fees or provide banking info to claim prizes
 
 To check results yourself:
-• Visit [WEBSITE] after each draw to see the winning numbers
+• Visit www.thunderbay5050.ca after each draw to see the winning numbers
 • Compare them against the ticket numbers in your confirmation email
 
 The winning numbers are typically posted shortly after the draw concludes. But don't worry - we call all our winners, so you don't need to check manually!
@@ -296,15 +296,15 @@ Best regards`
         },
         {
             id: "5050-when-is-draw",
-            keywords: ["when is draw", "draw date", "next draw", "when does draw happen", "draw time"],
+            keywords: ["when is draw", "draw date", "next draw", "when does draw happen", "draw time", "early bird", "grand prize"],
             question: "Customer wants to know when the draw takes place",
             response: `Hi there,
 
-Our draws take place on [DRAW_DAY] at [DRAW_TIME].
+Great question! Our draws happen throughout the month - we have multiple Early Bird draws plus the Grand Prize draw at the end of each month.
 
-The winning numbers are posted on [WEBSITE] shortly after the draw concludes.
+All draws take place at 11:00 AM, and the deadline to purchase tickets for each draw is 11:59 PM the night before.
 
-Remember, tickets must be purchased before the draw cutoff time to be eligible for that draw. Any tickets purchased after the cutoff will be entered into the next draw.
+For the full schedule of upcoming Early Bird draws and the Grand Prize draw date, please visit www.thunderbay5050.ca - the dates change each month so the website always has the most current information!
 
 Is there anything else I can help you with?
 
@@ -337,7 +337,7 @@ Best regards`
 
 The jackpot amount changes as more tickets are sold - the winner takes home 50% of the total pot!
 
-For the most up-to-date jackpot amount, please visit [WEBSITE]. The jackpot counter updates in real-time as tickets are purchased.
+For the most up-to-date jackpot amount, please visit www.thunderbay5050.ca. The jackpot counter updates in real-time as tickets are purchased.
 
 The more tickets sold, the bigger the prize - so spread the word!
 
@@ -353,7 +353,7 @@ Best regards`
 
 Thank you for reaching out!
 
-You can view our winners by visiting [WEBSITE] and looking for the "Winners" section.
+You can view our winners by visiting www.thunderbay5050.ca and looking for the "Winners" section.
 
 We post all our winners after each draw so you can see who's won!
 
@@ -404,7 +404,7 @@ Best regards`
 I'm sorry you're having trouble accessing your account. Let me help!
 
 To reset your password:
-1. Go to [ACCOUNT_URL]
+1. Go to your subscription account (click here: https://account.tbay5050draw.ca)
 2. Click "Forgot Password" below the login fields
 3. Enter your email address
 4. Check your inbox for a password reset link
@@ -422,7 +422,7 @@ Best regards`
             question: "Customer wants to update their account information",
             response: `Hi there,
 
-You can update your account information by logging into your account at [ACCOUNT_URL].
+You can update your account information by logging into your account at your subscription account (click here: https://account.tbay5050draw.ca).
 
 Once logged in, look for "Account Settings" or "Profile" where you can update:
 • Email address
@@ -539,7 +539,7 @@ Best regards`
             question: "Customer asking about mobile app",
             response: `Hi there,
 
-We don't currently have a dedicated mobile app, but our website at [WEBSITE] is fully mobile-responsive and works great on smartphones and tablets!
+We don't currently have a dedicated mobile app, but our website at www.thunderbay5050.ca is fully mobile-responsive and works great on smartphones and tablets!
 
 Simply visit the website in your phone's browser to:
 • Purchase tickets
@@ -599,13 +599,13 @@ Best regards`
             question: "Customer asking for a tax receipt",
             response: `Hi there,
 
-Thank you for your support of [ORGANIZATION]!
+Thank you for your support of Thunder Bay Regional Health Sciences Foundation!
 
 Unfortunately, we're not able to issue tax receipts for lottery ticket purchases. Under Canadian tax law, lottery tickets are not considered charitable donations, even when the proceeds support a charitable cause.
 
 The purchase is considered a gaming transaction rather than a donation, which is why tax receipts cannot be provided.
 
-If you're interested in making a tax-deductible donation to [ORGANIZATION], I'd be happy to provide information on how to do that separately.
+If you're interested in making a tax-deductible donation to Thunder Bay Regional Health Sciences Foundation, I'd be happy to provide information on how to do that separately.
 
 Thank you for understanding!
 
@@ -619,7 +619,7 @@ Best regards`
 
 Thank you for asking - it's wonderful to know you care about where your support goes!
 
-Proceeds from our lottery directly support [ORGANIZATION] and its mission. Lottery funds help provide vital equipment, programs, and services that make a real difference in our community.
+Proceeds from our lottery directly support Thunder Bay Regional Health Sciences Foundation and its mission. Lottery funds help provide vital equipment, programs, and services that make a real difference in our community.
 
 Every ticket purchased helps us continue this important work. We're so grateful for supporters like you who make it possible.
 
@@ -639,11 +639,11 @@ Great question! To purchase tickets, you must:
 
 • Be 18 years of age or older
 • Be physically located in Ontario at the time of purchase
-• Not be an employee or immediate family member of [ORGANIZATION] or the lottery operator
+• Not be an employee or immediate family member of Thunder Bay Regional Health Sciences Foundation or the lottery operator
 
 These rules are set by AGCO (Alcohol and Gaming Commission of Ontario) to ensure fair and responsible gaming.
 
-If you meet these requirements, you're welcome to play! Visit [WEBSITE] to get your tickets.
+If you meet these requirements, you're welcome to play! Visit www.thunderbay5050.ca to get your tickets.
 
 Best regards`
         },
@@ -657,9 +657,9 @@ Great question - it's smart to be cautious!
 
 Our lottery is 100% legitimate. It's licensed and regulated by the Alcohol & Gaming Commission of Ontario (AGCO). All draws are conducted using AGCO-approved systems, and we operate under strict regulatory oversight.
 
-Lottery proceeds support [ORGANIZATION] and have helped fund vital equipment and programs for our community.
+Lottery proceeds support Thunder Bay Regional Health Sciences Foundation and have helped fund vital equipment and programs for our community.
 
-You can learn more about our lottery and see our winners at [WEBSITE].
+You can learn more about our lottery and see our winners at www.thunderbay5050.ca.
 
 If you have any other concerns, please don't hesitate to reach out!
 
@@ -752,7 +752,7 @@ Best regards`
             question: "Customer asking about remaining cards in the deck",
             response: `Hi there,
 
-You can see exactly which cards remain in the deck on our website at [WEBSITE].
+You can see exactly which cards remain in the deck on our website at www.thunderbay5050.ca.
 
 We display:
 • Which cards have been revealed (eliminated)
@@ -796,7 +796,7 @@ Each week:
 
 As more cards are eliminated, the excitement builds - and eventually, someone will find that Ace!
 
-Don't miss your chance to be part of it. Get your tickets at [WEBSITE].
+Don't miss your chance to be part of it. Get your tickets at www.thunderbay5050.ca.
 
 Best regards`
         },
@@ -808,7 +808,7 @@ Best regards`
             question: "Customer didn't receive their ticket confirmation email",
             response: `Hi there,
 
-Thank you for reaching out and for supporting [ORGANIZATION]!
+Thank you for reaching out and for supporting Thunder Bay Regional Health Sciences Foundation!
 
 I'm sorry your tickets haven't arrived. These emails can sometimes end up in spam or junk folders, so please check there first.
 
@@ -845,12 +845,12 @@ Best regards`
 Setting up a subscription is easy and ensures you never miss a draw!
 
 Here's how to subscribe:
-1. Visit [WEBSITE]
+1. Visit www.thunderbay5050.ca
 2. Select your ticket package
 3. During checkout, select the subscription option
 4. Your payment method will be charged automatically each week before the draw
 
-You can manage or cancel your subscription anytime at [ACCOUNT_URL].
+You can manage or cancel your subscription anytime at your subscription account (click here: https://account.tbay5050draw.ca).
 
 With a subscription, your tickets are purchased and emailed to you automatically each week - one less thing to remember!
 
@@ -866,7 +866,7 @@ Best regards`
 
 I can help you with that!
 
-You can cancel your subscription by logging into your account at [ACCOUNT_URL] and navigating to subscription settings.
+You can cancel your subscription by logging into your account at your subscription account (click here: https://account.tbay5050draw.ca) and navigating to subscription settings.
 
 Or, if you'd prefer, I can cancel it for you. Just confirm the email address on your account.
 
@@ -882,7 +882,7 @@ Best regards`
             question: "Customer wants to manage their subscription",
             response: `Hi there,
 
-You can manage your subscription by visiting [WEBSITE] and clicking "Manage Subscriptions" at the top of the page.
+You can manage your subscription by visiting www.thunderbay5050.ca and clicking "Manage Subscriptions" at the top of the page.
 
 You'll be prompted to log in, and once you're in, you can modify or cancel your subscription anytime!
 
@@ -914,11 +914,11 @@ Best regards`
             question: "Customer wants to know when the draw takes place",
             response: `Hi there,
 
-Our weekly draw takes place every [DRAW_DAY] at [DRAW_TIME].
+Our weekly draw takes place at 11:00 AM. The deadline to purchase tickets is 11:59 PM the night before each draw.
 
-You can watch the draw live on our website or social media channels! The winning ticket number and revealed card are also posted on [WEBSITE] shortly after.
+You can watch the draw live on our website or social media channels! The winning ticket number and revealed card are also posted on www.thunderbay5050.ca shortly after.
 
-Remember, tickets must be purchased before the cutoff time to be eligible for that week's draw.
+For the current draw schedule, please visit www.thunderbay5050.ca!
 
 Good luck!
 
@@ -933,7 +933,7 @@ Best regards`
 Here's how to find out if you've won:
 
 After each draw:
-• The winning ticket number is posted on [WEBSITE]
+• The winning ticket number is posted on www.thunderbay5050.ca
 • Compare it to the ticket numbers in your confirmation email
 
 If you win:
@@ -955,7 +955,7 @@ Best regards`
 
 The progressive jackpot grows each week until someone finds the Ace of Spades!
 
-For the current jackpot amount, please visit [WEBSITE] - it's displayed prominently on the homepage and updates in real-time.
+For the current jackpot amount, please visit www.thunderbay5050.ca - it's displayed prominently on the homepage and updates in real-time.
 
 Remember, there's also a weekly prize for the ticket holder who gets to pick a card, even if they don't find the Ace of Spades. So there's something to win every week!
 
@@ -1093,7 +1093,7 @@ Best regards`
 I'm sorry you're having trouble logging in. Let me help!
 
 To reset your password:
-1. Go to [ACCOUNT_URL]
+1. Go to your subscription account (click here: https://account.tbay5050draw.ca)
 2. Click "Forgot Password"
 3. Enter your email address
 4. Check your inbox for a reset link (check spam/junk too)
@@ -1109,7 +1109,7 @@ Best regards`
             question: "Customer wants to update account information",
             response: `Hi there,
 
-You can update your account information by logging in at [ACCOUNT_URL].
+You can update your account information by logging in at your subscription account (click here: https://account.tbay5050draw.ca).
 
 Once logged in, navigate to your profile or account settings to update:
 • Email address
@@ -1147,11 +1147,11 @@ To participate in our Catch the Ace lottery, you must:
 
 • Be 18 years of age or older
 • Be physically located in Ontario at the time of purchase
-• Not be an employee or immediate family member of [ORGANIZATION] or the lottery operator
+• Not be an employee or immediate family member of Thunder Bay Regional Health Sciences Foundation or the lottery operator
 
 These requirements are set by AGCO (Alcohol and Gaming Commission of Ontario) to ensure fair and responsible gaming.
 
-If you meet these criteria, head to [WEBSITE] to get your tickets for this week's draw!
+If you meet these criteria, head to www.thunderbay5050.ca to get your tickets for this week's draw!
 
 Best regards`
         },
@@ -1161,11 +1161,11 @@ Best regards`
             question: "Customer asking for a tax receipt",
             response: `Hi there,
 
-Thank you for your support of [ORGANIZATION]!
+Thank you for your support of Thunder Bay Regional Health Sciences Foundation!
 
 Unfortunately, we cannot issue tax receipts for lottery ticket purchases. Under Canadian tax law, lottery tickets are considered a gaming purchase rather than a charitable donation, even though the proceeds support our charitable work.
 
-If you're interested in making a tax-deductible donation to [ORGANIZATION], I'd be happy to provide information on how to do that separately.
+If you're interested in making a tax-deductible donation to Thunder Bay Regional Health Sciences Foundation, I'd be happy to provide information on how to do that separately.
 
 Thank you for understanding, and good luck in the draw!
 
@@ -1179,7 +1179,7 @@ Best regards`
 
 Thank you for asking - we love supporters who care about the impact of their contribution!
 
-Proceeds from our Catch the Ace lottery directly support [ORGANIZATION] and its mission to serve our community.
+Proceeds from our Catch the Ace lottery directly support Thunder Bay Regional Health Sciences Foundation and its mission to serve our community.
 
 Every ticket purchased helps fund essential programs, equipment, and services that make a real difference in people's lives.
 
@@ -1217,9 +1217,9 @@ Great question - it's always smart to be careful!
 
 Our Catch the Ace lottery is 100% legitimate. It's licensed and regulated by the Alcohol & Gaming Commission of Ontario (AGCO). All draws are conducted using AGCO-approved systems under strict regulatory oversight.
 
-Lottery proceeds directly support [ORGANIZATION] and have helped fund vital equipment and programs for our community.
+Lottery proceeds directly support Thunder Bay Regional Health Sciences Foundation and have helped fund vital equipment and programs for our community.
 
-You can learn more and see our winners at [WEBSITE].
+You can learn more and see our winners at www.thunderbay5050.ca.
 
 If you have any other questions, please don't hesitate to ask!
 

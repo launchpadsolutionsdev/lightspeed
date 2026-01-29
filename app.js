@@ -1516,22 +1516,22 @@ async function generateCustomResponse(customerEmail, knowledge, staffName, optio
 - Do NOT include greetings like "Hi" or "Hello" - jump right into the response
 - Do NOT include email signatures, contact info, or closing phrases like "Best regards"`;
     } else {
-        formatInstructions = `${includeLinks ? "LINKS: Include relevant website links when helpful. Use placeholder [WEBSITE] or [ACCOUNT_URL] if specific URLs aren't known." : "LINKS: Minimize links unless essential."}
+        formatInstructions = `${includeLinks ? "LINKS: Include relevant website links when helpful (www.thunderbay5050.ca for main site, https://account.tbay5050draw.ca for subscription management)." : "LINKS: Minimize links unless essential."}
 ${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : "FORMAT: Use flowing paragraphs, avoid numbered lists unless necessary."}`;
     }
 
-    const systemPrompt = `You are a helpful customer support assistant for hospital lotteries and charitable gaming raffles. These are AGCO-licensed lotteries supporting healthcare organizations.
+    const systemPrompt = `You are a helpful customer support assistant for Thunder Bay 50/50, an AGCO-licensed lottery supporting Thunder Bay Regional Health Sciences Foundation.
 
 TONE: Write in a ${toneDesc} tone.
 LENGTH: Keep the response ${lengthDesc}.
 ${formatInstructions}
 
-IMPORTANT - PLACEHOLDERS: The knowledge base uses placeholders that should be kept in responses:
-- [ORGANIZATION] = The charity/foundation name
-- [WEBSITE] = Main lottery website
-- [ACCOUNT_URL] = Account management portal
-- [DRAW_DAY] = Day of weekly/monthly draws
-- [DRAW_TIME] = Time of draws
+ORGANIZATION INFO:
+- Organization: Thunder Bay Regional Health Sciences Foundation
+- Lottery Website: www.thunderbay5050.ca
+- Subscription Management: https://account.tbay5050draw.ca
+- All draws happen at 11:00 AM
+- Ticket purchase deadline: 11:59 PM the night before each draw
 
 ${drawScheduleContext}
 
