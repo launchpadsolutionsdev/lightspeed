@@ -2,7 +2,7 @@
 // Generic Knowledge Base for Hospital Lotteries & Charitable Gaming
 //
 // PLACEHOLDERS USED:
-// Thunder Bay Regional Health Sciences Foundation - The lottery/charity name (e.g., "Thunder Bay Regional Health Sciences Foundation")
+// the Thunder Bay Regional Health Sciences Foundation - The lottery/charity name (e.g., "the Thunder Bay Regional Health Sciences Foundation")
 // [LOTTERY_NAME] - The specific lottery name (e.g., "Thunder Bay 50/50")
 // www.thunderbay5050.ca - Main lottery website
 // your subscription account (click here: https://account.tbay5050draw.ca) - Account management portal URL
@@ -21,7 +21,7 @@ const KNOWLEDGE_BASE = {
             question: "Customer didn't receive their ticket confirmation email",
             response: `Hi there,
 
-Thank you for reaching out and for your support of Thunder Bay Regional Health Sciences Foundation!
+Thank you for reaching out and for your support of the Thunder Bay Regional Health Sciences Foundation!
 
 I'm sorry to hear your ticket confirmation didn't arrive. Sometimes these emails can end up in spam or junk folders, so please check there first.
 
@@ -45,7 +45,7 @@ I've just forwarded your ticket confirmation to the email address on file. Pleas
 
 If you'd like me to send them to a different email address, just let me know and I'll update that for you.
 
-Thank you for supporting Thunder Bay Regional Health Sciences Foundation!
+Thank you for supporting the Thunder Bay Regional Health Sciences Foundation!
 
 Best regards`
         },
@@ -599,13 +599,13 @@ Best regards`
             question: "Customer asking for a tax receipt",
             response: `Hi there,
 
-Thank you for your support of Thunder Bay Regional Health Sciences Foundation!
+Thank you for your support of the Thunder Bay Regional Health Sciences Foundation!
 
 Unfortunately, we're not able to issue tax receipts for lottery ticket purchases. Under Canadian tax law, lottery tickets are not considered charitable donations, even when the proceeds support a charitable cause.
 
 The purchase is considered a gaming transaction rather than a donation, which is why tax receipts cannot be provided.
 
-If you're interested in making a tax-deductible donation to Thunder Bay Regional Health Sciences Foundation, I'd be happy to provide information on how to do that separately.
+If you're interested in making a tax-deductible donation to the Thunder Bay Regional Health Sciences Foundation, I'd be happy to provide information on how to do that separately.
 
 Thank you for understanding!
 
@@ -619,7 +619,7 @@ Best regards`
 
 Thank you for asking - it's wonderful to know you care about where your support goes!
 
-Proceeds from our lottery directly support Thunder Bay Regional Health Sciences Foundation and its mission. Lottery funds help provide vital equipment, programs, and services that make a real difference in our community.
+Proceeds from our lottery directly support the Thunder Bay Regional Health Sciences Foundation and its mission. Lottery funds help provide vital equipment, programs, and services that make a real difference in our community.
 
 Every ticket purchased helps us continue this important work. We're so grateful for supporters like you who make it possible.
 
@@ -639,7 +639,7 @@ Great question! To purchase tickets, you must:
 
 • Be 18 years of age or older
 • Be physically located in Ontario at the time of purchase
-• Not be an employee or immediate family member of Thunder Bay Regional Health Sciences Foundation or the lottery operator
+• Not be an employee or immediate family member of the Thunder Bay Regional Health Sciences Foundation or the lottery operator
 
 These rules are set by AGCO (Alcohol and Gaming Commission of Ontario) to ensure fair and responsible gaming.
 
@@ -657,7 +657,7 @@ Great question - it's smart to be cautious!
 
 Our lottery is 100% legitimate. It's licensed and regulated by the Alcohol & Gaming Commission of Ontario (AGCO). All draws are conducted using AGCO-approved systems, and we operate under strict regulatory oversight.
 
-Lottery proceeds support Thunder Bay Regional Health Sciences Foundation and have helped fund vital equipment and programs for our community.
+Lottery proceeds support the Thunder Bay Regional Health Sciences Foundation and have helped fund vital equipment and programs for our community.
 
 You can learn more about our lottery and see our winners at www.thunderbay5050.ca.
 
@@ -808,7 +808,7 @@ Best regards`
             question: "Customer didn't receive their ticket confirmation email",
             response: `Hi there,
 
-Thank you for reaching out and for supporting Thunder Bay Regional Health Sciences Foundation!
+Thank you for reaching out and for supporting the Thunder Bay Regional Health Sciences Foundation!
 
 I'm sorry your tickets haven't arrived. These emails can sometimes end up in spam or junk folders, so please check there first.
 
@@ -1147,7 +1147,7 @@ To participate in our Catch the Ace lottery, you must:
 
 • Be 18 years of age or older
 • Be physically located in Ontario at the time of purchase
-• Not be an employee or immediate family member of Thunder Bay Regional Health Sciences Foundation or the lottery operator
+• Not be an employee or immediate family member of the Thunder Bay Regional Health Sciences Foundation or the lottery operator
 
 These requirements are set by AGCO (Alcohol and Gaming Commission of Ontario) to ensure fair and responsible gaming.
 
@@ -1161,11 +1161,11 @@ Best regards`
             question: "Customer asking for a tax receipt",
             response: `Hi there,
 
-Thank you for your support of Thunder Bay Regional Health Sciences Foundation!
+Thank you for your support of the Thunder Bay Regional Health Sciences Foundation!
 
 Unfortunately, we cannot issue tax receipts for lottery ticket purchases. Under Canadian tax law, lottery tickets are considered a gaming purchase rather than a charitable donation, even though the proceeds support our charitable work.
 
-If you're interested in making a tax-deductible donation to Thunder Bay Regional Health Sciences Foundation, I'd be happy to provide information on how to do that separately.
+If you're interested in making a tax-deductible donation to the Thunder Bay Regional Health Sciences Foundation, I'd be happy to provide information on how to do that separately.
 
 Thank you for understanding, and good luck in the draw!
 
@@ -1179,7 +1179,7 @@ Best regards`
 
 Thank you for asking - we love supporters who care about the impact of their contribution!
 
-Proceeds from our Catch the Ace lottery directly support Thunder Bay Regional Health Sciences Foundation and its mission to serve our community.
+Proceeds from our Catch the Ace lottery directly support the Thunder Bay Regional Health Sciences Foundation and its mission to serve our community.
 
 Every ticket purchased helps fund essential programs, equipment, and services that make a real difference in people's lives.
 
@@ -1217,7 +1217,7 @@ Great question - it's always smart to be careful!
 
 Our Catch the Ace lottery is 100% legitimate. It's licensed and regulated by the Alcohol & Gaming Commission of Ontario (AGCO). All draws are conducted using AGCO-approved systems under strict regulatory oversight.
 
-Lottery proceeds directly support Thunder Bay Regional Health Sciences Foundation and have helped fund vital equipment and programs for our community.
+Lottery proceeds directly support the Thunder Bay Regional Health Sciences Foundation and have helped fund vital equipment and programs for our community.
 
 You can learn more and see our winners at www.thunderbay5050.ca.
 
