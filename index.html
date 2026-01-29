@@ -1695,6 +1695,58 @@
             margin-top: 4px;
         }
 
+        /* Analytics Header Note */
+        .analytics-header-note {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .analytics-header-note span {
+            font-weight: 600;
+        }
+
+        /* Monthly Breakdown */
+        .monthly-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .monthly-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            border-left: 3px solid var(--primary);
+        }
+
+        .monthly-stat-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .monthly-stat-count {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-right: 16px;
+        }
+
+        .monthly-stat-rating {
+            color: var(--primary);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
         /* ==================== KNOWLEDGE PAGE ==================== */
         .knowledge-grid {
             display: grid;
@@ -3833,6 +3885,10 @@
 
             <!-- Analytics Page -->
             <div class="page" id="page-analytics">
+                <div class="analytics-header-note">
+                    <span>📊 Team Analytics</span> - Showing combined data from all team members
+                </div>
+
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value" id="analyticsTotal">0</div>
@@ -3866,10 +3922,21 @@
 
                     <div class="card">
                         <div class="card-header">
+                            <div class="card-icon icon-calendar">📅</div>
+                            <div>
+                                <div class="card-title">Monthly Breakdown</div>
+                                <div class="card-description">Responses by month</div>
+                            </div>
+                        </div>
+                        <div class="monthly-breakdown" id="monthlyBreakdown"></div>
+                    </div>
+
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
                             <div class="card-icon icon-knowledge">📜</div>
                             <div>
-                                <div class="card-title">Recent History</div>
-                                <div class="card-description">Your latest generated responses</div>
+                                <div class="card-title">Team History</div>
+                                <div class="card-description">Recent responses from all team members</div>
                             </div>
                         </div>
                         <div class="history-list" id="historyList"></div>

@@ -1835,31 +1835,100 @@ function deleteFavorite(id) {
 }
 
 // ==================== ANALYTICS ====================
-function updateAnalytics() {
-    // Total responses
-    document.getElementById("analyticsTotal").textContent = responseHistory.length;
 
-    // Today's responses
+// Get all response history from ALL users (team-wide analytics)
+function getAllUsersResponseHistory() {
+    const allHistory = [];
+
+    // Get all users from localStorage
+    const storedUsers = localStorage.getItem("lightspeed_users");
+    if (storedUsers) {
+        try {
+            const allUsers = JSON.parse(storedUsers);
+            allUsers.forEach(user => {
+                if (user.data && user.data.responseHistory) {
+                    user.data.responseHistory.forEach(entry => {
+                        allHistory.push({
+                            ...entry,
+                            userName: user.name
+                        });
+                    });
+                }
+            });
+        } catch (e) {
+            console.error("Error loading users for analytics:", e);
+        }
+    }
+
+    // Sort by timestamp descending (newest first)
+    allHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    return allHistory;
+}
+
+// Get monthly breakdown of responses
+function getMonthlyBreakdown(history) {
+    const months = {};
+
+    history.forEach(h => {
+        const date = new Date(h.timestamp);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+        if (!months[monthKey]) {
+            months[monthKey] = {
+                name: monthName,
+                count: 0,
+                positive: 0,
+                negative: 0,
+                rated: 0
+            };
+        }
+
+        months[monthKey].count++;
+        if (h.rating === 'positive') {
+            months[monthKey].positive++;
+            months[monthKey].rated++;
+        } else if (h.rating === 'negative') {
+            months[monthKey].negative++;
+            months[monthKey].rated++;
+        }
+    });
+
+    // Sort by month key descending (newest first)
+    return Object.entries(months)
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([key, data]) => data);
+}
+
+function updateAnalytics() {
+    // Get ALL users' response history for team-wide analytics
+    const allHistory = getAllUsersResponseHistory();
+
+    // Total responses (team-wide)
+    document.getElementById("analyticsTotal").textContent = allHistory.length;
+
+    // Today's responses (team-wide)
     const today = new Date().toDateString();
-    const todayCount = responseHistory.filter(h =>
+    const todayCount = allHistory.filter(h =>
         new Date(h.timestamp).toDateString() === today
     ).length;
     document.getElementById("analyticsToday").textContent = todayCount;
 
-    // Positive rating percentage
-    const rated = responseHistory.filter(h => h.rating);
+    // Positive rating percentage (team-wide)
+    const rated = allHistory.filter(h => h.rating);
     const positive = rated.filter(h => h.rating === 'positive').length;
     const percentage = rated.length > 0 ? Math.round(positive / rated.length * 100) : 0;
     document.getElementById("analyticsPositive").textContent = `${percentage}%`;
 
-    // Average response time
-    const times = responseHistory.filter(h => h.responseTime).map(h => h.responseTime);
+    // Average response time (team-wide)
+    const times = allHistory.filter(h => h.responseTime).map(h => h.responseTime);
     const avgTime = times.length > 0 ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0;
     document.getElementById("analyticsAvgTime").textContent = `${avgTime}s`;
 
-    // Category chart
+    // Category chart (team-wide)
     const categories = {};
-    responseHistory.forEach(h => {
+    allHistory.forEach(h => {
         categories[h.category || 'general'] = (categories[h.category || 'general'] || 0) + 1;
     });
 
@@ -1880,16 +1949,29 @@ function updateAnalytics() {
     document.getElementById("categoryChart").innerHTML = chartHtml ||
         '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No data yet</div>';
 
-    // History list
-    const historyHtml = responseHistory.slice(0, 10).map(h => `
+    // Monthly breakdown (team-wide)
+    const monthlyData = getMonthlyBreakdown(allHistory);
+    const monthlyHtml = monthlyData.length > 0 ? monthlyData.map(month => `
+        <div class="monthly-stat-row">
+            <div class="monthly-stat-name">${month.name}</div>
+            <div class="monthly-stat-count">${month.count} responses</div>
+            <div class="monthly-stat-rating">${month.rated > 0 ? Math.round(month.positive / month.rated * 100) + '% positive' : 'No ratings'}</div>
+        </div>
+    `).join('') : '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No data yet</div>';
+
+    document.getElementById("monthlyBreakdown").innerHTML = monthlyHtml;
+
+    // Team history list (show who generated each response)
+    const historyHtml = allHistory.slice(0, 15).map(h => `
         <div class="history-item" onclick="showHistoryDetail('${h.id}')">
             <div class="history-header">
                 <span class="history-type">${h.category || 'general'}</span>
                 <span class="history-date">${new Date(h.timestamp).toLocaleDateString()}</span>
             </div>
-            <div class="history-preview">${escapeHtml(h.inquiry.substring(0, 100))}...</div>
+            <div class="history-preview">${escapeHtml((h.inquiry || '').substring(0, 100))}...</div>
             <div class="history-meta">
-                <span>⏱️ ${h.responseTime}s</span>
+                <span>👤 ${h.userName || h.staffName || 'Unknown'}</span>
+                <span>⏱️ ${h.responseTime || 0}s</span>
                 ${h.rating ? `<span>${h.rating === 'positive' ? '👍' : '👎'}</span>` : ''}
             </div>
         </div>
@@ -1900,7 +1982,9 @@ function updateAnalytics() {
 }
 
 function showHistoryDetail(id) {
-    const item = responseHistory.find(h => h.id === id);
+    // Search in all users' history
+    const allHistory = getAllUsersResponseHistory();
+    const item = allHistory.find(h => h.id === id);
     if (!item) return;
 
     currentHistoryItem = item;
