@@ -13,6 +13,9 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
     ? 'http://localhost:3001'  // Local development
     : 'https://lightspeed-api-a1t9.onrender.com';  // Production
 
+// ==================== GOOGLE OAUTH CONFIGURATION ====================
+const GOOGLE_CLIENT_ID = '538611064946-ij0geilde0q1tq0hlpjep886holcmro5.apps.googleusercontent.com';
+
 // ==================== AUTH STATE ====================
 let currentUser = null;
 let users = [];
@@ -152,6 +155,131 @@ function setupAuthEventListeners() {
     document.getElementById("backToMenuBtn").addEventListener("click", goBackToMenu);
     document.getElementById("dataBackToMenuBtn").addEventListener("click", goBackToMenu);
     document.getElementById("draftBackToMenuBtn").addEventListener("click", goBackToMenu);
+
+    // Google Sign-In button
+    document.getElementById("googleSignInBtn").addEventListener("click", handleGoogleSignIn);
+}
+
+// ==================== GOOGLE OAUTH ====================
+function handleGoogleSignIn() {
+    // Initialize Google Identity Services
+    if (typeof google === 'undefined' || !google.accounts) {
+        showToast("Google Sign-In is loading. Please try again.", "error");
+        return;
+    }
+
+    google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredentialResponse,
+        auto_select: false
+    });
+
+    // Show the Google One Tap UI
+    google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            // Fallback: use popup sign-in
+            google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: 'email profile',
+                callback: handleGoogleTokenResponse
+            }).requestAccessToken();
+        }
+    });
+}
+
+function handleGoogleCredentialResponse(response) {
+    // Decode the JWT credential to get user info
+    const credential = response.credential;
+    const payload = parseJwt(credential);
+
+    if (payload && payload.email) {
+        processGoogleUser(payload);
+    } else {
+        showToast("Failed to get user information from Google", "error");
+    }
+}
+
+async function handleGoogleTokenResponse(tokenResponse) {
+    // Fetch user info using the access token
+    try {
+        const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+        });
+        const userInfo = await response.json();
+
+        if (userInfo.email) {
+            processGoogleUser(userInfo);
+        } else {
+            showToast("Failed to get user information from Google", "error");
+        }
+    } catch (error) {
+        console.error("Google OAuth error:", error);
+        showToast("Failed to sign in with Google", "error");
+    }
+}
+
+function processGoogleUser(googleUser) {
+    const email = googleUser.email;
+    const name = googleUser.name || googleUser.given_name || email.split('@')[0];
+    const picture = googleUser.picture || null;
+
+    // Check if user already exists
+    let user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+    if (!user) {
+        // Create new user from Google account
+        user = {
+            id: generateUserId(),
+            email: email,
+            name: name,
+            password: null, // Google users don't have a password
+            googleId: googleUser.sub || null,
+            picture: picture,
+            createdAt: new Date().toISOString(),
+            settings: {
+                defaultName: name.split(" ")[0],
+                orgName: ""
+            },
+            data: {
+                customKnowledge: [],
+                feedbackList: [],
+                responseHistory: [],
+                favorites: []
+            }
+        };
+
+        // Save new user
+        users.push(user);
+        localStorage.setItem("lightspeed_users", JSON.stringify(users));
+        console.log("Created new Google user:", email);
+    } else {
+        // Update existing user with Google info if needed
+        if (!user.googleId && googleUser.sub) {
+            user.googleId = googleUser.sub;
+        }
+        if (!user.picture && picture) {
+            user.picture = picture;
+        }
+        localStorage.setItem("lightspeed_users", JSON.stringify(users));
+    }
+
+    // Log the user in
+    loginUser(user, true);
+    showToast(`Welcome, ${user.name.split(" ")[0]}!`, "success");
+}
+
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        console.error("Failed to parse JWT:", e);
+        return null;
+    }
 }
 
 function showLoginPage() {
