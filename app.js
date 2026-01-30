@@ -2579,7 +2579,6 @@ const DRAFT_TYPE_LABELS = {
     'social': 'Social Media Copy',
     'email': 'Email Copy',
     'media-release': 'Media Release',
-    'newsletter': 'Newsletter',
     'ad': 'Facebook/Instagram Ad'
 };
 
@@ -2650,11 +2649,6 @@ FOR MEDIA RELEASES:
 - Include quotes from Glenn Craig or Torin Gunnell
 - Structure: Lead paragraph with key news, supporting details, quotes, background info
 - End with "About" boilerplate if appropriate
-
-FOR NEWSLETTERS:
-- Similar to media releases but more promotional
-- Can include bullet points for highlights
-- More professional tone than emails
 
 FOR FACEBOOK/INSTAGRAM ADS:
 - MAXIMUM 120 characters
@@ -2847,6 +2841,50 @@ EMAIL STRUCTURE:
 8. Standard footer`
 };
 
+// Helper function to build enhanced system prompt with examples from knowledge base
+function buildEnhancedSystemPrompt(contentType, emailType = null) {
+    let basePrompt = '';
+    let knowledgeBaseType = '';
+
+    if (emailType) {
+        // Use email-specific prompt
+        basePrompt = EMAIL_SYSTEM_PROMPTS[emailType];
+        // Map email type to knowledge base type
+        const emailMapping = {
+            'new-draw': 'email-new-draw',
+            'draw-reminder': 'email-reminder',
+            'winners': 'email-winners',
+            'impact-sunday': 'email-impact',
+            'last-chance': 'email-last-chance'
+        };
+        knowledgeBaseType = emailMapping[emailType];
+    } else {
+        // Use general draft prompt
+        basePrompt = DRAFT_SYSTEM_PROMPT;
+        // Map content type to knowledge base type
+        const typeMapping = {
+            'social': 'social',
+            'media-release': 'media-release',
+            'ad': 'social-ads'
+        };
+        knowledgeBaseType = typeMapping[contentType];
+    }
+
+    // Add examples from knowledge base if available
+    if (typeof DRAFT_KNOWLEDGE_BASE !== 'undefined' && knowledgeBaseType) {
+        const examples = DRAFT_KNOWLEDGE_BASE.formatExamplesForPrompt(knowledgeBaseType, 2);
+        const brandGuidelines = DRAFT_KNOWLEDGE_BASE.getBrandGuidelinesPrompt();
+
+        if (examples) {
+            basePrompt += '\n\n' + brandGuidelines;
+            basePrompt += '\n\nHere are examples of this type of content. Match this style and format:';
+            basePrompt += examples;
+        }
+    }
+
+    return basePrompt;
+}
+
 function setupDraftAssistant() {
     if (draftAssistantInitialized) return;
     draftAssistantInitialized = true;
@@ -2978,9 +3016,9 @@ function selectDraftType(type) {
     document.getElementById('draftInputSection').style.display = 'block';
     document.getElementById('draftTypeBadge').textContent = DRAFT_TYPE_LABELS[type];
 
-    // Show/hide quote section for media releases and newsletters
+    // Show/hide quote section for media releases
     const quoteSection = document.getElementById('draftQuoteSection');
-    if (type === 'media-release' || type === 'newsletter') {
+    if (type === 'media-release') {
         quoteSection.style.display = 'block';
     } else {
         quoteSection.style.display = 'none';
@@ -3002,7 +3040,7 @@ async function generateDraft() {
 
     // Get quote info if applicable
     let quoteInfo = '';
-    if ((currentDraftType === 'media-release' || currentDraftType === 'newsletter') &&
+    if (currentDraftType === 'media-release' &&
         document.getElementById('draftQuoteFields').style.display !== 'none') {
         const quoteName = document.getElementById('draftQuoteName').value.trim();
         const quoteTitle = document.getElementById('draftQuoteTitle').value.trim();
@@ -3032,13 +3070,16 @@ async function generateDraft() {
     document.getElementById('draftHeaderActions').style.display = 'none';
 
     try {
+        // Build enhanced system prompt with examples from knowledge base
+        const enhancedSystemPrompt = buildEnhancedSystemPrompt(currentDraftType);
+
         const response = await fetch(API_BASE_URL + '/api/generate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                system: DRAFT_SYSTEM_PROMPT,
+                system: enhancedSystemPrompt,
                 messages: [{ role: 'user', content: userPrompt }],
                 max_tokens: 1024
             })
@@ -3114,7 +3155,8 @@ async function generateEmailDraft() {
     document.getElementById('draftHeaderActions').style.display = 'none';
 
     try {
-        const systemPrompt = EMAIL_SYSTEM_PROMPTS[currentEmailType];
+        // Build enhanced system prompt with examples from knowledge base
+        const enhancedSystemPrompt = buildEnhancedSystemPrompt('email', currentEmailType);
         console.log('Calling API at:', API_BASE_URL + '/api/generate');
 
         const response = await fetch(API_BASE_URL + '/api/generate', {
@@ -3123,7 +3165,7 @@ async function generateEmailDraft() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                system: systemPrompt,
+                system: enhancedSystemPrompt,
                 messages: [{ role: 'user', content: userPrompt }],
                 max_tokens: 2048
             })
