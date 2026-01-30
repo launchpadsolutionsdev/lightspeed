@@ -1249,6 +1249,240 @@ Thank you for your patience!
 
 Best regards`
         }
+    ],
+
+    // ==================== AGCO RULES & REGULATIONS ====================
+    // Official rules from the Alcohol and Gaming Commission of Ontario (AGCO)
+    // These apply to all licensed raffles in Ontario
+    "agco": [
+        // ----- ELIGIBILITY & AGE REQUIREMENTS -----
+        {
+            id: "agco-age-requirement",
+            keywords: ["age", "how old", "18", "19", "minor", "underage", "child", "kid", "teenager"],
+            question: "What is the minimum age to purchase raffle tickets?",
+            response: `Hi there,
+
+According to AGCO regulations, you must be 18 years of age or older to purchase raffle lottery tickets in Ontario.
+
+The only exception is if alcohol is included as part of the prize - in that case, the purchaser must be 19 years of age or older.
+
+Thank you for checking!
+
+Best regards`
+        },
+        {
+            id: "agco-location-requirement",
+            keywords: ["ontario", "province", "location", "where", "out of province", "other province", "visiting", "tourist", "travel"],
+            question: "Can people from outside Ontario purchase tickets?",
+            response: `Hi there,
+
+According to AGCO regulations, raffle lottery tickets sold under a licence issued in Ontario must not be advertised, offered for sale, sold, or ordered from outside of Ontario.
+
+However, while visitors are physically located in Ontario, residents of other countries or provinces MAY purchase raffle tickets. The key requirement is that you must be physically present in Ontario at the time of purchase.
+
+So if you're visiting Ontario, you're welcome to participate while you're here!
+
+Best regards`
+        },
+        // ----- UNCLAIMED PRIZES -----
+        {
+            id: "agco-unclaimed-prizes",
+            keywords: ["unclaimed", "didn't claim", "never claimed", "forgot to claim", "missed prize", "prize not claimed", "what happens to prize", "abandoned prize"],
+            question: "What happens to unclaimed raffle prizes?",
+            response: `Hi there,
+
+Great question! According to AGCO regulations, organizations must make every reasonable effort to contact winners of unclaimed prizes, including:
+
+1. Attempting to locate the winner through the phone number and address on the ticket stub by sending a registered letter and calling
+2. Advertising in local newspapers and/or radio stations within 120 days of the draw, listing winners of unclaimed prizes
+
+The unclaimed prize must be held in trust for a minimum of 6 months from the date it was awarded. After that period, the prize value (including any interest) becomes part of the lottery's gross proceeds.
+
+Rest assured, we always do everything we can to reach our winners!
+
+Best regards`
+        },
+        // ----- CONFLICT OF INTEREST -----
+        {
+            id: "agco-conflict-of-interest",
+            keywords: ["staff", "employee", "board", "director", "volunteer", "work for", "family member", "relative", "can I play if I work"],
+            question: "Can staff, board members, or volunteers play the lottery?",
+            response: `Hi there,
+
+According to AGCO conflict of interest guidelines:
+
+- Staff, board members, and their immediate family members living in the same household are NOT permitted to purchase tickets
+- Prize donors and companies involved in conducting the raffle (including suppliers, accounting firms, etc.) cannot purchase tickets
+- Volunteers MAY play, but they cannot purchase tickets during their scheduled volunteer shift
+
+These rules help ensure the integrity and fairness of the lottery for all participants.
+
+If you have questions about your specific situation, please let us know!
+
+Best regards`
+        },
+        // ----- WINNERS & DRAWS -----
+        {
+            id: "agco-winner-selection",
+            keywords: ["how winner selected", "random", "fair", "rigged", "legitimate", "how do you pick", "winner chosen", "draw process"],
+            question: "How are winners selected? Is it fair?",
+            response: `Hi there,
+
+Great question! Our lottery is licensed and regulated by the Alcohol and Gaming Commission of Ontario (AGCO), which has strict requirements for how winners are selected:
+
+- Winners must be selected using a Random Number Generation (RNG) system or random selection from all tickets sold
+- A neutral third party (someone who hasn't purchased a ticket) should conduct the draw
+- All draws must follow the exact format approved by the licensing authority
+
+These regulations ensure complete fairness and transparency for all participants. Any variation from the approved format would be a breach of our licence terms and conditions.
+
+Best regards`
+        },
+        {
+            id: "agco-winner-notification",
+            keywords: ["how will I know", "how do winners find out", "notification", "contacted", "announced", "publicized"],
+            question: "How are winners notified and announced?",
+            response: `Hi there,
+
+According to AGCO regulations, winners must be publicized in the manner approved in our lottery licence application.
+
+For our lottery:
+- Winners are contacted directly by phone using the number provided during purchase
+- Winners are also posted on our website
+
+You don't need to constantly check your numbers - if you win, we will reach out to you!
+
+Best regards`
+        },
+        // ----- PRIZES -----
+        {
+            id: "agco-prize-requirements",
+            keywords: ["prize rules", "prize requirements", "what can be won", "prize value", "merchandise prize"],
+            question: "What are the rules around raffle prizes?",
+            response: `Hi there,
+
+AGCO has several requirements for raffle prizes:
+
+- The total prize value must be at least 20% of total ticket sales
+- Prizes must be awarded free and clear of any liens or encumbrances
+- Winners receive unconditional ownership of prizes
+- The licensee (charity) must pay any taxes or additional costs related to prizes
+- Only new, unused merchandise from reputable vendors can be offered (with some exceptions for antiques)
+- Prizes may be distributed via e-transfer or gift cards (but gift cards cannot have depreciating value or fees)
+
+For 50/50 draws specifically, the prize is 50% of ticket sales for that draw period.
+
+Best regards`
+        },
+        // ----- ELECTRONIC RAFFLES -----
+        {
+            id: "agco-electronic-raffles",
+            keywords: ["electronic", "online raffle", "digital", "computer", "website lottery", "online lottery rules"],
+            question: "What are the rules for electronic/online raffles?",
+            response: `Hi there,
+
+Electronic raffles (like ours) are regulated by the AGCO with specific requirements:
+
+- Only the AGCO Registrar can issue licences for electronic raffles
+- All technical solutions must be approved by AGCO's Technical and Laboratory Services
+- Tickets must display contact info for the ConnexOntario problem gambling helpline (1-866-531-2600)
+- Licensees can conduct a maximum of 4 online raffles at the same time
+- Tickets can be sold both online and in-person
+- Subscriptions require clear opt-in consent and easy cancellation options
+
+These regulations ensure our lottery operates fairly and responsibly.
+
+Best regards`
+        },
+        {
+            id: "agco-subscriptions",
+            keywords: ["subscription rules", "recurring payment", "auto-renewal", "automatic billing", "subscription regulations"],
+            question: "What are the rules around lottery subscriptions?",
+            response: `Hi there,
+
+AGCO has specific requirements for lottery subscriptions:
+
+- Subscriptions must be an opt-in choice (cannot be the default option)
+- All terms must be clearly provided before subscribing, including: events included, cost, duration, and how to cancel
+- You must be notified in advance of any automatic billing
+- There must be an easy way to cancel at any time, at no cost or penalty
+- You must be located in Ontario when you sign up for a subscription
+- The previous draw must close before the next recurring payment is processed
+
+You can manage your subscription anytime at https://account.tbay5050draw.ca
+
+Best regards`
+        },
+        // ----- TAX & FINANCIAL -----
+        {
+            id: "agco-tax-receipts",
+            keywords: ["tax receipt", "charitable donation", "tax deduction", "CRA", "income tax", "write off"],
+            question: "Can I get a tax receipt for lottery ticket purchases?",
+            response: `Hi there,
+
+Unfortunately, we cannot provide tax receipts for lottery ticket purchases.
+
+According to CRA rules, lottery tickets are not considered charitable donations, even when the lottery supports a charity. This is because you receive something of value in return (the chance to win a prize).
+
+However, please know that your purchase still makes a real difference! The proceeds from our lottery directly support the Thunder Bay Regional Health Sciences Foundation and healthcare in our community.
+
+Thank you for your support!
+
+Best regards`
+        },
+        // ----- PROBLEM GAMBLING -----
+        {
+            id: "agco-problem-gambling",
+            keywords: ["gambling problem", "addiction", "help", "support", "too much", "concerned", "connex", "responsible gambling"],
+            question: "Where can someone get help with problem gambling?",
+            response: `Hi there,
+
+If you or someone you know is concerned about gambling, free and confidential help is available:
+
+ConnexOntario Helpline: 1-866-531-2600
+Website: www.connexontario.ca
+
+They provide support 24/7 for problem gambling, mental health, and addictions.
+
+As an AGCO-licensed lottery, we're committed to responsible gambling practices. Please play responsibly and within your means.
+
+Best regards`
+        },
+        // ----- GENERAL REGULATIONS -----
+        {
+            id: "agco-licence-info",
+            keywords: ["licence", "license", "regulated", "legal", "legitimate", "AGCO", "government", "authority"],
+            question: "Is this lottery licensed and regulated?",
+            response: `Hi there,
+
+Yes! Our lottery is fully licensed and regulated by the Alcohol and Gaming Commission of Ontario (AGCO).
+
+The AGCO is the provincial authority responsible for regulating the alcohol, gaming, horse racing, and cannabis retail sectors in Ontario. Our lottery operates under strict terms and conditions set by the AGCO to ensure fairness, transparency, and consumer protection.
+
+You can verify our licence status through the AGCO if you wish. Our lottery supports the Thunder Bay Regional Health Sciences Foundation, a registered charitable organization.
+
+Thank you for your trust and support!
+
+Best regards`
+        },
+        {
+            id: "agco-advertising-rules",
+            keywords: ["advertising", "marketing", "promotion", "ads", "promotional"],
+            question: "What are the rules around lottery advertising?",
+            response: `Hi there,
+
+AGCO has specific requirements for lottery advertising:
+
+- The licensee's name must appear on all advertising (brochures, online, etc.)
+- Advertising must comply with all federal, provincial, and municipal laws
+- Raffle tickets cannot be offered as contest or promotional prizes through any public medium
+- All advertising must accurately represent the lottery and prizes
+- OLG tickets used as secondary prizes require OLG approval for any advertising using their logos
+
+These rules ensure that all lottery advertising is truthful and transparent.
+
+Best regards`
+        }
     ]
 };
 
@@ -1258,7 +1492,7 @@ function searchKnowledgeBase(query, lottery = "both") {
     const results = [];
 
     const searchIn = lottery === "both"
-        ? [...KNOWLEDGE_BASE["5050"], ...KNOWLEDGE_BASE["cta"]]
+        ? [...KNOWLEDGE_BASE["5050"], ...KNOWLEDGE_BASE["cta"], ...KNOWLEDGE_BASE["agco"]]
         : KNOWLEDGE_BASE[lottery] || [];
 
     for (const item of searchIn) {
