@@ -41,8 +41,10 @@ const DRAFT_KNOWLEDGE_BASE = {
             "Short paragraph form with line breaks",
             "Maximum 2 emojis per post",
             "Always include licence disclaimer at end",
-            "Never use 'jackpot' - use 'Grand Prize'"
+            "Never use 'jackpot' - use 'Grand Prize'",
+            "ALWAYS include this line: 'Purchase tickets online at www.thunderbay5050.ca or at the Thunder Bay 50/50 store inside the Intercity Shopping Centre!'"
         ],
+        requiredLine: "Purchase tickets online at www.thunderbay5050.ca or at the Thunder Bay 50/50 store inside the Intercity Shopping Centre!",
         examples: [
             {
                 type: "General Promotion",
@@ -452,6 +454,25 @@ tgunnell@tbrhsc.net`
         ]
     },
 
+    // ==================== EMAIL ADD-ONS ====================
+    emailAddOns: {
+        subscriptions: {
+            name: "Subscriptions",
+            description: "Information about Thunder Bay 50/50 subscription options",
+            content: `Did you know you can subscribe to the Thunder Bay 50/50? Never miss a draw! Set up a monthly subscription and your tickets are automatically purchased each month. Visit www.thunderbay5050.ca to set up your subscription today!`
+        },
+        rewardsPlus: {
+            name: "Rewards+",
+            description: "Information about the Rewards+ program",
+            content: `Join Rewards+ and earn points with every ticket purchase! Redeem your points for bonus entries, exclusive merchandise, and more. Sign up at www.thunderbay5050.ca!`
+        },
+        catchTheAce: {
+            name: "Thunder Bay Catch The Ace",
+            description: "Information about the Catch The Ace lottery",
+            content: `The Thunder Bay Catch The Ace is LIVE! You LOVE the Thunder Bay 50/50, so you might love our other raffles too! The Thunder Bay Catch The Ace is a weekly progressive lottery that supports the Our Hearts at Home Campaign to bring Cardiovascular Surgery to Northwestern Ontario! We've awarded over $500,000 in prizes so far, come see what the fun is all about at www.thunderbaycatchtheace.ca!`
+        }
+    },
+
     // ==================== FACEBOOK/INSTAGRAM ADS ====================
     socialAds: {
         description: "Paid advertisement copy for Facebook and Instagram",
@@ -600,6 +621,19 @@ FORMATTING:
 - All social posts must include licence disclaimer at end
 - Emails are for copy content only (not full templates with headers)
 `;
+    },
+
+    // Get social media required line
+    getSocialMediaRequiredLine: function() {
+        return this.socialMedia.requiredLine;
+    },
+
+    // Get email add-on content
+    getEmailAddOn: function(type) {
+        if (type === 'subscriptions') return this.emailAddOns.subscriptions.content;
+        if (type === 'rewards-plus') return this.emailAddOns.rewardsPlus.content;
+        if (type === 'catch-the-ace') return this.emailAddOns.catchTheAce.content;
+        return '';
     }
 };
 

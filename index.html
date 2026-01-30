@@ -2783,10 +2783,28 @@
             padding: 16px;
         }
 
+        .draft-quote-container {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+
+        .draft-quote-container:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+
         .draft-quote-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .draft-quote-number {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
         }
 
         .draft-quote-toggle {
@@ -2800,7 +2818,7 @@
         }
 
         .draft-quote-fields {
-            margin-top: 16px;
+            margin-top: 12px;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -2810,6 +2828,42 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
+        }
+
+        /* Email Add-ons */
+        .draft-email-addons {
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            padding: 16px;
+        }
+
+        .draft-checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .draft-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .draft-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .draft-checkbox-separator {
+            height: 1px;
+            background: var(--border);
+            margin: 12px 0;
         }
 
         /* Tone Options */
@@ -2950,6 +3004,92 @@
             border-radius: var(--radius-md);
             font-size: 0.8rem;
             color: #92400e;
+        }
+
+        /* Refine Section */
+        .draft-refine-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .draft-refine-header {
+            margin-bottom: 12px;
+        }
+
+        .draft-refine-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .draft-refine-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .draft-refine-chip {
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .draft-refine-chip:hover {
+            background: white;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .draft-refine-custom {
+            display: flex;
+            gap: 8px;
+        }
+
+        .draft-refine-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+
+        .draft-refine-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .draft-refine-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border: none;
+            border-radius: var(--radius-md);
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .draft-refine-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .draft-refine-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         /* API Setup */
@@ -4826,6 +4966,26 @@
                             <textarea id="draftEmailDetails" class="draft-textarea" placeholder=""></textarea>
                         </div>
 
+                        <!-- Email Add-ons Section -->
+                        <div class="draft-form-group draft-email-addons" id="emailAddonsSection" style="display: none;">
+                            <label class="draft-label">Include additional sections? (optional)</label>
+                            <div class="draft-checkbox-group">
+                                <label class="draft-checkbox-label">
+                                    <input type="checkbox" id="emailAddSubscriptions" class="draft-checkbox">
+                                    <span>Add a section about Subscriptions</span>
+                                </label>
+                                <label class="draft-checkbox-label">
+                                    <input type="checkbox" id="emailAddRewardsPlus" class="draft-checkbox">
+                                    <span>Add a section about Rewards+</span>
+                                </label>
+                            </div>
+                            <div class="draft-checkbox-separator"></div>
+                            <label class="draft-checkbox-label">
+                                <input type="checkbox" id="emailAddCatchTheAce" class="draft-checkbox">
+                                <span>Mention Thunder Bay Catch The Ace</span>
+                            </label>
+                        </div>
+
                         <button class="draft-generate-btn" id="draftEmailGenerateBtn" disabled>
                             <span class="draft-generate-icon">✨</span>
                             Generate Email Draft
@@ -4851,18 +5011,83 @@
                             <textarea id="draftDetailsInput" class="draft-textarea draft-textarea-sm" placeholder="E.g., Prize amounts, dates, winner name, location..."></textarea>
                         </div>
 
-                        <!-- Quote Section (for Media Releases & Newsletters) -->
+                        <!-- Quote Section (for Media Releases) - Up to 5 quotes -->
                         <div class="draft-quote-section" id="draftQuoteSection" style="display: none;">
-                            <div class="draft-quote-header">
-                                <label class="draft-label">Add a Quote (optional)</label>
-                                <button class="draft-quote-toggle" id="draftQuoteToggle">+ Add Quote</button>
-                            </div>
-                            <div class="draft-quote-fields" id="draftQuoteFields" style="display: none;">
-                                <div class="draft-quote-row">
-                                    <input type="text" id="draftQuoteName" class="draft-input" placeholder="Person's name (e.g., Glenn Craig)">
-                                    <input type="text" id="draftQuoteTitle" class="draft-input" placeholder="Title (e.g., President & CEO)">
+                            <label class="draft-label">Add Quotes (optional)</label>
+
+                            <!-- Quote 1 -->
+                            <div class="draft-quote-container" id="draftQuoteContainer1">
+                                <div class="draft-quote-header">
+                                    <span class="draft-quote-number">Quote 1</span>
+                                    <button type="button" class="draft-quote-toggle" data-quote="1">+ Add Quote</button>
                                 </div>
-                                <textarea id="draftQuoteText" class="draft-textarea draft-textarea-sm" placeholder="Paste or type the quote here..."></textarea>
+                                <div class="draft-quote-fields" id="draftQuoteFields1" style="display: none;">
+                                    <div class="draft-quote-row">
+                                        <input type="text" class="draft-input draft-quote-name" data-quote="1" placeholder="Person's name (e.g., Glenn Craig)">
+                                        <input type="text" class="draft-input draft-quote-title" data-quote="1" placeholder="Title (e.g., President & CEO)">
+                                    </div>
+                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="1" placeholder="Paste or type the quote here..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Quote 2 -->
+                            <div class="draft-quote-container" id="draftQuoteContainer2">
+                                <div class="draft-quote-header">
+                                    <span class="draft-quote-number">Quote 2</span>
+                                    <button type="button" class="draft-quote-toggle" data-quote="2">+ Add Quote</button>
+                                </div>
+                                <div class="draft-quote-fields" id="draftQuoteFields2" style="display: none;">
+                                    <div class="draft-quote-row">
+                                        <input type="text" class="draft-input draft-quote-name" data-quote="2" placeholder="Person's name">
+                                        <input type="text" class="draft-input draft-quote-title" data-quote="2" placeholder="Title">
+                                    </div>
+                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="2" placeholder="Paste or type the quote here..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Quote 3 -->
+                            <div class="draft-quote-container" id="draftQuoteContainer3">
+                                <div class="draft-quote-header">
+                                    <span class="draft-quote-number">Quote 3</span>
+                                    <button type="button" class="draft-quote-toggle" data-quote="3">+ Add Quote</button>
+                                </div>
+                                <div class="draft-quote-fields" id="draftQuoteFields3" style="display: none;">
+                                    <div class="draft-quote-row">
+                                        <input type="text" class="draft-input draft-quote-name" data-quote="3" placeholder="Person's name">
+                                        <input type="text" class="draft-input draft-quote-title" data-quote="3" placeholder="Title">
+                                    </div>
+                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="3" placeholder="Paste or type the quote here..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Quote 4 -->
+                            <div class="draft-quote-container" id="draftQuoteContainer4">
+                                <div class="draft-quote-header">
+                                    <span class="draft-quote-number">Quote 4</span>
+                                    <button type="button" class="draft-quote-toggle" data-quote="4">+ Add Quote</button>
+                                </div>
+                                <div class="draft-quote-fields" id="draftQuoteFields4" style="display: none;">
+                                    <div class="draft-quote-row">
+                                        <input type="text" class="draft-input draft-quote-name" data-quote="4" placeholder="Person's name">
+                                        <input type="text" class="draft-input draft-quote-title" data-quote="4" placeholder="Title">
+                                    </div>
+                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="4" placeholder="Paste or type the quote here..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Quote 5 -->
+                            <div class="draft-quote-container" id="draftQuoteContainer5">
+                                <div class="draft-quote-header">
+                                    <span class="draft-quote-number">Quote 5</span>
+                                    <button type="button" class="draft-quote-toggle" data-quote="5">+ Add Quote</button>
+                                </div>
+                                <div class="draft-quote-fields" id="draftQuoteFields5" style="display: none;">
+                                    <div class="draft-quote-row">
+                                        <input type="text" class="draft-input draft-quote-name" data-quote="5" placeholder="Person's name">
+                                        <input type="text" class="draft-input draft-quote-title" data-quote="5" placeholder="Title">
+                                    </div>
+                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="5" placeholder="Paste or type the quote here..."></textarea>
+                                </div>
                             </div>
                         </div>
 
@@ -4901,6 +5126,24 @@
                     </div>
                     <div class="draft-output-content" id="draftOutputContent"></div>
                     <div class="draft-disclaimer" id="draftDisclaimer"></div>
+
+                    <!-- Refine Section -->
+                    <div class="draft-refine-section" id="draftRefineSection">
+                        <div class="draft-refine-header">
+                            <span class="draft-refine-label">✨ Refine this draft</span>
+                        </div>
+                        <div class="draft-refine-chips">
+                            <button class="draft-refine-chip" data-instruction="Make it shorter">Shorter</button>
+                            <button class="draft-refine-chip" data-instruction="Make it more detailed">More detailed</button>
+                            <button class="draft-refine-chip" data-instruction="Make it more exciting">More exciting</button>
+                            <button class="draft-refine-chip" data-instruction="Make it more professional">More professional</button>
+                            <button class="draft-refine-chip" data-instruction="Make it more urgent">More urgent</button>
+                        </div>
+                        <div class="draft-refine-custom">
+                            <input type="text" class="draft-refine-input" id="draftRefineInput" placeholder="Or type specific changes you want...">
+                            <button class="draft-refine-btn" id="draftRefineBtn">Refine</button>
+                        </div>
+                    </div>
                 </div>
 
             </div>

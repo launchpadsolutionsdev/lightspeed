@@ -2927,22 +2927,26 @@ function setupDraftAssistant() {
 
         const impactContext = document.getElementById('impactSundayContext');
         const keyDetails = document.getElementById('emailKeyDetails');
+        const emailAddons = document.getElementById('emailAddonsSection');
         const generateBtn = document.getElementById('draftEmailGenerateBtn');
 
         if (emailType === '') {
             // No selection
             impactContext.style.display = 'none';
             keyDetails.style.display = 'none';
+            emailAddons.style.display = 'none';
             generateBtn.disabled = true;
         } else if (emailType === 'impact-sunday') {
             // Show Impact Sunday context, hide key details
             impactContext.style.display = 'block';
             keyDetails.style.display = 'none';
+            emailAddons.style.display = 'block';
             generateBtn.disabled = false;
         } else {
             // Show key details with appropriate placeholder
             impactContext.style.display = 'none';
             keyDetails.style.display = 'block';
+            emailAddons.style.display = 'block';
             document.getElementById('emailDetailsLabel').textContent = EMAIL_DETAILS_LABELS[emailType];
             document.getElementById('draftEmailDetails').placeholder = EMAIL_DETAILS_PLACEHOLDERS[emailType];
             generateBtn.disabled = false;
@@ -2952,17 +2956,26 @@ function setupDraftAssistant() {
     // Email generate button
     document.getElementById('draftEmailGenerateBtn').addEventListener('click', generateEmailDraft);
 
-    // Quote toggle
-    document.getElementById('draftQuoteToggle').addEventListener('click', () => {
-        const fields = document.getElementById('draftQuoteFields');
-        const toggle = document.getElementById('draftQuoteToggle');
-        if (fields.style.display === 'none') {
-            fields.style.display = 'flex';
-            toggle.textContent = '− Remove Quote';
-        } else {
-            fields.style.display = 'none';
-            toggle.textContent = '+ Add Quote';
-        }
+    // Quote toggles (for multiple quotes)
+    document.querySelectorAll('.draft-quote-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const quoteNum = btn.dataset.quote;
+            const fields = document.getElementById('draftQuoteFields' + quoteNum);
+            if (fields.style.display === 'none') {
+                fields.style.display = 'flex';
+                btn.textContent = '− Remove';
+            } else {
+                fields.style.display = 'none';
+                btn.textContent = '+ Add Quote';
+                // Clear the fields when closing
+                const nameInput = document.querySelector('.draft-quote-name[data-quote="' + quoteNum + '"]');
+                const titleInput = document.querySelector('.draft-quote-title[data-quote="' + quoteNum + '"]');
+                const textInput = document.querySelector('.draft-quote-text[data-quote="' + quoteNum + '"]');
+                if (nameInput) nameInput.value = '';
+                if (titleInput) titleInput.value = '';
+                if (textInput) textInput.value = '';
+            }
+        });
     });
 
     // Generate button (for non-email types)
@@ -2983,6 +2996,35 @@ function setupDraftAssistant() {
                 generateEmailDraft();
             } else {
                 generateDraft();
+            }
+        }
+    });
+
+    // Refine chips
+    document.querySelectorAll('.draft-refine-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const instruction = chip.dataset.instruction;
+            refineDraft(instruction);
+        });
+    });
+
+    // Refine button (custom input)
+    document.getElementById('draftRefineBtn').addEventListener('click', () => {
+        const input = document.getElementById('draftRefineInput');
+        const instruction = input.value.trim();
+        if (instruction) {
+            refineDraft(instruction);
+            input.value = '';
+        }
+    });
+
+    // Refine input - allow Enter key
+    document.getElementById('draftRefineInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const instruction = e.target.value.trim();
+            if (instruction) {
+                refineDraft(instruction);
+                e.target.value = '';
             }
         }
     });
@@ -3024,9 +3066,13 @@ function selectDraftType(type) {
         quoteSection.style.display = 'none';
     }
 
-    // Reset quote fields
-    document.getElementById('draftQuoteFields').style.display = 'none';
-    document.getElementById('draftQuoteToggle').textContent = '+ Add Quote';
+    // Reset all quote fields (1-5)
+    for (let i = 1; i <= 5; i++) {
+        const fields = document.getElementById('draftQuoteFields' + i);
+        const toggle = document.querySelector('.draft-quote-toggle[data-quote="' + i + '"]');
+        if (fields) fields.style.display = 'none';
+        if (toggle) toggle.textContent = '+ Add Quote';
+    }
 }
 
 async function generateDraft() {
@@ -3038,15 +3084,29 @@ async function generateDraft() {
 
     const details = document.getElementById('draftDetailsInput').value.trim();
 
-    // Get quote info if applicable
+    // Get quote info if applicable (up to 5 quotes for media releases)
     let quoteInfo = '';
-    if (currentDraftType === 'media-release' &&
-        document.getElementById('draftQuoteFields').style.display !== 'none') {
-        const quoteName = document.getElementById('draftQuoteName').value.trim();
-        const quoteTitle = document.getElementById('draftQuoteTitle').value.trim();
-        const quoteText = document.getElementById('draftQuoteText').value.trim();
-        if (quoteName && quoteText) {
-            quoteInfo = "\n\nInclude this quote from " + quoteName + (quoteTitle ? ', ' + quoteTitle : '') + ': "' + quoteText + '"';
+    if (currentDraftType === 'media-release') {
+        const quotes = [];
+        for (let i = 1; i <= 5; i++) {
+            const fields = document.getElementById('draftQuoteFields' + i);
+            if (fields && fields.style.display !== 'none') {
+                const nameInput = document.querySelector('.draft-quote-name[data-quote="' + i + '"]');
+                const titleInput = document.querySelector('.draft-quote-title[data-quote="' + i + '"]');
+                const textInput = document.querySelector('.draft-quote-text[data-quote="' + i + '"]');
+                const name = nameInput ? nameInput.value.trim() : '';
+                const title = titleInput ? titleInput.value.trim() : '';
+                const text = textInput ? textInput.value.trim() : '';
+                if (name && text) {
+                    quotes.push({ name, title, text });
+                }
+            }
+        }
+        if (quotes.length > 0) {
+            quoteInfo = '\n\nInclude the following quotes in the media release:';
+            quotes.forEach((q, idx) => {
+                quoteInfo += '\n' + (idx + 1) + '. Quote from ' + q.name + (q.title ? ', ' + q.title : '') + ': "' + q.text + '"';
+            });
         }
     }
 
@@ -3054,6 +3114,14 @@ async function generateDraft() {
     let userPrompt = "Write a " + DRAFT_TYPE_LABELS[currentDraftType] + " about: " + topic;
     if (details) {
         userPrompt += "\n\nKey details to include: " + details;
+    }
+
+    // Add required line for social media posts
+    if (currentDraftType === 'social') {
+        const requiredLine = typeof DRAFT_KNOWLEDGE_BASE !== 'undefined'
+            ? DRAFT_KNOWLEDGE_BASE.getSocialMediaRequiredLine()
+            : 'Purchase tickets online at www.thunderbay5050.ca or at the Thunder Bay 50/50 store inside the Intercity Shopping Centre!';
+        userPrompt += '\n\nIMPORTANT: You MUST include this exact line in the post: "' + requiredLine + '"';
     }
     userPrompt += quoteInfo;
     userPrompt += "\n\nTone: " + currentDraftTone;
@@ -3147,7 +3215,28 @@ async function generateEmailDraft() {
         userPrompt += "\n\nInclude a subject line at the beginning.";
     }
 
-    lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details };
+    // Check for email add-ons
+    const addSubscriptions = document.getElementById('emailAddSubscriptions').checked;
+    const addRewardsPlus = document.getElementById('emailAddRewardsPlus').checked;
+    const addCatchTheAce = document.getElementById('emailAddCatchTheAce').checked;
+
+    if (addSubscriptions || addRewardsPlus || addCatchTheAce) {
+        userPrompt += "\n\nAt the end of the email, include the following additional sections:";
+
+        if (addSubscriptions && typeof DRAFT_KNOWLEDGE_BASE !== 'undefined') {
+            userPrompt += "\n\n--- SUBSCRIPTIONS SECTION ---\n" + DRAFT_KNOWLEDGE_BASE.getEmailAddOn('subscriptions');
+        }
+
+        if (addRewardsPlus && typeof DRAFT_KNOWLEDGE_BASE !== 'undefined') {
+            userPrompt += "\n\n--- REWARDS+ SECTION ---\n" + DRAFT_KNOWLEDGE_BASE.getEmailAddOn('rewards-plus');
+        }
+
+        if (addCatchTheAce && typeof DRAFT_KNOWLEDGE_BASE !== 'undefined') {
+            userPrompt += "\n\n--- CATCH THE ACE SECTION ---\n" + DRAFT_KNOWLEDGE_BASE.getEmailAddOn('catch-the-ace');
+        }
+    }
+
+    lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details, addSubscriptions, addRewardsPlus, addCatchTheAce };
 
     // Show loading
     document.getElementById('draftEmailTypeSection').style.display = 'none';
@@ -3210,9 +3299,20 @@ function resetDraftAssistant() {
     // Reset form fields
     document.getElementById('draftTopicInput').value = '';
     document.getElementById('draftDetailsInput').value = '';
-    document.getElementById('draftQuoteName').value = '';
-    document.getElementById('draftQuoteTitle').value = '';
-    document.getElementById('draftQuoteText').value = '';
+
+    // Reset all quote fields (1-5)
+    for (let i = 1; i <= 5; i++) {
+        const fields = document.getElementById('draftQuoteFields' + i);
+        const toggle = document.querySelector('.draft-quote-toggle[data-quote="' + i + '"]');
+        const nameInput = document.querySelector('.draft-quote-name[data-quote="' + i + '"]');
+        const titleInput = document.querySelector('.draft-quote-title[data-quote="' + i + '"]');
+        const textInput = document.querySelector('.draft-quote-text[data-quote="' + i + '"]');
+        if (fields) fields.style.display = 'none';
+        if (toggle) toggle.textContent = '+ Add Quote';
+        if (nameInput) nameInput.value = '';
+        if (titleInput) titleInput.value = '';
+        if (textInput) textInput.value = '';
+    }
 
     // Reset email-specific fields
     document.getElementById('draftEmailTypeSelect').value = '';
@@ -3222,13 +3322,18 @@ function resetDraftAssistant() {
     document.getElementById('emailKeyDetails').style.display = 'none';
     document.getElementById('draftEmailGenerateBtn').disabled = true;
 
+    // Reset email add-ons
+    document.getElementById('emailAddonsSection').style.display = 'none';
+    document.getElementById('emailAddSubscriptions').checked = false;
+    document.getElementById('emailAddRewardsPlus').checked = false;
+    document.getElementById('emailAddCatchTheAce').checked = false;
+
     // Reset tone buttons
     document.querySelectorAll('.draft-tone-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.draft-tone-btn[data-tone="balanced"]').classList.add('active');
 
-    // Reset quote section
-    document.getElementById('draftQuoteFields').style.display = 'none';
-    document.getElementById('draftQuoteToggle').textContent = '+ Add Quote';
+    // Reset refine input
+    document.getElementById('draftRefineInput').value = '';
 
     // Show type selection
     document.getElementById('draftOutputSection').style.display = 'none';
@@ -3237,6 +3342,62 @@ function resetDraftAssistant() {
     document.getElementById('draftLoading').style.display = 'none';
     document.getElementById('draftTypeSection').style.display = 'block';
     document.getElementById('draftHeaderActions').style.display = 'none';
+}
+
+// Store conversation history for refine feature
+let draftConversationHistory = [];
+
+async function refineDraft(instruction) {
+    const currentContent = document.getElementById('draftOutputContent').textContent;
+    if (!currentContent) return;
+
+    // Show loading
+    document.getElementById('draftOutputContent').innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><div class="draft-spinner"></div><p style="margin-top: 16px;">Refining your draft...</p></div>';
+
+    try {
+        // Build the enhanced system prompt
+        const enhancedSystemPrompt = lastDraftRequest && lastDraftRequest.isEmail
+            ? buildEnhancedSystemPrompt('email', lastDraftRequest.emailType)
+            : buildEnhancedSystemPrompt(currentDraftType);
+
+        // Build conversation messages for refinement
+        const messages = [
+            { role: 'user', content: 'Generate the content as requested.' },
+            { role: 'assistant', content: currentContent },
+            { role: 'user', content: instruction + '\n\nPlease provide the updated content only, without any explanations or preamble.' }
+        ];
+
+        const response = await fetch(API_BASE_URL + '/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                system: enhancedSystemPrompt,
+                messages: messages,
+                max_tokens: 2048
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || 'API request failed');
+        }
+
+        const data = await response.json();
+        const refinedContent = data.content[0].text;
+
+        // Update the output
+        document.getElementById('draftOutputContent').textContent = refinedContent;
+
+        showToast('Draft refined!', 'success');
+
+    } catch (error) {
+        console.error('Draft refinement error:', error);
+        // Restore original content
+        document.getElementById('draftOutputContent').textContent = currentContent;
+        showToast('Error refining draft: ' + error.message, 'error');
+    }
 }
 
 // ==================== QUICK REPLY TEMPLATES ====================
