@@ -1293,6 +1293,114 @@
         .quality-item.quality-warn { color: var(--warning); }
         .quality-item.quality-fail { color: var(--danger); }
 
+        /* ==================== REFINE RESPONSE ==================== */
+        .refine-section {
+            margin-top: 20px;
+            padding: 16px;
+            background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+            border: 1px solid #e9d5ff;
+            border-radius: var(--radius-lg);
+        }
+
+        .refine-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .refine-icon {
+            font-size: 1.1rem;
+        }
+
+        .refine-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .refine-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .refine-chip {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #d8b4fe;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: #7c3aed;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .refine-chip:hover:not(:disabled) {
+            background: #7c3aed;
+            color: white;
+            border-color: #7c3aed;
+        }
+
+        .refine-chip:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .refine-custom {
+            display: flex;
+            gap: 8px;
+        }
+
+        .refine-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #d8b4fe;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-family: inherit;
+            background: white;
+        }
+
+        .refine-input:focus {
+            outline: none;
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        .refine-input::placeholder {
+            color: #a78bfa;
+        }
+
+        .refine-btn {
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .refine-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+        }
+
+        .refine-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         /* ==================== INQUIRY TYPE TOGGLE ==================== */
         .inquiry-type-toggle {
             display: flex;

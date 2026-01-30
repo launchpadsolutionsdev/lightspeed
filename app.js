@@ -45,6 +45,7 @@ let currentInquiry = null;
 let bulkResults = [];
 let currentFilter = "all";
 let currentHistoryItem = null;
+let currentHistoryId = null;
 let inquiryType = "email"; // "email" or "facebook"
 
 // Data Analysis State
@@ -1450,6 +1451,7 @@ async function handleGenerate() {
 
         currentResponse = response;
         currentInquiry = customerEmail;
+        currentHistoryId = historyEntry.id;
 
         // Save user data with updated history
         saveUserData();
@@ -1652,7 +1654,132 @@ function displayResults(response, historyId) {
                 </div>
             `).join('')}
         </div>
+
+        <div class="refine-section">
+            <div class="refine-header">
+                <span class="refine-icon">🔄</span>
+                <span class="refine-title">Refine Response</span>
+            </div>
+            <div class="refine-suggestions">
+                <button class="refine-chip" onclick="refineResponse('make it more apologetic')">More apologetic</button>
+                <button class="refine-chip" onclick="refineResponse('make it shorter')">Shorter</button>
+                <button class="refine-chip" onclick="refineResponse('make it more detailed')">More detailed</button>
+                <button class="refine-chip" onclick="refineResponse('make it friendlier')">Friendlier</button>
+                <button class="refine-chip" onclick="refineResponse('make it more formal')">More formal</button>
+            </div>
+            <div class="refine-custom">
+                <input type="text" id="refineInput" class="refine-input" placeholder="Or type your own instruction... (e.g., 'add information about the Early Bird draw')">
+                <button class="refine-btn" onclick="refineResponse(document.getElementById('refineInput').value)" id="refineBtn">
+                    <span class="btn-icon">✨</span> Refine
+                </button>
+            </div>
+        </div>
     `;
+
+    // Add enter key listener for refine input
+    setTimeout(() => {
+        const refineInput = document.getElementById('refineInput');
+        if (refineInput) {
+            refineInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && refineInput.value.trim()) {
+                    refineResponse(refineInput.value);
+                }
+            });
+        }
+    }, 100);
+}
+
+// ==================== REFINE RESPONSE ====================
+async function refineResponse(instruction) {
+    if (!instruction || !instruction.trim()) {
+        showToast("Please enter a refinement instruction", "error");
+        return;
+    }
+
+    if (!currentResponse || !currentInquiry) {
+        showToast("No response to refine. Generate a response first.", "error");
+        return;
+    }
+
+    const refineBtn = document.getElementById("refineBtn");
+    const refineInput = document.getElementById("refineInput");
+    const responseBox = document.getElementById("responseText");
+
+    // Show loading state
+    refineBtn.disabled = true;
+    refineBtn.innerHTML = `<span class="btn-icon">⏳</span> Refining...`;
+    document.querySelectorAll(".refine-chip").forEach(chip => chip.disabled = true);
+
+    try {
+        const isFacebook = inquiryType === "facebook";
+
+        const systemPrompt = `You are a helpful assistant that refines customer support responses.
+You will be given an original customer inquiry, the current response, and an instruction for how to modify it.
+
+IMPORTANT RULES:
+- Keep the same general meaning and information, just adjust based on the instruction
+- Maintain a professional, helpful tone
+- Keep the response appropriate for customer support
+- If this is a Facebook response, keep it under 400 characters and end with -${defaultName}
+${isFacebook ? '- Facebook responses should be a single paragraph with no line breaks' : ''}
+- Do NOT add information that wasn't in the original response unless specifically asked
+- Only output the refined response, nothing else`;
+
+        const userPrompt = `ORIGINAL CUSTOMER INQUIRY:
+${currentInquiry}
+
+CURRENT RESPONSE:
+${currentResponse}
+
+INSTRUCTION: ${instruction.trim()}
+
+Please provide the refined response:`;
+
+        const response = await fetch(`${API_BASE_URL}/api/claude`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                system: systemPrompt,
+                messages: [{ role: "user", content: userPrompt }],
+                max_tokens: isFacebook ? 200 : 1024
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || "Refinement failed. Please try again.");
+        }
+
+        const data = await response.json();
+        const refinedResponse = data.content[0].text;
+
+        // Update current response
+        currentResponse = refinedResponse;
+
+        // Update the response in history
+        const historyEntry = responseHistory.find(h => h.id === currentHistoryId);
+        if (historyEntry) {
+            historyEntry.response = refinedResponse;
+            saveUserData();
+        }
+
+        // Update the display
+        responseBox.innerText = refinedResponse;
+
+        // Clear the input
+        if (refineInput) refineInput.value = "";
+
+        showToast("Response refined!", "success");
+
+    } catch (error) {
+        console.error("Refinement error:", error);
+        showToast(error.message || "Failed to refine response", "error");
+    } finally {
+        // Reset button state
+        refineBtn.disabled = false;
+        refineBtn.innerHTML = `<span class="btn-icon">✨</span> Refine`;
+        document.querySelectorAll(".refine-chip").forEach(chip => chip.disabled = false);
+    }
 }
 
 function performQualityChecks(response) {
