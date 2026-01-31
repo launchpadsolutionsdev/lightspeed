@@ -203,7 +203,9 @@ function setupAuthEventListeners() {
             const demoId = tab.dataset.demo;
             document.querySelectorAll('.landing-demo-panel').forEach(p => p.classList.remove('active'));
 
-            if (demoId === 'response') {
+            if (demoId === 'draft') {
+                document.getElementById('demoDraft').classList.add('active');
+            } else if (demoId === 'response') {
                 document.getElementById('demoResponse').classList.add('active');
             } else if (demoId === 'insights') {
                 document.getElementById('demoInsights').classList.add('active');
@@ -5021,5 +5023,49 @@ function resetListNormalizer() {
     document.getElementById("normalizerFileInput").value = '';
 }
 
+// ==================== PARALLAX & SCROLL ANIMATIONS ====================
+
+function initParallaxAndAnimations() {
+    const landingPage = document.getElementById('landingPage');
+    const parallaxOrbs = document.querySelectorAll('.parallax-orb');
+
+    // Parallax effect on scroll
+    if (landingPage && parallaxOrbs.length > 0) {
+        landingPage.addEventListener('scroll', () => {
+            const scrollY = landingPage.scrollTop;
+
+            parallaxOrbs.forEach(orb => {
+                const speed = parseFloat(orb.dataset.speed) || 0.03;
+                const yPos = scrollY * speed;
+                orb.style.transform = `translateY(${yPos}px)`;
+            });
+        });
+    }
+
+    // Scroll-triggered fade-in animations
+    const animatedElements = document.querySelectorAll('.animate-on-scroll');
+
+    if (animatedElements.length > 0 && landingPage) {
+        const observerOptions = {
+            root: landingPage,
+            rootMargin: '0px 0px -100px 0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animated');
+                }
+            });
+        }, observerOptions);
+
+        animatedElements.forEach(el => observer.observe(el));
+    }
+}
+
 // ==================== INIT ====================
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+    init();
+    initParallaxAndAnimations();
+});

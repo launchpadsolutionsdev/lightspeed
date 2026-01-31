@@ -68,6 +68,84 @@
             transition: opacity 0.5s ease, visibility 0.5s ease;
         }
 
+        /* Parallax Background Container */
+        .landing-parallax-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .parallax-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+            will-change: transform;
+        }
+
+        .parallax-orb-1 {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+            top: -10%; left: -5%;
+        }
+
+        .parallax-orb-2 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.25) 0%, transparent 70%);
+            top: 30%; right: -10%;
+        }
+
+        .parallax-orb-3 {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(196, 181, 253, 0.2) 0%, transparent 70%);
+            bottom: 20%; left: 10%;
+        }
+
+        .parallax-orb-4 {
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+            top: 60%; right: 20%;
+        }
+
+        /* Scroll-triggered animations */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+
+        .animate-on-scroll.animated {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .animate-on-scroll.delay-1 { transition-delay: 0.1s; }
+        .animate-on-scroll.delay-2 { transition-delay: 0.2s; }
+        .animate-on-scroll.delay-3 { transition-delay: 0.3s; }
+        .animate-on-scroll.delay-4 { transition-delay: 0.4s; }
+
+        /* Light section styles */
+        .section-light {
+            background: linear-gradient(180deg, #f8f6ff 0%, #ffffff 50%, #f8f6ff 100%) !important;
+            position: relative;
+        }
+
+        .section-light .landing-section-tag {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+        }
+
+        .section-light .landing-section-title {
+            color: var(--text-primary);
+        }
+
+        .section-light .landing-section-subtitle {
+            color: var(--text-secondary);
+        }
+
         .landing-page.hidden {
             opacity: 0;
             visibility: hidden;
@@ -658,7 +736,33 @@
         /* ==================== HOW IT WORKS SECTION ==================== */
         .landing-how-it-works {
             padding: 100px 40px;
-            background: linear-gradient(180deg, transparent 0%, rgba(139, 92, 246, 0.03) 100%);
+            background: linear-gradient(180deg, #f8f6ff 0%, #ffffff 50%, #f8f6ff 100%);
+            position: relative;
+        }
+
+        .landing-how-it-works .landing-section-tag {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+        }
+
+        .landing-how-it-works .landing-section-title {
+            color: var(--text-primary);
+        }
+
+        .landing-how-it-works .landing-section-subtitle {
+            color: var(--text-secondary);
+        }
+
+        .landing-how-it-works .landing-step-title {
+            color: var(--text-primary);
+        }
+
+        .landing-how-it-works .landing-step-desc {
+            color: var(--text-secondary);
+        }
+
+        .landing-how-it-works .landing-step-connector {
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.1));
         }
 
         .landing-steps {
@@ -774,7 +878,21 @@
         /* ==================== PRICING SECTION ==================== */
         .landing-pricing {
             padding: 100px 40px;
-            background: linear-gradient(180deg, transparent 0%, rgba(139, 92, 246, 0.05) 50%, transparent 100%);
+            background: linear-gradient(180deg, #f8f6ff 0%, #ffffff 50%, #f8f6ff 100%);
+            position: relative;
+        }
+
+        .landing-pricing .landing-section-tag {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+        }
+
+        .landing-pricing .landing-section-title {
+            color: var(--text-primary);
+        }
+
+        .landing-pricing .landing-section-subtitle {
+            color: var(--text-secondary);
         }
 
         .landing-pricing-container {
@@ -786,28 +904,44 @@
         }
 
         .landing-pricing-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: white;
+            border: 1px solid var(--border);
             border-radius: 20px;
             padding: 32px;
             text-align: center;
             transition: all 0.3s ease;
             position: relative;
+            box-shadow: var(--shadow-md);
         }
 
         .landing-pricing-card:hover {
-            background: rgba(255,255,255,0.05);
+            border-color: var(--primary-light);
             transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
         }
 
         .landing-pricing-card.featured {
-            background: rgba(139, 92, 246, 0.1);
-            border-color: rgba(139, 92, 246, 0.3);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-color: transparent;
             transform: scale(1.05);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
         }
 
         .landing-pricing-card.featured:hover {
             transform: scale(1.05) translateY(-4px);
+            box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4);
+        }
+
+        .landing-pricing-card.featured .landing-pricing-name,
+        .landing-pricing-card.featured .landing-pricing-amount,
+        .landing-pricing-card.featured .landing-pricing-period,
+        .landing-pricing-card.featured .landing-pricing-desc,
+        .landing-pricing-card.featured .landing-pricing-features li {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .landing-pricing-card.featured .landing-pricing-features li::before {
+            color: rgba(255,255,255,0.9);
         }
 
         .landing-pricing-badge {
@@ -831,7 +965,7 @@
         .landing-pricing-name {
             font-size: 1.25rem;
             font-weight: 700;
-            color: white;
+            color: var(--text-primary);
             margin-bottom: 16px;
         }
 
@@ -842,19 +976,19 @@
         .landing-pricing-amount {
             font-size: 3rem;
             font-weight: 800;
-            color: white;
+            color: var(--text-primary);
             line-height: 1;
         }
 
         .landing-pricing-period {
             font-size: 1rem;
-            color: rgba(255,255,255,0.5);
+            color: var(--text-secondary);
             margin-left: 4px;
         }
 
         .landing-pricing-desc {
             font-size: 0.9rem;
-            color: rgba(255,255,255,0.6);
+            color: var(--text-secondary);
             margin-bottom: 24px;
             line-height: 1.5;
         }
@@ -870,7 +1004,7 @@
             align-items: center;
             gap: 10px;
             font-size: 0.9rem;
-            color: rgba(255,255,255,0.7);
+            color: var(--text-secondary);
             margin-bottom: 12px;
         }
 
@@ -895,13 +1029,14 @@
 
         .landing-pricing-btn.trial-btn {
             background: transparent;
-            border: 2px solid rgba(255,255,255,0.2);
-            color: white;
+            border: 2px solid var(--border);
+            color: var(--text-primary);
         }
 
         .landing-pricing-btn.trial-btn:hover {
-            border-color: rgba(255,255,255,0.4);
-            background: rgba(255,255,255,0.05);
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.05);
+            color: var(--primary);
         }
 
         .landing-pricing-btn.monthly-btn {
@@ -916,28 +1051,30 @@
         }
 
         .landing-pricing-btn.annual-btn {
-            background: rgba(255,255,255,0.1);
-            color: white;
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+            border: 2px solid transparent;
         }
 
         .landing-pricing-btn.annual-btn:hover {
-            background: rgba(255,255,255,0.15);
+            background: rgba(139, 92, 246, 0.15);
         }
 
         .landing-pricing-setup {
             text-align: center;
             margin-top: 40px;
             padding: 24px;
-            background: rgba(255,255,255,0.02);
+            background: rgba(139, 92, 246, 0.05);
             border-radius: 12px;
             max-width: 600px;
             margin-left: auto;
             margin-right: auto;
+            border: 1px solid rgba(139, 92, 246, 0.1);
         }
 
         .landing-pricing-setup p {
             font-size: 0.95rem;
-            color: rgba(255,255,255,0.6);
+            color: var(--text-secondary);
         }
 
         .landing-pricing-setup a {
@@ -968,7 +1105,21 @@
         /* ==================== LIVE DEMO SECTION ==================== */
         .landing-demo {
             padding: 100px 40px;
-            background: linear-gradient(180deg, rgba(139, 92, 246, 0.03) 0%, transparent 100%);
+            background: linear-gradient(180deg, #f8f6ff 0%, #ffffff 50%, #f8f6ff 100%);
+            position: relative;
+        }
+
+        .landing-demo .landing-section-tag {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+        }
+
+        .landing-demo .landing-section-title {
+            color: var(--text-primary);
+        }
+
+        .landing-demo .landing-section-subtitle {
+            color: var(--text-secondary);
         }
 
         .landing-demo-container {
@@ -985,20 +1136,22 @@
 
         .landing-demo-tab {
             padding: 12px 24px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: white;
+            border: 1px solid var(--border);
             border-radius: 100px;
-            color: rgba(255,255,255,0.6);
+            color: var(--text-secondary);
             font-size: 0.95rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
             font-family: inherit;
+            box-shadow: var(--shadow-sm);
         }
 
         .landing-demo-tab:hover {
-            background: rgba(255,255,255,0.08);
-            color: rgba(255,255,255,0.8);
+            background: var(--bg-light);
+            color: var(--text-primary);
+            border-color: var(--primary-light);
         }
 
         .landing-demo-tab.active {
@@ -1011,8 +1164,8 @@
             background: #1a1625;
             border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 25px 80px rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 80px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);
+            border: none;
         }
 
         .landing-demo-titlebar {
@@ -1053,6 +1206,95 @@
         .landing-demo-panel.active {
             display: block;
             animation: fadeInUp 0.4s ease-out;
+        }
+
+        /* Draft Assistant Demo */
+        .demo-draft-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .demo-draft-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .demo-draft-field {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .demo-draft-field label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 8px;
+        }
+
+        .demo-draft-select,
+        .demo-draft-input {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .demo-draft-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .demo-draft-tag {
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .demo-draft-tag.active {
+            background: rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.4);
+            color: var(--accent);
+        }
+
+        .demo-draft-output {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .demo-draft-result {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .demo-draft-result p {
+            margin-bottom: 12px;
+        }
+
+        .demo-draft-result p:last-child {
+            margin-bottom: 0;
+        }
+
+        .demo-draft-hashtags {
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 900px) {
+            .demo-draft-container {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* Response Assistant Demo */
@@ -6397,6 +6639,14 @@
     <!-- ==================== MARKETING LANDING PAGE ==================== -->
     <div class="landing-page" id="landingPage">
 
+        <!-- Parallax Background -->
+        <div class="landing-parallax-bg" id="parallaxBg">
+            <div class="parallax-orb parallax-orb-1" data-speed="0.03"></div>
+            <div class="parallax-orb parallax-orb-2" data-speed="0.05"></div>
+            <div class="parallax-orb parallax-orb-3" data-speed="0.02"></div>
+            <div class="parallax-orb parallax-orb-4" data-speed="0.04"></div>
+        </div>
+
         <!-- Navigation -->
         <nav class="landing-nav">
             <div class="landing-nav-logo">
@@ -6460,17 +6710,17 @@
             </div>
 
             <div class="landing-value-grid">
-                <div class="landing-value-card">
+                <div class="landing-value-card animate-on-scroll delay-1">
                     <div class="landing-value-icon">🧠</div>
                     <h3 class="landing-value-title">Trained on Real Work</h3>
                     <p class="landing-value-desc">Lightspeed is trained on thousands of real customer service interactions, marketing campaigns, and data tasks from active lottery operations.</p>
                 </div>
-                <div class="landing-value-card">
+                <div class="landing-value-card animate-on-scroll delay-2">
                     <div class="landing-value-icon">📁</div>
                     <h3 class="landing-value-title">Tailored to Your Organization</h3>
                     <p class="landing-value-desc">Every Lightspeed instance comes with a dedicated knowledge base built around your organization — your brand voice, your draw schedule, your FAQ, your team's workflow.</p>
                 </div>
-                <div class="landing-value-card">
+                <div class="landing-value-card animate-on-scroll delay-3">
                     <div class="landing-value-icon">🚀</div>
                     <h3 class="landing-value-title">Gets Smarter Over Time</h3>
                     <p class="landing-value-desc">Lightspeed learns in real time as you use it. The more your team works with it, the more it adapts to your style, your tone, and your needs.</p>
@@ -6488,7 +6738,7 @@
 
             <div class="landing-features-grid">
                 <!-- Draft Assistant -->
-                <div class="landing-feature-card">
+                <div class="landing-feature-card animate-on-scroll delay-1">
                     <div class="landing-feature-icon draft">✍️</div>
                     <h3 class="landing-feature-title">Draft Assistant</h3>
                     <p class="landing-feature-desc">Generate on-brand social media posts, emails, press releases, and newsletters in seconds. Lightspeed knows your organization's voice because it's been trained on your actual content — so you can write faster.</p>
@@ -6501,7 +6751,7 @@
                 </div>
 
                 <!-- Response Assistant -->
-                <div class="landing-feature-card">
+                <div class="landing-feature-card animate-on-scroll delay-2">
                     <div class="landing-feature-icon response">📧</div>
                     <h3 class="landing-feature-title">Response Assistant</h3>
                     <p class="landing-feature-desc">Turn customer inquiries into professional, empathetic responses instantly. Built on a knowledge base specific to your organization, Response Assistant handles winner questions, support tickets, and donor communications with consistency and care.</p>
@@ -6514,7 +6764,7 @@
                 </div>
 
                 <!-- Insights Engine -->
-                <div class="landing-feature-card">
+                <div class="landing-feature-card animate-on-scroll delay-3">
                     <div class="landing-feature-icon insights">📊</div>
                     <h3 class="landing-feature-title">Insights Engine</h3>
                     <p class="landing-feature-desc">Upload your reports and instantly generate beautiful dashboards with charts, metrics, and actionable insights. Designed for seamless integration with BUMP Raffle and other charitable gaming service providers — just export your data and let Lightspeed do the rest. No spreadsheet skills required.</p>
@@ -6527,7 +6777,7 @@
                 </div>
 
                 <!-- List Normalizer -->
-                <div class="landing-feature-card">
+                <div class="landing-feature-card animate-on-scroll delay-4">
                     <div class="landing-feature-icon normalizer">🔄</div>
                     <h3 class="landing-feature-title">List Normalizer</h3>
                     <p class="landing-feature-desc">Transform messy customer data into clean, formatted lists ready for Mailchimp and your email platform. What used to take hours now takes 30 seconds — trained on real-world data normalization tasks from active lottery operations.</p>
@@ -6551,6 +6801,7 @@
 
             <div class="landing-demo-container">
                 <div class="landing-demo-tabs">
+                    <button class="landing-demo-tab" data-demo="draft">✍️ Draft Assistant</button>
                     <button class="landing-demo-tab active" data-demo="response">📧 Response Assistant</button>
                     <button class="landing-demo-tab" data-demo="insights">📊 Insights Engine</button>
                     <button class="landing-demo-tab" data-demo="normalizer">🔄 List Normalizer</button>
@@ -6565,6 +6816,40 @@
                     </div>
 
                     <div class="landing-demo-content">
+                        <!-- Draft Assistant Demo -->
+                        <div class="landing-demo-panel" id="demoDraft">
+                            <div class="demo-draft-container">
+                                <div class="demo-draft-form">
+                                    <div class="demo-draft-field">
+                                        <label>Content Type</label>
+                                        <div class="demo-draft-select">Social Media Post</div>
+                                    </div>
+                                    <div class="demo-draft-field">
+                                        <label>Topic / Key Message</label>
+                                        <div class="demo-draft-input">Early bird deadline reminder for our Spring 50/50 - tickets 3 for $10</div>
+                                    </div>
+                                    <div class="demo-draft-field">
+                                        <label>Tone</label>
+                                        <div class="demo-draft-tags">
+                                            <span class="demo-draft-tag active">Friendly</span>
+                                            <span class="demo-draft-tag">Urgent</span>
+                                            <span class="demo-draft-tag">Professional</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="demo-draft-output">
+                                    <div class="demo-response-badge">✨ Generated in 1.8 seconds</div>
+                                    <div class="demo-draft-result">
+                                        <p>⏰ <strong>Last chance for early bird pricing!</strong></p>
+                                        <p>Our Spring 50/50 early bird deadline is THIS FRIDAY! Get your tickets now at 3 for $10 before prices go up.</p>
+                                        <p>🎟️ Every ticket supports patient care at Thunder Bay Regional Health Sciences Centre.</p>
+                                        <p>Don't miss out → Link in bio!</p>
+                                        <p class="demo-draft-hashtags">#TBRHSC5050 #WinForHealthcare #ThunderBay</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Response Assistant Demo -->
                         <div class="landing-demo-panel active" id="demoResponse">
                             <div class="demo-response-container">
