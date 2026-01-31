@@ -3838,6 +3838,140 @@
             border-top: 2px solid var(--border);
         }
 
+        /* Sellers Report Dashboard Styles */
+        .data-sellers-payment-overview {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 32px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .data-sellers-payment-overview h2,
+        .data-sellers-inperson-section h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .data-sellers-payment-overview h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, var(--primary), var(--primary-light));
+            border-radius: 2px;
+        }
+
+        .data-sellers-payment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .data-sellers-payment-card {
+            background: var(--bg-light);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .data-sellers-payment-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .data-sellers-payment-card.cash {
+            border-left: 4px solid #10b981;
+        }
+
+        .data-sellers-payment-card.credit {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .data-sellers-payment-card.debit {
+            border-left: 4px solid #8b5cf6;
+        }
+
+        .data-sellers-payment-icon {
+            font-size: 28px;
+            margin-bottom: 12px;
+        }
+
+        .data-sellers-payment-amount {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .data-sellers-payment-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .data-sellers-payment-pct {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .data-sellers-table {
+            width: 100%;
+        }
+
+        .data-sellers-table th,
+        .data-sellers-table td {
+            white-space: nowrap;
+        }
+
+        .data-sellers-table tfoot tr {
+            background: var(--bg-light);
+            font-weight: 700;
+        }
+
+        .data-sellers-table tfoot td {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            border-top: 2px solid var(--border);
+        }
+
+        .data-table-scroll {
+            overflow-x: auto;
+        }
+
+        .data-sellers-inperson-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 32px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .data-sellers-inperson-section h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, #059669, #10b981);
+            border-radius: 2px;
+        }
+
+        .data-sellers-inperson-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            margin-top: -16px;
+        }
+
         .data-table-card {
             background: white;
             border-radius: var(--radius-lg);
@@ -5075,6 +5209,7 @@
                             <option value="customer-purchases">Customer Purchases</option>
                             <option value="customers">Customers</option>
                             <option value="payment-tickets">Payment Tickets</option>
+                            <option value="sellers">Sellers</option>
                         </select>
                     </div>
                     <div class="data-report-type-description" id="dataReportTypeDescription"></div>
@@ -5653,6 +5788,154 @@
                                 <h3>Revenue by Seller</h3>
                                 <div class="data-chart-container">
                                     <canvas id="dataPTRevenueChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sellers Report Dashboard -->
+                <div class="data-dashboard" id="dataSellersDashboard" style="display: none;">
+                    <div class="data-page active" id="data-page-sellers-overview">
+                        <div class="data-report-header">
+                            <div class="data-report-info">
+                                <span class="data-report-badge">👤 Sellers Report</span>
+                                <span class="data-report-name" id="dataSellersReportName">Sellers Report</span>
+                            </div>
+                        </div>
+
+                        <!-- Overview Metrics -->
+                        <div class="data-metrics-grid">
+                            <div class="data-metric-card highlight">
+                                <div class="data-metric-icon">💰</div>
+                                <div class="data-metric-label">Total Net Sales</div>
+                                <div class="data-metric-value" id="dataSellersNetSales">$0</div>
+                                <div class="data-metric-sublabel">across all sellers</div>
+                            </div>
+                            <div class="data-metric-card">
+                                <div class="data-metric-icon">🧾</div>
+                                <div class="data-metric-label">Total Transactions</div>
+                                <div class="data-metric-value" id="dataSellersTotalTx">0</div>
+                                <div class="data-metric-sublabel">completed sales</div>
+                            </div>
+                            <div class="data-metric-card">
+                                <div class="data-metric-icon">👥</div>
+                                <div class="data-metric-label">Active Sellers</div>
+                                <div class="data-metric-value" id="dataSellersActiveSellers">0</div>
+                                <div class="data-metric-sublabel">with sales this period</div>
+                            </div>
+                            <div class="data-metric-card">
+                                <div class="data-metric-icon">📊</div>
+                                <div class="data-metric-label">Avg Order Value</div>
+                                <div class="data-metric-value" id="dataSellersAvgOrder">$0</div>
+                                <div class="data-metric-sublabel">per transaction</div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Method Overview -->
+                        <div class="data-sellers-payment-overview">
+                            <h2>Payment Method Breakdown (All Sellers)</h2>
+                            <div class="data-sellers-payment-grid">
+                                <div class="data-sellers-payment-card cash">
+                                    <div class="data-sellers-payment-icon">💵</div>
+                                    <div class="data-sellers-payment-amount" id="dataSellersCashTotal">$0</div>
+                                    <div class="data-sellers-payment-label">Cash Sales</div>
+                                    <div class="data-sellers-payment-pct" id="dataSellersCashPct">0%</div>
+                                </div>
+                                <div class="data-sellers-payment-card credit">
+                                    <div class="data-sellers-payment-icon">💳</div>
+                                    <div class="data-sellers-payment-amount" id="dataSellersCCTotal">$0</div>
+                                    <div class="data-sellers-payment-label">Credit Card Sales</div>
+                                    <div class="data-sellers-payment-pct" id="dataSellersCCPct">0%</div>
+                                </div>
+                                <div class="data-sellers-payment-card debit">
+                                    <div class="data-sellers-payment-icon">💳</div>
+                                    <div class="data-sellers-payment-amount" id="dataSellersDebitTotal">$0</div>
+                                    <div class="data-sellers-payment-label">Debit Sales</div>
+                                    <div class="data-sellers-payment-pct" id="dataSellersDebitPct">0%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charts Row -->
+                        <div class="data-charts-grid">
+                            <div class="data-chart-card">
+                                <h3>Net Sales by Seller</h3>
+                                <div class="data-chart-container">
+                                    <canvas id="dataSellersNetChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="data-chart-card">
+                                <h3>Payment Methods by Seller</h3>
+                                <div class="data-chart-container">
+                                    <canvas id="dataSellersPaymentChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Seller Table -->
+                        <div class="data-table-card" style="margin-top: 24px;">
+                            <h3>Seller Performance Details</h3>
+                            <div class="data-table-scroll">
+                                <table class="data-table data-sellers-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Seller</th>
+                                            <th>Net Sales</th>
+                                            <th>Cash</th>
+                                            <th>Credit Card</th>
+                                            <th>Debit</th>
+                                            <th>Transactions</th>
+                                            <th>Avg Order</th>
+                                            <th>Voided</th>
+                                            <th>Net Tickets</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dataSellersTable"></tbody>
+                                    <tfoot id="dataSellersTotals"></tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- In-Person Only Breakdown (excluding Shopify) -->
+                        <div class="data-sellers-inperson-section">
+                            <h2>In-Person Sellers Only (Excluding Shopify)</h2>
+                            <p class="data-sellers-inperson-subtitle">Payment method breakdown for retail and in-store sales</p>
+
+                            <div class="data-charts-grid">
+                                <div class="data-chart-card">
+                                    <h3>In-Person Payment Distribution</h3>
+                                    <div class="data-chart-container">
+                                        <canvas id="dataSellersInPersonPaymentChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="data-chart-card">
+                                    <h3>In-Person Sales by Seller</h3>
+                                    <div class="data-chart-container">
+                                        <canvas id="dataSellersInPersonBarChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- In-Person Payment Summary -->
+                            <div class="data-sellers-payment-grid" style="margin-top: 24px;">
+                                <div class="data-sellers-payment-card cash">
+                                    <div class="data-sellers-payment-icon">💵</div>
+                                    <div class="data-sellers-payment-amount" id="dataSellersIPCashTotal">$0</div>
+                                    <div class="data-sellers-payment-label">Cash Sales</div>
+                                    <div class="data-sellers-payment-pct" id="dataSellersIPCashPct">0%</div>
+                                </div>
+                                <div class="data-sellers-payment-card credit">
+                                    <div class="data-sellers-payment-icon">💳</div>
+                                    <div class="data-sellers-payment-amount" id="dataSellersIPCCTotal">$0</div>
+                                    <div class="data-sellers-payment-label">Credit Card Sales</div>
+                                    <div class="data-sellers-payment-pct" id="dataSellersIPCCPct">0%</div>
+                                </div>
+                                <div class="data-sellers-payment-card debit">
+                                    <div class="data-sellers-payment-icon">💳</div>
+                                    <div class="data-sellers-payment-amount" id="dataSellersIPDebitTotal">$0</div>
+                                    <div class="data-sellers-payment-label">Debit Sales</div>
+                                    <div class="data-sellers-payment-pct" id="dataSellersIPDebitPct">0%</div>
                                 </div>
                             </div>
                         </div>

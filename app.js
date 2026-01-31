@@ -72,6 +72,12 @@ const REPORT_TYPES = {
         description: 'Analyze sales by seller/channel. Shows Shopify (online) vs in-person sales breakdown, with detailed metrics for Foundation Donation Office and Thunder Bay 50/50 Store sellers.',
         uploadTitle: 'Upload Payment Tickets Report',
         uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
+    },
+    'sellers': {
+        name: 'Sellers',
+        description: 'In-depth breakdown of each seller with payment method analysis (Cash, Credit Card, Debit). Shows net sales, transactions, voided sales, and average order value per seller.',
+        uploadTitle: 'Upload Sellers Report',
+        uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
     }
 };
 
@@ -1000,6 +1006,11 @@ function processNamedDataFile() {
         document.getElementById("dataNavTabs").style.display = "none"; // Payment Tickets report has single page
         analyzePaymentTicketsReport(dataPendingFileData);
         document.getElementById("dataPaymentTicketsDashboard").style.display = "block";
+    } else if (currentReportType === 'sellers') {
+        document.getElementById("dataSellersReportName").textContent = reportName;
+        document.getElementById("dataNavTabs").style.display = "none"; // Sellers report has single page
+        analyzeSellersReport(dataPendingFileData);
+        document.getElementById("dataSellersDashboard").style.display = "block";
     } else {
         // Default to customer-purchases
         document.getElementById("dataReportName").textContent = reportName;
@@ -1963,6 +1974,310 @@ function renderPaymentTicketsTables(foundationSellers, storeSellers, totalInPers
             <td><strong>${((storeTotalSales / totalInPerson) * 100).toFixed(2)}%</strong></td>
         </tr>`
         : '';
+}
+
+// ==================== SELLERS REPORT ====================
+function analyzeSellersReport(data) {
+    // Auto-detect column names
+    const columns = Object.keys(data[0] || {});
+    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+
+    const sellerCol = findCol(['seller']);
+    const netSalesCol = findCol(['net sales']);
+    const cashCol = findCol(['cash sales']);
+    const ccCol = findCol(['cc sales', 'credit card']);
+    const debitCol = findCol(['debit sales']);
+    const txCol = findCol(['total transactions', 'transactions']);
+    const voidedSalesCol = findCol(['voided sales']);
+    const avgOrderCol = findCol(['average order', 'avg order']);
+    const netNumbersCol = findCol(['net numbers', 'net tickets']);
+
+    // Aggregate data
+    let totalNetSales = 0;
+    let totalCash = 0;
+    let totalCC = 0;
+    let totalDebit = 0;
+    let totalTx = 0;
+    let totalVoided = 0;
+    let totalNetNumbers = 0;
+    let activeSellers = 0;
+
+    // In-person totals (excluding Shopify)
+    let ipNetSales = 0;
+    let ipCash = 0;
+    let ipCC = 0;
+    let ipDebit = 0;
+
+    const sellerData = [];
+
+    data.forEach(row => {
+        const seller = (row[sellerCol] || 'Unknown').toString().trim();
+        const netSales = Number(row[netSalesCol]) || 0;
+        const cash = Number(row[cashCol]) || 0;
+        const cc = Number(row[ccCol]) || 0;
+        const debit = Number(row[debitCol]) || 0;
+        const tx = Number(row[txCol]) || 0;
+        const voided = Number(row[voidedSalesCol]) || 0;
+        const avgOrder = row[avgOrderCol];
+        const netNumbers = Number(row[netNumbersCol]) || 0;
+
+        totalNetSales += netSales;
+        totalCash += cash;
+        totalCC += cc;
+        totalDebit += debit;
+        totalTx += tx;
+        totalVoided += voided;
+        totalNetNumbers += netNumbers;
+
+        if (netSales > 0 || tx > 0) {
+            activeSellers++;
+        }
+
+        // Track in-person (non-Shopify)
+        if (!seller.toLowerCase().includes('shopify')) {
+            ipNetSales += netSales;
+            ipCash += cash;
+            ipCC += cc;
+            ipDebit += debit;
+        }
+
+        sellerData.push({
+            seller,
+            netSales,
+            cash,
+            cc,
+            debit,
+            tx,
+            voided,
+            avgOrder: avgOrder === 'N/A' ? null : Number(avgOrder) || 0,
+            netNumbers
+        });
+    });
+
+    const overallAvgOrder = totalTx > 0 ? totalNetSales / totalTx : 0;
+
+    // Update Overview Metrics
+    document.getElementById('dataSellersNetSales').textContent = '$' + totalNetSales.toLocaleString();
+    document.getElementById('dataSellersTotalTx').textContent = totalTx.toLocaleString();
+    document.getElementById('dataSellersActiveSellers').textContent = activeSellers.toLocaleString();
+    document.getElementById('dataSellersAvgOrder').textContent = '$' + overallAvgOrder.toFixed(2);
+
+    // Update Payment Method Overview (All Sellers)
+    document.getElementById('dataSellersCashTotal').textContent = '$' + totalCash.toLocaleString();
+    document.getElementById('dataSellersCashPct').textContent = totalNetSales > 0 ? ((totalCash / totalNetSales) * 100).toFixed(1) + '%' : '0%';
+    document.getElementById('dataSellersCCTotal').textContent = '$' + totalCC.toLocaleString();
+    document.getElementById('dataSellersCCPct').textContent = totalNetSales > 0 ? ((totalCC / totalNetSales) * 100).toFixed(1) + '%' : '0%';
+    document.getElementById('dataSellersDebitTotal').textContent = '$' + totalDebit.toLocaleString();
+    document.getElementById('dataSellersDebitPct').textContent = totalNetSales > 0 ? ((totalDebit / totalNetSales) * 100).toFixed(1) + '%' : '0%';
+
+    // Update In-Person Payment Overview
+    document.getElementById('dataSellersIPCashTotal').textContent = '$' + ipCash.toLocaleString();
+    document.getElementById('dataSellersIPCashPct').textContent = ipNetSales > 0 ? ((ipCash / ipNetSales) * 100).toFixed(1) + '%' : '0%';
+    document.getElementById('dataSellersIPCCTotal').textContent = '$' + ipCC.toLocaleString();
+    document.getElementById('dataSellersIPCCPct').textContent = ipNetSales > 0 ? ((ipCC / ipNetSales) * 100).toFixed(1) + '%' : '0%';
+    document.getElementById('dataSellersIPDebitTotal').textContent = '$' + ipDebit.toLocaleString();
+    document.getElementById('dataSellersIPDebitPct').textContent = ipNetSales > 0 ? ((ipDebit / ipNetSales) * 100).toFixed(1) + '%' : '0%';
+
+    // Render charts and table
+    renderSellersCharts(sellerData, totalNetSales, ipNetSales, ipCash, ipCC, ipDebit);
+    renderSellersTable(sellerData, totalNetSales, totalCash, totalCC, totalDebit, totalTx, totalVoided, totalNetNumbers);
+}
+
+function renderSellersCharts(sellerData, totalNetSales, ipNetSales, ipCash, ipCC, ipDebit) {
+    // Destroy existing charts
+    dataCharts.forEach(chart => chart.destroy());
+    dataCharts = [];
+
+    // Sort sellers by net sales (excluding zero sales)
+    const sortedSellers = sellerData.filter(s => s.netSales > 0).sort((a, b) => b.netSales - a.netSales);
+    const inPersonSellers = sortedSellers.filter(s => !s.seller.toLowerCase().includes('shopify'));
+
+    // Net Sales by Seller Bar Chart
+    const netChart = new Chart(document.getElementById('dataSellersNetChart'), {
+        type: 'bar',
+        data: {
+            labels: sortedSellers.map(s => s.seller),
+            datasets: [{
+                label: 'Net Sales',
+                data: sortedSellers.map(s => s.netSales),
+                backgroundColor: sortedSellers.map(s =>
+                    s.seller.toLowerCase().includes('shopify') ? 'rgba(139, 92, 246, 0.8)' : 'rgba(5, 150, 105, 0.8)'
+                ),
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => '$' + ctx.raw.toLocaleString(),
+                        afterLabel: (ctx) => ((ctx.raw / totalNetSales) * 100).toFixed(1) + '% of total'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: (v) => '$' + v.toLocaleString() }
+                }
+            }
+        }
+    });
+    dataCharts.push(netChart);
+
+    // Payment Methods by Seller (Stacked Bar)
+    const paymentChart = new Chart(document.getElementById('dataSellersPaymentChart'), {
+        type: 'bar',
+        data: {
+            labels: sortedSellers.map(s => s.seller),
+            datasets: [
+                {
+                    label: 'Cash',
+                    data: sortedSellers.map(s => s.cash),
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Credit Card',
+                    data: sortedSellers.map(s => s.cc),
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Debit',
+                    data: sortedSellers.map(s => s.debit),
+                    backgroundColor: 'rgba(139, 92, 246, 0.8)',
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => ctx.dataset.label + ': $' + ctx.raw.toLocaleString()
+                    }
+                }
+            },
+            scales: {
+                x: { stacked: true },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { callback: (v) => '$' + v.toLocaleString() }
+                }
+            }
+        }
+    });
+    dataCharts.push(paymentChart);
+
+    // In-Person Payment Distribution (Doughnut)
+    const ipPaymentChart = new Chart(document.getElementById('dataSellersInPersonPaymentChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Cash', 'Credit Card', 'Debit'],
+            datasets: [{
+                data: [ipCash, ipCC, ipDebit],
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(139, 92, 246, 0.8)'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const pct = ipNetSales > 0 ? ((ctx.raw / ipNetSales) * 100).toFixed(1) : 0;
+                            return ctx.label + ': $' + ctx.raw.toLocaleString() + ' (' + pct + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    dataCharts.push(ipPaymentChart);
+
+    // In-Person Sales by Seller Bar Chart
+    const ipBarChart = new Chart(document.getElementById('dataSellersInPersonBarChart'), {
+        type: 'bar',
+        data: {
+            labels: inPersonSellers.map(s => s.seller),
+            datasets: [{
+                label: 'Net Sales',
+                data: inPersonSellers.map(s => s.netSales),
+                backgroundColor: 'rgba(5, 150, 105, 0.8)',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => '$' + ctx.raw.toLocaleString(),
+                        afterLabel: (ctx) => ((ctx.raw / ipNetSales) * 100).toFixed(1) + '% of in-person'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: (v) => '$' + v.toLocaleString() }
+                }
+            }
+        }
+    });
+    dataCharts.push(ipBarChart);
+}
+
+function renderSellersTable(sellerData, totalNetSales, totalCash, totalCC, totalDebit, totalTx, totalVoided, totalNetNumbers) {
+    // Sort by net sales descending
+    const sorted = [...sellerData].sort((a, b) => b.netSales - a.netSales);
+
+    document.getElementById('dataSellersTable').innerHTML = sorted.map(s => `
+        <tr>
+            <td><strong>${s.seller}</strong></td>
+            <td>$${s.netSales.toLocaleString()}</td>
+            <td>$${s.cash.toLocaleString()}</td>
+            <td>$${s.cc.toLocaleString()}</td>
+            <td>$${s.debit.toLocaleString()}</td>
+            <td>${s.tx.toLocaleString()}</td>
+            <td>${s.avgOrder !== null ? '$' + s.avgOrder.toFixed(0) : 'N/A'}</td>
+            <td>$${s.voided.toLocaleString()}</td>
+            <td>${s.netNumbers.toLocaleString()}</td>
+        </tr>
+    `).join('');
+
+    const overallAvg = totalTx > 0 ? totalNetSales / totalTx : 0;
+
+    document.getElementById('dataSellersTotals').innerHTML = `
+        <tr>
+            <td><strong>TOTAL</strong></td>
+            <td><strong>$${totalNetSales.toLocaleString()}</strong></td>
+            <td><strong>$${totalCash.toLocaleString()}</strong></td>
+            <td><strong>$${totalCC.toLocaleString()}</strong></td>
+            <td><strong>$${totalDebit.toLocaleString()}</strong></td>
+            <td><strong>${totalTx.toLocaleString()}</strong></td>
+            <td><strong>$${overallAvg.toFixed(0)}</strong></td>
+            <td><strong>$${totalVoided.toLocaleString()}</strong></td>
+            <td><strong>${totalNetNumbers.toLocaleString()}</strong></td>
+        </tr>
+    `;
 }
 
 // ==================== NAVIGATION ====================
