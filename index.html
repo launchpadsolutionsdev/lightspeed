@@ -3451,6 +3451,78 @@
             color: var(--text-primary);
         }
 
+        /* ==================== ENHANCED UI ANIMATIONS & EFFECTS ==================== */
+
+        /* Keyframe Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Staggered Animation Delays */
+        .data-metric-card:nth-child(1) { animation-delay: 0ms; }
+        .data-metric-card:nth-child(2) { animation-delay: 80ms; }
+        .data-metric-card:nth-child(3) { animation-delay: 160ms; }
+        .data-metric-card:nth-child(4) { animation-delay: 240ms; }
+        .data-metric-card:nth-child(5) { animation-delay: 320ms; }
+        .data-metric-card:nth-child(6) { animation-delay: 400ms; }
+        .data-metric-card:nth-child(7) { animation-delay: 480ms; }
+        .data-metric-card:nth-child(8) { animation-delay: 560ms; }
+
+        .data-chart-card:nth-child(1) { animation-delay: 100ms; }
+        .data-chart-card:nth-child(2) { animation-delay: 200ms; }
+
+        /* Glassmorphism Base */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
         /* Metrics Grid */
         .data-metrics-grid {
             display: grid;
@@ -3464,13 +3536,17 @@
         }
 
         .data-metric-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-radius: var(--radius-lg);
             padding: 24px;
-            box-shadow: var(--shadow-md);
-            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: fadeInUp 0.6s ease-out both;
         }
 
         .data-metric-card::before {
@@ -3480,23 +3556,52 @@
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            background: linear-gradient(90deg, var(--primary), var(--primary-light), var(--primary));
+            background-size: 200% auto;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
 
+        .data-metric-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 40%,
+                rgba(255, 255, 255, 0.1) 50%,
+                transparent 60%
+            );
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
         .data-metric-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15), 0 8px 16px rgba(0, 0, 0, 0.08);
+            border-color: rgba(139, 92, 246, 0.3);
         }
 
         .data-metric-card:hover::before {
             opacity: 1;
+            animation: shimmer 2s linear infinite;
+        }
+
+        .data-metric-card:hover::after {
+            opacity: 1;
+            animation: shimmer 1.5s linear infinite;
         }
 
         .data-metric-card.highlight {
             background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            background-size: 200% 200%;
+            animation: fadeInUp 0.6s ease-out both, gradientShift 8s ease infinite;
             color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .data-metric-card.highlight::before {
@@ -3510,8 +3615,11 @@
         }
 
         .data-metric-card.northern {
-            background: linear-gradient(135deg, #059669, #047857);
+            background: linear-gradient(135deg, #059669, #047857, #10b981);
+            background-size: 200% 200%;
+            animation: fadeInUp 0.6s ease-out both, gradientShift 8s ease infinite;
             color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .data-metric-card.northern::before {
@@ -3523,6 +3631,219 @@
             opacity: 0.9;
             color: white;
         }
+
+        .data-metric-icon {
+            font-size: 28px;
+            margin-bottom: 12px;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .data-metric-card:hover .data-metric-icon {
+            transform: scale(1.2) rotate(-5deg);
+            animation: float 2s ease-in-out infinite;
+        }
+
+        /* Animated Counter Values */
+        .data-metric-value {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, var(--text) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .data-metric-card.highlight .data-metric-value,
+        .data-metric-card.northern .data-metric-value {
+            background: none;
+            -webkit-text-fill-color: white;
+            color: white;
+        }
+
+        .data-metric-value.counting {
+            animation: countUp 0.3s ease-out;
+        }
+
+        /* Enhanced Chart Cards */
+        .data-chart-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: fadeInScale 0.6s ease-out both;
+            transition: all 0.4s ease;
+        }
+
+        .data-chart-card:hover {
+            box-shadow: 0 16px 48px rgba(139, 92, 246, 0.12), 0 8px 16px rgba(0, 0, 0, 0.06);
+            transform: translateY(-4px);
+        }
+
+        .data-chart-card h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .data-chart-card h3::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(180deg, var(--primary), var(--primary-light));
+            border-radius: 2px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* Enhanced Table Cards */
+        .data-table-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: fadeInUp 0.6s ease-out both;
+            transition: all 0.4s ease;
+        }
+
+        .data-table-card:hover {
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Progress Ring Component */
+        .progress-ring {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-ring svg {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-circle {
+            transition: stroke-dashoffset 1s ease-out;
+        }
+
+        .progress-ring-text {
+            position: absolute;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        /* Enhanced Summary Table Container */
+        .data-summary-table-container {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: fadeInUp 0.5s ease-out both;
+        }
+
+        /* Enhanced Payment Overview Container */
+        .data-payment-overview-container,
+        .data-seller-breakdown-container,
+        .data-sellers-payment-overview,
+        .data-sellers-inperson-section {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: fadeInUp 0.6s ease-out both;
+        }
+
+        .data-payment-stat-big,
+        .data-sellers-payment-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .data-payment-stat-big:hover,
+        .data-sellers-payment-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Animated Background for Dashboard */
+        .data-dashboard {
+            position: relative;
+        }
+
+        .data-dashboard::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.03) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Report Type Section Enhancement */
+        .data-report-type-section {
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .data-report-type-dropdown {
+            transition: all 0.3s ease;
+            border: 2px solid var(--border);
+        }
+
+        .data-report-type-dropdown:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+        }
+
+        /* Smooth Page Transitions */
+        .data-page {
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        /* Rank Badge Enhancements */
+        .data-rank-badge {
+            transition: all 0.3s ease;
+        }
+
+        tr:hover .data-rank-badge {
+            transform: scale(1.1);
+        }
+
+        .data-rank-1 {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+        }
+
+        .data-rank-2 {
+            background: linear-gradient(135deg, #9ca3af, #6b7280);
+            box-shadow: 0 2px 8px rgba(156, 163, 175, 0.4);
+        }
+
+        .data-rank-3 {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            box-shadow: 0 2px 8px rgba(217, 119, 6, 0.4);
+        }
+
+        /* ==================== END ENHANCED UI ==================== */
 
         .data-metric-icon {
             font-size: 24px;

@@ -1153,21 +1153,22 @@ function analyzeDataFull(data) {
     dataAnalysisResults = { cityData, customerSpending, totalRevenue };
 
     // Update UI - use exact amounts for main revenue figures
-    document.getElementById('dataTotalRevenue').textContent = formatDataCurrency(totalRevenue, true);
+    // Animated metric updates
+    animateCurrency(document.getElementById('dataTotalRevenue'), totalRevenue, 1500, true);
     document.getElementById('dataRevenueSubtext').textContent = `from ${totalTransactions.toLocaleString()} transactions`;
-    document.getElementById('dataAvgSale').textContent = formatDataCurrency(avgSale);
+    animateCurrency(document.getElementById('dataAvgSale'), avgSale, 1200);
     document.getElementById('dataAvgSaleSubtext').textContent = `from ${totalPackageCount.toLocaleString()} packages`;
-    document.getElementById('dataUniqueCustomers').textContent = uniqueCustomers.toLocaleString();
-    document.getElementById('dataAvgPerCustomer').textContent = formatDataCurrency(avgPerCustomer);
-    document.getElementById('dataRepeatBuyers').textContent = repeatBuyersCount.toLocaleString();
+    animateNumber(document.getElementById('dataUniqueCustomers'), uniqueCustomers, 1200);
+    animateCurrency(document.getElementById('dataAvgPerCustomer'), avgPerCustomer, 1000);
+    animateNumber(document.getElementById('dataRepeatBuyers'), repeatBuyersCount, 1000);
     document.getElementById('dataRepeatSubtext').textContent = `bought multiple packages`;
-    document.getElementById('dataTotalTickets').textContent = totalTickets.toLocaleString();
-    document.getElementById('dataTotalPurchases').textContent = totalTransactions.toLocaleString();
-    document.getElementById('dataTotalUniqueCustomers').textContent = uniqueCustomers.toLocaleString();
-    document.getElementById('dataAvgPurchase').textContent = formatDataCurrency(totalRevenue / totalTransactions);
-    document.getElementById('dataNorthernSales').textContent = formatDataCurrency(northernRevenue, true);
+    animateNumber(document.getElementById('dataTotalTickets'), totalTickets, 1200);
+    animateNumber(document.getElementById('dataTotalPurchases'), totalTransactions, 1000);
+    animateNumber(document.getElementById('dataTotalUniqueCustomers'), uniqueCustomers, 1000);
+    animateCurrency(document.getElementById('dataAvgPurchase'), totalRevenue / totalTransactions, 1000);
+    animateCurrency(document.getElementById('dataNorthernSales'), northernRevenue, 1200, true);
     document.getElementById('dataNorthernSubtext').textContent = `${northernCount.toLocaleString()} customers (${((northernRevenue/totalRevenue)*100).toFixed(1)}%)`;
-    document.getElementById('dataRsuSales').textContent = formatDataCurrency(rsuRevenue, true);
+    animateCurrency(document.getElementById('dataRsuSales'), rsuRevenue, 1200, true);
     document.getElementById('dataRsuSubtext').textContent = `${rsuCount.toLocaleString()} in-venue transactions`;
 
     // Populate Summary Statistics Table
@@ -1253,9 +1254,81 @@ function formatDataCurrency(value, exact = false) {
     return '$' + value.toFixed(2);
 }
 
+// ==================== ANIMATED COUNT-UP FUNCTIONS ====================
+function animateValue(element, start, end, duration, prefix = '', suffix = '', decimals = 0) {
+    if (!element) return;
+
+    const startTime = performance.now();
+    const range = end - start;
+
+    element.classList.add('counting');
+
+    function updateValue(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Easing function (ease-out cubic)
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+
+        const currentValue = start + (range * easeOut);
+
+        if (decimals > 0) {
+            element.textContent = prefix + currentValue.toFixed(decimals) + suffix;
+        } else {
+            element.textContent = prefix + Math.round(currentValue).toLocaleString() + suffix;
+        }
+
+        if (progress < 1) {
+            requestAnimationFrame(updateValue);
+        } else {
+            element.classList.remove('counting');
+        }
+    }
+
+    requestAnimationFrame(updateValue);
+}
+
+function animateCurrency(element, value, duration = 1200, exact = false) {
+    if (!element) return;
+
+    if (exact) {
+        animateValue(element, 0, Math.round(value), duration, '$');
+    } else if (value >= 1000000) {
+        animateValue(element, 0, value / 1000000, duration, '$', 'M', 2);
+    } else if (value >= 1000) {
+        animateValue(element, 0, value / 1000, duration, '$', 'K', 1);
+    } else {
+        animateValue(element, 0, value, duration, '$', '', 2);
+    }
+}
+
+function animatePercent(element, value, duration = 1000) {
+    if (!element) return;
+    animateValue(element, 0, value, duration, '', '%', 2);
+}
+
+function animateNumber(element, value, duration = 1000) {
+    if (!element) return;
+    animateValue(element, 0, value, duration);
+}
+
 function renderDataChartsFull(tierData, packageCounts, northernRevenue, southernRevenue) {
     dataCharts.forEach(chart => chart.destroy());
     dataCharts = [];
+
+    // Enhanced chart animation defaults
+    const chartAnimationOptions = {
+        animation: {
+            duration: 1200,
+            easing: 'easeOutQuart',
+            delay: (context) => context.dataIndex * 100
+        },
+        transitions: {
+            active: { animation: { duration: 300 } },
+            hide: { animation: { duration: 400 } },
+            show: { animation: { duration: 600 } }
+        }
+    };
 
     const chartColors = ['#8b5cf6', '#7c3aed', '#a78bfa', '#c4b5fd', '#ddd6fe'];
 
@@ -1269,14 +1342,16 @@ function renderDataChartsFull(tierData, packageCounts, northernRevenue, southern
                 label: 'Revenue',
                 data: topTiersByRevenue.map(t => t[1].revenue),
                 backgroundColor: chartColors[0],
-                borderRadius: 6
+                borderRadius: 8,
+                borderSkipped: false
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + (v/1000) + 'K' } } }
+            scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + (v/1000) + 'K' } } },
+            ...chartAnimationOptions
         }
     });
     dataCharts.push(revenueChart);
@@ -1291,14 +1366,16 @@ function renderDataChartsFull(tierData, packageCounts, northernRevenue, southern
                 label: 'Transactions',
                 data: topTiersByCount.map(t => t[1].count),
                 backgroundColor: chartColors[1],
-                borderRadius: 6
+                borderRadius: 8,
+                borderSkipped: false
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            scales: { y: { beginAtZero: true } },
+            ...chartAnimationOptions
         }
     });
     dataCharts.push(transactionsChart);
@@ -1597,10 +1674,11 @@ function analyzeCustomersReport(data) {
     const uniquePostal = Object.keys(postalData).length;
 
     // Update metrics
-    document.getElementById('dataCustTotalCustomers').textContent = totalCustomers.toLocaleString();
-    document.getElementById('dataCustUniqueCities').textContent = uniqueCities.toLocaleString();
-    document.getElementById('dataCustUniquePostal').textContent = uniquePostal.toLocaleString();
-    document.getElementById('dataCustNorthernCount').textContent = northernCount.toLocaleString();
+    // Animated metric updates
+    animateNumber(document.getElementById('dataCustTotalCustomers'), totalCustomers, 1200);
+    animateNumber(document.getElementById('dataCustUniqueCities'), uniqueCities, 1000);
+    animateNumber(document.getElementById('dataCustUniquePostal'), uniquePostal, 1000);
+    animateNumber(document.getElementById('dataCustNorthernCount'), northernCount, 1000);
     document.getElementById('dataCustNorthernPct').textContent = `${((northernCount / totalCustomers) * 100).toFixed(1)}% of customers`;
 
     // Render charts and tables
@@ -1776,15 +1854,16 @@ function analyzePaymentTicketsReport(data) {
     const inPersonRevenue = totalRevenue - shopifyRevenue;
 
     // Update Overview UI
-    document.getElementById('dataPTTotalSales').textContent = totalSales.toLocaleString();
-    document.getElementById('dataPTShopifyPct').textContent = ((shopifySales / totalSales) * 100).toFixed(2) + '%';
+    // Animated metric updates
+    animateNumber(document.getElementById('dataPTTotalSales'), totalSales, 1200);
+    animatePercent(document.getElementById('dataPTShopifyPct'), (shopifySales / totalSales) * 100, 1000);
     document.getElementById('dataPTShopifyCount').textContent = shopifySales.toLocaleString() + ' transactions';
-    document.getElementById('dataPTInPersonPct').textContent = ((inPersonSales / totalSales) * 100).toFixed(2) + '%';
+    animatePercent(document.getElementById('dataPTInPersonPct'), (inPersonSales / totalSales) * 100, 1000);
     document.getElementById('dataPTInPersonCount').textContent = inPersonSales.toLocaleString() + ' transactions';
 
-    document.getElementById('dataPTTotalRevenue').textContent = '$' + totalRevenue.toLocaleString();
-    document.getElementById('dataPTShopifyRevenue').textContent = '$' + shopifyRevenue.toLocaleString();
-    document.getElementById('dataPTInPersonRevenue').textContent = '$' + inPersonRevenue.toLocaleString();
+    animateCurrency(document.getElementById('dataPTTotalRevenue'), totalRevenue, 1200, true);
+    animateCurrency(document.getElementById('dataPTShopifyRevenue'), shopifyRevenue, 1200, true);
+    animateCurrency(document.getElementById('dataPTInPersonRevenue'), inPersonRevenue, 1200, true);
 
     // Categorize sellers (Foundation Office = Seller 1, Seller 2; Store = all others except Shopify)
     const foundationSellers = {};
@@ -2057,26 +2136,27 @@ function analyzeSellersReport(data) {
     const overallAvgOrder = totalTx > 0 ? totalNetSales / totalTx : 0;
 
     // Update Overview Metrics
-    document.getElementById('dataSellersNetSales').textContent = '$' + totalNetSales.toLocaleString();
-    document.getElementById('dataSellersTotalTx').textContent = totalTx.toLocaleString();
-    document.getElementById('dataSellersActiveSellers').textContent = activeSellers.toLocaleString();
-    document.getElementById('dataSellersAvgOrder').textContent = '$' + overallAvgOrder.toFixed(2);
+    // Animated metric updates
+    animateCurrency(document.getElementById('dataSellersNetSales'), totalNetSales, 1500, true);
+    animateNumber(document.getElementById('dataSellersTotalTx'), totalTx, 1200);
+    animateNumber(document.getElementById('dataSellersActiveSellers'), activeSellers, 800);
+    animateCurrency(document.getElementById('dataSellersAvgOrder'), overallAvgOrder, 1000);
 
-    // Update Payment Method Overview (All Sellers)
-    document.getElementById('dataSellersCashTotal').textContent = '$' + totalCash.toLocaleString();
-    document.getElementById('dataSellersCashPct').textContent = totalNetSales > 0 ? ((totalCash / totalNetSales) * 100).toFixed(1) + '%' : '0%';
-    document.getElementById('dataSellersCCTotal').textContent = '$' + totalCC.toLocaleString();
-    document.getElementById('dataSellersCCPct').textContent = totalNetSales > 0 ? ((totalCC / totalNetSales) * 100).toFixed(1) + '%' : '0%';
-    document.getElementById('dataSellersDebitTotal').textContent = '$' + totalDebit.toLocaleString();
-    document.getElementById('dataSellersDebitPct').textContent = totalNetSales > 0 ? ((totalDebit / totalNetSales) * 100).toFixed(1) + '%' : '0%';
+    // Update Payment Method Overview (All Sellers) with animations
+    animateCurrency(document.getElementById('dataSellersCashTotal'), totalCash, 1200, true);
+    animatePercent(document.getElementById('dataSellersCashPct'), totalNetSales > 0 ? (totalCash / totalNetSales) * 100 : 0, 1000);
+    animateCurrency(document.getElementById('dataSellersCCTotal'), totalCC, 1200, true);
+    animatePercent(document.getElementById('dataSellersCCPct'), totalNetSales > 0 ? (totalCC / totalNetSales) * 100 : 0, 1000);
+    animateCurrency(document.getElementById('dataSellersDebitTotal'), totalDebit, 1200, true);
+    animatePercent(document.getElementById('dataSellersDebitPct'), totalNetSales > 0 ? (totalDebit / totalNetSales) * 100 : 0, 1000);
 
-    // Update In-Person Payment Overview
-    document.getElementById('dataSellersIPCashTotal').textContent = '$' + ipCash.toLocaleString();
-    document.getElementById('dataSellersIPCashPct').textContent = ipNetSales > 0 ? ((ipCash / ipNetSales) * 100).toFixed(1) + '%' : '0%';
-    document.getElementById('dataSellersIPCCTotal').textContent = '$' + ipCC.toLocaleString();
-    document.getElementById('dataSellersIPCCPct').textContent = ipNetSales > 0 ? ((ipCC / ipNetSales) * 100).toFixed(1) + '%' : '0%';
-    document.getElementById('dataSellersIPDebitTotal').textContent = '$' + ipDebit.toLocaleString();
-    document.getElementById('dataSellersIPDebitPct').textContent = ipNetSales > 0 ? ((ipDebit / ipNetSales) * 100).toFixed(1) + '%' : '0%';
+    // Update In-Person Payment Overview with animations
+    animateCurrency(document.getElementById('dataSellersIPCashTotal'), ipCash, 1200, true);
+    animatePercent(document.getElementById('dataSellersIPCashPct'), ipNetSales > 0 ? (ipCash / ipNetSales) * 100 : 0, 1000);
+    animateCurrency(document.getElementById('dataSellersIPCCTotal'), ipCC, 1200, true);
+    animatePercent(document.getElementById('dataSellersIPCCPct'), ipNetSales > 0 ? (ipCC / ipNetSales) * 100 : 0, 1000);
+    animateCurrency(document.getElementById('dataSellersIPDebitTotal'), ipDebit, 1200, true);
+    animatePercent(document.getElementById('dataSellersIPDebitPct'), ipNetSales > 0 ? (ipDebit / ipNetSales) * 100 : 0, 1000);
 
     // Render charts and table
     renderSellersCharts(sellerData, totalNetSales, ipNetSales, ipCash, ipCC, ipDebit);
