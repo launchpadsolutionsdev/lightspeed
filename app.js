@@ -203,6 +203,11 @@ function setupAuthEventListeners() {
             const demoId = tab.dataset.demo;
             document.querySelectorAll('.landing-demo-panel').forEach(p => p.classList.remove('active'));
 
+            // Update tool description
+            document.querySelectorAll('.tool-description-panel').forEach(d => d.classList.remove('active'));
+            const descPanel = document.querySelector(`.tool-description-panel[data-tool="${demoId}"]`);
+            if (descPanel) descPanel.classList.add('active');
+
             if (demoId === 'draft') {
                 document.getElementById('demoDraft').classList.add('active');
             } else if (demoId === 'response') {

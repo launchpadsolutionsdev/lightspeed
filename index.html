@@ -1394,6 +1394,39 @@
             color: white;
         }
 
+        .landing-tool-description {
+            max-width: 800px;
+            margin: 0 auto 40px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tool-description-panel {
+            display: none;
+            color: rgba(255,255,255,0.8);
+            font-size: 1.05rem;
+            line-height: 1.7;
+            padding: 0 20px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .tool-description-panel.active {
+            display: block;
+        }
+
+        .tool-description-panel strong {
+            color: white;
+            font-weight: 600;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .landing-demo-window {
             background: #1a1625;
             border-radius: 16px;
@@ -7153,6 +7186,21 @@
                     <button class="landing-demo-tab active" data-demo="response">📧 Response Assistant</button>
                     <button class="landing-demo-tab" data-demo="insights">📊 Insights Engine</button>
                     <button class="landing-demo-tab" data-demo="normalizer">🔄 List Normalizer</button>
+                </div>
+
+                <div class="landing-tool-description">
+                    <div class="tool-description-panel" data-tool="draft">
+                        <strong>Draft Assistant</strong> generates polished first drafts of marketing content, media releases, social posts, and more — all aligned with your brand voice and organizational guidelines. Just provide the key details, and Lightspeed does the heavy lifting.
+                    </div>
+                    <div class="tool-description-panel active" data-tool="response">
+                        <strong>Response Assistant</strong> helps your team reply to customer inquiries in seconds. Paste any email or message, and get a professional, on-brand response ready to send. Perfect for handling FAQs, support tickets, and donor communications.
+                    </div>
+                    <div class="tool-description-panel" data-tool="insights">
+                        <strong>Insights Engine</strong> turns your raw data into actionable intelligence. Upload sales reports, donor lists, or campaign results, and get AI-powered analysis with clear recommendations — no spreadsheet expertise required.
+                    </div>
+                    <div class="tool-description-panel" data-tool="normalizer">
+                        <strong>List Normalizer</strong> cleans and reformats messy customer data for your email marketing platform. It fixes formatting issues, removes invalid entries, and exports lists ready for Mailchimp, Constant Contact, or any other service.
+                    </div>
                 </div>
 
                 <div class="landing-demo-window">
