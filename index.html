@@ -152,10 +152,30 @@
             pointer-events: none;
         }
 
+        /* Sticky Top Banner */
+        .landing-top-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 101;
+            background: linear-gradient(90deg, #f97316 0%, #a855f7 50%, #facc15 100%);
+            padding: 10px 20px;
+            text-align: center;
+        }
+
+        .landing-top-banner p {
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 0;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
         /* Landing Navigation */
         .landing-nav {
             position: fixed;
-            top: 0;
+            top: 40px;
             left: 0;
             right: 0;
             padding: 20px 40px;
@@ -229,7 +249,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 120px 40px 80px;
+            padding: 160px 40px 80px;
             position: relative;
             overflow: hidden;
             background: linear-gradient(135deg, #0f0a1a 0%, #1a1225 50%, #0f0a1a 100%);
@@ -6943,6 +6963,11 @@
 <body>
     <!-- ==================== MARKETING LANDING PAGE ==================== -->
     <div class="landing-page" id="landingPage">
+
+        <!-- Top Banner -->
+        <div class="landing-top-banner">
+            <p>Embrace the power of next generation AI tools and Machine Learning</p>
+        </div>
 
         <!-- Parallax Background -->
         <div class="landing-parallax-bg" id="parallaxBg">
