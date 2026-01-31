@@ -771,6 +771,200 @@
             color: rgba(255,255,255,0.8);
         }
 
+        /* ==================== PRICING SECTION ==================== */
+        .landing-pricing {
+            padding: 100px 40px;
+            background: linear-gradient(180deg, transparent 0%, rgba(139, 92, 246, 0.05) 50%, transparent 100%);
+        }
+
+        .landing-pricing-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .landing-pricing-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 32px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .landing-pricing-card:hover {
+            background: rgba(255,255,255,0.05);
+            transform: translateY(-4px);
+        }
+
+        .landing-pricing-card.featured {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: rgba(139, 92, 246, 0.3);
+            transform: scale(1.05);
+        }
+
+        .landing-pricing-card.featured:hover {
+            transform: scale(1.05) translateY(-4px);
+        }
+
+        .landing-pricing-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 100px;
+            color: var(--accent);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        .landing-pricing-card.featured .landing-pricing-badge {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+        }
+
+        .landing-pricing-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .landing-pricing-price {
+            margin-bottom: 16px;
+        }
+
+        .landing-pricing-amount {
+            font-size: 3rem;
+            font-weight: 800;
+            color: white;
+            line-height: 1;
+        }
+
+        .landing-pricing-period {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.5);
+            margin-left: 4px;
+        }
+
+        .landing-pricing-desc {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .landing-pricing-features {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 28px;
+        }
+
+        .landing-pricing-features li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 12px;
+        }
+
+        .landing-pricing-features li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .landing-pricing-btn {
+            width: 100%;
+            padding: 14px 24px;
+            border-radius: 100px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            border: none;
+        }
+
+        .landing-pricing-btn.trial-btn {
+            background: transparent;
+            border: 2px solid rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .landing-pricing-btn.trial-btn:hover {
+            border-color: rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .landing-pricing-btn.monthly-btn {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
+        }
+
+        .landing-pricing-btn.monthly-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(139, 92, 246, 0.4);
+        }
+
+        .landing-pricing-btn.annual-btn {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .landing-pricing-btn.annual-btn:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .landing-pricing-setup {
+            text-align: center;
+            margin-top: 40px;
+            padding: 24px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 12px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .landing-pricing-setup p {
+            font-size: 0.95rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .landing-pricing-setup a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .landing-pricing-setup a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 900px) {
+            .landing-pricing-container {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+            }
+
+            .landing-pricing-card.featured {
+                transform: none;
+                order: -1;
+            }
+
+            .landing-pricing-card.featured:hover {
+                transform: translateY(-4px);
+            }
+        }
+
         /* ==================== LIVE DEMO SECTION ==================== */
         .landing-demo {
             padding: 100px 40px;
@@ -6211,6 +6405,7 @@
             </div>
             <div class="landing-nav-links">
                 <a class="landing-nav-link" onclick="document.querySelector('.landing-features').scrollIntoView({behavior: 'smooth'})">Features</a>
+                <a class="landing-nav-link" onclick="document.querySelector('.landing-pricing').scrollIntoView({behavior: 'smooth'})">Pricing</a>
                 <a class="landing-nav-link" onclick="document.querySelector('.landing-proof').scrollIntoView({behavior: 'smooth'})">About</a>
                 <a class="landing-nav-link" onclick="document.querySelector('.landing-cta-section').scrollIntoView({behavior: 'smooth'})">Contact</a>
                 <button class="landing-nav-cta" id="navLaunchAppBtn">Launch App →</button>
@@ -6589,6 +6784,74 @@
                     <div class="landing-improving-icon">🤝</div>
                     <span>Ongoing support & training</span>
                 </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section class="landing-pricing" id="pricing">
+            <div class="landing-section-header">
+                <div class="landing-section-tag">Pricing</div>
+                <h2 class="landing-section-title">Simple, transparent pricing.</h2>
+                <p class="landing-section-subtitle">No hidden fees. No surprises. Just powerful AI tools built for your team.</p>
+            </div>
+
+            <div class="landing-pricing-container">
+                <!-- Free Trial -->
+                <div class="landing-pricing-card trial">
+                    <div class="landing-pricing-badge">Start Here</div>
+                    <h3 class="landing-pricing-name">Free Trial</h3>
+                    <div class="landing-pricing-price">
+                        <span class="landing-pricing-amount">$0</span>
+                        <span class="landing-pricing-period">for 7 days</span>
+                    </div>
+                    <p class="landing-pricing-desc">Try Lightspeed risk-free. No credit card required.</p>
+                    <ul class="landing-pricing-features">
+                        <li>Full access to all tools</li>
+                        <li>Up to 20 generations</li>
+                        <li>Sample knowledge base</li>
+                    </ul>
+                    <button class="landing-pricing-btn trial-btn" id="pricingTrialBtn">Start Free Trial</button>
+                </div>
+
+                <!-- Monthly -->
+                <div class="landing-pricing-card monthly featured">
+                    <div class="landing-pricing-badge">Most Popular</div>
+                    <h3 class="landing-pricing-name">Monthly</h3>
+                    <div class="landing-pricing-price">
+                        <span class="landing-pricing-amount">$99</span>
+                        <span class="landing-pricing-period">/month</span>
+                    </div>
+                    <p class="landing-pricing-desc">Everything you need to work at lightspeed.</p>
+                    <ul class="landing-pricing-features">
+                        <li>Unlimited generations</li>
+                        <li>Custom knowledge base</li>
+                        <li>All four tools included</li>
+                        <li>Ongoing support & training</li>
+                        <li>Continuous improvements</li>
+                    </ul>
+                    <button class="landing-pricing-btn monthly-btn" id="pricingMonthlyBtn">Get Started</button>
+                </div>
+
+                <!-- Annual -->
+                <div class="landing-pricing-card annual">
+                    <div class="landing-pricing-badge">Best Value</div>
+                    <h3 class="landing-pricing-name">Annual</h3>
+                    <div class="landing-pricing-price">
+                        <span class="landing-pricing-amount">$89</span>
+                        <span class="landing-pricing-period">/month</span>
+                    </div>
+                    <p class="landing-pricing-desc">Save 10% with annual billing ($1,068/year).</p>
+                    <ul class="landing-pricing-features">
+                        <li>Everything in Monthly</li>
+                        <li>Priority support</li>
+                        <li>Lock in your rate</li>
+                    </ul>
+                    <button class="landing-pricing-btn annual-btn" id="pricingAnnualBtn">Get Started</button>
+                </div>
+            </div>
+
+            <div class="landing-pricing-setup">
+                <p><strong>One-time setup fee:</strong> Custom quote based on organization size and knowledge base complexity. <a href="mailto:hello@launchpadsolutions.ca">Contact us</a> for details.</p>
             </div>
         </section>
 
