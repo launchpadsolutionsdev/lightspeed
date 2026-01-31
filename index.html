@@ -3611,6 +3611,233 @@
             grid-template-columns: repeat(3, 1fr);
         }
 
+        /* Payment Tickets Dashboard Styles */
+        .data-payment-overview-container {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 32px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .data-payment-overview-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .data-payment-overview-header h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, var(--primary), var(--primary-light));
+            border-radius: 2px;
+        }
+
+        .data-payment-overview-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .data-payment-stat-big {
+            background: var(--bg-light);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+        }
+
+        .data-payment-stat-big:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .data-payment-stat-big.highlight {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.1));
+            border-color: var(--primary-light);
+        }
+
+        .data-payment-stat-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .data-payment-stat-value {
+            font-size: 42px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.1;
+            margin-bottom: 8px;
+        }
+
+        .data-payment-stat-big.highlight .data-payment-stat-value {
+            color: var(--primary);
+        }
+
+        .data-payment-stat-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-payment-stat-sublabel {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-top: 6px;
+        }
+
+        .data-payment-revenue-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .data-payment-revenue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        .data-payment-revenue-item.highlight {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08));
+            border-color: var(--primary-light);
+        }
+
+        .data-payment-revenue-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .data-payment-revenue-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .data-payment-revenue-item.highlight .data-payment-revenue-value {
+            color: var(--primary);
+        }
+
+        /* Seller Breakdown Container */
+        .data-seller-breakdown-container {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 32px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .data-seller-breakdown-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .data-seller-breakdown-header h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, #059669, #10b981);
+            border-radius: 2px;
+        }
+
+        .data-seller-breakdown-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .data-seller-tables-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 0;
+            margin-top: 24px;
+        }
+
+        .data-seller-section {
+            padding: 0 24px;
+        }
+
+        .data-seller-section:first-child {
+            padding-left: 0;
+        }
+
+        .data-seller-section:last-child {
+            padding-right: 0;
+        }
+
+        .data-seller-divider {
+            width: 1px;
+            background: linear-gradient(180deg, transparent, var(--border), transparent);
+            margin: 0 8px;
+        }
+
+        .data-seller-section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+        }
+
+        .data-seller-section-header.foundation {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(96, 165, 250, 0.1));
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .data-seller-section-header.store {
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.1), rgba(16, 185, 129, 0.1));
+            border: 1px solid rgba(5, 150, 105, 0.2);
+        }
+
+        .data-seller-section-icon {
+            font-size: 20px;
+        }
+
+        .data-seller-section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .data-seller-table {
+            width: 100%;
+        }
+
+        .data-seller-table tfoot tr {
+            background: var(--bg-light);
+            font-weight: 700;
+        }
+
+        .data-seller-table tfoot td {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            border-top: 2px solid var(--border);
+        }
+
         .data-table-card {
             background: white;
             border-radius: var(--radius-lg);
@@ -5304,6 +5531,127 @@
                                 <h3>Customers by Postal Code (Top 10)</h3>
                                 <div class="data-chart-container">
                                     <canvas id="dataCustPostalChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Tickets Report Dashboard -->
+                <div class="data-dashboard" id="dataPaymentTicketsDashboard" style="display: none;">
+                    <div class="data-page active" id="data-page-payment-tickets-overview">
+                        <div class="data-report-header">
+                            <div class="data-report-info">
+                                <span class="data-report-badge">🎫 Payment Tickets Report</span>
+                                <span class="data-report-name" id="dataPaymentTicketsReportName">Payment Tickets Report</span>
+                            </div>
+                        </div>
+
+                        <!-- Overview Container - Big prominent display for Shopify vs Total -->
+                        <div class="data-payment-overview-container">
+                            <div class="data-payment-overview-header">
+                                <h2>Sales Channel Overview</h2>
+                            </div>
+                            <div class="data-payment-overview-grid">
+                                <div class="data-payment-stat-big">
+                                    <div class="data-payment-stat-icon">🛒</div>
+                                    <div class="data-payment-stat-value" id="dataPTTotalSales">0</div>
+                                    <div class="data-payment-stat-label">Total Sales</div>
+                                </div>
+                                <div class="data-payment-stat-big highlight">
+                                    <div class="data-payment-stat-icon">🌐</div>
+                                    <div class="data-payment-stat-value" id="dataPTShopifyPct">0%</div>
+                                    <div class="data-payment-stat-label">Shopify (Online) Sales</div>
+                                    <div class="data-payment-stat-sublabel" id="dataPTShopifyCount">0 transactions</div>
+                                </div>
+                                <div class="data-payment-stat-big">
+                                    <div class="data-payment-stat-icon">🏪</div>
+                                    <div class="data-payment-stat-value" id="dataPTInPersonPct">0%</div>
+                                    <div class="data-payment-stat-label">In-Person Sales</div>
+                                    <div class="data-payment-stat-sublabel" id="dataPTInPersonCount">0 transactions</div>
+                                </div>
+                            </div>
+                            <div class="data-payment-revenue-row">
+                                <div class="data-payment-revenue-item">
+                                    <span class="data-payment-revenue-label">Total Revenue</span>
+                                    <span class="data-payment-revenue-value" id="dataPTTotalRevenue">$0</span>
+                                </div>
+                                <div class="data-payment-revenue-item highlight">
+                                    <span class="data-payment-revenue-label">Shopify Revenue</span>
+                                    <span class="data-payment-revenue-value" id="dataPTShopifyRevenue">$0</span>
+                                </div>
+                                <div class="data-payment-revenue-item">
+                                    <span class="data-payment-revenue-label">In-Person Revenue</span>
+                                    <span class="data-payment-revenue-value" id="dataPTInPersonRevenue">$0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- In-Person Seller Breakdown Container -->
+                        <div class="data-seller-breakdown-container">
+                            <div class="data-seller-breakdown-header">
+                                <h2>In-Person Seller Breakdown</h2>
+                                <p class="data-seller-breakdown-subtitle">Detailed breakdown of non-Shopify sales by seller</p>
+                            </div>
+
+                            <!-- Bar Chart -->
+                            <div class="data-chart-card" style="margin-bottom: 24px;">
+                                <h3>Sales by Seller</h3>
+                                <div class="data-chart-container">
+                                    <canvas id="dataPTSellerChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Two-section table: Foundation Office & TB 50/50 Store -->
+                            <div class="data-seller-tables-container">
+                                <!-- Foundation Donation Office Section -->
+                                <div class="data-seller-section">
+                                    <div class="data-seller-section-header foundation">
+                                        <span class="data-seller-section-icon">🏢</span>
+                                        <span class="data-seller-section-title">Foundation Donation Office</span>
+                                    </div>
+                                    <table class="data-table data-seller-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Seller</th>
+                                                <th>Sales</th>
+                                                <th>Revenue</th>
+                                                <th>% of In-Person</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="dataPTFoundationTable"></tbody>
+                                        <tfoot id="dataPTFoundationTotals"></tfoot>
+                                    </table>
+                                </div>
+
+                                <div class="data-seller-divider"></div>
+
+                                <!-- Thunder Bay 50/50 Store Section -->
+                                <div class="data-seller-section">
+                                    <div class="data-seller-section-header store">
+                                        <span class="data-seller-section-icon">🏪</span>
+                                        <span class="data-seller-section-title">Thunder Bay 50/50 Store</span>
+                                    </div>
+                                    <table class="data-table data-seller-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Seller</th>
+                                                <th>Sales</th>
+                                                <th>Revenue</th>
+                                                <th>% of In-Person</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="dataPTStoreTable"></tbody>
+                                        <tfoot id="dataPTStoreTotals"></tfoot>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Revenue Chart -->
+                            <div class="data-chart-card" style="margin-top: 24px;">
+                                <h3>Revenue by Seller</h3>
+                                <div class="data-chart-container">
+                                    <canvas id="dataPTRevenueChart"></canvas>
                                 </div>
                             </div>
                         </div>

@@ -66,6 +66,12 @@ const REPORT_TYPES = {
         description: 'Analyze customer demographics and geographic distribution. Shows breakdowns by city, postal code (FSA), and phone area code. This report contains customer info without purchase amounts.',
         uploadTitle: 'Upload Customers Report',
         uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
+    },
+    'payment-tickets': {
+        name: 'Payment Tickets',
+        description: 'Analyze sales by seller/channel. Shows Shopify (online) vs in-person sales breakdown, with detailed metrics for Foundation Donation Office and Thunder Bay 50/50 Store sellers.',
+        uploadTitle: 'Upload Payment Tickets Report',
+        uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
     }
 };
 
@@ -989,6 +995,11 @@ function processNamedDataFile() {
         document.getElementById("dataNavTabs").style.display = "none"; // Customers report has single page
         analyzeCustomersReport(dataPendingFileData);
         document.getElementById("dataCustomersDashboard").style.display = "block";
+    } else if (currentReportType === 'payment-tickets') {
+        document.getElementById("dataPaymentTicketsReportName").textContent = reportName;
+        document.getElementById("dataNavTabs").style.display = "none"; // Payment Tickets report has single page
+        analyzePaymentTicketsReport(dataPendingFileData);
+        document.getElementById("dataPaymentTicketsDashboard").style.display = "block";
     } else {
         // Default to customer-purchases
         document.getElementById("dataReportName").textContent = reportName;
@@ -1712,6 +1723,246 @@ function renderCustomersTables(cityData, postalData, areaCodeData, totalCustomer
             <td>${((data.count / totalCustomers) * 100).toFixed(1)}%</td>
         </tr>
     `).join('');
+}
+
+// ==================== PAYMENT TICKETS REPORT ====================
+function analyzePaymentTicketsReport(data) {
+    // Auto-detect column names
+    const columns = Object.keys(data[0] || {});
+    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+
+    const sellerCol = findCol(['seller']);
+    const amountCol = findCol(['amount']);
+
+    // Analyze seller data
+    const sellerData = {};
+    let totalSales = 0;
+    let totalRevenue = 0;
+    let shopifySales = 0;
+    let shopifyRevenue = 0;
+
+    data.forEach(row => {
+        const seller = (row[sellerCol] || 'Unknown').toString().trim();
+        const amount = Number(row[amountCol]) || 0;
+
+        if (!sellerData[seller]) {
+            sellerData[seller] = { sales: 0, revenue: 0 };
+        }
+        sellerData[seller].sales++;
+        sellerData[seller].revenue += amount;
+
+        totalSales++;
+        totalRevenue += amount;
+
+        // Check if Shopify
+        if (seller.toLowerCase().includes('shopify')) {
+            shopifySales++;
+            shopifyRevenue += amount;
+        }
+    });
+
+    const inPersonSales = totalSales - shopifySales;
+    const inPersonRevenue = totalRevenue - shopifyRevenue;
+
+    // Update Overview UI
+    document.getElementById('dataPTTotalSales').textContent = totalSales.toLocaleString();
+    document.getElementById('dataPTShopifyPct').textContent = ((shopifySales / totalSales) * 100).toFixed(2) + '%';
+    document.getElementById('dataPTShopifyCount').textContent = shopifySales.toLocaleString() + ' transactions';
+    document.getElementById('dataPTInPersonPct').textContent = ((inPersonSales / totalSales) * 100).toFixed(2) + '%';
+    document.getElementById('dataPTInPersonCount').textContent = inPersonSales.toLocaleString() + ' transactions';
+
+    document.getElementById('dataPTTotalRevenue').textContent = '$' + totalRevenue.toLocaleString();
+    document.getElementById('dataPTShopifyRevenue').textContent = '$' + shopifyRevenue.toLocaleString();
+    document.getElementById('dataPTInPersonRevenue').textContent = '$' + inPersonRevenue.toLocaleString();
+
+    // Categorize sellers (Foundation Office = Seller 1, Seller 2; Store = all others except Shopify)
+    const foundationSellers = {};
+    const storeSellers = {};
+
+    Object.entries(sellerData).forEach(([seller, data]) => {
+        if (seller.toLowerCase().includes('shopify')) {
+            // Skip Shopify - it's in the overview
+            return;
+        }
+
+        const sellerLower = seller.toLowerCase();
+        // Foundation Donation Office: Seller 1 and Seller 2
+        if (sellerLower === 'seller 1' || sellerLower === 'seller 2' ||
+            sellerLower === 'seller1' || sellerLower === 'seller2') {
+            foundationSellers[seller] = data;
+        } else {
+            // Thunder Bay 50/50 Store: all other sellers
+            storeSellers[seller] = data;
+        }
+    });
+
+    // Render charts and tables
+    renderPaymentTicketsCharts(foundationSellers, storeSellers, inPersonSales, inPersonRevenue);
+    renderPaymentTicketsTables(foundationSellers, storeSellers, inPersonSales, inPersonRevenue);
+}
+
+function renderPaymentTicketsCharts(foundationSellers, storeSellers, totalInPerson, totalInPersonRevenue) {
+    // Destroy existing charts
+    dataCharts.forEach(chart => chart.destroy());
+    dataCharts = [];
+
+    // Combine all in-person sellers for chart
+    const allInPersonSellers = { ...foundationSellers, ...storeSellers };
+    const sortedBySales = Object.entries(allInPersonSellers).sort((a, b) => b[1].sales - a[1].sales);
+    const sortedByRevenue = Object.entries(allInPersonSellers).sort((a, b) => b[1].revenue - a[1].revenue);
+
+    // Sales by Seller Bar Chart
+    const sellerChart = new Chart(document.getElementById('dataPTSellerChart'), {
+        type: 'bar',
+        data: {
+            labels: sortedBySales.map(([name]) => name),
+            datasets: [{
+                label: 'Sales',
+                data: sortedBySales.map(([_, data]) => data.sales),
+                backgroundColor: sortedBySales.map((_, i) => {
+                    // Color based on seller type
+                    const seller = sortedBySales[i][0].toLowerCase();
+                    if (seller === 'seller 1' || seller === 'seller 2' || seller === 'seller1' || seller === 'seller2') {
+                        return 'rgba(59, 130, 246, 0.8)'; // Blue for Foundation
+                    }
+                    return 'rgba(5, 150, 105, 0.8)'; // Green for Store
+                }),
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const pct = ((context.raw / totalInPerson) * 100).toFixed(1);
+                            return pct + '% of in-person sales';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Number of Sales' }
+                }
+            }
+        }
+    });
+    dataCharts.push(sellerChart);
+
+    // Revenue by Seller Bar Chart
+    const revenueChart = new Chart(document.getElementById('dataPTRevenueChart'), {
+        type: 'bar',
+        data: {
+            labels: sortedByRevenue.map(([name]) => name),
+            datasets: [{
+                label: 'Revenue',
+                data: sortedByRevenue.map(([_, data]) => data.revenue),
+                backgroundColor: sortedByRevenue.map((_, i) => {
+                    const seller = sortedByRevenue[i][0].toLowerCase();
+                    if (seller === 'seller 1' || seller === 'seller 2' || seller === 'seller1' || seller === 'seller2') {
+                        return 'rgba(59, 130, 246, 0.8)'; // Blue for Foundation
+                    }
+                    return 'rgba(5, 150, 105, 0.8)'; // Green for Store
+                }),
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return '$' + context.raw.toLocaleString();
+                        },
+                        afterLabel: function(context) {
+                            const pct = ((context.raw / totalInPersonRevenue) * 100).toFixed(1);
+                            return pct + '% of in-person revenue';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Revenue ($)' },
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+    dataCharts.push(revenueChart);
+}
+
+function renderPaymentTicketsTables(foundationSellers, storeSellers, totalInPerson, totalInPersonRevenue) {
+    // Foundation Donation Office Table
+    const foundationEntries = Object.entries(foundationSellers).sort((a, b) => b[1].sales - a[1].sales);
+    let foundationTotalSales = 0;
+    let foundationTotalRevenue = 0;
+
+    document.getElementById('dataPTFoundationTable').innerHTML = foundationEntries.length > 0
+        ? foundationEntries.map(([seller, data]) => {
+            foundationTotalSales += data.sales;
+            foundationTotalRevenue += data.revenue;
+            return `
+                <tr>
+                    <td><strong>${seller}</strong></td>
+                    <td>${data.sales.toLocaleString()}</td>
+                    <td>$${data.revenue.toLocaleString()}</td>
+                    <td>${((data.sales / totalInPerson) * 100).toFixed(2)}%</td>
+                </tr>
+            `;
+        }).join('')
+        : '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No Foundation Office sales in this report</td></tr>';
+
+    document.getElementById('dataPTFoundationTotals').innerHTML = foundationEntries.length > 0
+        ? `<tr>
+            <td><strong>Total</strong></td>
+            <td><strong>${foundationTotalSales.toLocaleString()}</strong></td>
+            <td><strong>$${foundationTotalRevenue.toLocaleString()}</strong></td>
+            <td><strong>${((foundationTotalSales / totalInPerson) * 100).toFixed(2)}%</strong></td>
+        </tr>`
+        : '';
+
+    // Thunder Bay 50/50 Store Table
+    const storeEntries = Object.entries(storeSellers).sort((a, b) => b[1].sales - a[1].sales);
+    let storeTotalSales = 0;
+    let storeTotalRevenue = 0;
+
+    document.getElementById('dataPTStoreTable').innerHTML = storeEntries.length > 0
+        ? storeEntries.map(([seller, data]) => {
+            storeTotalSales += data.sales;
+            storeTotalRevenue += data.revenue;
+            return `
+                <tr>
+                    <td><strong>${seller}</strong></td>
+                    <td>${data.sales.toLocaleString()}</td>
+                    <td>$${data.revenue.toLocaleString()}</td>
+                    <td>${((data.sales / totalInPerson) * 100).toFixed(2)}%</td>
+                </tr>
+            `;
+        }).join('')
+        : '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No Store sales in this report</td></tr>';
+
+    document.getElementById('dataPTStoreTotals').innerHTML = storeEntries.length > 0
+        ? `<tr>
+            <td><strong>Total</strong></td>
+            <td><strong>${storeTotalSales.toLocaleString()}</strong></td>
+            <td><strong>$${storeTotalRevenue.toLocaleString()}</strong></td>
+            <td><strong>${((storeTotalSales / totalInPerson) * 100).toFixed(2)}%</strong></td>
+        </tr>`
+        : '';
 }
 
 // ==================== NAVIGATION ====================
