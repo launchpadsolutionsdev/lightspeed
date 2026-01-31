@@ -1148,6 +1148,50 @@ function analyzeDataFull(data) {
     document.getElementById('dataRsuSales').textContent = formatDataCurrency(rsuRevenue, true);
     document.getElementById('dataRsuSubtext').textContent = `${rsuCount.toLocaleString()} in-venue transactions`;
 
+    // Populate Summary Statistics Table
+    const avgOrderPerCustomer = uniqueCustomers > 0 ? totalTransactions / uniqueCustomers : 0;
+    const avgSalesPerCustomer = uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0;
+
+    document.getElementById('summaryTotalRevenue').textContent = formatDataCurrency(totalRevenue, true);
+    document.getElementById('summaryTotalCustomers').textContent = uniqueCustomers.toLocaleString();
+    document.getElementById('summaryTotalTransactions').textContent = totalTransactions.toLocaleString();
+    document.getElementById('summaryAvgPriceSold').textContent = formatDataCurrency(totalRevenue / totalTransactions);
+    document.getElementById('summaryAvgOrderPerCustomer').textContent = avgOrderPerCustomer.toFixed(2);
+    document.getElementById('summaryAvgSalesPerCustomer').textContent = formatDataCurrency(avgSalesPerCustomer);
+
+    // Package breakdown for summary table
+    const pkgRevenue10 = packageCounts[10] * 10;
+    const pkgRevenue20 = packageCounts[20] * 20;
+    const pkgRevenue50 = packageCounts[50] * 50;
+    const pkgRevenue75 = packageCounts[75] * 75;
+    const pkgRevenue100 = packageCounts[100] * 100;
+    const pkgTotalRevenue = pkgRevenue10 + pkgRevenue20 + pkgRevenue50 + pkgRevenue75 + pkgRevenue100;
+
+    // Format revenue in thousands with 3 decimal places like the reference image ($1.178 = $1,178)
+    const formatPkgRevenue = (val) => '$' + (val / 1000).toFixed(3).replace(/\.?0+$/, '');
+
+    document.getElementById('summaryPkg10Count').textContent = packageCounts[10].toLocaleString();
+    document.getElementById('summaryPkg10Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue10 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
+    document.getElementById('summaryPkg10Revenue').textContent = formatPkgRevenue(pkgRevenue10);
+
+    document.getElementById('summaryPkg20Count').textContent = packageCounts[20].toLocaleString();
+    document.getElementById('summaryPkg20Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue20 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
+    document.getElementById('summaryPkg20Revenue').textContent = formatPkgRevenue(pkgRevenue20);
+
+    document.getElementById('summaryPkg50Count').textContent = packageCounts[50].toLocaleString();
+    document.getElementById('summaryPkg50Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue50 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
+    document.getElementById('summaryPkg50Revenue').textContent = formatPkgRevenue(pkgRevenue50);
+
+    document.getElementById('summaryPkg75Count').textContent = packageCounts[75].toLocaleString();
+    document.getElementById('summaryPkg75Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue75 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
+    document.getElementById('summaryPkg75Revenue').textContent = formatPkgRevenue(pkgRevenue75);
+
+    document.getElementById('summaryPkg100Count').textContent = packageCounts[100].toLocaleString();
+    document.getElementById('summaryPkg100Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue100 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
+    document.getElementById('summaryPkg100Revenue').textContent = formatPkgRevenue(pkgRevenue100);
+
+    document.getElementById('summaryPkgTotalRevenue').textContent = formatPkgRevenue(pkgTotalRevenue);
+
     // Render all visualizations
     renderDataChartsFull(tierData, packageCounts, northernRevenue, southernRevenue);
     renderDataCitiesTable(cityData);

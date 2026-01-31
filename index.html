@@ -3720,6 +3720,66 @@
             color: var(--primary);
         }
 
+        /* Summary Statistics Table */
+        .data-summary-table-container {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .data-summary-table {
+            width: auto;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .data-summary-table td {
+            padding: 8px 24px 8px 0;
+            vertical-align: middle;
+        }
+
+        .data-summary-table .summary-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-align: left;
+            min-width: 220px;
+        }
+
+        .data-summary-table .summary-value {
+            color: var(--text);
+            font-weight: 600;
+            text-align: right;
+            min-width: 100px;
+        }
+
+        .data-summary-table .summary-bold {
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .data-summary-table .summary-indent {
+            padding-left: 24px;
+        }
+
+        .data-summary-table .summary-spacer td {
+            padding: 12px 0;
+        }
+
+        .data-summary-table .summary-header-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .data-summary-table .summary-total-row td {
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+
         .data-postal-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -4913,6 +4973,82 @@
                                 <div class="data-metric-value" id="dataRsuSales">$0</div>
                                 <div class="data-metric-sublabel" id="dataRsuSubtext">in-venue sales</div>
                             </div>
+                        </div>
+
+                        <!-- Summary Statistics Table -->
+                        <div class="data-summary-table-container">
+                            <table class="data-summary-table">
+                                <tbody>
+                                    <tr>
+                                        <td class="summary-label">Total Revenue</td>
+                                        <td class="summary-value" id="summaryTotalRevenue">$0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label">Total # of Customers</td>
+                                        <td class="summary-value" id="summaryTotalCustomers">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label">Total # of Transactions</td>
+                                        <td class="summary-value" id="summaryTotalTransactions">0</td>
+                                    </tr>
+                                    <tr class="summary-spacer"><td colspan="2"></td></tr>
+                                    <tr>
+                                        <td class="summary-label">Average Price Sold</td>
+                                        <td class="summary-value" id="summaryAvgPriceSold">$0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label">Average Order per Customer</td>
+                                        <td class="summary-value" id="summaryAvgOrderPerCustomer">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label summary-bold">Average Sales per Customer</td>
+                                        <td class="summary-value summary-bold" id="summaryAvgSalesPerCustomer">$0</td>
+                                    </tr>
+                                    <tr class="summary-spacer"><td colspan="2"></td></tr>
+                                    <tr class="summary-header">
+                                        <td class="summary-label summary-bold">Breakdown by Price Point</td>
+                                        <td class="summary-value"></td>
+                                        <td class="summary-value summary-header-label">% of sales PP</td>
+                                        <td class="summary-value"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label summary-indent">$10</td>
+                                        <td class="summary-value" id="summaryPkg10Count">0</td>
+                                        <td class="summary-value" id="summaryPkg10Pct">0%</td>
+                                        <td class="summary-value" id="summaryPkg10Revenue">$0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label summary-indent">$20</td>
+                                        <td class="summary-value" id="summaryPkg20Count">0</td>
+                                        <td class="summary-value" id="summaryPkg20Pct">0%</td>
+                                        <td class="summary-value" id="summaryPkg20Revenue">$0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label summary-indent">$50</td>
+                                        <td class="summary-value" id="summaryPkg50Count">0</td>
+                                        <td class="summary-value" id="summaryPkg50Pct">0%</td>
+                                        <td class="summary-value" id="summaryPkg50Revenue">$0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label summary-indent">$75</td>
+                                        <td class="summary-value" id="summaryPkg75Count">0</td>
+                                        <td class="summary-value" id="summaryPkg75Pct">0%</td>
+                                        <td class="summary-value" id="summaryPkg75Revenue">$0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label summary-indent">$100</td>
+                                        <td class="summary-value" id="summaryPkg100Count">0</td>
+                                        <td class="summary-value" id="summaryPkg100Pct">0%</td>
+                                        <td class="summary-value" id="summaryPkg100Revenue">$0</td>
+                                    </tr>
+                                    <tr class="summary-total-row">
+                                        <td class="summary-label"></td>
+                                        <td class="summary-value"></td>
+                                        <td class="summary-value"></td>
+                                        <td class="summary-value summary-bold" id="summaryPkgTotalRevenue">$0</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
                         <!-- Charts Row 1 -->
