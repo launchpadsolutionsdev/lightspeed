@@ -1152,20 +1152,24 @@ function analyzeDataFull(data) {
     const avgOrderPerCustomer = uniqueCustomers > 0 ? totalTransactions / uniqueCustomers : 0;
     const avgSalesPerCustomer = uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0;
 
-    document.getElementById('summaryTotalRevenue').textContent = formatDataCurrency(totalRevenue, true);
-    document.getElementById('summaryTotalCustomers').textContent = uniqueCustomers.toLocaleString();
-    document.getElementById('summaryTotalTransactions').textContent = totalTransactions.toLocaleString();
-    document.getElementById('summaryAvgPriceSold').textContent = formatDataCurrency(totalRevenue / totalTransactions);
-    document.getElementById('summaryAvgOrderPerCustomer').textContent = avgOrderPerCustomer.toFixed(2);
-    document.getElementById('summaryAvgSalesPerCustomer').textContent = formatDataCurrency(avgSalesPerCustomer);
-
-    // Package breakdown for summary table
+    // Package breakdown for summary table (calculate first so we can use for weighted average)
     const pkgRevenue10 = packageCounts[10] * 10;
     const pkgRevenue20 = packageCounts[20] * 20;
     const pkgRevenue50 = packageCounts[50] * 50;
     const pkgRevenue75 = packageCounts[75] * 75;
     const pkgRevenue100 = packageCounts[100] * 100;
     const pkgTotalRevenue = pkgRevenue10 + pkgRevenue20 + pkgRevenue50 + pkgRevenue75 + pkgRevenue100;
+    const totalPackagesSold = packageCounts[10] + packageCounts[20] + packageCounts[50] + packageCounts[75] + packageCounts[100];
+
+    // Weighted average price sold = total package revenue / total packages sold
+    const weightedAvgPriceSold = totalPackagesSold > 0 ? pkgTotalRevenue / totalPackagesSold : 0;
+
+    document.getElementById('summaryTotalRevenue').textContent = formatDataCurrency(totalRevenue, true);
+    document.getElementById('summaryTotalCustomers').textContent = uniqueCustomers.toLocaleString();
+    document.getElementById('summaryTotalTransactions').textContent = totalTransactions.toLocaleString();
+    document.getElementById('summaryAvgPriceSold').textContent = formatDataCurrency(weightedAvgPriceSold);
+    document.getElementById('summaryAvgOrderPerCustomer').textContent = avgOrderPerCustomer.toFixed(2);
+    document.getElementById('summaryAvgSalesPerCustomer').textContent = formatDataCurrency(avgSalesPerCustomer);
 
     // Format revenue in thousands with 3 decimal places like the reference image ($1.178 = $1,178)
     const formatPkgRevenue = (val) => '$' + (val / 1000).toFixed(3).replace(/\.?0+$/, '');
