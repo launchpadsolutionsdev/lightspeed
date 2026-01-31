@@ -1174,27 +1174,42 @@ function analyzeDataFull(data) {
     // Format revenue in thousands with 3 decimal places like the reference image ($1.178 = $1,178)
     const formatPkgRevenue = (val) => '$' + (val / 1000).toFixed(3).replace(/\.?0+$/, '');
 
+    // Calculate % of sales by package count (not revenue), then multiply by price for weighted contribution
+    const pct10 = totalPackagesSold > 0 ? (packageCounts[10] / totalPackagesSold) * 100 : 0;
+    const pct20 = totalPackagesSold > 0 ? (packageCounts[20] / totalPackagesSold) * 100 : 0;
+    const pct50 = totalPackagesSold > 0 ? (packageCounts[50] / totalPackagesSold) * 100 : 0;
+    const pct75 = totalPackagesSold > 0 ? (packageCounts[75] / totalPackagesSold) * 100 : 0;
+    const pct100 = totalPackagesSold > 0 ? (packageCounts[100] / totalPackagesSold) * 100 : 0;
+
+    // Weighted contribution = percentage × price (e.g., 10.79% × $10 = $1.079)
+    const weighted10 = pct10 * 10 / 100;
+    const weighted20 = pct20 * 20 / 100;
+    const weighted50 = pct50 * 50 / 100;
+    const weighted75 = pct75 * 75 / 100;
+    const weighted100 = pct100 * 100 / 100;
+    const weightedTotal = weighted10 + weighted20 + weighted50 + weighted75 + weighted100;
+
     document.getElementById('summaryPkg10Count').textContent = packageCounts[10].toLocaleString();
-    document.getElementById('summaryPkg10Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue10 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
-    document.getElementById('summaryPkg10Revenue').textContent = formatPkgRevenue(pkgRevenue10);
+    document.getElementById('summaryPkg10Pct').textContent = pct10.toFixed(2) + '%';
+    document.getElementById('summaryPkg10Revenue').textContent = '$' + weighted10.toFixed(3);
 
     document.getElementById('summaryPkg20Count').textContent = packageCounts[20].toLocaleString();
-    document.getElementById('summaryPkg20Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue20 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
-    document.getElementById('summaryPkg20Revenue').textContent = formatPkgRevenue(pkgRevenue20);
+    document.getElementById('summaryPkg20Pct').textContent = pct20.toFixed(2) + '%';
+    document.getElementById('summaryPkg20Revenue').textContent = '$' + weighted20.toFixed(3);
 
     document.getElementById('summaryPkg50Count').textContent = packageCounts[50].toLocaleString();
-    document.getElementById('summaryPkg50Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue50 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
-    document.getElementById('summaryPkg50Revenue').textContent = formatPkgRevenue(pkgRevenue50);
+    document.getElementById('summaryPkg50Pct').textContent = pct50.toFixed(2) + '%';
+    document.getElementById('summaryPkg50Revenue').textContent = '$' + weighted50.toFixed(3);
 
     document.getElementById('summaryPkg75Count').textContent = packageCounts[75].toLocaleString();
-    document.getElementById('summaryPkg75Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue75 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
-    document.getElementById('summaryPkg75Revenue').textContent = formatPkgRevenue(pkgRevenue75);
+    document.getElementById('summaryPkg75Pct').textContent = pct75.toFixed(2) + '%';
+    document.getElementById('summaryPkg75Revenue').textContent = '$' + weighted75.toFixed(3);
 
     document.getElementById('summaryPkg100Count').textContent = packageCounts[100].toLocaleString();
-    document.getElementById('summaryPkg100Pct').textContent = pkgTotalRevenue > 0 ? ((pkgRevenue100 / pkgTotalRevenue) * 100).toFixed(2) + '%' : '0%';
-    document.getElementById('summaryPkg100Revenue').textContent = formatPkgRevenue(pkgRevenue100);
+    document.getElementById('summaryPkg100Pct').textContent = pct100.toFixed(2) + '%';
+    document.getElementById('summaryPkg100Revenue').textContent = '$' + weighted100.toFixed(3);
 
-    document.getElementById('summaryPkgTotalRevenue').textContent = formatPkgRevenue(pkgTotalRevenue);
+    document.getElementById('summaryPkgTotalRevenue').textContent = '$' + weightedTotal.toFixed(3);
 
     // Render all visualizations
     renderDataChartsFull(tierData, packageCounts, northernRevenue, southernRevenue);
