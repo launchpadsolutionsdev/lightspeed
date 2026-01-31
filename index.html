@@ -630,15 +630,15 @@
             margin-top: 8px;
         }
 
-        /* Trusted By + Value Prop Combined Section */
+        /* Value Prop + Trusted By Combined Section */
         .landing-trusted-value-wrapper {
             background: #ffffff;
         }
 
         .landing-trusted {
-            padding: 60px 40px 50px;
+            padding: 50px 40px 60px;
             text-align: center;
-            border-bottom: 1px solid var(--border);
+            border-top: 1px solid var(--border);
         }
 
         .landing-trusted-label {
@@ -663,14 +663,11 @@
             width: auto;
             max-width: 180px;
             object-fit: contain;
-            opacity: 0.7;
-            transition: opacity 0.3s ease, filter 0.3s ease;
-            filter: grayscale(100%);
+            transition: transform 0.3s ease;
         }
 
         .landing-trusted-logo:hover {
-            opacity: 1;
-            filter: grayscale(0%);
+            transform: scale(1.05);
         }
 
         @media (max-width: 768px) {
@@ -7158,8 +7155,36 @@
         <!-- Trusted By + Value Prop Wrapper -->
         <div class="landing-trusted-value-wrapper">
             <!-- Trusted By Section -->
+            <!-- Value Proposition Section -->
+            <section class="landing-value-prop">
+                <div class="landing-section-header">
+                    <div class="landing-section-tag">Why Lightspeed</div>
+                    <h2 class="landing-section-title">Leverage the Power of AI.</h2>
+                    <p class="landing-section-subtitle">Lightspeed was developed by the team behind Canada's largest hospital 50/50 lottery. Every feature was born from real operational challenges. The result is a suite of tools trained on tens of thousands of real-world examples. Machine learning allows for continuous improvement — the more you use Lightspeed, the smarter it gets.</p>
+                </div>
+
+                <div class="landing-value-grid">
+                    <div class="landing-value-card animate-on-scroll delay-1">
+                        <div class="landing-value-icon">🧠</div>
+                        <h3 class="landing-value-title">Trained on Real Work</h3>
+                        <p class="landing-value-desc">Lightspeed is trained on thousands of real customer service interactions, marketing campaigns, and data tasks from active lottery operations.</p>
+                    </div>
+                    <div class="landing-value-card animate-on-scroll delay-2">
+                        <div class="landing-value-icon">📁</div>
+                        <h3 class="landing-value-title">Tailored to Your Organization</h3>
+                        <p class="landing-value-desc">Every Lightspeed instance comes with a dedicated knowledge base built around your organization — your brand voice, your draw schedule, your FAQ, your team's workflow.</p>
+                    </div>
+                    <div class="landing-value-card animate-on-scroll delay-3">
+                        <div class="landing-value-icon">🚀</div>
+                        <h3 class="landing-value-title">Gets Smarter Over Time</h3>
+                        <p class="landing-value-desc">Lightspeed learns in real time as you use it. The more your team works with it, the more it adapts to your style, your tone, and your needs.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trusted By Section -->
             <section class="landing-trusted">
-                <p class="landing-trusted-label">Trusted by the teams behind Canada's largest charitable lotteries</p>
+                <p class="landing-trusted-label">Trusted by the teams behind some of Canada's largest charitable gaming initiatives</p>
                 <div class="landing-trusted-logos">
                     <img src="logos/thunderbay-5050.png" alt="Thunder Bay 50/50" class="landing-trusted-logo">
                     <img src="logos/rotary-house.png" alt="Fort William Rotary House Lottery" class="landing-trusted-logo">
@@ -7167,34 +7192,7 @@
                     <img src="logos/catch-the-ace.png" alt="Catch The Ace" class="landing-trusted-logo">
                 </div>
             </section>
-
-            <!-- Value Proposition Section -->
-            <section class="landing-value-prop">
-            <div class="landing-section-header">
-                <div class="landing-section-tag">Why Lightspeed</div>
-                <h2 class="landing-section-title">Leverage the Power of AI.</h2>
-                <p class="landing-section-subtitle">Lightspeed was developed by the team behind Canada's largest hospital 50/50 lottery. Every feature was born from real operational challenges. The result is a suite of tools trained on tens of thousands of real-world examples. Machine learning allows for continuous improvement — the more you use Lightspeed, the smarter it gets.</p>
-            </div>
-
-            <div class="landing-value-grid">
-                <div class="landing-value-card animate-on-scroll delay-1">
-                    <div class="landing-value-icon">🧠</div>
-                    <h3 class="landing-value-title">Trained on Real Work</h3>
-                    <p class="landing-value-desc">Lightspeed is trained on thousands of real customer service interactions, marketing campaigns, and data tasks from active lottery operations.</p>
-                </div>
-                <div class="landing-value-card animate-on-scroll delay-2">
-                    <div class="landing-value-icon">📁</div>
-                    <h3 class="landing-value-title">Tailored to Your Organization</h3>
-                    <p class="landing-value-desc">Every Lightspeed instance comes with a dedicated knowledge base built around your organization — your brand voice, your draw schedule, your FAQ, your team's workflow.</p>
-                </div>
-                <div class="landing-value-card animate-on-scroll delay-3">
-                    <div class="landing-value-icon">🚀</div>
-                    <h3 class="landing-value-title">Gets Smarter Over Time</h3>
-                    <p class="landing-value-desc">Lightspeed learns in real time as you use it. The more your team works with it, the more it adapts to your style, your tone, and your needs.</p>
-                </div>
-            </div>
-        </section>
-        </div><!-- End Trusted By + Value Prop Wrapper -->
+        </div><!-- End Value Prop + Trusted By Wrapper -->
 
         <!-- Features Section -->
         <section class="landing-features" id="features">
