@@ -630,54 +630,56 @@
             margin-top: 8px;
         }
 
-        /* Trusted By Section */
+        /* Trusted By + Value Prop Combined Section */
+        .landing-trusted-value-wrapper {
+            background: #ffffff;
+        }
+
         .landing-trusted {
-            padding: 80px 40px;
-            background: linear-gradient(180deg, #0f0a1a 0%, #1a1225 100%);
+            padding: 60px 40px 50px;
             text-align: center;
+            border-bottom: 1px solid var(--border);
         }
 
         .landing-trusted-label {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: rgba(255,255,255,0.5);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 40px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 32px;
         }
 
         .landing-trusted-logos {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 60px;
+            gap: 50px;
             flex-wrap: wrap;
-            max-width: 1100px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
         .landing-trusted-logo {
-            height: 70px;
+            height: 60px;
             width: auto;
-            max-width: 200px;
+            max-width: 180px;
             object-fit: contain;
-            opacity: 0.9;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-            filter: brightness(1.1);
+            opacity: 0.7;
+            transition: opacity 0.3s ease, filter 0.3s ease;
+            filter: grayscale(100%);
         }
 
         .landing-trusted-logo:hover {
             opacity: 1;
-            transform: scale(1.05);
+            filter: grayscale(0%);
         }
 
         @media (max-width: 768px) {
             .landing-trusted-logos {
-                gap: 40px;
+                gap: 30px;
             }
             .landing-trusted-logo {
-                height: 50px;
-                max-width: 150px;
+                height: 45px;
+                max-width: 130px;
             }
         }
 
@@ -971,8 +973,8 @@
 
         /* ==================== VALUE PROPOSITION SECTION ==================== */
         .landing-value-prop {
-            padding: 100px 40px;
-            background: linear-gradient(180deg, #f8f6ff 0%, #ffffff 50%, #f8f6ff 100%);
+            padding: 80px 40px 100px;
+            background: #ffffff;
             position: relative;
         }
 
@@ -7153,19 +7155,21 @@
             </div>
         </section>
 
-        <!-- Trusted By Section -->
-        <section class="landing-trusted">
-            <p class="landing-trusted-label">Trusted by the teams behind Canada's largest charitable lotteries</p>
-            <div class="landing-trusted-logos">
-                <img src="logos/thunderbay-5050.png" alt="Thunder Bay 50/50" class="landing-trusted-logo">
-                <img src="logos/rotary-house.png" alt="Fort William Rotary House Lottery" class="landing-trusted-logo">
-                <img src="logos/cruisin-cure.png" alt="Cruisin' for a Cure Jeep Raffle" class="landing-trusted-logo">
-                <img src="logos/catch-the-ace.png" alt="Catch The Ace" class="landing-trusted-logo">
-            </div>
-        </section>
+        <!-- Trusted By + Value Prop Wrapper -->
+        <div class="landing-trusted-value-wrapper">
+            <!-- Trusted By Section -->
+            <section class="landing-trusted">
+                <p class="landing-trusted-label">Trusted by the teams behind Canada's largest charitable lotteries</p>
+                <div class="landing-trusted-logos">
+                    <img src="logos/thunderbay-5050.png" alt="Thunder Bay 50/50" class="landing-trusted-logo">
+                    <img src="logos/rotary-house.png" alt="Fort William Rotary House Lottery" class="landing-trusted-logo">
+                    <img src="logos/cruisin-cure.png" alt="Cruisin' for a Cure Jeep Raffle" class="landing-trusted-logo">
+                    <img src="logos/catch-the-ace.png" alt="Catch The Ace" class="landing-trusted-logo">
+                </div>
+            </section>
 
-        <!-- Value Proposition Section (NEW) -->
-        <section class="landing-value-prop">
+            <!-- Value Proposition Section -->
+            <section class="landing-value-prop">
             <div class="landing-section-header">
                 <div class="landing-section-tag">Why Lightspeed</div>
                 <h2 class="landing-section-title">Leverage the Power of AI.</h2>
@@ -7190,6 +7194,7 @@
                 </div>
             </div>
         </section>
+        </div><!-- End Trusted By + Value Prop Wrapper -->
 
         <!-- Features Section -->
         <section class="landing-features" id="features">
