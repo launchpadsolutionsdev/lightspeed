@@ -1398,18 +1398,22 @@
             max-width: 800px;
             margin: 0 auto 40px;
             text-align: center;
-            min-height: 80px;
+            min-height: 100px;
             display: flex;
             align-items: center;
             justify-content: center;
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px 32px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
         }
 
         .tool-description-panel {
             display: none;
-            color: rgba(255,255,255,0.8);
+            color: var(--text-secondary);
             font-size: 1.05rem;
             line-height: 1.7;
-            padding: 0 20px;
             animation: fadeIn 0.3s ease-out;
         }
 
@@ -1418,7 +1422,7 @@
         }
 
         .tool-description-panel strong {
-            color: white;
+            color: var(--text-primary);
             font-weight: 600;
         }
 
