@@ -736,10 +736,10 @@
 
         .landing-improving-features {
             display: flex;
-            justify-content: center;
-            gap: 40px;
-            flex-wrap: wrap;
-            max-width: 900px;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            max-width: 400px;
             margin: 0 auto;
         }
 
@@ -752,6 +752,8 @@
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 100px;
             transition: all 0.3s ease;
+            width: 100%;
+            justify-content: center;
         }
 
         .landing-improving-feature:hover {
@@ -767,13 +769,6 @@
             font-size: 0.95rem;
             font-weight: 500;
             color: rgba(255,255,255,0.8);
-        }
-
-        @media (max-width: 600px) {
-            .landing-improving-features {
-                flex-direction: column;
-                align-items: center;
-            }
         }
 
         /* ==================== LIVE DEMO SECTION ==================== */
@@ -6265,20 +6260,20 @@
         <section class="landing-value-prop">
             <div class="landing-section-header">
                 <div class="landing-section-tag">Why Lightspeed</div>
-                <h2 class="landing-section-title">This is not just another chatbot.</h2>
-                <p class="landing-section-subtitle">Lightspeed was developed by the team behind Canada's largest hospital 50/50 lottery. Every feature was born from real operational challenges — not a boardroom brainstorm. The result is a suite of tools trained on thousands of real examples that actually understands charitable gaming.</p>
+                <h2 class="landing-section-title">Leverage the Power of AI.</h2>
+                <p class="landing-section-subtitle">Lightspeed was developed by the team behind Canada's largest hospital 50/50 lottery. Every feature was born from real operational challenges. The result is a suite of tools trained on tens of thousands of real-world examples. Machine learning allows for continuous improvement — the more you use Lightspeed, the smarter it gets.</p>
             </div>
 
             <div class="landing-value-grid">
                 <div class="landing-value-card">
                     <div class="landing-value-icon">🧠</div>
                     <h3 class="landing-value-title">Trained on Real Work</h3>
-                    <p class="landing-value-desc">Lightspeed is trained on thousands of real customer service interactions, marketing campaigns, and data tasks from active lottery operations. It doesn't guess — it knows.</p>
+                    <p class="landing-value-desc">Lightspeed is trained on thousands of real customer service interactions, marketing campaigns, and data tasks from active lottery operations.</p>
                 </div>
                 <div class="landing-value-card">
                     <div class="landing-value-icon">📁</div>
                     <h3 class="landing-value-title">Tailored to Your Organization</h3>
-                    <p class="landing-value-desc">Every Lightspeed instance comes with a dedicated knowledge base built around your organization — your brand voice, your draw schedule, your FAQ, your team's workflow. It's not one-size-fits-all.</p>
+                    <p class="landing-value-desc">Every Lightspeed instance comes with a dedicated knowledge base built around your organization — your brand voice, your draw schedule, your FAQ, your team's workflow.</p>
                 </div>
                 <div class="landing-value-card">
                     <div class="landing-value-icon">🚀</div>
@@ -6292,7 +6287,7 @@
         <section class="landing-features" id="features">
             <div class="landing-section-header">
                 <div class="landing-section-tag">Features</div>
-                <h2 class="landing-section-title">Leverage the power of AI.</h2>
+                <h2 class="landing-section-title">Work at Lightspeed.</h2>
                 <p class="landing-section-subtitle">Four purpose-built tools that tackle the most time-consuming tasks in charitable gaming and nonprofit operations. Your time is valuable — stop spending it on work AI can do better and faster.</p>
             </div>
 
@@ -6301,7 +6296,7 @@
                 <div class="landing-feature-card">
                     <div class="landing-feature-icon draft">✍️</div>
                     <h3 class="landing-feature-title">Draft Assistant</h3>
-                    <p class="landing-feature-desc">Generate on-brand social media posts, emails, press releases, and newsletters in seconds. Lightspeed knows your organization's voice because it's been trained on your actual content — not generic templates.</p>
+                    <p class="landing-feature-desc">Generate on-brand social media posts, emails, press releases, and newsletters in seconds. Lightspeed knows your organization's voice because it's been trained on your actual content — so you can write faster.</p>
                     <ul class="landing-feature-list">
                         <li>Social media posts & captions</li>
                         <li>Email campaigns & newsletters</li>
@@ -6317,7 +6312,7 @@
                     <p class="landing-feature-desc">Turn customer inquiries into professional, empathetic responses instantly. Built on a knowledge base specific to your organization, Response Assistant handles winner questions, support tickets, and donor communications with consistency and care.</p>
                     <ul class="landing-feature-list">
                         <li>AI-powered reply generation</li>
-                        <li>Dedicated knowledge base (FAQ, draw schedules, policies)</li>
+                        <li>Dedicated knowledge base (FAQ, draw schedules, AGCO rules)</li>
                         <li>Consistent, on-brand tone across every reply</li>
                         <li>Response history tracking</li>
                     </ul>
@@ -6327,9 +6322,9 @@
                 <div class="landing-feature-card">
                     <div class="landing-feature-icon insights">📊</div>
                     <h3 class="landing-feature-title">Insights Engine</h3>
-                    <p class="landing-feature-desc">Upload your reports and instantly generate beautiful dashboards with charts, metrics, and actionable insights. Designed for seamless integration with BUMP Raffle — just export your data and let Lightspeed do the rest. No spreadsheet skills required.</p>
+                    <p class="landing-feature-desc">Upload your reports and instantly generate beautiful dashboards with charts, metrics, and actionable insights. Designed for seamless integration with BUMP Raffle and other charitable gaming service providers — just export your data and let Lightspeed do the rest. No spreadsheet skills required.</p>
                     <ul class="landing-feature-list">
-                        <li>Seamless BUMP Raffle data integration</li>
+                        <li>Seamless BUMP Raffle and other provider data integration</li>
                         <li>Automated chart & dashboard generation</li>
                         <li>Key metrics at a glance</li>
                         <li>Export-ready visualizations for reports & presentations</li>
@@ -6355,7 +6350,7 @@
         <section class="landing-demo" id="demo">
             <div class="landing-section-header">
                 <div class="landing-section-tag">See It In Action</div>
-                <h2 class="landing-section-title">Try before you buy</h2>
+                <h2 class="landing-section-title">Try it for free today.</h2>
                 <p class="landing-section-subtitle">What you see is what you get. Test-drive Lightspeed's tools right here — no sign-up required.</p>
             </div>
 
@@ -6562,7 +6557,7 @@
         <!-- Social Proof / About Section -->
         <section class="landing-proof">
             <div class="landing-proof-quote">
-                <p class="landing-proof-text">"Lightspeed was built from the ground up by a charitable gaming team that grew annual revenue from $17M to $60M. Every tool was born from real work — problems we faced every single day. This isn't a tech company guessing what nonprofits need. It's a real solution, from people who've been in the trenches."</p>
+                <p class="landing-proof-text">"Lightspeed was built in response to the real challenges faced by the team operating Canada's largest 50/50 raffle. By automating frequent, complex manual work, Lightspeed allows nonprofit teams to spend more time on what truly matters. In a sector with high expectations and limited resources, it helps organizations do more, faster."</p>
                 <div class="landing-proof-author">
                     <div class="landing-proof-avatar">🚀</div>
                     <div class="landing-proof-info">
