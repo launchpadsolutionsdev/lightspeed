@@ -862,10 +862,11 @@ function isNorthernOntario(city) {
 function setupDataAnalysisListeners() {
     if (dataAnalysisListenersSetup) return;
 
-    const uploadSection = document.getElementById("dataUploadSection");
+    const uploadDropzone = document.getElementById("dataUploadDropzone");
+    const uploadStep = document.getElementById("dataUploadStep");
     const fileInput = document.getElementById("dataFileInput");
 
-    if (!uploadSection || !fileInput) {
+    if (!uploadDropzone || !fileInput) {
         console.error("Data analysis elements not found");
         return;
     }
@@ -873,10 +874,9 @@ function setupDataAnalysisListeners() {
     dataAnalysisListenersSetup = true;
     console.log("Setting up data analysis listeners...");
 
-    // Report type selection
+    // Report type selection - now reveals upload step on same page
     const reportTypeSelect = document.getElementById("dataReportTypeSelect");
     const reportTypeDescription = document.getElementById("dataReportTypeDescription");
-    const reportTypeContinueBtn = document.getElementById("dataReportTypeContinueBtn");
 
     if (reportTypeSelect) {
         reportTypeSelect.addEventListener("change", (e) => {
@@ -885,48 +885,31 @@ function setupDataAnalysisListeners() {
                 currentReportType = type;
                 reportTypeDescription.innerHTML = `<h4>${REPORT_TYPES[type].name}</h4><p>${REPORT_TYPES[type].description}</p>`;
                 reportTypeDescription.classList.add('visible');
-                reportTypeContinueBtn.disabled = false;
+                // Activate the upload step
+                uploadStep.classList.add('active');
+                document.getElementById("dataUploadTitle").textContent = REPORT_TYPES[currentReportType].uploadTitle;
+                document.getElementById("dataUploadSubtitle").textContent = REPORT_TYPES[currentReportType].uploadSubtitle;
             } else {
                 currentReportType = null;
                 reportTypeDescription.classList.remove('visible');
-                reportTypeContinueBtn.disabled = true;
+                uploadStep.classList.remove('active');
             }
         });
     }
 
-    if (reportTypeContinueBtn) {
-        reportTypeContinueBtn.addEventListener("click", () => {
-            if (currentReportType) {
-                document.getElementById("dataReportTypeSection").style.display = "none";
-                document.getElementById("dataUploadSection").style.display = "block";
-                document.getElementById("dataUploadTitle").textContent = REPORT_TYPES[currentReportType].uploadTitle;
-                document.getElementById("dataUploadSubtitle").textContent = REPORT_TYPES[currentReportType].uploadSubtitle;
-            }
-        });
-    }
-
-    // Back to report type selection
-    const backToTypeBtn = document.getElementById("dataBackToTypeBtn");
-    if (backToTypeBtn) {
-        backToTypeBtn.addEventListener("click", () => {
-            document.getElementById("dataUploadSection").style.display = "none";
-            document.getElementById("dataReportTypeSection").style.display = "block";
-        });
-    }
-
-    // Drag and drop handlers
-    uploadSection.addEventListener("dragover", (e) => {
+    // Drag and drop handlers for the dropzone
+    uploadDropzone.addEventListener("dragover", (e) => {
         e.preventDefault();
-        uploadSection.classList.add("dragover");
+        uploadDropzone.classList.add("dragover");
     });
 
-    uploadSection.addEventListener("dragleave", () => {
-        uploadSection.classList.remove("dragover");
+    uploadDropzone.addEventListener("dragleave", () => {
+        uploadDropzone.classList.remove("dragover");
     });
 
-    uploadSection.addEventListener("drop", (e) => {
+    uploadDropzone.addEventListener("drop", (e) => {
         e.preventDefault();
-        uploadSection.classList.remove("dragover");
+        uploadDropzone.classList.remove("dragover");
         const file = e.dataTransfer.files[0];
         if (file) processDataFile(file);
     });
@@ -967,7 +950,7 @@ function processDataFile(file) {
         return;
     }
 
-    document.getElementById("dataUploadSection").style.display = "none";
+    document.getElementById("dataCombinedUploadSection").style.display = "none";
     document.getElementById("dataLoading").style.display = "block";
 
     const reader = new FileReader();
@@ -1589,17 +1572,16 @@ function resetDataAnalysis() {
     // Reset sections
     document.getElementById("dataNamingSection").style.display = "none";
     document.getElementById("dataLoading").style.display = "none";
-    document.getElementById("dataUploadSection").style.display = "none";
-    document.getElementById("dataReportTypeSection").style.display = "block";
+    document.getElementById("dataCombinedUploadSection").style.display = "block";
     document.getElementById("dataNavTabs").style.display = "none";
     document.getElementById("dataHeaderActions").style.display = "none";
     document.getElementById("dataFileInput").value = '';
     document.getElementById("dataReportNameInput").value = '';
 
-    // Reset report type selection
+    // Reset report type selection and upload step
     document.getElementById("dataReportTypeSelect").value = '';
     document.getElementById("dataReportTypeDescription").classList.remove('visible');
-    document.getElementById("dataReportTypeContinueBtn").disabled = true;
+    document.getElementById("dataUploadStep").classList.remove('active');
 
     // Reset to overview page
     document.querySelectorAll('.data-nav-tab').forEach(t => t.classList.remove('active'));
