@@ -224,11 +224,13 @@ function setupAuthEventListeners() {
     document.getElementById("toolDraftAssistant").addEventListener("click", () => openTool('draft-assistant'));
     document.getElementById("toolCustomerResponse").addEventListener("click", () => openTool('customer-response'));
     document.getElementById("toolDataAnalysis").addEventListener("click", () => openTool('data-analysis'));
+    document.getElementById("toolListNormalizer").addEventListener("click", () => openTool('list-normalizer'));
 
     // Back to menu buttons
     document.getElementById("backToMenuBtn").addEventListener("click", goBackToMenu);
     document.getElementById("dataBackToMenuBtn").addEventListener("click", goBackToMenu);
     document.getElementById("draftBackToMenuBtn").addEventListener("click", goBackToMenu);
+    document.getElementById("listNormalizerBackBtn").addEventListener("click", goBackToMenu);
 
     // Google Sign-In button
     document.getElementById("googleSignInBtn").addEventListener("click", handleGoogleSignIn);
@@ -398,6 +400,7 @@ function openTool(toolId) {
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
+    document.getElementById("listNormalizerApp").classList.remove("visible");
 
     if (toolId === 'customer-response') {
         document.getElementById("mainApp").classList.add("visible");
@@ -409,6 +412,10 @@ function openTool(toolId) {
         document.getElementById("draftAssistantApp").classList.add("visible");
         // Initialize Draft Assistant
         setupDraftAssistant();
+    } else if (toolId === 'list-normalizer') {
+        document.getElementById("listNormalizerApp").classList.add("visible");
+        // Initialize List Normalizer
+        setupListNormalizerListeners();
     }
 }
 
@@ -417,6 +424,7 @@ function goBackToMenu() {
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
+    document.getElementById("listNormalizerApp").classList.remove("visible");
     showToolMenu();
 }
 
@@ -4769,6 +4777,223 @@ function renderLeaderboard() {
     ` : '';
 
     container.innerHTML = podiumHtml + listHtml;
+}
+
+// ==================== LIST NORMALIZER ====================
+let listNormalizerListenersSetup = false;
+let normalizerProcessedData = null;
+
+function setupListNormalizerListeners() {
+    if (listNormalizerListenersSetup) return;
+
+    const dropzone = document.getElementById("normalizerDropzone");
+    const fileInput = document.getElementById("normalizerFileInput");
+
+    if (!dropzone || !fileInput) {
+        console.error("List Normalizer elements not found");
+        return;
+    }
+
+    listNormalizerListenersSetup = true;
+    console.log("Setting up List Normalizer listeners...");
+
+    // Drag and drop handlers
+    dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.classList.add("dragover");
+    });
+
+    dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("dragover");
+    });
+
+    dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file) processNormalizerFile(file);
+    });
+
+    // File input change
+    fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) processNormalizerFile(file);
+    });
+
+    // Download button
+    document.getElementById("normalizerDownloadBtn").addEventListener("click", downloadNormalizedList);
+
+    // Reset button
+    document.getElementById("normalizerResetBtn").addEventListener("click", resetListNormalizer);
+
+    console.log("List Normalizer listeners attached successfully");
+}
+
+function processNormalizerFile(file) {
+    if (!file.name.match(/\.xlsx?$/i) && !file.name.match(/\.csv$/i)) {
+        showToast("Please upload an Excel file (.xlsx or .xls)", "error");
+        return;
+    }
+
+    // Show processing state
+    document.getElementById("normalizerUploadSection").style.display = "none";
+    document.getElementById("normalizerProcessing").style.display = "block";
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const rawData = XLSX.utils.sheet_to_json(sheet);
+
+            // Process the data for Mailchimp
+            processForMailchimp(rawData);
+
+        } catch (error) {
+            showToast("Error reading file: " + error.message, "error");
+            resetListNormalizer();
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function processForMailchimp(rawData) {
+    // Auto-detect column names
+    const columns = Object.keys(rawData[0] || {});
+    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+
+    const firstNameCol = findCol(['first name', 'firstname', 'first']);
+    const lastNameCol = findCol(['last name', 'lastname', 'last']);
+    const emailCol = findCol(['e-mail', 'email']);
+
+    if (!emailCol) {
+        showToast("Could not find an email column in the file", "error");
+        resetListNormalizer();
+        return;
+    }
+
+    const originalCount = rawData.length;
+
+    // Process and filter the data
+    const processedData = rawData
+        .filter(row => {
+            // Must have email
+            const email = row[emailCol];
+            return email && String(email).trim().length > 0;
+        })
+        .map(row => {
+            // Combine first and last name
+            const firstName = row[firstNameCol] ? String(row[firstNameCol]).trim() : '';
+            const lastName = lastNameCol && row[lastNameCol] ? String(row[lastNameCol]).trim() : '';
+
+            // Handle cases where full name might be in first name field
+            let fullName = firstName;
+            if (lastName && lastName !== '.' && lastName !== '-') {
+                fullName = firstName + ' ' + lastName;
+            }
+
+            // Clean up the name
+            fullName = fullName.trim();
+
+            return {
+                NAME: fullName,
+                EMAIL: String(row[emailCol]).trim().toLowerCase()
+            };
+        })
+        .filter(row => row.NAME.length > 0) // Must have a name
+        .sort((a, b) => a.EMAIL.localeCompare(b.EMAIL)); // Sort by email
+
+    // Remove duplicates by email (keep first occurrence)
+    const uniqueEmails = new Set();
+    const uniqueData = processedData.filter(row => {
+        if (uniqueEmails.has(row.EMAIL)) {
+            return false;
+        }
+        uniqueEmails.add(row.EMAIL);
+        return true;
+    });
+
+    normalizerProcessedData = uniqueData;
+    const cleanCount = uniqueData.length;
+    const removedCount = originalCount - cleanCount;
+
+    // Update stats with animation
+    setTimeout(() => {
+        document.getElementById("normalizerProcessing").style.display = "none";
+        document.getElementById("normalizerResults").style.display = "block";
+
+        // Animate the numbers
+        animateValue(document.getElementById("normalizerOriginalCount"), 0, originalCount, 1000);
+        animateValue(document.getElementById("normalizerCleanCount"), 0, cleanCount, 1000);
+        animateValue(document.getElementById("normalizerRemovedCount"), 0, removedCount, 1000);
+
+        // Show preview table
+        showNormalizerPreview(uniqueData);
+    }, 800);
+}
+
+function showNormalizerPreview(data) {
+    const container = document.getElementById("normalizerPreviewTable");
+    const previewData = data.slice(0, 10); // Show first 10 rows
+
+    let html = `
+        <table>
+            <thead>
+                <tr>
+                    <th>NAME</th>
+                    <th>EMAIL</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${previewData.map(row => `
+                    <tr>
+                        <td>${escapeHtml(row.NAME)}</td>
+                        <td>${escapeHtml(row.EMAIL)}</td>
+                    </tr>
+                `).join('')}
+                ${data.length > 10 ? `
+                    <tr>
+                        <td colspan="2" style="text-align: center; color: var(--text-muted); font-style: italic;">
+                            ... and ${(data.length - 10).toLocaleString()} more records
+                        </td>
+                    </tr>
+                ` : ''}
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+}
+
+function downloadNormalizedList() {
+    if (!normalizerProcessedData || normalizerProcessedData.length === 0) {
+        showToast("No data to download", "error");
+        return;
+    }
+
+    // Create workbook
+    const ws = XLSX.utils.json_to_sheet(normalizerProcessedData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Mailchimp List");
+
+    // Generate filename with date
+    const date = new Date();
+    const dateStr = date.toISOString().split('T')[0];
+    const filename = `Mailchimp_List_${dateStr}.xlsx`;
+
+    // Download
+    XLSX.writeFile(wb, filename);
+    showToast(`Downloaded ${filename}`, "success");
+}
+
+function resetListNormalizer() {
+    normalizerProcessedData = null;
+    document.getElementById("normalizerUploadSection").style.display = "block";
+    document.getElementById("normalizerProcessing").style.display = "none";
+    document.getElementById("normalizerResults").style.display = "none";
+    document.getElementById("normalizerFileInput").value = '';
 }
 
 // ==================== INIT ====================

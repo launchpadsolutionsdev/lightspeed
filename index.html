@@ -669,6 +669,10 @@
             background: linear-gradient(135deg, #dcfce7, #bbf7d0);
         }
 
+        .tool-card-icon.normalizer {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+        }
+
         .tool-card-title {
             font-size: 1.25rem;
             font-weight: 700;
@@ -2640,6 +2644,368 @@
         .drawer-overlay.show {
             opacity: 1;
             visibility: visible;
+        }
+
+        /* ==================== LIST NORMALIZER TOOL STYLES ==================== */
+        .normalizer-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .normalizer-upload-section {
+            text-align: center;
+        }
+
+        .normalizer-hero {
+            margin-bottom: 40px;
+        }
+
+        .normalizer-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .normalizer-hero h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .normalizer-hero p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .normalizer-dropzone {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-xl);
+            padding: 50px 40px;
+            margin-bottom: 40px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .normalizer-dropzone:hover {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.02);
+            transform: translateY(-2px);
+        }
+
+        .normalizer-dropzone.dragover {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.05);
+            transform: scale(1.01);
+        }
+
+        .normalizer-dropzone-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .normalizer-dropzone-text {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .normalizer-dropzone-divider {
+            display: block;
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .normalizer-upload-btn {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 14px 32px;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+
+        .normalizer-upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .normalizer-dropzone-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 16px;
+            margin-bottom: 0;
+        }
+
+        .normalizer-info-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .normalizer-info-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: var(--radius-lg);
+            padding: 24px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+
+        .normalizer-info-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .normalizer-info-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .normalizer-info-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .normalizer-info-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* Processing State */
+        .normalizer-processing {
+            text-align: center;
+            padding: 80px 40px;
+        }
+
+        .normalizer-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--bg-light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .normalizer-processing p {
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+
+        /* Results Section */
+        .normalizer-results {
+            text-align: center;
+        }
+
+        .normalizer-success-icon {
+            font-size: 72px;
+            margin-bottom: 16px;
+            animation: bounceIn 0.6s ease-out;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .normalizer-results h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .normalizer-stats {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .normalizer-stat {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-lg);
+            padding: 24px 32px;
+            min-width: 140px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .normalizer-stat-value {
+            display: block;
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .normalizer-stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .normalizer-stat.removed .normalizer-stat-value {
+            color: #ef4444;
+        }
+
+        .normalizer-stat-arrow {
+            font-size: 28px;
+            color: var(--text-muted);
+        }
+
+        .normalizer-preview {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-lg);
+            text-align: left;
+        }
+
+        .normalizer-preview h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .normalizer-preview-table {
+            overflow-x: auto;
+        }
+
+        .normalizer-preview-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .normalizer-preview-table th {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .normalizer-preview-table th:first-child {
+            border-radius: var(--radius-md) 0 0 0;
+        }
+
+        .normalizer-preview-table th:last-child {
+            border-radius: 0 var(--radius-md) 0 0;
+        }
+
+        .normalizer-preview-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .normalizer-preview-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .normalizer-preview-table tr:hover td {
+            background: rgba(139, 92, 246, 0.03);
+        }
+
+        .normalizer-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .normalizer-download-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 16px 40px;
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .normalizer-download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .normalizer-reset-btn {
+            background: white;
+            color: var(--text-secondary);
+            padding: 16px 32px;
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid var(--border);
+        }
+
+        .normalizer-reset-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .normalizer-info-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .normalizer-stats {
+                flex-direction: column;
+            }
+
+            .normalizer-stat-arrow {
+                transform: rotate(90deg);
+            }
         }
 
         /* ==================== DRAFT ASSISTANT TOOL STYLES ==================== */
@@ -5058,6 +5424,14 @@
                     <p class="tool-card-description">Upload Excel files and instantly generate visual dashboards with charts, metrics, and key insights.</p>
                     <span class="tool-card-badge">Visual Analytics</span>
                 </div>
+
+                <!-- List Normalizer -->
+                <div class="tool-card" id="toolListNormalizer">
+                    <div class="tool-card-icon normalizer">🔄</div>
+                    <h3 class="tool-card-title">List Normalizer</h3>
+                    <p class="tool-card-description">Transform BUMP customer reports into clean, formatted lists ready for Mailchimp and other platforms.</p>
+                    <span class="tool-card-badge">Data Export</span>
+                </div>
             </div>
         </div>
 
@@ -6660,6 +7034,127 @@
         </div>
 
         <!-- Footer -->
+        <footer class="site-footer">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
+                    <span class="footer-brand-text">Lightspeed by Launchpad</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://launchpadsolutions.ca" target="_blank" class="footer-link">Visit Launchpad</a>
+                </div>
+                <div class="footer-copyright">
+                    © 2025 Launchpad Solutions. All rights reserved.
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ==================== LIST NORMALIZER TOOL ==================== -->
+    <div class="app" id="listNormalizerApp">
+        <header class="header">
+            <div class="header-inner">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="back-to-menu" id="listNormalizerBackBtn">
+                        <span class="back-to-menu-icon">←</span>
+                        Back to Menu
+                    </button>
+                    <div class="logo-section">
+                        <img class="logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
+                        <div class="brand">
+                            <div class="brand-name">List Normalizer</div>
+                            <div class="brand-tagline">Lightspeed by Launchpad</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="container">
+            <div class="normalizer-container">
+                <!-- Upload Section -->
+                <div class="normalizer-upload-section" id="normalizerUploadSection">
+                    <input type="file" id="normalizerFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+
+                    <div class="normalizer-hero">
+                        <div class="normalizer-icon">🔄</div>
+                        <h1>Transform Your Customer Lists</h1>
+                        <p>Upload a BUMP Customers report and get a clean, Mailchimp-ready file in seconds.</p>
+                    </div>
+
+                    <div class="normalizer-dropzone" id="normalizerDropzone">
+                        <div class="normalizer-dropzone-icon">📤</div>
+                        <p class="normalizer-dropzone-text">Drag and drop your Customers report here</p>
+                        <span class="normalizer-dropzone-divider">or</span>
+                        <button class="normalizer-upload-btn" onclick="document.getElementById('normalizerFileInput').click()">
+                            Browse Files
+                        </button>
+                        <p class="normalizer-dropzone-hint">Accepts .xlsx, .xls, and .csv files</p>
+                    </div>
+
+                    <div class="normalizer-info-cards">
+                        <div class="normalizer-info-card">
+                            <span class="normalizer-info-icon">✨</span>
+                            <h4>Auto-Formatted</h4>
+                            <p>Combines first and last names into a single NAME column</p>
+                        </div>
+                        <div class="normalizer-info-card">
+                            <span class="normalizer-info-icon">🧹</span>
+                            <h4>Clean Data</h4>
+                            <p>Removes entries without email addresses automatically</p>
+                        </div>
+                        <div class="normalizer-info-card">
+                            <span class="normalizer-info-icon">📧</span>
+                            <h4>Mailchimp Ready</h4>
+                            <p>Exports NAME and EMAIL columns sorted and ready to import</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing Section -->
+                <div class="normalizer-processing" id="normalizerProcessing" style="display: none;">
+                    <div class="normalizer-spinner"></div>
+                    <p>Processing your list...</p>
+                </div>
+
+                <!-- Results Section -->
+                <div class="normalizer-results" id="normalizerResults" style="display: none;">
+                    <div class="normalizer-success-icon">✅</div>
+                    <h2>Your List is Ready!</h2>
+
+                    <div class="normalizer-stats">
+                        <div class="normalizer-stat">
+                            <span class="normalizer-stat-value" id="normalizerOriginalCount">0</span>
+                            <span class="normalizer-stat-label">Original Records</span>
+                        </div>
+                        <div class="normalizer-stat-arrow">→</div>
+                        <div class="normalizer-stat">
+                            <span class="normalizer-stat-value" id="normalizerCleanCount">0</span>
+                            <span class="normalizer-stat-label">Clean Records</span>
+                        </div>
+                        <div class="normalizer-stat removed">
+                            <span class="normalizer-stat-value" id="normalizerRemovedCount">0</span>
+                            <span class="normalizer-stat-label">Removed (No Email)</span>
+                        </div>
+                    </div>
+
+                    <div class="normalizer-preview">
+                        <h3>Preview</h3>
+                        <div class="normalizer-preview-table" id="normalizerPreviewTable"></div>
+                    </div>
+
+                    <div class="normalizer-actions">
+                        <button class="normalizer-download-btn" id="normalizerDownloadBtn">
+                            <span>📥</span> Download Mailchimp List
+                        </button>
+                        <button class="normalizer-reset-btn" id="normalizerResetBtn">
+                            ↻ Process Another File
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <footer class="site-footer">
             <div class="footer-content">
                 <div class="footer-brand">
