@@ -166,16 +166,9 @@ function init() {
         }
     }
 
-    // Check if user has visited before (for hero page)
-    const hasVisited = localStorage.getItem("has_visited");
-    if (!hasVisited) {
-        // Show hero page for first time visitors
-        document.getElementById("heroPage").classList.remove("hidden");
-    } else {
-        // Show login page for returning visitors who aren't logged in
-        document.getElementById("heroPage").classList.add("hidden");
-        showLoginPage();
-    }
+    // Always show landing page first for non-logged-in users
+    // The landing page is now a marketing page, not just a splash screen
+    document.getElementById("landingPage").classList.remove("hidden");
 
     // Setup all event listeners
     setupEventListeners();
@@ -183,11 +176,20 @@ function init() {
 }
 
 function setupAuthEventListeners() {
-    // Hero CTA - show login/register
-    document.getElementById("heroCtaBtn").addEventListener("click", () => {
-        localStorage.setItem("has_visited", "true");
-        document.getElementById("heroPage").classList.add("hidden");
-        showLoginPage();
+    // Landing page CTAs - show login/register
+    const launchAppBtns = [
+        document.getElementById("navLaunchAppBtn"),
+        document.getElementById("heroGetStartedBtn"),
+        document.getElementById("ctaGetStartedBtn")
+    ];
+
+    launchAppBtns.forEach(btn => {
+        if (btn) {
+            btn.addEventListener("click", () => {
+                document.getElementById("landingPage").classList.add("hidden");
+                showLoginPage();
+            });
+        }
     });
 
     // Switch between login and register
@@ -378,7 +380,7 @@ function showRegisterPage() {
 }
 
 function showToolMenu() {
-    document.getElementById("heroPage").classList.add("hidden");
+    document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
     document.getElementById("registerPage").classList.remove("visible");
     document.getElementById("mainApp").classList.remove("visible");
@@ -534,7 +536,7 @@ function loginUser(user, showMessage = true) {
     document.getElementById("userName").textContent = user.name.split(" ")[0];
 
     // Hide auth pages, show tool menu
-    document.getElementById("heroPage").classList.add("hidden");
+    document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
     document.getElementById("registerPage").classList.remove("visible");
 
@@ -606,10 +608,12 @@ function handleLogout() {
     // Hide all app pages
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
+    document.getElementById("draftAssistantApp").classList.remove("visible");
+    document.getElementById("listNormalizerApp").classList.remove("visible");
     document.getElementById("toolMenuPage").classList.remove("visible");
 
-    // Show login page
-    showLoginPage();
+    // Show landing page (marketing page)
+    document.getElementById("landingPage").classList.remove("hidden");
 
     showToast("You've been signed out", "success");
 }

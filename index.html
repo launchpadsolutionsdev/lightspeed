@@ -57,28 +57,154 @@
             line-height: 1.6;
         }
 
-        /* ==================== HERO PAGE ==================== */
-        .hero-page {
+        /* ==================== MARKETING LANDING PAGE ==================== */
+        .landing-page {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
             background: linear-gradient(135deg, #0f0a1a 0%, #1a1225 50%, #0f0a1a 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
             z-index: 2000;
+            overflow-y: auto;
             transition: opacity 0.5s ease, visibility 0.5s ease;
         }
 
-        .hero-page.hidden {
+        .landing-page.hidden {
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
         }
 
-        .hero-content {
+        /* Landing Navigation */
+        .landing-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background: rgba(15, 10, 26, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .landing-nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .landing-nav-logo img {
+            width: 40px;
+            height: 40px;
+        }
+
+        .landing-nav-logo span {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .landing-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .landing-nav-link {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .landing-nav-link:hover {
+            color: white;
+        }
+
+        .landing-nav-cta {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: 100px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .landing-nav-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+        }
+
+        /* Hero Section */
+        .landing-hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 40px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .landing-hero-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .landing-hero-bg::before {
+            content: '';
+            position: absolute;
+            top: 10%; left: 5%;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+            animation: pulse 6s ease-in-out infinite;
+        }
+
+        .landing-hero-bg::after {
+            content: '';
+            position: absolute;
+            bottom: 10%; right: 5%;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.1) 0%, transparent 70%);
+            animation: pulse 6s ease-in-out infinite 3s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.6; }
+        }
+
+        .landing-hero-content {
+            max-width: 800px;
             text-align: center;
-            animation: fadeInUp 1s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .landing-hero-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 100px;
+            color: var(--accent);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.8s ease-out;
         }
 
         @keyframes fadeInUp {
@@ -86,122 +212,393 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .hero-logo {
-            width: 120px; height: 120px;
+        .landing-hero-title {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.8s ease-out 0.1s both;
+        }
+
+        .landing-hero-title .gradient-text {
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent) 50%, #ffffff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .landing-hero-subtitle {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.6);
+            max-width: 600px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .landing-hero-ctas {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 0.8s ease-out 0.3s both;
+        }
+
+        .landing-cta-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 36px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: 100px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.4);
+        }
+
+        .landing-cta-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(139, 92, 246, 0.5);
+        }
+
+        .landing-cta-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 36px;
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 100px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .landing-cta-secondary:hover {
+            border-color: rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* Stats Bar */
+        .landing-stats {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin-top: 80px;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .landing-stat {
+            text-align: center;
+        }
+
+        .landing-stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            line-height: 1;
+        }
+
+        .landing-stat-label {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.5);
+            margin-top: 8px;
+        }
+
+        /* Features Section */
+        .landing-features {
+            padding: 120px 40px;
+            background: linear-gradient(180deg, transparent 0%, rgba(139, 92, 246, 0.03) 100%);
+        }
+
+        .landing-section-header {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto 60px;
+        }
+
+        .landing-section-tag {
+            display: inline-block;
+            padding: 6px 16px;
+            background: rgba(139, 92, 246, 0.15);
+            border-radius: 100px;
+            color: var(--accent);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .landing-section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .landing-section-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
+        }
+
+        .landing-features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .landing-feature-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 40px;
+            transition: all 0.3s ease;
+        }
+
+        .landing-feature-card:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(139, 92, 246, 0.3);
+            transform: translateY(-4px);
+        }
+
+        .landing-feature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        .landing-feature-icon.draft { background: linear-gradient(135deg, rgba(252, 231, 243, 0.2), rgba(251, 207, 232, 0.2)); }
+        .landing-feature-icon.response { background: linear-gradient(135deg, rgba(224, 242, 254, 0.2), rgba(186, 230, 253, 0.2)); }
+        .landing-feature-icon.insights { background: linear-gradient(135deg, rgba(220, 252, 231, 0.2), rgba(187, 247, 208, 0.2)); }
+        .landing-feature-icon.normalizer { background: linear-gradient(135deg, rgba(254, 243, 199, 0.2), rgba(253, 230, 138, 0.2)); }
+
+        .landing-feature-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 12px;
+        }
+
+        .landing-feature-desc {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .landing-feature-list {
+            list-style: none;
+        }
+
+        .landing-feature-list li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 8px;
+        }
+
+        .landing-feature-list li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Testimonials/Social Proof */
+        .landing-proof {
+            padding: 100px 40px;
+            text-align: center;
+        }
+
+        .landing-proof-quote {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .landing-proof-text {
+            font-size: 1.75rem;
+            font-weight: 500;
+            color: white;
+            line-height: 1.5;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+
+        .landing-proof-author {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .landing-proof-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .landing-proof-info {
+            text-align: left;
+        }
+
+        .landing-proof-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .landing-proof-role {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* CTA Section */
+        .landing-cta-section {
+            padding: 100px 40px;
+            text-align: center;
+            background: linear-gradient(180deg, transparent 0%, rgba(139, 92, 246, 0.08) 100%);
+        }
+
+        .landing-cta-box {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 60px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+        }
+
+        .landing-cta-title {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .landing-cta-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.6);
             margin-bottom: 32px;
-            animation: float 3s ease-in-out infinite;
-            filter: drop-shadow(0 0 40px rgba(139, 92, 246, 0.5));
+        }
+
+        .landing-cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Footer */
+        .landing-footer {
+            padding: 40px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .landing-footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.9rem;
+        }
+
+        .landing-footer-brand img {
+            width: 28px;
+            height: 28px;
+            opacity: 0.5;
+        }
+
+        .landing-footer-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .landing-footer-link {
+            color: rgba(255,255,255,0.5);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s ease;
+        }
+
+        .landing-footer-link:hover {
+            color: rgba(255,255,255,0.8);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .landing-features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .landing-hero-title {
+                font-size: 2.75rem;
+            }
+
+            .landing-stats {
+                gap: 30px;
+            }
+
+            .landing-nav {
+                padding: 16px 24px;
+            }
+
+            .landing-nav-links {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .landing-hero {
+                padding: 100px 24px 60px;
+            }
+
+            .landing-hero-title {
+                font-size: 2.25rem;
+            }
+
+            .landing-hero-subtitle {
+                font-size: 1.05rem;
+            }
+
+            .landing-stats {
+                flex-direction: column;
+                gap: 24px;
+            }
+
+            .landing-cta-box {
+                padding: 40px 24px;
+            }
         }
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
-        }
-
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 8px;
-            letter-spacing: -1px;
-        }
-
-        .hero-subtitle {
-            font-size: 1.1rem;
-            color: rgba(255,255,255,0.6);
-            margin-bottom: 48px;
-        }
-
-        .hero-cta {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            padding: 18px 40px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            background-size: 200% 200%;
-            color: white;
-            border: none;
-            border-radius: 100px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.4);
-            position: relative;
-            overflow: hidden;
-            animation: fadeInUp 0.8s ease-out 0.3s both;
-        }
-
-        .hero-cta::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .hero-cta:hover::before {
-            left: 100%;
-        }
-
-        .hero-cta:hover {
-            transform: translateY(-4px) scale(1.05);
-            box-shadow: 0 16px 48px rgba(139, 92, 246, 0.5);
-            animation: gradientShift 3s ease infinite;
-        }
-
-        .hero-cta-icon {
-            font-size: 1.3rem;
-            transition: transform 0.3s ease;
-        }
-
-        .hero-cta:hover .hero-cta-icon {
-            transform: translateX(6px);
-        }
-
-        .hero-version {
-            position: absolute;
-            bottom: 32px;
-            color: rgba(255,255,255,0.3);
-            font-size: 0.8rem;
-        }
-
-        .hero-bg {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            overflow: hidden;
-            z-index: -1;
-        }
-
-        .hero-bg::before {
-            content: '';
-            position: absolute;
-            top: 20%; left: 10%;
-            width: 400px; height: 400px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
-            animation: pulse 4s ease-in-out infinite;
-        }
-
-        .hero-bg::after {
-            content: '';
-            position: absolute;
-            bottom: 20%; right: 10%;
-            width: 300px; height: 300px;
-            background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, transparent 70%);
-            animation: pulse 4s ease-in-out infinite 2s;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.7; }
         }
 
         /* ==================== AUTH PAGES ==================== */
@@ -5257,19 +5654,167 @@
     </style>
 </head>
 <body>
-    <!-- ==================== HERO PAGE ==================== -->
-    <div class="hero-page" id="heroPage">
-        <div class="hero-bg"></div>
-        <div class="hero-content">
-            <img class="hero-logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
-            <h1 class="hero-title">Lightspeed by Launchpad Solutions</h1>
-            <p class="hero-subtitle">AI-Powered Tools Built for Charitable Gaming</p>
-            <button class="hero-cta" id="heroCtaBtn">
-                Get Started
-                <span class="hero-cta-icon">→</span>
-            </button>
-        </div>
-        <div class="hero-version">Version 3.0</div>
+    <!-- ==================== MARKETING LANDING PAGE ==================== -->
+    <div class="landing-page" id="landingPage">
+
+        <!-- Navigation -->
+        <nav class="landing-nav">
+            <div class="landing-nav-logo">
+                <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                <span>Lightspeed</span>
+            </div>
+            <div class="landing-nav-links">
+                <a class="landing-nav-link" onclick="document.querySelector('.landing-features').scrollIntoView({behavior: 'smooth'})">Features</a>
+                <a class="landing-nav-link" onclick="document.querySelector('.landing-proof').scrollIntoView({behavior: 'smooth'})">About</a>
+                <a class="landing-nav-link" onclick="document.querySelector('.landing-cta-section').scrollIntoView({behavior: 'smooth'})">Contact</a>
+                <button class="landing-nav-cta" id="navLaunchAppBtn">Launch App →</button>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="landing-hero">
+            <div class="landing-hero-bg"></div>
+            <div class="landing-hero-content">
+                <div class="landing-hero-badge">⚡ Built for Charitable Gaming</div>
+                <h1 class="landing-hero-title">
+                    <span class="gradient-text">Work at the speed</span><br>
+                    <span class="gradient-text">of light.</span>
+                </h1>
+                <p class="landing-hero-subtitle">
+                    Lightspeed is an AI-powered productivity suite designed specifically for nonprofit teams and charitable gaming managers. Automate the repetitive. Focus on what matters.
+                </p>
+                <div class="landing-hero-ctas">
+                    <button class="landing-cta-primary" id="heroGetStartedBtn">
+                        Get Started Free
+                        <span>→</span>
+                    </button>
+                    <button class="landing-cta-secondary" onclick="document.querySelector('.landing-features').scrollIntoView({behavior: 'smooth'})">
+                        See Features
+                        <span>↓</span>
+                    </button>
+                </div>
+                <div class="landing-stats">
+                    <div class="landing-stat">
+                        <div class="landing-stat-value">4</div>
+                        <div class="landing-stat-label">Powerful Tools</div>
+                    </div>
+                    <div class="landing-stat">
+                        <div class="landing-stat-value">10x</div>
+                        <div class="landing-stat-label">Faster Workflows</div>
+                    </div>
+                    <div class="landing-stat">
+                        <div class="landing-stat-value">100%</div>
+                        <div class="landing-stat-label">Built for Nonprofits</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="landing-features" id="features">
+            <div class="landing-section-header">
+                <div class="landing-section-tag">Features</div>
+                <h2 class="landing-section-title">Everything you need, nothing you don't</h2>
+                <p class="landing-section-subtitle">Four specialized tools that tackle the most time-consuming tasks in nonprofit communications and data management.</p>
+            </div>
+
+            <div class="landing-features-grid">
+                <!-- Draft Assistant -->
+                <div class="landing-feature-card">
+                    <div class="landing-feature-icon draft">✍️</div>
+                    <h3 class="landing-feature-title">Draft Assistant</h3>
+                    <p class="landing-feature-desc">Generate on-brand social media posts, emails, press releases, and newsletters in seconds with AI that knows your organization's voice.</p>
+                    <ul class="landing-feature-list">
+                        <li>Social media posts & captions</li>
+                        <li>Email campaigns & newsletters</li>
+                        <li>Press releases & media advisories</li>
+                        <li>Customizable tone & style</li>
+                    </ul>
+                </div>
+
+                <!-- Response Assistant -->
+                <div class="landing-feature-card">
+                    <div class="landing-feature-icon response">📧</div>
+                    <h3 class="landing-feature-title">Response Assistant</h3>
+                    <p class="landing-feature-desc">Turn customer inquiries into professional, empathetic responses instantly. Perfect for handling winner questions, support tickets, and donor communications.</p>
+                    <ul class="landing-feature-list">
+                        <li>AI-powered reply generation</li>
+                        <li>Knowledge base integration</li>
+                        <li>Consistent brand voice</li>
+                        <li>Response history tracking</li>
+                    </ul>
+                </div>
+
+                <!-- Insights Engine -->
+                <div class="landing-feature-card">
+                    <div class="landing-feature-icon insights">📊</div>
+                    <h3 class="landing-feature-title">Insights Engine</h3>
+                    <p class="landing-feature-desc">Upload your Excel reports and instantly generate beautiful dashboards with charts, metrics, and actionable insights. No spreadsheet skills required.</p>
+                    <ul class="landing-feature-list">
+                        <li>Multiple report types supported</li>
+                        <li>Automated chart generation</li>
+                        <li>Key metrics at a glance</li>
+                        <li>Export-ready visualizations</li>
+                    </ul>
+                </div>
+
+                <!-- List Normalizer -->
+                <div class="landing-feature-card">
+                    <div class="landing-feature-icon normalizer">🔄</div>
+                    <h3 class="landing-feature-title">List Normalizer</h3>
+                    <p class="landing-feature-desc">Transform messy customer data into clean, formatted lists ready for Mailchimp and email platforms. What used to take 30 minutes now takes 30 seconds.</p>
+                    <ul class="landing-feature-list">
+                        <li>Auto-format names & emails</li>
+                        <li>Remove invalid entries</li>
+                        <li>Deduplicate records</li>
+                        <li>One-click Mailchimp export</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Social Proof / About Section -->
+        <section class="landing-proof">
+            <div class="landing-proof-quote">
+                <p class="landing-proof-text">"Lightspeed was built from the ground up by a charitable gaming team that grew annual revenue from $17M to $60M. Every tool solves a real problem we faced every single day."</p>
+                <div class="landing-proof-author">
+                    <div class="landing-proof-avatar">🚀</div>
+                    <div class="landing-proof-info">
+                        <div class="landing-proof-name">Launchpad Solutions</div>
+                        <div class="landing-proof-role">Thunder Bay, Ontario</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="landing-cta-section" id="contact">
+            <div class="landing-cta-box">
+                <h2 class="landing-cta-title">Ready to work at lightspeed?</h2>
+                <p class="landing-cta-subtitle">Get in touch to learn how Lightspeed can transform your nonprofit's workflow.</p>
+                <div class="landing-cta-buttons">
+                    <button class="landing-cta-primary" id="ctaGetStartedBtn">
+                        Get Started Free
+                        <span>→</span>
+                    </button>
+                    <a href="mailto:hello@launchpadsolutions.ca" class="landing-cta-secondary" style="text-decoration: none;">
+                        Contact Sales
+                        <span>✉️</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="landing-footer">
+            <div class="landing-footer-brand">
+                <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
+                <span>© 2025 Launchpad Solutions. All rights reserved.</span>
+            </div>
+            <div class="landing-footer-links">
+                <a href="https://launchpadsolutions.ca" target="_blank" class="landing-footer-link">Visit Launchpad</a>
+            </div>
+        </footer>
     </div>
 
     <!-- ==================== LOGIN PAGE ==================== -->
