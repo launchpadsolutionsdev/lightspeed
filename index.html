@@ -232,7 +232,7 @@
             padding: 120px 40px 80px;
             position: relative;
             overflow: hidden;
-            background: linear-gradient(135deg, #f0e6ff 0%, #e8deff 25%, #f5f0ff 50%, #ebe4ff 75%, #f0e6ff 100%);
+            background: linear-gradient(135deg, #e2d9f3 0%, #d8cef0 25%, #e8e0f8 50%, #ddd3f2 75%, #e2d9f3 100%);
         }
 
         .landing-hero-bg {
@@ -248,7 +248,7 @@
             position: absolute;
             top: 5%; left: 10%;
             width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
             animation: pulse 8s ease-in-out infinite;
         }
 
@@ -257,7 +257,7 @@
             position: absolute;
             bottom: 5%; right: 10%;
             width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(167, 139, 250, 0.1) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.12) 0%, transparent 70%);
             animation: pulse 8s ease-in-out infinite 4s;
         }
 
@@ -329,55 +329,72 @@
             position: absolute;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.03);
+            box-shadow: 0 25px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
             padding: 16px;
-            animation: floatCard 6s ease-in-out infinite;
             opacity: 0;
-            animation: fadeInFloat 0.8s ease-out forwards, floatCard 6s ease-in-out infinite;
+            transform: translateY(40px) scale(0.95);
+            animation: fadeInFloat 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards, floatCard 6s ease-in-out infinite;
         }
 
+        /* Card 1 - Draft Assistant - Largest, top left */
         .hero-float-card.card-1 {
-            top: 18%; left: 5%;
-            width: 280px;
-            animation-delay: 0.3s, 0.3s;
-            transform: rotate(-3deg);
+            top: 12%; left: 4%;
+            width: 300px;
+            padding: 20px;
+            z-index: 4;
+            animation-delay: 0.2s, 1.1s;
+            --rotate: -4deg;
+            --float-distance: -12px;
         }
 
+        /* Card 2 - Response Assistant - Medium-large, top right, overlaps slightly */
         .hero-float-card.card-2 {
-            top: 15%; right: 5%;
-            width: 260px;
-            animation-delay: 0.5s, 0.5s;
-            transform: rotate(2deg);
-        }
-
-        .hero-float-card.card-3 {
-            bottom: 20%; left: 8%;
-            width: 240px;
-            animation-delay: 0.7s, 0.7s;
-            transform: rotate(2deg);
-        }
-
-        .hero-float-card.card-4 {
-            bottom: 18%; right: 6%;
+            top: 8%; right: 3%;
             width: 270px;
-            animation-delay: 0.9s, 0.9s;
-            transform: rotate(-2deg);
+            padding: 16px;
+            z-index: 3;
+            animation-delay: 0.4s, 1.3s;
+            --rotate: 3deg;
+            --float-distance: -8px;
+        }
+
+        /* Card 3 - Insights Engine - Smaller, bottom left */
+        .hero-float-card.card-3 {
+            bottom: 22%; left: 6%;
+            width: 220px;
+            padding: 14px;
+            z-index: 2;
+            animation-delay: 0.6s, 1.5s;
+            --rotate: 2deg;
+            --float-distance: -15px;
+        }
+
+        /* Card 4 - List Normalizer - Medium, bottom right, overlaps card 2 area */
+        .hero-float-card.card-4 {
+            bottom: 12%; right: 2%;
+            width: 250px;
+            padding: 14px;
+            z-index: 5;
+            animation-delay: 0.8s, 1.7s;
+            --rotate: -3deg;
+            --float-distance: -10px;
         }
 
         @keyframes fadeInFloat {
-            from { opacity: 0; transform: translateY(20px) rotate(0deg); }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95) rotate(0deg);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1) rotate(var(--rotate, 0deg));
+            }
         }
 
         @keyframes floatCard {
             0%, 100% { transform: translateY(0) rotate(var(--rotate, 0deg)); }
-            50% { transform: translateY(-10px) rotate(var(--rotate, 0deg)); }
+            50% { transform: translateY(var(--float-distance, -10px)) rotate(var(--rotate, 0deg)); }
         }
-
-        .hero-float-card.card-1 { --rotate: -3deg; }
-        .hero-float-card.card-2 { --rotate: 2deg; }
-        .hero-float-card.card-3 { --rotate: 2deg; }
-        .hero-float-card.card-4 { --rotate: -2deg; }
 
         .hero-card-header {
             display: flex;
@@ -469,15 +486,18 @@
             color: var(--text-muted);
         }
 
+        @media (max-width: 1400px) {
+            .hero-float-card.card-1 { width: 260px; left: 2%; }
+            .hero-float-card.card-2 { width: 240px; right: 1%; }
+            .hero-float-card.card-3 { width: 200px; left: 3%; }
+            .hero-float-card.card-4 { width: 220px; right: 1%; }
+        }
+
         @media (max-width: 1200px) {
-            .hero-float-card.card-1,
-            .hero-float-card.card-3 {
-                left: 2%;
-            }
-            .hero-float-card.card-2,
-            .hero-float-card.card-4 {
-                right: 2%;
-            }
+            .hero-float-card.card-1 { width: 230px; top: 15%; }
+            .hero-float-card.card-2 { width: 210px; top: 12%; }
+            .hero-float-card.card-3 { width: 180px; }
+            .hero-float-card.card-4 { width: 200px; }
         }
 
         @media (max-width: 1000px) {
@@ -499,7 +519,7 @@
             align-items: center;
             gap: 10px;
             padding: 18px 36px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            background: linear-gradient(135deg, #5b21b6 0%, #6d28d9 50%, #7c3aed 100%);
             color: white;
             border: none;
             border-radius: 100px;
@@ -508,11 +528,13 @@
             cursor: pointer;
             transition: all 0.3s ease;
             font-family: inherit;
-            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.4);
+            box-shadow: 0 8px 32px rgba(91, 33, 182, 0.4);
         }
 
         .landing-cta-primary:hover {
             transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(91, 33, 182, 0.5);
+            background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 50%, #6d28d9 100%);
             box-shadow: 0 12px 40px rgba(139, 92, 246, 0.5);
         }
 
