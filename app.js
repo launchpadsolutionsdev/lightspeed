@@ -192,6 +192,27 @@ function setupAuthEventListeners() {
         }
     });
 
+    // Demo tab switching
+    document.querySelectorAll('.landing-demo-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Update active tab
+            document.querySelectorAll('.landing-demo-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Show corresponding panel
+            const demoId = tab.dataset.demo;
+            document.querySelectorAll('.landing-demo-panel').forEach(p => p.classList.remove('active'));
+
+            if (demoId === 'response') {
+                document.getElementById('demoResponse').classList.add('active');
+            } else if (demoId === 'insights') {
+                document.getElementById('demoInsights').classList.add('active');
+            } else if (demoId === 'normalizer') {
+                document.getElementById('demoNormalizer').classList.add('active');
+            }
+        });
+    });
+
     // Switch between login and register
     document.getElementById("showRegister").addEventListener("click", showRegisterPage);
     document.getElementById("showLogin").addEventListener("click", showLoginPage);

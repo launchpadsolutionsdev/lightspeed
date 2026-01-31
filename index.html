@@ -601,6 +601,382 @@
             50% { transform: translateY(-10px); }
         }
 
+        /* ==================== LIVE DEMO SECTION ==================== */
+        .landing-demo {
+            padding: 100px 40px;
+            background: linear-gradient(180deg, rgba(139, 92, 246, 0.03) 0%, transparent 100%);
+        }
+
+        .landing-demo-container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .landing-demo-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 40px;
+        }
+
+        .landing-demo-tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 100px;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .landing-demo-tab:hover {
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.8);
+        }
+
+        .landing-demo-tab.active {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-color: transparent;
+            color: white;
+        }
+
+        .landing-demo-window {
+            background: #1a1625;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .landing-demo-titlebar {
+            background: #0f0a1a;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .landing-demo-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .landing-demo-dot.red { background: #ff5f57; }
+        .landing-demo-dot.yellow { background: #febc2e; }
+        .landing-demo-dot.green { background: #28c840; }
+
+        .landing-demo-titlebar span {
+            margin-left: auto;
+            margin-right: auto;
+            color: rgba(255,255,255,0.4);
+            font-size: 0.85rem;
+        }
+
+        .landing-demo-content {
+            padding: 30px;
+            min-height: 450px;
+        }
+
+        .landing-demo-panel {
+            display: none;
+        }
+
+        .landing-demo-panel.active {
+            display: block;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        /* Response Assistant Demo */
+        .demo-response-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .demo-response-panel {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .demo-response-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .demo-response-label::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+
+        .demo-response-input {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 16px;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .demo-response-output {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
+            border-radius: 8px;
+            padding: 16px;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .demo-response-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: var(--accent);
+            margin-bottom: 12px;
+        }
+
+        /* Insights Engine Demo */
+        .demo-insights-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .demo-insights-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .demo-insights-metric {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .demo-insights-metric:hover {
+            background: rgba(255,255,255,0.05);
+            transform: translateY(-2px);
+        }
+
+        .demo-insights-metric-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .demo-insights-metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .demo-insights-metric-label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .demo-insights-charts {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+        }
+
+        .demo-insights-chart {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .demo-insights-chart-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 16px;
+        }
+
+        .demo-bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            height: 150px;
+            padding-top: 20px;
+        }
+
+        .demo-bar {
+            flex: 1;
+            background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+            border-radius: 6px 6px 0 0;
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .demo-bar:hover {
+            filter: brightness(1.2);
+        }
+
+        .demo-bar::after {
+            content: attr(data-label);
+            position: absolute;
+            bottom: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.4);
+            white-space: nowrap;
+        }
+
+        .demo-donut-chart {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .demo-donut-chart svg {
+            transform: rotate(-90deg);
+        }
+
+        .demo-donut-chart circle {
+            fill: none;
+            stroke-width: 20;
+        }
+
+        .demo-donut-bg {
+            stroke: rgba(255,255,255,0.1);
+        }
+
+        .demo-donut-fill {
+            stroke: var(--primary);
+            stroke-dasharray: 0 100;
+            transition: stroke-dasharray 1s ease;
+        }
+
+        .demo-donut-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .demo-donut-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .demo-donut-label {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* List Normalizer Demo */
+        .demo-normalizer-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .demo-normalizer-panel {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .demo-normalizer-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .demo-normalizer-table {
+            width: 100%;
+            font-size: 0.8rem;
+        }
+
+        .demo-normalizer-table th {
+            text-align: left;
+            padding: 8px 12px;
+            color: rgba(255,255,255,0.5);
+            font-weight: 500;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .demo-normalizer-table td {
+            padding: 10px 12px;
+            color: rgba(255,255,255,0.8);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .demo-normalizer-table tr.removed td {
+            color: rgba(255,255,255,0.3);
+            text-decoration: line-through;
+        }
+
+        .demo-normalizer-arrow {
+            font-size: 2rem;
+            color: var(--primary);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .demo-normalizer-clean .demo-normalizer-table td {
+            color: #22c55e;
+        }
+
+        @media (max-width: 900px) {
+            .demo-response-container {
+                grid-template-columns: 1fr;
+            }
+
+            .demo-insights-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .demo-insights-charts {
+                grid-template-columns: 1fr;
+            }
+
+            .demo-normalizer-container {
+                grid-template-columns: 1fr;
+            }
+
+            .demo-normalizer-arrow {
+                transform: rotate(90deg);
+            }
+        }
+
         /* ==================== AUTH PAGES ==================== */
         .auth-page {
             position: fixed;
@@ -5769,6 +6145,185 @@
                         <li>Deduplicate records</li>
                         <li>One-click Mailchimp export</li>
                     </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Demo Section -->
+        <section class="landing-demo" id="demo">
+            <div class="landing-section-header">
+                <div class="landing-section-tag">See It In Action</div>
+                <h2 class="landing-section-title">Try before you buy</h2>
+                <p class="landing-section-subtitle">Interactive previews of our most popular tools. This is exactly what you'll get.</p>
+            </div>
+
+            <div class="landing-demo-container">
+                <div class="landing-demo-tabs">
+                    <button class="landing-demo-tab active" data-demo="response">📧 Response Assistant</button>
+                    <button class="landing-demo-tab" data-demo="insights">📊 Insights Engine</button>
+                    <button class="landing-demo-tab" data-demo="normalizer">🔄 List Normalizer</button>
+                </div>
+
+                <div class="landing-demo-window">
+                    <div class="landing-demo-titlebar">
+                        <div class="landing-demo-dot red"></div>
+                        <div class="landing-demo-dot yellow"></div>
+                        <div class="landing-demo-dot green"></div>
+                        <span>Lightspeed</span>
+                    </div>
+
+                    <div class="landing-demo-content">
+                        <!-- Response Assistant Demo -->
+                        <div class="landing-demo-panel active" id="demoResponse">
+                            <div class="demo-response-container">
+                                <div class="demo-response-panel">
+                                    <div class="demo-response-label">Customer Inquiry</div>
+                                    <div class="demo-response-input">
+                                        Hi, I bought tickets for the 50/50 draw last week but I never received a confirmation email. My name is Sarah Johnson and I spent $50. Can someone please help me? I'm worried my tickets weren't registered. Thanks.
+                                    </div>
+                                </div>
+                                <div class="demo-response-panel">
+                                    <div class="demo-response-label">AI-Generated Response</div>
+                                    <div class="demo-response-output">
+                                        <div class="demo-response-badge">✨ Generated in 2.3 seconds</div>
+                                        Hi Sarah,<br><br>
+                                        Thank you for reaching out and for supporting our 50/50 draw!<br><br>
+                                        I completely understand your concern. I've looked into your purchase and can confirm that your $50 ticket purchase was successfully registered in our system. Your tickets are valid and entered into the draw.<br><br>
+                                        I've just resent your confirmation email to the address on file. Please check your spam folder if you don't see it in the next few minutes.<br><br>
+                                        Best of luck in the draw!<br><br>
+                                        Warm regards,<br>
+                                        The Foundation Team
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Insights Engine Demo -->
+                        <div class="landing-demo-panel" id="demoInsights">
+                            <div class="demo-insights-container">
+                                <div class="demo-insights-metrics">
+                                    <div class="demo-insights-metric">
+                                        <div class="demo-insights-metric-icon">💰</div>
+                                        <div class="demo-insights-metric-value">$847,293</div>
+                                        <div class="demo-insights-metric-label">Total Revenue</div>
+                                    </div>
+                                    <div class="demo-insights-metric">
+                                        <div class="demo-insights-metric-icon">🎫</div>
+                                        <div class="demo-insights-metric-value">24,847</div>
+                                        <div class="demo-insights-metric-label">Tickets Sold</div>
+                                    </div>
+                                    <div class="demo-insights-metric">
+                                        <div class="demo-insights-metric-icon">👥</div>
+                                        <div class="demo-insights-metric-value">8,412</div>
+                                        <div class="demo-insights-metric-label">Unique Buyers</div>
+                                    </div>
+                                    <div class="demo-insights-metric">
+                                        <div class="demo-insights-metric-icon">📈</div>
+                                        <div class="demo-insights-metric-value">$34.09</div>
+                                        <div class="demo-insights-metric-label">Avg. Order Value</div>
+                                    </div>
+                                </div>
+                                <div class="demo-insights-charts">
+                                    <div class="demo-insights-chart">
+                                        <div class="demo-insights-chart-title">Sales by Price Point</div>
+                                        <div class="demo-bar-chart">
+                                            <div class="demo-bar" style="height: 45%;" data-label="$10"></div>
+                                            <div class="demo-bar" style="height: 75%;" data-label="$20"></div>
+                                            <div class="demo-bar" style="height: 100%;" data-label="$40"></div>
+                                            <div class="demo-bar" style="height: 60%;" data-label="$75"></div>
+                                            <div class="demo-bar" style="height: 35%;" data-label="$100"></div>
+                                        </div>
+                                    </div>
+                                    <div class="demo-insights-chart">
+                                        <div class="demo-insights-chart-title">Returning Buyers</div>
+                                        <div class="demo-donut-chart">
+                                            <svg viewBox="0 0 100 100" width="140" height="140">
+                                                <circle class="demo-donut-bg" cx="50" cy="50" r="40"></circle>
+                                                <circle class="demo-donut-fill" cx="50" cy="50" r="40" stroke-dasharray="68 100"></circle>
+                                            </svg>
+                                            <div class="demo-donut-center">
+                                                <div class="demo-donut-value">68%</div>
+                                                <div class="demo-donut-label">Repeat</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- List Normalizer Demo -->
+                        <div class="landing-demo-panel" id="demoNormalizer">
+                            <div class="demo-normalizer-container">
+                                <div class="demo-normalizer-panel">
+                                    <div class="demo-normalizer-label">📥 Raw Customer Export</div>
+                                    <table class="demo-normalizer-table">
+                                        <thead>
+                                            <tr>
+                                                <th>First Name</th>
+                                                <th>Last Name</th>
+                                                <th>E-mail</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Sarah</td>
+                                                <td>Johnson</td>
+                                                <td>sarah.j@email.com</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Mike</td>
+                                                <td>Chen</td>
+                                                <td>mchen@gmail.com</td>
+                                            </tr>
+                                            <tr class="removed">
+                                                <td>John</td>
+                                                <td>Smith</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Emily</td>
+                                                <td>Davis</td>
+                                                <td>emily.d@work.com</td>
+                                            </tr>
+                                            <tr class="removed">
+                                                <td>Store</td>
+                                                <td>Purchase</td>
+                                                <td></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="demo-normalizer-arrow">→</div>
+
+                                <div class="demo-normalizer-panel demo-normalizer-clean">
+                                    <div class="demo-normalizer-label">✅ Mailchimp Ready</div>
+                                    <table class="demo-normalizer-table">
+                                        <thead>
+                                            <tr>
+                                                <th>NAME</th>
+                                                <th>EMAIL</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Emily Davis</td>
+                                                <td>emily.d@work.com</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Mike Chen</td>
+                                                <td>mchen@gmail.com</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Sarah Johnson</td>
+                                                <td>sarah.j@email.com</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
