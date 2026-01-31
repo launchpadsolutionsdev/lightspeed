@@ -3459,6 +3459,10 @@
             margin-bottom: 28px;
         }
 
+        .data-metrics-grid.data-metrics-three-col {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
         .data-metric-card {
             background: white;
             border-radius: var(--radius-lg);
@@ -3685,6 +3689,35 @@
         /* Postal Codes Section */
         .data-postal-section {
             margin-bottom: 28px;
+        }
+
+        /* Package Counts Display */
+        .data-package-counts {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .data-package-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .data-package-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .data-package-value {
+            display: block;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
         }
 
         .data-postal-grid {
@@ -4804,14 +4837,30 @@
                             </div>
                         </div>
 
-                        <!-- Metrics Row 1 -->
-                        <div class="data-metrics-grid">
+                        <!-- Key Metrics Row -->
+                        <div class="data-metrics-grid data-metrics-three-col">
                             <div class="data-metric-card highlight">
                                 <div class="data-metric-icon">💰</div>
                                 <div class="data-metric-label">Total Revenue</div>
                                 <div class="data-metric-value" id="dataTotalRevenue">$0</div>
                                 <div class="data-metric-sublabel" id="dataRevenueSubtext">from 0 transactions</div>
                             </div>
+                            <div class="data-metric-card highlight">
+                                <div class="data-metric-icon">🛒</div>
+                                <div class="data-metric-label">Total Purchases</div>
+                                <div class="data-metric-value" id="dataTotalPurchases">0</div>
+                                <div class="data-metric-sublabel">total rows in report</div>
+                            </div>
+                            <div class="data-metric-card highlight">
+                                <div class="data-metric-icon">👥</div>
+                                <div class="data-metric-label">Total Unique Customers</div>
+                                <div class="data-metric-value" id="dataTotalUniqueCustomers">0</div>
+                                <div class="data-metric-sublabel">by email address</div>
+                            </div>
+                        </div>
+
+                        <!-- Metrics Row 1 -->
+                        <div class="data-metrics-grid">
                             <div class="data-metric-card">
                                 <div class="data-metric-icon">📦</div>
                                 <div class="data-metric-label">Average Package Value</div>
@@ -4830,16 +4879,16 @@
                                 <div class="data-metric-value" id="dataAvgPerCustomer">$0</div>
                                 <div class="data-metric-sublabel">lifetime value</div>
                             </div>
-                        </div>
-
-                        <!-- Metrics Row 2 -->
-                        <div class="data-metrics-grid">
                             <div class="data-metric-card">
                                 <div class="data-metric-icon">🔄</div>
                                 <div class="data-metric-label">Repeat Buyers</div>
                                 <div class="data-metric-value" id="dataRepeatBuyers">0</div>
                                 <div class="data-metric-sublabel" id="dataRepeatSubtext">multiple packages</div>
                             </div>
+                        </div>
+
+                        <!-- Metrics Row 2 -->
+                        <div class="data-metrics-grid">
                             <div class="data-metric-card">
                                 <div class="data-metric-icon">🎟️</div>
                                 <div class="data-metric-label">Total Tickets Sold</div>
@@ -4882,6 +4931,28 @@
                                 <h3>Sales by Package ($10, $20, $50, $75, $100)</h3>
                                 <div class="data-chart-container">
                                     <canvas id="dataPackageChart"></canvas>
+                                </div>
+                                <div class="data-package-counts" id="dataPackageCounts">
+                                    <div class="data-package-item">
+                                        <span class="data-package-label">$10</span>
+                                        <span class="data-package-value" id="dataPkg10">0</span>
+                                    </div>
+                                    <div class="data-package-item">
+                                        <span class="data-package-label">$20</span>
+                                        <span class="data-package-value" id="dataPkg20">0</span>
+                                    </div>
+                                    <div class="data-package-item">
+                                        <span class="data-package-label">$50</span>
+                                        <span class="data-package-value" id="dataPkg50">0</span>
+                                    </div>
+                                    <div class="data-package-item">
+                                        <span class="data-package-label">$75</span>
+                                        <span class="data-package-value" id="dataPkg75">0</span>
+                                    </div>
+                                    <div class="data-package-item">
+                                        <span class="data-package-label">$100</span>
+                                        <span class="data-package-value" id="dataPkg100">0</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="data-chart-card">

@@ -1130,8 +1130,8 @@ function analyzeDataFull(data) {
     // Store for other pages
     dataAnalysisResults = { cityData, customerSpending, totalRevenue };
 
-    // Update UI
-    document.getElementById('dataTotalRevenue').textContent = formatDataCurrency(totalRevenue);
+    // Update UI - use exact amounts for main revenue figures
+    document.getElementById('dataTotalRevenue').textContent = formatDataCurrency(totalRevenue, true);
     document.getElementById('dataRevenueSubtext').textContent = `from ${totalTransactions.toLocaleString()} transactions`;
     document.getElementById('dataAvgSale').textContent = formatDataCurrency(avgSale);
     document.getElementById('dataAvgSaleSubtext').textContent = `from ${totalPackageCount.toLocaleString()} packages`;
@@ -1140,9 +1140,11 @@ function analyzeDataFull(data) {
     document.getElementById('dataRepeatBuyers').textContent = repeatBuyersCount.toLocaleString();
     document.getElementById('dataRepeatSubtext').textContent = `bought multiple packages`;
     document.getElementById('dataTotalTickets').textContent = totalTickets.toLocaleString();
-    document.getElementById('dataNorthernSales').textContent = formatDataCurrency(northernRevenue);
+    document.getElementById('dataTotalPurchases').textContent = totalTransactions.toLocaleString();
+    document.getElementById('dataTotalUniqueCustomers').textContent = uniqueCustomers.toLocaleString();
+    document.getElementById('dataNorthernSales').textContent = formatDataCurrency(northernRevenue, true);
     document.getElementById('dataNorthernSubtext').textContent = `${northernCount.toLocaleString()} customers (${((northernRevenue/totalRevenue)*100).toFixed(1)}%)`;
-    document.getElementById('dataRsuSales').textContent = formatDataCurrency(rsuRevenue);
+    document.getElementById('dataRsuSales').textContent = formatDataCurrency(rsuRevenue, true);
     document.getElementById('dataRsuSubtext').textContent = `${rsuCount.toLocaleString()} in-venue transactions`;
 
     // Render all visualizations
@@ -1156,7 +1158,10 @@ function analyzeDataFull(data) {
                         totalTransactions, totalPackageCount, northernRevenue, northernCount, packageCounts, rsuRevenue, rsuCount);
 }
 
-function formatDataCurrency(value) {
+function formatDataCurrency(value, exact = false) {
+    if (exact) {
+        return '$' + Math.round(value).toLocaleString();
+    }
     if (value >= 1000000) return '$' + (value / 1000000).toFixed(2) + 'M';
     if (value >= 1000) return '$' + (value / 1000).toFixed(1) + 'K';
     return '$' + value.toFixed(2);
@@ -1234,6 +1239,13 @@ function renderDataChartsFull(tierData, packageCounts, northernRevenue, southern
         }
     });
     dataCharts.push(packageChart);
+
+    // Update package counts display
+    document.getElementById('dataPkg10').textContent = packageCounts[10].toLocaleString();
+    document.getElementById('dataPkg20').textContent = packageCounts[20].toLocaleString();
+    document.getElementById('dataPkg50').textContent = packageCounts[50].toLocaleString();
+    document.getElementById('dataPkg75').textContent = packageCounts[75].toLocaleString();
+    document.getElementById('dataPkg100').textContent = packageCounts[100].toLocaleString();
 
     // Northern vs Southern Ontario
     const regionChart = new Chart(document.getElementById('dataRegionChart'), {
