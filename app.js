@@ -1142,6 +1142,7 @@ function analyzeDataFull(data) {
     document.getElementById('dataTotalTickets').textContent = totalTickets.toLocaleString();
     document.getElementById('dataTotalPurchases').textContent = totalTransactions.toLocaleString();
     document.getElementById('dataTotalUniqueCustomers').textContent = uniqueCustomers.toLocaleString();
+    document.getElementById('dataAvgPurchase').textContent = formatDataCurrency(totalRevenue / totalTransactions);
     document.getElementById('dataNorthernSales').textContent = formatDataCurrency(northernRevenue, true);
     document.getElementById('dataNorthernSubtext').textContent = `${northernCount.toLocaleString()} customers (${((northernRevenue/totalRevenue)*100).toFixed(1)}%)`;
     document.getElementById('dataRsuSales').textContent = formatDataCurrency(rsuRevenue, true);
