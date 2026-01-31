@@ -1399,9 +1399,6 @@
             margin: 0 auto 40px;
             text-align: center;
             min-height: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             background: white;
             border-radius: var(--radius-lg);
             padding: 24px 32px;
@@ -1409,26 +1406,20 @@
             border: 1px solid var(--border);
         }
 
-        .tool-description-panel {
+        .landing-tool-description .tool-description-panel {
             display: none;
             color: var(--text-secondary);
             font-size: 1.05rem;
             line-height: 1.7;
-            animation: fadeIn 0.3s ease-out;
         }
 
-        .tool-description-panel.active {
-            display: block;
+        .landing-tool-description .tool-description-panel.active {
+            display: block !important;
         }
 
-        .tool-description-panel strong {
+        .landing-tool-description .tool-description-panel strong {
             color: var(--text-primary);
             font-weight: 600;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
         }
 
         .landing-demo-window {
