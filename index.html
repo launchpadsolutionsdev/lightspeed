@@ -3153,6 +3153,98 @@
             margin: 0 auto;
         }
 
+        /* Report Type Selection */
+        .data-report-type-section {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 30px;
+        }
+
+        .data-report-type-section h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .data-report-type-section p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 16px;
+        }
+
+        .data-report-type-selector {
+            max-width: 400px;
+            margin: 0 auto 20px;
+        }
+
+        .data-report-type-dropdown {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            background: white;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .data-report-type-dropdown:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .data-report-type-description {
+            max-width: 500px;
+            margin: 0 auto 24px;
+            padding: 16px 20px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+            text-align: left;
+            display: none;
+        }
+
+        .data-report-type-description.visible {
+            display: block;
+        }
+
+        .data-report-type-description h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .data-report-type-description p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+            line-height: 1.5;
+        }
+
+        .data-back-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 16px;
+            font-family: inherit;
+            transition: color 0.2s ease;
+        }
+
+        .data-back-btn:hover {
+            color: var(--primary);
+        }
+
         /* Upload Section */
         .data-upload-section {
             background: white;
@@ -3509,6 +3601,10 @@
             grid-template-columns: repeat(2, 1fr);
             gap: 24px;
             margin-bottom: 28px;
+        }
+
+        .data-tables-grid.data-tables-three-col {
+            grid-template-columns: repeat(3, 1fr);
         }
 
         .data-table-card {
@@ -4648,15 +4744,34 @@
 
         <div class="container">
             <div class="data-analysis-container">
-                <!-- Upload Section -->
-                <div class="data-upload-section" id="dataUploadSection">
-                    <input type="file" id="dataFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                <!-- Report Type Selection -->
+                <div class="data-report-type-section" id="dataReportTypeSection">
                     <div class="data-upload-icon">📊</div>
-                    <h2>Upload Monthly Report</h2>
-                    <p>Drag and drop your Excel file here, or click to browse</p>
+                    <h2>Select Report Type</h2>
+                    <p>Choose the type of BUMP Raffle report you want to analyze</p>
+                    <div class="data-report-type-selector">
+                        <select id="dataReportTypeSelect" class="data-report-type-dropdown">
+                            <option value="">Select a report type...</option>
+                            <option value="customer-purchases">Customer Purchases</option>
+                            <option value="customers">Customers</option>
+                        </select>
+                    </div>
+                    <div class="data-report-type-description" id="dataReportTypeDescription"></div>
+                    <button class="data-upload-btn" id="dataReportTypeContinueBtn" disabled>
+                        Continue
+                    </button>
+                </div>
+
+                <!-- Upload Section -->
+                <div class="data-upload-section" id="dataUploadSection" style="display: none;">
+                    <input type="file" id="dataFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                    <div class="data-upload-icon">📤</div>
+                    <h2 id="dataUploadTitle">Upload Report</h2>
+                    <p id="dataUploadSubtitle">Drag and drop your Excel file here, or click to browse</p>
                     <button class="data-upload-btn" onclick="document.getElementById('dataFileInput').click()">
                         Select Excel File
                     </button>
+                    <button class="data-back-btn" id="dataBackToTypeBtn">← Back to Report Selection</button>
                 </div>
 
                 <!-- Naming Section -->
@@ -4862,6 +4977,124 @@
                         </table>
                     </div>
 
+                </div>
+
+                <!-- ==================== CUSTOMERS REPORT DASHBOARD ==================== -->
+                <div class="data-dashboard" id="dataCustomersDashboard" style="display: none;">
+                    <div class="data-page active" id="data-page-customers-overview">
+                        <div class="data-report-header">
+                            <div class="data-report-info">
+                                <span class="data-report-badge">👥 Customers Report</span>
+                                <span class="data-report-name" id="dataCustomersReportName">Customers Report</span>
+                            </div>
+                        </div>
+
+                        <!-- Metrics Row -->
+                        <div class="data-metrics-grid">
+                            <div class="data-metric-card highlight">
+                                <div class="data-metric-icon">👥</div>
+                                <div class="data-metric-label">Total Customers</div>
+                                <div class="data-metric-value" id="dataCustTotalCustomers">0</div>
+                                <div class="data-metric-sublabel">in this report</div>
+                            </div>
+                            <div class="data-metric-card">
+                                <div class="data-metric-icon">🏙️</div>
+                                <div class="data-metric-label">Unique Cities</div>
+                                <div class="data-metric-value" id="dataCustUniqueCities">0</div>
+                                <div class="data-metric-sublabel">locations represented</div>
+                            </div>
+                            <div class="data-metric-card">
+                                <div class="data-metric-icon">📮</div>
+                                <div class="data-metric-label">Unique Postal Codes</div>
+                                <div class="data-metric-value" id="dataCustUniquePostal">0</div>
+                                <div class="data-metric-sublabel">FSA regions</div>
+                            </div>
+                            <div class="data-metric-card northern">
+                                <div class="data-metric-icon">🌲</div>
+                                <div class="data-metric-label">Northern Ontario</div>
+                                <div class="data-metric-value" id="dataCustNorthernCount">0</div>
+                                <div class="data-metric-sublabel" id="dataCustNorthernPct">0% of customers</div>
+                            </div>
+                        </div>
+
+                        <!-- Charts Row -->
+                        <div class="data-charts-grid">
+                            <div class="data-chart-card">
+                                <h3>Customers by City (Top 10)</h3>
+                                <div class="data-chart-container">
+                                    <canvas id="dataCustCityChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="data-chart-card">
+                                <h3>Customers by Area Code (Top 10)</h3>
+                                <div class="data-chart-container">
+                                    <canvas id="dataCustAreaCodeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tables Row -->
+                        <div class="data-tables-grid data-tables-three-col">
+                            <div class="data-table-card">
+                                <h3>Top 25 Cities</h3>
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>City</th>
+                                            <th>Customers</th>
+                                            <th>%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dataCustCitiesTable"></tbody>
+                                </table>
+                            </div>
+                            <div class="data-table-card">
+                                <h3>Top 25 Postal Codes (FSA)</h3>
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>FSA</th>
+                                            <th>Customers</th>
+                                            <th>%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dataCustPostalTable"></tbody>
+                                </table>
+                            </div>
+                            <div class="data-table-card">
+                                <h3>Top 25 Area Codes</h3>
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Area Code</th>
+                                            <th>Customers</th>
+                                            <th>%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dataCustAreaCodesTable"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Regional Breakdown -->
+                        <div class="data-charts-grid">
+                            <div class="data-chart-card">
+                                <h3>Northern vs Southern Ontario</h3>
+                                <div class="data-chart-container">
+                                    <canvas id="dataCustRegionChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="data-chart-card">
+                                <h3>Customers by Postal Code (Top 10)</h3>
+                                <div class="data-chart-container">
+                                    <canvas id="dataCustPostalChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

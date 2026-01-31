@@ -51,6 +51,23 @@ let inquiryType = "email"; // "email" or "facebook"
 // Data Analysis State
 let dataAnalysisData = null;
 let dataCharts = [];
+let currentReportType = null; // 'customer-purchases' or 'customers'
+
+// Report Type Definitions
+const REPORT_TYPES = {
+    'customer-purchases': {
+        name: 'Customer Purchases',
+        description: 'Analyze customer purchase data including revenue, transaction amounts, geographic distribution, and top buyers. This report requires columns like email, total spent, city, and phone.',
+        uploadTitle: 'Upload Customer Purchases Report',
+        uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
+    },
+    'customers': {
+        name: 'Customers',
+        description: 'Analyze customer demographics and geographic distribution. Shows breakdowns by city, postal code (FSA), and phone area code. This report contains customer info without purchase amounts.',
+        uploadTitle: 'Upload Customers Report',
+        uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
+    }
+};
 
 // Smart suggestion templates
 const SUGGESTION_TEMPLATES = {
@@ -844,6 +861,47 @@ function setupDataAnalysisListeners() {
     dataAnalysisListenersSetup = true;
     console.log("Setting up data analysis listeners...");
 
+    // Report type selection
+    const reportTypeSelect = document.getElementById("dataReportTypeSelect");
+    const reportTypeDescription = document.getElementById("dataReportTypeDescription");
+    const reportTypeContinueBtn = document.getElementById("dataReportTypeContinueBtn");
+
+    if (reportTypeSelect) {
+        reportTypeSelect.addEventListener("change", (e) => {
+            const type = e.target.value;
+            if (type && REPORT_TYPES[type]) {
+                currentReportType = type;
+                reportTypeDescription.innerHTML = `<h4>${REPORT_TYPES[type].name}</h4><p>${REPORT_TYPES[type].description}</p>`;
+                reportTypeDescription.classList.add('visible');
+                reportTypeContinueBtn.disabled = false;
+            } else {
+                currentReportType = null;
+                reportTypeDescription.classList.remove('visible');
+                reportTypeContinueBtn.disabled = true;
+            }
+        });
+    }
+
+    if (reportTypeContinueBtn) {
+        reportTypeContinueBtn.addEventListener("click", () => {
+            if (currentReportType) {
+                document.getElementById("dataReportTypeSection").style.display = "none";
+                document.getElementById("dataUploadSection").style.display = "block";
+                document.getElementById("dataUploadTitle").textContent = REPORT_TYPES[currentReportType].uploadTitle;
+                document.getElementById("dataUploadSubtitle").textContent = REPORT_TYPES[currentReportType].uploadSubtitle;
+            }
+        });
+    }
+
+    // Back to report type selection
+    const backToTypeBtn = document.getElementById("dataBackToTypeBtn");
+    if (backToTypeBtn) {
+        backToTypeBtn.addEventListener("click", () => {
+            document.getElementById("dataUploadSection").style.display = "none";
+            document.getElementById("dataReportTypeSection").style.display = "block";
+        });
+    }
+
     // Drag and drop handlers
     uploadSection.addEventListener("dragover", (e) => {
         e.preventDefault();
@@ -922,12 +980,22 @@ function processDataFile(file) {
 
 function processNamedDataFile() {
     const reportName = document.getElementById("dataReportNameInput").value.trim() || "Untitled Report";
-    document.getElementById("dataReportName").textContent = reportName;
     document.getElementById("dataNamingSection").style.display = "none";
-    document.getElementById("dataNavTabs").style.display = "flex";
     document.getElementById("dataHeaderActions").style.display = "flex";
-    analyzeDataFull(dataPendingFileData);
-    document.getElementById("dataDashboard").classList.add("visible");
+
+    // Route to the correct dashboard based on report type
+    if (currentReportType === 'customers') {
+        document.getElementById("dataCustomersReportName").textContent = reportName;
+        document.getElementById("dataNavTabs").style.display = "none"; // Customers report has single page
+        analyzeCustomersReport(dataPendingFileData);
+        document.getElementById("dataCustomersDashboard").style.display = "block";
+    } else {
+        // Default to customer-purchases
+        document.getElementById("dataReportName").textContent = reportName;
+        document.getElementById("dataNavTabs").style.display = "flex";
+        analyzeDataFull(dataPendingFileData);
+        document.getElementById("dataDashboard").classList.add("visible");
+    }
 }
 
 function analyzeDataFull(data) {
@@ -1335,23 +1403,239 @@ function generateDataInsights(totalRevenue, avgSale, uniqueCustomers, repeatBuye
 function resetDataAnalysis() {
     dataPendingFileData = null;
     dataAnalysisResults = {};
+    currentReportType = null;
     dataCharts.forEach(chart => chart.destroy());
     dataCharts = [];
 
+    // Hide all dashboards
     document.getElementById("dataDashboard").classList.remove("visible");
+    document.getElementById("dataCustomersDashboard").style.display = "none";
+
+    // Reset sections
     document.getElementById("dataNamingSection").style.display = "none";
     document.getElementById("dataLoading").style.display = "none";
-    document.getElementById("dataUploadSection").style.display = "block";
+    document.getElementById("dataUploadSection").style.display = "none";
+    document.getElementById("dataReportTypeSection").style.display = "block";
     document.getElementById("dataNavTabs").style.display = "none";
     document.getElementById("dataHeaderActions").style.display = "none";
     document.getElementById("dataFileInput").value = '';
     document.getElementById("dataReportNameInput").value = '';
+
+    // Reset report type selection
+    document.getElementById("dataReportTypeSelect").value = '';
+    document.getElementById("dataReportTypeDescription").classList.remove('visible');
+    document.getElementById("dataReportTypeContinueBtn").disabled = true;
 
     // Reset to overview page
     document.querySelectorAll('.data-nav-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.data-page').forEach(p => p.classList.remove('active'));
     document.querySelector('[data-page="overview"]')?.classList.add('active');
     document.getElementById('data-page-overview')?.classList.add('active');
+}
+
+// ==================== CUSTOMERS REPORT ANALYSIS ====================
+function analyzeCustomersReport(data) {
+    // Auto-detect column names
+    const columns = Object.keys(data[0] || {});
+    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+
+    const cityCol = findCol(['city']);
+    const phoneCol = findCol(['phone', 'phone number']);
+    const zipCol = findCol(['zip', 'postal', 'zip code', 'postal code']);
+    const emailCol = findCol(['e-mail', 'email']);
+
+    const totalCustomers = data.length;
+
+    // City analysis
+    const cityData = {};
+    // Postal code analysis (FSA - first 3 chars)
+    const postalData = {};
+    // Area code analysis (first 3 digits of phone)
+    const areaCodeData = {};
+
+    // Northern vs Southern count
+    let northernCount = 0;
+    let southernCount = 0;
+
+    data.forEach(row => {
+        // City
+        let rawCity = (row[cityCol] || '').toString().trim();
+        const normalizedCity = normalizeCity(rawCity);
+        const displayCity = rawCity.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') || 'Unknown';
+
+        if (!cityData[normalizedCity]) {
+            cityData[normalizedCity] = { count: 0, displayName: displayCity };
+        }
+        cityData[normalizedCity].count++;
+
+        // Northern vs Southern
+        if (isNorthernOntario(rawCity) || !rawCity) {
+            northernCount++;
+        } else {
+            southernCount++;
+        }
+
+        // Postal Code (FSA - first 3 characters)
+        const postal = (row[zipCol] || '').toString().toUpperCase().trim().substring(0, 3);
+        if (postal && postal.length >= 3) {
+            if (!postalData[postal]) postalData[postal] = { count: 0 };
+            postalData[postal].count++;
+        }
+
+        // Area Code (first 3 digits of phone, accounting for leading "1")
+        let phone = (row[phoneCol] || '').toString().replace(/\D/g, '');
+        // If phone starts with "1" and has 11 digits, strip the leading 1
+        if (phone.length === 11 && phone.startsWith('1')) {
+            phone = phone.substring(1);
+        }
+        if (phone.length >= 10) {
+            const areaCode = phone.substring(0, 3);
+            if (!areaCodeData[areaCode]) areaCodeData[areaCode] = { count: 0 };
+            areaCodeData[areaCode].count++;
+        }
+    });
+
+    const uniqueCities = Object.keys(cityData).length;
+    const uniquePostal = Object.keys(postalData).length;
+
+    // Update metrics
+    document.getElementById('dataCustTotalCustomers').textContent = totalCustomers.toLocaleString();
+    document.getElementById('dataCustUniqueCities').textContent = uniqueCities.toLocaleString();
+    document.getElementById('dataCustUniquePostal').textContent = uniquePostal.toLocaleString();
+    document.getElementById('dataCustNorthernCount').textContent = northernCount.toLocaleString();
+    document.getElementById('dataCustNorthernPct').textContent = `${((northernCount / totalCustomers) * 100).toFixed(1)}% of customers`;
+
+    // Render charts and tables
+    renderCustomersCharts(cityData, postalData, areaCodeData, northernCount, southernCount, totalCustomers);
+    renderCustomersTables(cityData, postalData, areaCodeData, totalCustomers);
+}
+
+function renderCustomersCharts(cityData, postalData, areaCodeData, northernCount, southernCount, totalCustomers) {
+    // Destroy existing charts
+    dataCharts.forEach(chart => chart.destroy());
+    dataCharts = [];
+
+    const chartColors = ['#8b5cf6', '#7c3aed', '#a78bfa', '#c4b5fd', '#ddd6fe', '#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff'];
+
+    // Top 10 Cities Chart
+    const topCities = Object.entries(cityData).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
+    const cityChart = new Chart(document.getElementById('dataCustCityChart'), {
+        type: 'bar',
+        data: {
+            labels: topCities.map(c => c[1].displayName),
+            datasets: [{
+                label: 'Customers',
+                data: topCities.map(c => c[1].count),
+                backgroundColor: chartColors[0],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true } }
+        }
+    });
+    dataCharts.push(cityChart);
+
+    // Top 10 Area Codes Chart
+    const topAreaCodes = Object.entries(areaCodeData).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
+    const areaCodeChart = new Chart(document.getElementById('dataCustAreaCodeChart'), {
+        type: 'bar',
+        data: {
+            labels: topAreaCodes.map(a => a[0]),
+            datasets: [{
+                label: 'Customers',
+                data: topAreaCodes.map(a => a[1].count),
+                backgroundColor: chartColors[1],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+    dataCharts.push(areaCodeChart);
+
+    // Northern vs Southern Chart
+    const regionChart = new Chart(document.getElementById('dataCustRegionChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Northern Ontario', 'Southern Ontario'],
+            datasets: [{
+                data: [northernCount, southernCount],
+                backgroundColor: ['#059669', '#8b5cf6']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
+        }
+    });
+    dataCharts.push(regionChart);
+
+    // Top 10 Postal Codes Chart
+    const topPostal = Object.entries(postalData).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
+    const postalChart = new Chart(document.getElementById('dataCustPostalChart'), {
+        type: 'bar',
+        data: {
+            labels: topPostal.map(p => p[0]),
+            datasets: [{
+                label: 'Customers',
+                data: topPostal.map(p => p[1].count),
+                backgroundColor: chartColors[2],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+    dataCharts.push(postalChart);
+}
+
+function renderCustomersTables(cityData, postalData, areaCodeData, totalCustomers) {
+    // Top 25 Cities
+    const topCities = Object.entries(cityData).sort((a, b) => b[1].count - a[1].count).slice(0, 25);
+    document.getElementById('dataCustCitiesTable').innerHTML = topCities.map(([_, data], i) => `
+        <tr>
+            <td><span class="data-rank-badge ${i < 3 ? 'data-rank-' + (i+1) : 'data-rank-default'}">${i + 1}</span></td>
+            <td>${data.displayName}</td>
+            <td><strong>${data.count.toLocaleString()}</strong></td>
+            <td>${((data.count / totalCustomers) * 100).toFixed(1)}%</td>
+        </tr>
+    `).join('');
+
+    // Top 25 Postal Codes
+    const topPostal = Object.entries(postalData).sort((a, b) => b[1].count - a[1].count).slice(0, 25);
+    document.getElementById('dataCustPostalTable').innerHTML = topPostal.map(([code, data], i) => `
+        <tr>
+            <td><span class="data-rank-badge ${i < 3 ? 'data-rank-' + (i+1) : 'data-rank-default'}">${i + 1}</span></td>
+            <td><strong>${code}</strong></td>
+            <td>${data.count.toLocaleString()}</td>
+            <td>${((data.count / totalCustomers) * 100).toFixed(1)}%</td>
+        </tr>
+    `).join('');
+
+    // Top 25 Area Codes
+    const topAreaCodes = Object.entries(areaCodeData).sort((a, b) => b[1].count - a[1].count).slice(0, 25);
+    document.getElementById('dataCustAreaCodesTable').innerHTML = topAreaCodes.map(([code, data], i) => `
+        <tr>
+            <td><span class="data-rank-badge ${i < 3 ? 'data-rank-' + (i+1) : 'data-rank-default'}">${i + 1}</span></td>
+            <td><strong>${code}</strong></td>
+            <td>${data.count.toLocaleString()}</td>
+            <td>${((data.count / totalCustomers) * 100).toFixed(1)}%</td>
+        </tr>
+    `).join('');
 }
 
 // ==================== NAVIGATION ====================
