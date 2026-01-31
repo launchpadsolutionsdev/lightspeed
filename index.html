@@ -1291,9 +1291,52 @@
             font-size: 0.9rem;
         }
 
+        .demo-draft-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .demo-draft-half {
+            flex: 1;
+        }
+
+        .demo-draft-release {
+            font-size: 0.9rem;
+        }
+
+        .demo-draft-release-header {
+            text-align: center;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 16px !important;
+        }
+
+        .demo-draft-release-title {
+            font-size: 1.05rem;
+            margin-bottom: 4px !important;
+        }
+
+        .demo-draft-release-subtitle {
+            font-style: italic;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 16px !important;
+        }
+
+        .demo-draft-release-footer {
+            text-align: center;
+            margin-top: 16px !important;
+            color: rgba(255,255,255,0.5);
+        }
+
         @media (max-width: 900px) {
             .demo-draft-container {
                 grid-template-columns: 1fr;
+            }
+
+            .demo-draft-row {
+                flex-direction: column;
+                gap: 16px;
             }
         }
 
@@ -6796,7 +6839,7 @@
             <div class="landing-section-header">
                 <div class="landing-section-tag">See It In Action</div>
                 <h2 class="landing-section-title">Try it for free today.</h2>
-                <p class="landing-section-subtitle">What you see is what you get. Test-drive Lightspeed's tools right here — no sign-up required.</p>
+                <p class="landing-section-subtitle">See real-world examples of Lightspeed in use. Embracing the power of AI and machine learning has never been easier.</p>
             </div>
 
             <div class="landing-demo-container">
@@ -6822,29 +6865,36 @@
                                 <div class="demo-draft-form">
                                     <div class="demo-draft-field">
                                         <label>Content Type</label>
-                                        <div class="demo-draft-select">Social Media Post</div>
+                                        <div class="demo-draft-select">Media Release</div>
                                     </div>
                                     <div class="demo-draft-field">
-                                        <label>Topic / Key Message</label>
-                                        <div class="demo-draft-input">Early bird deadline reminder for our Spring 50/50 - tickets 3 for $10</div>
+                                        <label>Context / Announcement</label>
+                                        <div class="demo-draft-input">Spring 50/50 jackpot winner announced - $127,450 prize</div>
                                     </div>
-                                    <div class="demo-draft-field">
-                                        <label>Tone</label>
-                                        <div class="demo-draft-tags">
-                                            <span class="demo-draft-tag active">Friendly</span>
-                                            <span class="demo-draft-tag">Urgent</span>
-                                            <span class="demo-draft-tag">Professional</span>
+                                    <div class="demo-draft-row">
+                                        <div class="demo-draft-field demo-draft-half">
+                                            <label>Quote Source Name</label>
+                                            <div class="demo-draft-input">Jane Smith</div>
                                         </div>
+                                        <div class="demo-draft-field demo-draft-half">
+                                            <label>Role / Title</label>
+                                            <div class="demo-draft-input">Executive Director</div>
+                                        </div>
+                                    </div>
+                                    <div class="demo-draft-field">
+                                        <label>Quote Content</label>
+                                        <div class="demo-draft-input">We're thrilled to announce another life-changing win. Every ticket sold supports patient care.</div>
                                     </div>
                                 </div>
                                 <div class="demo-draft-output">
-                                    <div class="demo-response-badge">✨ Generated in 1.8 seconds</div>
-                                    <div class="demo-draft-result">
-                                        <p>⏰ <strong>Last chance for early bird pricing!</strong></p>
-                                        <p>Our Spring 50/50 early bird deadline is THIS FRIDAY! Get your tickets now at 3 for $10 before prices go up.</p>
-                                        <p>🎟️ Every ticket supports patient care at Thunder Bay Regional Health Sciences Centre.</p>
-                                        <p>Don't miss out → Link in bio!</p>
-                                        <p class="demo-draft-hashtags">#TBRHSC5050 #WinForHealthcare #ThunderBay</p>
+                                    <div class="demo-response-badge">✨ Generated in 2.4 seconds</div>
+                                    <div class="demo-draft-result demo-draft-release">
+                                        <p class="demo-draft-release-header"><strong>FOR IMMEDIATE RELEASE</strong></p>
+                                        <p class="demo-draft-release-title"><strong>Riverside Health Foundation Announces Spring 50/50 Winner</strong></p>
+                                        <p class="demo-draft-release-subtitle">Local Supporter Takes Home $127,450 Jackpot</p>
+                                        <p><strong>RIVERSIDE, ON</strong> — The Riverside Health Foundation is pleased to announce the winner of its Spring 50/50 Raffle. The grand prize of $127,450 has been awarded to a lucky ticket holder.</p>
+                                        <p>"We're thrilled to announce another life-changing win. Every ticket sold supports patient care in our community," said Jane Smith, Executive Director of the Riverside Health Foundation.</p>
+                                        <p class="demo-draft-release-footer">— 30 —</p>
                                     </div>
                                 </div>
                             </div>
