@@ -682,7 +682,21 @@
         /* ==================== VALUE PROPOSITION SECTION ==================== */
         .landing-value-prop {
             padding: 100px 40px;
-            background: linear-gradient(180deg, transparent 0%, rgba(139, 92, 246, 0.05) 50%, transparent 100%);
+            background: linear-gradient(180deg, #f8f6ff 0%, #ffffff 50%, #f8f6ff 100%);
+            position: relative;
+        }
+
+        .landing-value-prop .landing-section-tag {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+        }
+
+        .landing-value-prop .landing-section-title {
+            color: var(--text-primary);
+        }
+
+        .landing-value-prop .landing-section-subtitle {
+            color: var(--text-secondary);
         }
 
         .landing-value-grid {
@@ -694,18 +708,19 @@
         }
 
         .landing-value-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: white;
+            border: 1px solid var(--border);
             border-radius: 20px;
             padding: 36px;
             text-align: center;
             transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
         }
 
         .landing-value-card:hover {
-            background: rgba(255,255,255,0.05);
-            border-color: rgba(139, 92, 246, 0.3);
+            border-color: var(--primary-light);
             transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
         }
 
         .landing-value-icon {
@@ -716,13 +731,13 @@
         .landing-value-title {
             font-size: 1.25rem;
             font-weight: 700;
-            color: white;
+            color: var(--text-primary);
             margin-bottom: 12px;
         }
 
         .landing-value-desc {
             font-size: 0.95rem;
-            color: rgba(255,255,255,0.6);
+            color: var(--text-secondary);
             line-height: 1.6;
         }
 
