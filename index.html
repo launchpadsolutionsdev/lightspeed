@@ -940,9 +940,37 @@
             }
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
+            .landing-top-banner {
+                padding: 8px 16px;
+            }
+
+            .landing-top-banner p {
+                font-size: 0.75rem;
+                line-height: 1.4;
+            }
+
+            .landing-nav {
+                top: 36px;
+                padding: 12px 16px;
+            }
+
             .landing-hero {
-                padding: 100px 24px 60px;
+                padding: 140px 24px 60px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .landing-top-banner p {
+                font-size: 0.7rem;
+            }
+
+            .landing-nav {
+                top: 32px;
+            }
+
+            .landing-hero {
+                padding: 130px 20px 50px;
             }
 
             .landing-hero-title {
@@ -960,6 +988,24 @@
 
             .landing-cta-box {
                 padding: 40px 24px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .landing-top-banner p {
+                font-size: 0.65rem;
+            }
+
+            .landing-nav {
+                top: 28px;
+            }
+
+            .landing-hero {
+                padding: 120px 16px 40px;
+            }
+
+            .landing-hero-title {
+                font-size: 1.85rem;
             }
         }
 
