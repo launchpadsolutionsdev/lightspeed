@@ -324,12 +324,12 @@ async function handleGoogleTokenResponse(tokenResponse) {
     }
 }
 
-function processGoogleUser(googleUser) {
+async function processGoogleUser(googleUser) {
     const email = googleUser.email;
     const name = googleUser.name || googleUser.given_name || email.split('@')[0];
     const picture = googleUser.picture || null;
 
-    // Check if user already exists
+    // Check if user already exists in localStorage
     let user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
@@ -367,6 +367,39 @@ function processGoogleUser(googleUser) {
             user.picture = picture;
         }
         localStorage.setItem("lightspeed_users", JSON.stringify(users));
+    }
+
+    // Also authenticate with backend to get auth token for admin features
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+                name: name,
+                googleId: googleUser.sub || null,
+                picture: picture
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.token) {
+                localStorage.setItem('authToken', data.token);
+                console.log('Backend auth token saved');
+                // Update user with backend data including super admin status
+                if (data.user) {
+                    user.isSuperAdmin = data.user.is_super_admin || false;
+                    user.backendId = data.user.id;
+                }
+            }
+        } else {
+            console.log('Backend auth not available, continuing with local auth');
+        }
+    } catch (error) {
+        console.log('Backend auth failed, continuing with local auth:', error.message);
     }
 
     // Log the user in
