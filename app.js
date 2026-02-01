@@ -11,7 +11,7 @@ if (window.location.hostname === 'www.lightspeedutility.ca') {
 // ==================== API CONFIGURATION ====================
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3001'  // Local development
-        : 'https://lightspeed-backend.onrender.com';  // Production
+    : 'https://lightspeed-backend.onrender.com';  // Production
 
 // ==================== GOOGLE OAUTH CONFIGURATION ====================
 const GOOGLE_CLIENT_ID = '538611064946-ij0geilde0q1tq0hlpjep886holcmro5.apps.googleusercontent.com';
@@ -582,6 +582,11 @@ function loginUser(user, showMessage = true) {
     renderKnowledgeList();
     updateAnalytics();
     renderFavorites();
+
+    // Initialize admin dashboard (checks super admin status)
+    if (typeof initAdminDashboard === 'function') {
+        initAdminDashboard();
+    }
 
     if (showMessage) {
         showToast(`Welcome back, ${user.name.split(" ")[0]}!`, "success");
@@ -2401,6 +2406,11 @@ function switchPage(pageId) {
         renderFavorites();
     } else if (pageId === "templates") {
         renderTemplates();
+    } else if (pageId === "admin") {
+        // Load admin dashboard data
+        if (typeof loadAdminDashboard === 'function') {
+            loadAdminDashboard();
+        }
     }
 }
 
@@ -5074,4 +5084,3 @@ document.addEventListener("DOMContentLoaded", () => {
     init();
     initParallaxAndAnimations();
 });
-
