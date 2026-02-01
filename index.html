@@ -1482,6 +1482,8 @@
             justify-content: center;
             gap: 8px;
             margin-bottom: 40px;
+            flex-wrap: wrap;
+            padding: 0 16px;
         }
 
         .landing-demo-tab {
@@ -1496,6 +1498,34 @@
             transition: all 0.3s ease;
             font-family: inherit;
             box-shadow: var(--shadow-sm);
+            white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+            .landing-demo-tabs {
+                gap: 8px;
+            }
+
+            .landing-demo-tab {
+                padding: 10px 16px;
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .landing-demo-tabs {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                padding: 0 20px;
+            }
+
+            .landing-demo-tab {
+                padding: 12px 10px;
+                font-size: 0.8rem;
+                text-align: center;
+                border-radius: 12px;
+            }
         }
 
         .landing-demo-tab:hover {
