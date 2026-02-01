@@ -264,6 +264,46 @@ function setupAuthEventListeners() {
 
     // Google Sign-In button
     document.getElementById("googleSignInBtn").addEventListener("click", handleGoogleSignIn);
+
+    // Pricing buttons - wire up all "Start Free Trial" and "Get Started" buttons
+    const pricingTrialBtn = document.getElementById("pricingTrialBtn");
+    const pricingMonthlyBtn = document.getElementById("pricingMonthlyBtn");
+    const pricingAnnualBtn = document.getElementById("pricingAnnualBtn");
+
+    if (pricingTrialBtn) {
+        pricingTrialBtn.addEventListener("click", () => {
+            document.getElementById("landingPage").classList.add("hidden");
+            showLoginPage();
+        });
+    }
+
+    if (pricingMonthlyBtn) {
+        pricingMonthlyBtn.addEventListener("click", () => {
+            // Store selected plan for after signup
+            localStorage.setItem("selectedPlan", "monthly");
+            document.getElementById("landingPage").classList.add("hidden");
+            showLoginPage();
+        });
+    }
+
+    if (pricingAnnualBtn) {
+        pricingAnnualBtn.addEventListener("click", () => {
+            // Store selected plan for after signup
+            localStorage.setItem("selectedPlan", "annual");
+            document.getElementById("landingPage").classList.add("hidden");
+            showLoginPage();
+        });
+    }
+
+    // Also wire up any other "Start Free Trial" or "Get Started" buttons in the hero/landing sections
+    document.querySelectorAll('.hero-cta, .landing-cta-primary').forEach(btn => {
+        if (btn && !btn.id) { // Don't double-bind buttons with specific IDs
+            btn.addEventListener("click", () => {
+                document.getElementById("landingPage").classList.add("hidden");
+                showLoginPage();
+            });
+        }
+    });
 }
 
 // ==================== GOOGLE OAUTH ====================
@@ -293,13 +333,18 @@ function handleGoogleSignIn() {
     });
 }
 
-function handleGoogleCredentialResponse(response) {
-    // Decode the JWT credential to get user info
-    const credential = response.credential;
-    const payload = parseJwt(credential);
+// Store the Google credential temporarily for backend auth
+let pendingGoogleCredential = null;
+
+async function handleGoogleCredentialResponse(response) {
+    // Store the credential for backend verification
+    pendingGoogleCredential = response.credential;
+
+    // Decode the JWT credential to get user info for display
+    const payload = parseJwt(response.credential);
 
     if (payload && payload.email) {
-        processGoogleUser(payload);
+        await processGoogleUser(payload, response.credential);
     } else {
         showToast("Failed to get user information from Google", "error");
     }
@@ -314,7 +359,8 @@ async function handleGoogleTokenResponse(tokenResponse) {
         const userInfo = await response.json();
 
         if (userInfo.email) {
-            processGoogleUser(userInfo);
+            // For token response, we don't have a credential, so we'll use email-based auth
+            await processGoogleUser(userInfo, null);
         } else {
             showToast("Failed to get user information from Google", "error");
         }
@@ -324,52 +370,15 @@ async function handleGoogleTokenResponse(tokenResponse) {
     }
 }
 
-async function processGoogleUser(googleUser) {
+async function processGoogleUser(googleUser, credential) {
     const email = googleUser.email;
     const name = googleUser.name || googleUser.given_name || email.split('@')[0];
     const picture = googleUser.picture || null;
 
-    // Check if user already exists in localStorage
-    let user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    // Show loading state
+    showToast("Signing in...", "info");
 
-    if (!user) {
-        // Create new user from Google account
-        user = {
-            id: generateUserId(),
-            email: email,
-            name: name,
-            password: null, // Google users don't have a password
-            googleId: googleUser.sub || null,
-            picture: picture,
-            createdAt: new Date().toISOString(),
-            settings: {
-                defaultName: name.split(" ")[0],
-                orgName: ""
-            },
-            data: {
-                customKnowledge: [],
-                feedbackList: [],
-                responseHistory: [],
-                favorites: []
-            }
-        };
-
-        // Save new user
-        users.push(user);
-        localStorage.setItem("lightspeed_users", JSON.stringify(users));
-        console.log("Created new Google user:", email);
-    } else {
-        // Update existing user with Google info if needed
-        if (!user.googleId && googleUser.sub) {
-            user.googleId = googleUser.sub;
-        }
-        if (!user.picture && picture) {
-            user.picture = picture;
-        }
-        localStorage.setItem("lightspeed_users", JSON.stringify(users));
-    }
-
-    // Also authenticate with backend to get auth token for admin features
+    // Authenticate with backend FIRST
     try {
         const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
             method: 'POST',
@@ -377,34 +386,254 @@ async function processGoogleUser(googleUser) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                email: email,
-                name: name,
-                googleId: googleUser.sub || null,
-                picture: picture
+                credential: credential || pendingGoogleCredential
             })
         });
 
         if (response.ok) {
             const data = await response.json();
+
+            // Save auth token
             if (data.token) {
                 localStorage.setItem('authToken', data.token);
                 console.log('Backend auth token saved');
-                // Update user with backend data including super admin status
-                if (data.user) {
-                    user.isSuperAdmin = data.user.is_super_admin || false;
-                    user.backendId = data.user.id;
-                }
             }
+
+            // Create/update local user object with backend data
+            let user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+            if (!user) {
+                user = {
+                    id: data.user?.id || generateUserId(),
+                    email: email,
+                    name: name,
+                    password: null,
+                    googleId: googleUser.sub || null,
+                    picture: picture,
+                    createdAt: new Date().toISOString(),
+                    settings: {
+                        defaultName: name.split(" ")[0],
+                        orgName: data.organization?.name || ""
+                    },
+                    data: {
+                        customKnowledge: [],
+                        feedbackList: [],
+                        responseHistory: [],
+                        favorites: []
+                    }
+                };
+                users.push(user);
+            }
+
+            // Update with backend data
+            user.backendId = data.user?.id;
+            user.isSuperAdmin = data.user?.isSuperAdmin || false;
+            user.organization = data.organization || null;
+            user.needsOrganization = data.needsOrganization || false;
+
+            localStorage.setItem("lightspeed_users", JSON.stringify(users));
+
+            // Check if user needs to create an organization (new user)
+            if (data.needsOrganization) {
+                currentUser = user;
+                localStorage.setItem("lightspeed_current_user", user.id);
+                showOrganizationSetup(user);
+                return;
+            }
+
+            // Log the user in
+            loginUser(user, true);
+            showToast(`Welcome back, ${user.name.split(" ")[0]}!`, "success");
+
         } else {
-            console.log('Backend auth not available, continuing with local auth');
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Backend auth failed:', errorData);
+            showToast(errorData.error || "Sign in failed. Please try again.", "error");
         }
     } catch (error) {
-        console.log('Backend auth failed, continuing with local auth:', error.message);
+        console.error('Backend auth error:', error);
+        showToast("Connection error. Please check your internet and try again.", "error");
+    }
+}
+
+// ==================== ORGANIZATION SETUP ====================
+function showOrganizationSetup(user) {
+    // Hide other pages
+    document.getElementById("landingPage").classList.add("hidden");
+    document.getElementById("loginPage").classList.remove("visible");
+    document.getElementById("registerPage").classList.remove("visible");
+    document.getElementById("toolMenuPage").classList.remove("visible");
+
+    // Create and show organization setup modal
+    let modal = document.getElementById("orgSetupModal");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "orgSetupModal";
+        modal.className = "modal-overlay";
+        modal.innerHTML = `
+            <div class="modal-content org-setup-modal">
+                <div class="org-setup-header">
+                    <div class="org-setup-icon">🚀</div>
+                    <h2>Welcome to Lightspeed!</h2>
+                    <p>Let's set up your organization to get started with your <strong>14-day free trial</strong>.</p>
+                </div>
+                <form id="orgSetupForm" class="org-setup-form">
+                    <div class="form-group">
+                        <label for="orgNameInput">Organization Name</label>
+                        <input type="text" id="orgNameInput" placeholder="e.g., Thunder Bay Regional Health Sciences Foundation" required>
+                        <span class="form-hint">This is typically your nonprofit or charity name</span>
+                    </div>
+                    <button type="submit" class="btn-primary btn-lg">
+                        <span class="btn-icon">✨</span>
+                        Start Free Trial
+                    </button>
+                </form>
+                <div class="org-setup-footer">
+                    <p>No credit card required. Full access for 14 days.</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Add styles if not already present
+        if (!document.getElementById("orgSetupStyles")) {
+            const styles = document.createElement("style");
+            styles.id = "orgSetupStyles";
+            styles.textContent = `
+                .org-setup-modal {
+                    max-width: 480px;
+                    padding: 40px;
+                    text-align: center;
+                }
+                .org-setup-header {
+                    margin-bottom: 32px;
+                }
+                .org-setup-icon {
+                    font-size: 48px;
+                    margin-bottom: 16px;
+                }
+                .org-setup-header h2 {
+                    margin: 0 0 8px 0;
+                    font-size: 24px;
+                    color: #1a1a2e;
+                }
+                .org-setup-header p {
+                    margin: 0;
+                    color: #666;
+                    font-size: 16px;
+                }
+                .org-setup-form .form-group {
+                    text-align: left;
+                    margin-bottom: 24px;
+                }
+                .org-setup-form label {
+                    display: block;
+                    margin-bottom: 8px;
+                    font-weight: 600;
+                    color: #333;
+                }
+                .org-setup-form input {
+                    width: 100%;
+                    padding: 14px 16px;
+                    border: 2px solid #e0e0e0;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    transition: border-color 0.2s;
+                }
+                .org-setup-form input:focus {
+                    outline: none;
+                    border-color: #667eea;
+                }
+                .form-hint {
+                    display: block;
+                    margin-top: 6px;
+                    font-size: 13px;
+                    color: #888;
+                }
+                .org-setup-form .btn-lg {
+                    width: 100%;
+                    padding: 16px 24px;
+                    font-size: 18px;
+                }
+                .org-setup-footer {
+                    margin-top: 24px;
+                    padding-top: 24px;
+                    border-top: 1px solid #eee;
+                }
+                .org-setup-footer p {
+                    margin: 0;
+                    color: #888;
+                    font-size: 14px;
+                }
+            `;
+            document.head.appendChild(styles);
+        }
+
+        // Handle form submission
+        document.getElementById("orgSetupForm").addEventListener("submit", handleOrgSetup);
     }
 
-    // Log the user in
-    loginUser(user, true);
-    showToast(`Welcome, ${user.name.split(" ")[0]}!`, "success");
+    modal.classList.add("show");
+}
+
+async function handleOrgSetup(e) {
+    e.preventDefault();
+
+    const orgName = document.getElementById("orgNameInput").value.trim();
+    if (!orgName) {
+        showToast("Please enter your organization name", "error");
+        return;
+    }
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="btn-icon">⏳</span> Creating...';
+    submitBtn.disabled = true;
+
+    try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`${API_BASE_URL}/api/auth/create-organization`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ organizationName: orgName })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+
+            // Update current user with organization
+            currentUser.organization = data.organization;
+            currentUser.needsOrganization = false;
+            currentUser.settings.orgName = data.organization.name;
+
+            // Update in users array
+            const userIndex = users.findIndex(u => u.id === currentUser.id);
+            if (userIndex >= 0) {
+                users[userIndex] = currentUser;
+                localStorage.setItem("lightspeed_users", JSON.stringify(users));
+            }
+
+            // Close modal and proceed
+            document.getElementById("orgSetupModal").classList.remove("show");
+
+            // Show tool menu
+            loginUser(currentUser, false);
+            showToast(`Welcome to Lightspeed! Your 14-day trial has started.`, "success");
+
+        } else {
+            const errorData = await response.json().catch(() => ({}));
+            showToast(errorData.error || "Failed to create organization", "error");
+        }
+    } catch (error) {
+        console.error("Org setup error:", error);
+        showToast("Connection error. Please try again.", "error");
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
 }
 
 function parseJwt(token) {
