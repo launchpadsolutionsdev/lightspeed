@@ -11,7 +11,7 @@ if (window.location.hostname === 'www.lightspeedutility.ca') {
 // ==================== API CONFIGURATION ====================
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3001'  // Local development
-    : 'https://lightspeed-api-a1t9.onrender.com';  // Production
+        : 'https://lightspeed-backend.onrender.com';  // Production
 
 // ==================== GOOGLE OAUTH CONFIGURATION ====================
 const GOOGLE_CLIENT_ID = '538611064946-ij0geilde0q1tq0hlpjep886holcmro5.apps.googleusercontent.com';
@@ -5074,3 +5074,4 @@ document.addEventListener("DOMContentLoaded", () => {
     init();
     initParallaxAndAnimations();
 });
+
