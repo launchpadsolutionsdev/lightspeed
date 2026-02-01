@@ -1,0 +1,484 @@
+/* ==================== SUPER ADMIN DASHBOARD STYLES ==================== */
+
+/* Admin Nav Button */
+#adminNavBtn {
+    display: none;
+    background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+#adminNavBtn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+}
+
+/* Admin Page Container */
+#page-admin {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Admin Header */
+.admin-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    gap: 1rem;
+}
+
+.admin-header h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+
+.admin-subtitle {
+    color: #6b7280;
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.admin-actions .btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Stats Grid */
+.admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.admin-stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.admin-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.admin-stat-card.highlight {
+    background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+    color: white;
+}
+
+.admin-stat-card.highlight .admin-stat-label,
+.admin-stat-card.highlight .admin-stat-change {
+    color: rgba(255,255,255,0.8);
+}
+
+.admin-stat-card.success {
+    border-left: 4px solid #10b981;
+}
+
+.admin-stat-card.warning {
+    border-left: 4px solid #f59e0b;
+}
+
+.admin-stat-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    border-radius: 8px;
+}
+
+.admin-stat-card.highlight .admin-stat-icon {
+    background: rgba(255,255,255,0.2);
+}
+
+.admin-stat-content {
+    flex: 1;
+}
+
+.admin-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.admin-stat-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+.admin-stat-change {
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    color: #6b7280;
+}
+
+.admin-stat-change.positive {
+    color: #10b981;
+}
+
+/* Charts Grid */
+.admin-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.admin-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.admin-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.admin-card-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.admin-card-badge {
+    font-size: 0.75rem;
+    background: #f3f4f6;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    color: #6b7280;
+}
+
+.admin-chart-container {
+    height: 250px;
+    position: relative;
+}
+
+/* Engagement Section */
+.admin-engagement-section {
+    margin-bottom: 2rem;
+}
+
+.admin-engagement-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #1f2937;
+}
+
+.admin-engagement-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.admin-engagement-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.engagement-metric {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.engagement-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #7c3aed;
+}
+
+.engagement-label {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.engagement-detail {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #9ca3af;
+}
+
+/* Feature Adoption */
+.admin-engagement-card h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #1f2937;
+}
+
+.feature-adoption-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.feature-adoption-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.feature-name {
+    width: 120px;
+    font-size: 0.85rem;
+    color: #374151;
+}
+
+.feature-bar-container {
+    flex: 1;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.feature-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7c3aed, #a78bfa);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.feature-rate {
+    width: 40px;
+    text-align: right;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #7c3aed;
+}
+
+/* Details Grid */
+.admin-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Admin Table */
+.admin-table-container {
+    overflow-x: auto;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.admin-table td {
+    font-size: 0.9rem;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-rank {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.user-name {
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.user-email {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+/* Subscription Status */
+.subscription-status-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.subscription-status-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    background: #f3f4f6;
+}
+
+.subscription-status-item.active {
+    background: #dcfce7;
+}
+
+.subscription-status-item.trialing {
+    background: #dbeafe;
+}
+
+.subscription-status-item.past_due {
+    background: #fef3c7;
+}
+
+.subscription-status-item.canceled {
+    background: #fee2e2;
+}
+
+.status-count {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.status-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Loading & Error States */
+.admin-loading,
+.admin-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    color: #6b7280;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #7c3aed;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.admin-error h3 {
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+.admin-error p {
+    margin-bottom: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #page-admin {
+        padding: 1rem;
+    }
+
+    .admin-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .admin-charts-grid,
+    .admin-details-grid,
+    .admin-engagement-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-header {
+        flex-direction: column;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .admin-stat-card,
+    .admin-card,
+    .admin-engagement-card {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
+
+    .admin-stat-card:not(.highlight) .admin-stat-icon {
+        background: #374151;
+    }
+
+    .admin-stat-label,
+    .admin-stat-change,
+    .admin-subtitle {
+        color: #9ca3af;
+    }
+
+    .admin-card-header h3,
+    .admin-header h2,
+    .admin-engagement-section h3,
+    .admin-engagement-card h4 {
+        color: #f3f4f6;
+    }
+
+    .admin-table th {
+        color: #9ca3af;
+    }
+
+    .admin-table td {
+        color: #f3f4f6;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        border-bottom-color: #374151;
+    }
+
+    .feature-bar-container,
+    .subscription-status-item {
+        background: #374151;
+    }
+}
