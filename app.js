@@ -538,14 +538,23 @@ async function processGoogleUser(googleUser, credential) {
 
     // Authenticate with backend FIRST
     try {
+        // Build request body - use credential if available, otherwise send user info directly
+        const actualCredential = credential || pendingGoogleCredential;
+        const requestBody = actualCredential
+            ? { credential: actualCredential }
+            : {
+                email: email,
+                name: name,
+                googleId: googleUser.sub || null,
+                picture: picture
+            };
+
         const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                credential: credential || pendingGoogleCredential
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (response.ok) {
