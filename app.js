@@ -5387,9 +5387,13 @@ function processNormalizerFile(file) {
 }
 
 function processForMailchimp(rawData) {
-    // Auto-detect column names
-    const columns = Object.keys(rawData[0] || {});
-    console.log("Detected columns:", columns);
+    // Auto-detect column names - scan ALL rows since some columns may be missing in first row
+    const allColumns = new Set();
+    rawData.forEach(row => {
+        Object.keys(row).forEach(key => allColumns.add(key));
+    });
+    const columns = Array.from(allColumns);
+    console.log("Detected columns (from all rows):", columns);
 
     // More specific column matching - check exact matches first, then partial
     const findCol = (exactMatches, partialMatches) => {
@@ -5448,7 +5452,17 @@ function processForMailchimp(rawData) {
             if (firstName) {
                 fullName = firstName;
             }
-            if (lastName && lastName !== '.' && lastName !== '-' && lastName.toLowerCase() !== 'n/a') {
+
+            // Only add last name if it looks like a real name (not garbage data)
+            const isValidLastName = lastName &&
+                lastName !== '.' &&
+                lastName !== '-' &&
+                lastName.toLowerCase() !== 'n/a' &&
+                !lastName.startsWith('.') &&  // Filter ".medaglia" type entries
+                !/^\d/.test(lastName) &&      // Filter entries starting with numbers (addresses)
+                !/\d{2,}/.test(lastName);     // Filter entries with 2+ consecutive digits (addresses)
+
+            if (isValidLastName) {
                 fullName = fullName ? (fullName + ' ' + lastName) : lastName;
             }
 
