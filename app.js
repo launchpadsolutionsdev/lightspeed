@@ -3371,7 +3371,7 @@ Please provide the refined response:`;
 
         const response = await fetch(`${API_BASE_URL}/api/generate`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 system: systemPrompt,
                 messages: [{ role: "user", content: userPrompt }],
@@ -3380,8 +3380,7 @@ Please provide the refined response:`;
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.error || "Refinement failed. Please try again.");
+            await handleApiError(response);
         }
 
         const data = await response.json();
