@@ -3368,16 +3368,16 @@ function escapeHtml(text) {
 }
 
 function showInviteLinkModal(inviteLink, email) {
-    // Create modal if it doesn't exist
-    let modal = document.getElementById('inviteLinkModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'inviteLinkModal';
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content invite-link-modal">
+    // Create modal overlay if it doesn't exist
+    let modalOverlay = document.getElementById('inviteLinkModalOverlay');
+    if (!modalOverlay) {
+        modalOverlay = document.createElement('div');
+        modalOverlay.id = 'inviteLinkModalOverlay';
+        modalOverlay.className = 'modal-overlay';
+        modalOverlay.innerHTML = `
+            <div class="modal invite-link-modal">
                 <div class="modal-header">
-                    <h3>✉️ Invitation Created</h3>
+                    <h3 class="modal-title">✉️ Invitation Created</h3>
                     <button class="modal-close" onclick="closeInviteLinkModal()">&times;</button>
                 </div>
                 <div class="modal-body">
@@ -3392,19 +3392,25 @@ function showInviteLinkModal(inviteLink, email) {
                 </div>
             </div>
         `;
-        document.body.appendChild(modal);
+        // Click outside to close
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                closeInviteLinkModal();
+            }
+        });
+        document.body.appendChild(modalOverlay);
     }
 
     // Populate and show
     document.getElementById('inviteEmailDisplay').textContent = email;
     document.getElementById('inviteLinkInput').value = inviteLink;
-    modal.classList.add('show');
+    modalOverlay.classList.add('show');
 }
 
 function closeInviteLinkModal() {
-    const modal = document.getElementById('inviteLinkModal');
-    if (modal) {
-        modal.classList.remove('show');
+    const modalOverlay = document.getElementById('inviteLinkModalOverlay');
+    if (modalOverlay) {
+        modalOverlay.classList.remove('show');
     }
 }
 
