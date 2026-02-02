@@ -3408,18 +3408,38 @@ function closeInviteLinkModal() {
     }
 }
 
-function copyInviteLink() {
+async function copyInviteLink() {
     const input = document.getElementById('inviteLinkInput');
-    input.select();
-    document.execCommand('copy');
+    const link = input.value;
 
-    const icon = document.getElementById('copyLinkIcon');
-    icon.textContent = '✅';
-    showToast('Link copied to clipboard!', 'success');
+    try {
+        await navigator.clipboard.writeText(link);
 
-    setTimeout(() => {
-        icon.textContent = '📋';
-    }, 2000);
+        const icon = document.getElementById('copyLinkIcon');
+        icon.textContent = '✅';
+        showToast('Link copied to clipboard!', 'success');
+
+        setTimeout(() => {
+            icon.textContent = '📋';
+        }, 2000);
+    } catch (err) {
+        // Fallback for older browsers or if clipboard API fails
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, 99999);
+
+        try {
+            document.execCommand('copy');
+            const icon = document.getElementById('copyLinkIcon');
+            icon.textContent = '✅';
+            showToast('Link copied to clipboard!', 'success');
+            setTimeout(() => {
+                icon.textContent = '📋';
+            }, 2000);
+        } catch (fallbackErr) {
+            showToast('Failed to copy - please select and copy manually', 'error');
+        }
+    }
 }
 
 // Make team functions available globally
