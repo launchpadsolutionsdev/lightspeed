@@ -2156,14 +2156,31 @@ function resetDataAnalysis() {
 
 // ==================== CUSTOMERS REPORT ANALYSIS ====================
 function analyzeCustomersReport(data) {
-    // Auto-detect column names
-    const columns = Object.keys(data[0] || {});
-    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+    // Auto-detect column names - scan ALL rows for columns
+    const allColumns = new Set();
+    data.forEach(row => Object.keys(row).forEach(key => allColumns.add(key)));
+    const columns = Array.from(allColumns);
+    console.log("Customers Report - Detected columns:", columns);
 
-    const cityCol = findCol(['city']);
-    const phoneCol = findCol(['phone', 'phone number']);
-    const zipCol = findCol(['zip', 'postal', 'zip code', 'postal code']);
-    const emailCol = findCol(['e-mail', 'email']);
+    // Improved column matching - exact matches first, then partial
+    const findCol = (exactMatches, partialMatches = []) => {
+        for (const exact of exactMatches) {
+            const found = columns.find(c => c.toLowerCase().trim() === exact.toLowerCase());
+            if (found) return found;
+        }
+        for (const partial of partialMatches) {
+            const found = columns.find(c => c.toLowerCase().includes(partial.toLowerCase()));
+            if (found) return found;
+        }
+        return null;
+    };
+
+    const cityCol = findCol(['city'], ['city']);
+    const phoneCol = findCol(['phone', 'phone number'], ['phone']);
+    const zipCol = findCol(['zip code', 'postal code', 'zip', 'postal'], ['zip', 'postal']);
+    const emailCol = findCol(['e-mail', 'email', 'email address'], ['email']);
+
+    console.log("Customers Report - Column mapping:", { cityCol, phoneCol, zipCol, emailCol });
 
     const totalCustomers = data.length;
 
@@ -2362,12 +2379,29 @@ function renderCustomersTables(cityData, postalData, areaCodeData, totalCustomer
 
 // ==================== PAYMENT TICKETS REPORT ====================
 function analyzePaymentTicketsReport(data) {
-    // Auto-detect column names
-    const columns = Object.keys(data[0] || {});
-    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+    // Auto-detect column names - scan ALL rows for columns
+    const allColumns = new Set();
+    data.forEach(row => Object.keys(row).forEach(key => allColumns.add(key)));
+    const columns = Array.from(allColumns);
+    console.log("Payment Tickets Report - Detected columns:", columns);
 
-    const sellerCol = findCol(['seller']);
-    const amountCol = findCol(['amount']);
+    // Improved column matching - exact matches first, then partial
+    const findCol = (exactMatches, partialMatches = []) => {
+        for (const exact of exactMatches) {
+            const found = columns.find(c => c.toLowerCase().trim() === exact.toLowerCase());
+            if (found) return found;
+        }
+        for (const partial of partialMatches) {
+            const found = columns.find(c => c.toLowerCase().includes(partial.toLowerCase()));
+            if (found) return found;
+        }
+        return null;
+    };
+
+    const sellerCol = findCol(['seller'], ['seller']);
+    const amountCol = findCol(['amount'], ['amount']);
+
+    console.log("Payment Tickets Report - Column mapping:", { sellerCol, amountCol });
 
     // Analyze seller data
     const sellerData = {};
@@ -2603,19 +2637,36 @@ function renderPaymentTicketsTables(foundationSellers, storeSellers, totalInPers
 
 // ==================== SELLERS REPORT ====================
 function analyzeSellersReport(data) {
-    // Auto-detect column names
-    const columns = Object.keys(data[0] || {});
-    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+    // Auto-detect column names - scan ALL rows for columns
+    const allColumns = new Set();
+    data.forEach(row => Object.keys(row).forEach(key => allColumns.add(key)));
+    const columns = Array.from(allColumns);
+    console.log("Sellers Report - Detected columns:", columns);
 
-    const sellerCol = findCol(['seller']);
-    const netSalesCol = findCol(['net sales']);
-    const cashCol = findCol(['cash sales']);
-    const ccCol = findCol(['cc sales', 'credit card']);
-    const debitCol = findCol(['debit sales']);
-    const txCol = findCol(['total transactions', 'transactions']);
-    const voidedSalesCol = findCol(['voided sales']);
-    const avgOrderCol = findCol(['average order', 'avg order']);
-    const netNumbersCol = findCol(['net numbers', 'net tickets']);
+    // Improved column matching - exact matches first, then partial
+    const findCol = (exactMatches, partialMatches = []) => {
+        for (const exact of exactMatches) {
+            const found = columns.find(c => c.toLowerCase().trim() === exact.toLowerCase());
+            if (found) return found;
+        }
+        for (const partial of partialMatches) {
+            const found = columns.find(c => c.toLowerCase().includes(partial.toLowerCase()));
+            if (found) return found;
+        }
+        return null;
+    };
+
+    const sellerCol = findCol(['seller'], ['seller']);
+    const netSalesCol = findCol(['net sales'], ['net sales']);
+    const cashCol = findCol(['cash sales'], ['cash']);
+    const ccCol = findCol(['cc sales', 'credit card sales'], ['cc', 'credit card']);
+    const debitCol = findCol(['debit sales'], ['debit']);
+    const txCol = findCol(['total transactions', 'transactions'], ['transaction']);
+    const voidedSalesCol = findCol(['voided sales'], ['voided']);
+    const avgOrderCol = findCol(['average order', 'avg order'], ['avg', 'average']);
+    const netNumbersCol = findCol(['net numbers', 'net tickets'], ['net number', 'net ticket']);
+
+    console.log("Sellers Report - Column mapping:", { sellerCol, netSalesCol, cashCol, ccCol, debitCol, txCol, voidedSalesCol, avgOrderCol, netNumbersCol });
 
     // Aggregate data
     let totalNetSales = 0;
