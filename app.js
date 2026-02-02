@@ -5389,11 +5389,37 @@ function processNormalizerFile(file) {
 function processForMailchimp(rawData) {
     // Auto-detect column names
     const columns = Object.keys(rawData[0] || {});
-    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+    console.log("Detected columns:", columns);
 
-    const firstNameCol = findCol(['first name', 'firstname', 'first']);
-    const lastNameCol = findCol(['last name', 'lastname', 'last']);
-    const emailCol = findCol(['e-mail', 'email']);
+    // More specific column matching - check exact matches first, then partial
+    const findCol = (exactMatches, partialMatches) => {
+        // First try exact matches (case-insensitive)
+        for (const exact of exactMatches) {
+            const found = columns.find(c => c.toLowerCase().trim() === exact.toLowerCase());
+            if (found) return found;
+        }
+        // Then try partial matches
+        for (const partial of partialMatches) {
+            const found = columns.find(c => c.toLowerCase().includes(partial.toLowerCase()));
+            if (found) return found;
+        }
+        return null;
+    };
+
+    const firstNameCol = findCol(
+        ['first name', 'firstname', 'first_name', 'fname'],
+        ['first']
+    );
+    const lastNameCol = findCol(
+        ['last name', 'lastname', 'last_name', 'lname', 'surname'],
+        ['last', 'surname']
+    );
+    const emailCol = findCol(
+        ['email', 'e-mail', 'email address', 'emailaddress'],
+        ['email', 'e-mail']
+    );
+
+    console.log("Column mapping - First:", firstNameCol, "Last:", lastNameCol, "Email:", emailCol);
 
     if (!emailCol) {
         showToast("Could not find an email column in the file", "error");
@@ -5412,13 +5438,18 @@ function processForMailchimp(rawData) {
         })
         .map(row => {
             // Combine first and last name
-            const firstName = row[firstNameCol] ? String(row[firstNameCol]).trim() : '';
+            const firstName = firstNameCol && row[firstNameCol] ? String(row[firstNameCol]).trim() : '';
             const lastName = lastNameCol && row[lastNameCol] ? String(row[lastNameCol]).trim() : '';
 
-            // Handle cases where full name might be in first name field
-            let fullName = firstName;
-            if (lastName && lastName !== '.' && lastName !== '-') {
-                fullName = firstName + ' ' + lastName;
+            console.log("Processing row - First:", firstName, "Last:", lastName);
+
+            // Build full name by concatenating first and last
+            let fullName = '';
+            if (firstName) {
+                fullName = firstName;
+            }
+            if (lastName && lastName !== '.' && lastName !== '-' && lastName.toLowerCase() !== 'n/a') {
+                fullName = fullName ? (fullName + ' ' + lastName) : lastName;
             }
 
             // Clean up the name
