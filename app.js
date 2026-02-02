@@ -1250,6 +1250,21 @@ function setupEventListeners() {
     // Feedback
     document.getElementById("submitFeedbackBtn").addEventListener("click", submitFeedback);
 
+    // Team Management
+    const sendInviteBtn = document.getElementById("sendInviteBtn");
+    if (sendInviteBtn) {
+        sendInviteBtn.addEventListener("click", sendInvitation);
+    }
+    const inviteEmailInput = document.getElementById("inviteEmail");
+    if (inviteEmailInput) {
+        inviteEmailInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                sendInvitation();
+            }
+        });
+    }
+
     // Bulk Processing
     const bulkUploadArea = document.getElementById("bulkUploadArea");
     const bulkFileInput = document.getElementById("bulkFileInput");
@@ -3005,6 +3020,9 @@ function switchPage(pageId) {
         renderFavorites();
     } else if (pageId === "templates") {
         renderTemplates();
+    } else if (pageId === "teams") {
+        // Load team management data
+        loadTeamData();
     } else if (pageId === "admin") {
         // Load admin dashboard data
         if (typeof loadAdminDashboard === 'function') {
@@ -3012,6 +3030,333 @@ function switchPage(pageId) {
         }
     }
 }
+
+// ==================== TEAM MANAGEMENT ====================
+let currentOrgId = null;
+let currentUserRole = null;
+
+async function loadTeamData() {
+    try {
+        // Get user's organization
+        const orgResponse = await fetch(`${API_BASE_URL}/api/organizations/my`, {
+            headers: getAuthHeaders()
+        });
+
+        if (!orgResponse.ok) {
+            throw new Error('Failed to load organization');
+        }
+
+        const orgData = await orgResponse.json();
+
+        if (!orgData.organization) {
+            // User has no organization
+            document.getElementById('orgName').textContent = 'No Organization';
+            document.getElementById('userRole').textContent = '-';
+            document.getElementById('subscriptionStatus').textContent = '-';
+            document.getElementById('totalMembers').textContent = '0';
+            document.getElementById('membersList').innerHTML = '<p class="no-invitations">You are not part of any organization yet.</p>';
+            document.getElementById('inviteSection').style.display = 'none';
+            document.getElementById('pendingInvitationsCard').style.display = 'none';
+            return;
+        }
+
+        currentOrgId = orgData.organization.id;
+        currentUserRole = orgData.organization.role;
+
+        // Update organization details
+        document.getElementById('orgName').textContent = orgData.organization.name || '-';
+        document.getElementById('userRole').textContent = formatRole(orgData.organization.role);
+        document.getElementById('subscriptionStatus').textContent = formatSubscriptionStatus(orgData.organization.subscription_status);
+
+        // Show/hide invite section based on role
+        const canInvite = ['owner', 'admin'].includes(currentUserRole);
+        document.getElementById('inviteSection').style.display = canInvite ? 'block' : 'none';
+
+        // Load members
+        await loadMembers();
+
+    } catch (error) {
+        console.error('Error loading team data:', error);
+        showToast('Failed to load team data', 'error');
+    }
+}
+
+async function loadMembers() {
+    if (!currentOrgId) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}/members`, {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load members');
+        }
+
+        const data = await response.json();
+
+        // Update total members count
+        document.getElementById('totalMembers').textContent = data.members.length;
+
+        // Render members list
+        renderMembersList(data.members);
+
+        // Render pending invitations
+        renderPendingInvitations(data.pendingInvitations || []);
+
+    } catch (error) {
+        console.error('Error loading members:', error);
+        document.getElementById('membersList').innerHTML = '<p class="no-invitations">Failed to load members</p>';
+    }
+}
+
+function renderMembersList(members) {
+    const container = document.getElementById('membersList');
+
+    if (!members || members.length === 0) {
+        container.innerHTML = '<p class="no-invitations">No team members yet</p>';
+        return;
+    }
+
+    const canManage = ['owner', 'admin'].includes(currentUserRole);
+    const isOwner = currentUserRole === 'owner';
+
+    container.innerHTML = members.map(member => {
+        const initials = getInitials(member.first_name, member.last_name, member.email);
+        const name = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.email;
+        const isCurrentUser = member.id === currentUser?.backendId;
+
+        return `
+            <div class="member-item">
+                <div class="member-info">
+                    <div class="member-avatar">${initials}</div>
+                    <div class="member-details">
+                        <span class="member-name">${escapeHtml(name)}${isCurrentUser ? ' (You)' : ''}</span>
+                        <span class="member-email">${escapeHtml(member.email)}</span>
+                    </div>
+                </div>
+                <div class="member-actions">
+                    ${member.role === 'owner' ?
+                        `<span class="member-role owner">👑 Owner</span>` :
+                        canManage && !isCurrentUser && isOwner ?
+                            `<select class="member-role-select" onchange="updateMemberRole('${member.id}', this.value)">
+                                <option value="member" ${member.role === 'member' ? 'selected' : ''}>Member</option>
+                                <option value="admin" ${member.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            </select>` :
+                            `<span class="member-role ${member.role}">${formatRole(member.role)}</span>`
+                    }
+                    ${canManage && member.role !== 'owner' && !isCurrentUser ?
+                        `<button class="member-remove-btn" onclick="removeMember('${member.id}')" title="Remove member">🗑️</button>` :
+                        ''
+                    }
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderPendingInvitations(invitations) {
+    const container = document.getElementById('pendingInvitations');
+    const card = document.getElementById('pendingInvitationsCard');
+
+    if (!invitations || invitations.length === 0) {
+        container.innerHTML = '<p class="no-invitations">No pending invitations</p>';
+        card.style.display = ['owner', 'admin'].includes(currentUserRole) ? 'block' : 'none';
+        return;
+    }
+
+    card.style.display = 'block';
+
+    container.innerHTML = invitations.map(inv => {
+        const expiresAt = new Date(inv.expires_at);
+        const daysLeft = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24));
+
+        return `
+            <div class="invitation-item">
+                <div class="invitation-info">
+                    <span class="invitation-email">${escapeHtml(inv.email)}</span>
+                    <span class="invitation-meta">Role: ${formatRole(inv.role)} • Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}</span>
+                </div>
+                <button class="invitation-cancel-btn" onclick="cancelInvitation('${inv.id}')">Cancel</button>
+            </div>
+        `;
+    }).join('');
+}
+
+async function sendInvitation() {
+    const emailInput = document.getElementById('inviteEmail');
+    const roleSelect = document.getElementById('inviteRole');
+    const email = emailInput.value.trim();
+    const role = roleSelect.value;
+
+    if (!email) {
+        showToast('Please enter an email address', 'error');
+        return;
+    }
+
+    if (!isValidEmail(email)) {
+        showToast('Please enter a valid email address', 'error');
+        return;
+    }
+
+    const sendBtn = document.getElementById('sendInviteBtn');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<span>⏳</span> Sending...';
+    sendBtn.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}/invite`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ email, role })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to send invitation');
+        }
+
+        showToast('Invitation sent successfully!', 'success');
+        emailInput.value = '';
+        roleSelect.value = 'member';
+
+        // Reload members to show pending invitation
+        await loadMembers();
+
+    } catch (error) {
+        console.error('Error sending invitation:', error);
+        showToast(error.message || 'Failed to send invitation', 'error');
+    } finally {
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+    }
+}
+
+async function removeMember(memberId) {
+    if (!confirm('Are you sure you want to remove this member from the organization?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}/members/${memberId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to remove member');
+        }
+
+        showToast('Member removed successfully', 'success');
+        await loadMembers();
+
+    } catch (error) {
+        console.error('Error removing member:', error);
+        showToast(error.message || 'Failed to remove member', 'error');
+    }
+}
+
+async function updateMemberRole(memberId, newRole) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}/members/${memberId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ role: newRole })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to update role');
+        }
+
+        showToast('Role updated successfully', 'success');
+        await loadMembers();
+
+    } catch (error) {
+        console.error('Error updating role:', error);
+        showToast(error.message || 'Failed to update role', 'error');
+        await loadMembers(); // Refresh to reset the select
+    }
+}
+
+async function cancelInvitation(invitationId) {
+    if (!confirm('Are you sure you want to cancel this invitation?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}/invitations/${invitationId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to cancel invitation');
+        }
+
+        showToast('Invitation cancelled', 'success');
+        await loadMembers();
+
+    } catch (error) {
+        console.error('Error cancelling invitation:', error);
+        showToast(error.message || 'Failed to cancel invitation', 'error');
+    }
+}
+
+function formatRole(role) {
+    const roles = {
+        owner: '👑 Owner',
+        admin: '🛡️ Admin',
+        member: '👤 Member'
+    };
+    return roles[role] || role;
+}
+
+function formatSubscriptionStatus(status) {
+    const statuses = {
+        trialing: '🎁 Trial',
+        active: '✅ Active',
+        past_due: '⚠️ Past Due',
+        cancelled: '❌ Cancelled',
+        incomplete: '⏳ Incomplete'
+    };
+    return statuses[status] || status || '-';
+}
+
+function getInitials(firstName, lastName, email) {
+    if (firstName && lastName) {
+        return (firstName[0] + lastName[0]).toUpperCase();
+    }
+    if (firstName) {
+        return firstName.substring(0, 2).toUpperCase();
+    }
+    if (email) {
+        return email.substring(0, 2).toUpperCase();
+    }
+    return 'U';
+}
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Make team functions available globally
+window.sendInvitation = sendInvitation;
+window.removeMember = removeMember;
+window.updateMemberRole = updateMemberRole;
+window.cancelInvitation = cancelInvitation;
 
 // ==================== SETTINGS ====================
 function saveSettings() {
