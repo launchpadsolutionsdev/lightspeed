@@ -1699,24 +1699,48 @@ function analyzeDataFull(data) {
     // Store for other pages
     dataAnalysisResults = { cityData, customerSpending, totalRevenue };
 
+    console.log("Customer Purchases - Metrics calculated:", {
+        totalRevenue, totalTransactions, avgSale, totalPackageCount,
+        uniqueCustomers, avgPerCustomer, repeatBuyersCount, totalTickets,
+        northernRevenue, northernCount, rsuRevenue, rsuCount
+    });
+
     // Update UI - use exact amounts for main revenue figures
-    // Animated metric updates
-    animateCurrency(document.getElementById('dataTotalRevenue'), totalRevenue, 1500, true);
-    document.getElementById('dataRevenueSubtext').textContent = `from ${totalTransactions.toLocaleString()} transactions`;
-    animateCurrency(document.getElementById('dataAvgSale'), avgSale, 1200);
-    document.getElementById('dataAvgSaleSubtext').textContent = `from ${totalPackageCount.toLocaleString()} packages`;
-    animateNumber(document.getElementById('dataUniqueCustomers'), uniqueCustomers, 1200);
-    animateCurrency(document.getElementById('dataAvgPerCustomer'), avgPerCustomer, 1000);
-    animateNumber(document.getElementById('dataRepeatBuyers'), repeatBuyersCount, 1000);
-    document.getElementById('dataRepeatSubtext').textContent = `bought multiple packages`;
-    animateNumber(document.getElementById('dataTotalTickets'), totalTickets, 1200);
-    animateNumber(document.getElementById('dataTotalPurchases'), totalTransactions, 1000);
-    animateNumber(document.getElementById('dataTotalUniqueCustomers'), uniqueCustomers, 1000);
-    animateCurrency(document.getElementById('dataAvgPurchase'), totalRevenue / totalTransactions, 1000);
-    animateCurrency(document.getElementById('dataNorthernSales'), northernRevenue, 1200, true);
-    document.getElementById('dataNorthernSubtext').textContent = `${northernCount.toLocaleString()} customers (${((northernRevenue/totalRevenue)*100).toFixed(1)}%)`;
-    animateCurrency(document.getElementById('dataRsuSales'), rsuRevenue, 1200, true);
-    document.getElementById('dataRsuSubtext').textContent = `${rsuCount.toLocaleString()} in-venue transactions`;
+    // Set immediate values first (in case animation fails), then animate
+    const el = (id) => document.getElementById(id);
+
+    // Immediate fallback values
+    if (el('dataTotalRevenue')) el('dataTotalRevenue').textContent = '$' + totalRevenue.toLocaleString();
+    if (el('dataTotalPurchases')) el('dataTotalPurchases').textContent = totalTransactions.toLocaleString();
+    if (el('dataTotalUniqueCustomers')) el('dataTotalUniqueCustomers').textContent = uniqueCustomers.toLocaleString();
+    if (el('dataAvgSale')) el('dataAvgSale').textContent = '$' + avgSale.toFixed(2);
+    if (el('dataUniqueCustomers')) el('dataUniqueCustomers').textContent = uniqueCustomers.toLocaleString();
+    if (el('dataAvgPerCustomer')) el('dataAvgPerCustomer').textContent = '$' + avgPerCustomer.toFixed(2);
+    if (el('dataRepeatBuyers')) el('dataRepeatBuyers').textContent = repeatBuyersCount.toLocaleString();
+    if (el('dataTotalTickets')) el('dataTotalTickets').textContent = totalTickets.toLocaleString();
+    if (el('dataAvgPurchase')) el('dataAvgPurchase').textContent = '$' + (totalRevenue / totalTransactions).toFixed(2);
+    if (el('dataNorthernSales')) el('dataNorthernSales').textContent = '$' + northernRevenue.toLocaleString();
+    if (el('dataRsuSales')) el('dataRsuSales').textContent = '$' + rsuRevenue.toLocaleString();
+
+    // Subtext updates
+    if (el('dataRevenueSubtext')) el('dataRevenueSubtext').textContent = `from ${totalTransactions.toLocaleString()} transactions`;
+    if (el('dataAvgSaleSubtext')) el('dataAvgSaleSubtext').textContent = `from ${totalPackageCount.toLocaleString()} packages`;
+    if (el('dataRepeatSubtext')) el('dataRepeatSubtext').textContent = `bought multiple packages`;
+    if (el('dataNorthernSubtext')) el('dataNorthernSubtext').textContent = `${northernCount.toLocaleString()} customers (${totalRevenue > 0 ? ((northernRevenue/totalRevenue)*100).toFixed(1) : 0}%)`;
+    if (el('dataRsuSubtext')) el('dataRsuSubtext').textContent = `${rsuCount.toLocaleString()} in-venue transactions`;
+
+    // Now try animated updates (will overwrite the static values with animation)
+    animateCurrency(el('dataTotalRevenue'), totalRevenue, 1500, true);
+    animateCurrency(el('dataAvgSale'), avgSale, 1200);
+    animateNumber(el('dataUniqueCustomers'), uniqueCustomers, 1200);
+    animateCurrency(el('dataAvgPerCustomer'), avgPerCustomer, 1000);
+    animateNumber(el('dataRepeatBuyers'), repeatBuyersCount, 1000);
+    animateNumber(el('dataTotalTickets'), totalTickets, 1200);
+    animateNumber(el('dataTotalPurchases'), totalTransactions, 1000);
+    animateNumber(el('dataTotalUniqueCustomers'), uniqueCustomers, 1000);
+    animateCurrency(el('dataAvgPurchase'), totalRevenue / totalTransactions, 1000);
+    animateCurrency(el('dataNorthernSales'), northernRevenue, 1200, true);
+    animateCurrency(el('dataRsuSales'), rsuRevenue, 1200, true);
 
     // Populate Summary Statistics Table
     const avgOrderPerCustomer = uniqueCustomers > 0 ? totalTransactions / uniqueCustomers : 0;
