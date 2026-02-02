@@ -7797,6 +7797,43 @@
             color: var(--text-muted);
             padding: 2rem;
         }
+        /* Invite Link Modal */
+        .invite-link-modal {
+            max-width: 500px;
+        }
+        .invite-link-desc {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        .invite-link-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .invite-link-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            background: #f9fafb;
+            color: var(--text-primary);
+        }
+        .copy-link-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+        }
+        .invite-link-note {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: #f0fdf4;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border-left: 3px solid #10b981;
+        }
         @media (max-width: 768px) {
             #page-teams { padding: 1rem; }
             .invite-form-row {
@@ -7815,6 +7852,9 @@
             .member-actions {
                 width: 100%;
                 justify-content: flex-end;
+            }
+            .invite-link-container {
+                flex-direction: column;
             }
         }
     </style>

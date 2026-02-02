@@ -3226,9 +3226,15 @@ async function sendInvitation() {
             throw new Error(data.error || 'Failed to send invitation');
         }
 
-        showToast('Invitation sent successfully!', 'success');
         emailInput.value = '';
         roleSelect.value = 'member';
+
+        // Show the invite link modal so user can copy and share it
+        if (data.inviteLink) {
+            showInviteLinkModal(data.inviteLink, data.email);
+        } else {
+            showToast('Invitation created successfully!', 'success');
+        }
 
         // Reload members to show pending invitation
         await loadMembers();
@@ -3361,11 +3367,68 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function showInviteLinkModal(inviteLink, email) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('inviteLinkModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'inviteLinkModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content invite-link-modal">
+                <div class="modal-header">
+                    <h3>✉️ Invitation Created</h3>
+                    <button class="modal-close" onclick="closeInviteLinkModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="invite-link-desc">Share this link with <strong id="inviteEmailDisplay"></strong> to invite them to your organization:</p>
+                    <div class="invite-link-container">
+                        <input type="text" id="inviteLinkInput" readonly class="invite-link-input">
+                        <button class="btn-primary copy-link-btn" onclick="copyInviteLink()">
+                            <span id="copyLinkIcon">📋</span> Copy
+                        </button>
+                    </div>
+                    <p class="invite-link-note">This link expires in 7 days. The invited user can also just sign up with Google using this email - they'll automatically join your organization.</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // Populate and show
+    document.getElementById('inviteEmailDisplay').textContent = email;
+    document.getElementById('inviteLinkInput').value = inviteLink;
+    modal.classList.add('show');
+}
+
+function closeInviteLinkModal() {
+    const modal = document.getElementById('inviteLinkModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+function copyInviteLink() {
+    const input = document.getElementById('inviteLinkInput');
+    input.select();
+    document.execCommand('copy');
+
+    const icon = document.getElementById('copyLinkIcon');
+    icon.textContent = '✅';
+    showToast('Link copied to clipboard!', 'success');
+
+    setTimeout(() => {
+        icon.textContent = '📋';
+    }, 2000);
+}
+
 // Make team functions available globally
 window.sendInvitation = sendInvitation;
 window.removeMember = removeMember;
 window.updateMemberRole = updateMemberRole;
 window.cancelInvitation = cancelInvitation;
+window.closeInviteLinkModal = closeInviteLinkModal;
+window.copyInviteLink = copyInviteLink;
 
 // ==================== SETTINGS ====================
 function saveSettings() {
