@@ -1539,17 +1539,36 @@ function processNamedDataFile() {
 }
 
 function analyzeDataFull(data) {
-    // Auto-detect column names
-    const columns = Object.keys(data[0] || {});
-    const findCol = (names) => columns.find(c => names.some(n => c.toLowerCase().includes(n.toLowerCase())));
+    // Auto-detect column names - scan all rows for columns
+    const allColumns = new Set();
+    data.forEach(row => Object.keys(row).forEach(key => allColumns.add(key)));
+    const columns = Array.from(allColumns);
+    console.log("Insights Engine - Detected columns:", columns);
 
-    const emailCol = findCol(['e-mail', 'email']);
-    const spentCol = findCol(['total spent', 'totalspent', 'spent', 'amount', 'total']);
-    const cityCol = findCol(['city']);
-    const nameCol = findCol(['customer name', 'name']);
-    const ticketCol = findCol(['number count', 'tickets', 'quantity']);
-    const phoneCol = findCol(['phone']);
-    const zipCol = findCol(['zip', 'postal', 'zip code']);
+    // Improved column matching - exact matches first, then partial
+    const findCol = (exactMatches, partialMatches = []) => {
+        // First try exact matches (case-insensitive)
+        for (const exact of exactMatches) {
+            const found = columns.find(c => c.toLowerCase().trim() === exact.toLowerCase());
+            if (found) return found;
+        }
+        // Then try partial matches
+        for (const partial of partialMatches) {
+            const found = columns.find(c => c.toLowerCase().includes(partial.toLowerCase()));
+            if (found) return found;
+        }
+        return null;
+    };
+
+    const emailCol = findCol(['e-mail', 'email', 'email address'], ['email']);
+    const spentCol = findCol(['total spent', 'amount', 'total', 'spent'], ['spent', 'amount']);
+    const cityCol = findCol(['city'], ['city']);
+    const nameCol = findCol(['customer', 'customer name', 'name', 'full name'], ['customer']);
+    const ticketCol = findCol(['quantity', 'tickets', 'number count'], ['ticket', 'quantity']);
+    const phoneCol = findCol(['phone', 'phone number'], ['phone']);
+    const zipCol = findCol(['zip code', 'postal code', 'zip', 'postal'], ['zip', 'postal']);
+
+    console.log("Insights Engine - Column mapping:", { emailCol, spentCol, cityCol, nameCol, ticketCol, phoneCol, zipCol });
 
     const PACKAGES = [100, 75, 50, 20, 10];
     const SINGLE_PACKAGE_AMOUNTS = new Set([10, 20, 50, 75, 100]);
@@ -1611,31 +1630,39 @@ function analyzeDataFull(data) {
     const customerSpending = {};
     const tierData = {};
 
+    // Track if we have geographic data
+    const hasGeographicData = !!cityCol;
+
     data.forEach(row => {
-        let rawCity = (row[cityCol] || '').toString().trim();
+        let rawCity = cityCol ? (row[cityCol] || '').toString().trim() : '';
         const amount = Number(row[spentCol]) || 0;
         const email = (row[emailCol] || '').toString().toLowerCase().trim();
         const name = row[nameCol] || 'Unknown';
         const phone = row[phoneCol] || '';
-        const postal = (row[zipCol] || '').toString().toUpperCase().trim().substring(0, 3);
+        const postal = zipCol ? (row[zipCol] || '').toString().toUpperCase().trim().substring(0, 3) : '';
 
-        // RSU detection
-        const isRSU = !rawCity || rawCity.toLowerCase() === 'unknown' || rawCity === '';
-        if (isRSU) {
-            rsuRevenue += amount;
-            rsuCount++;
-            rawCity = 'Thunder Bay';
+        // RSU detection (only if we have city data)
+        let isRSU = false;
+        if (hasGeographicData) {
+            isRSU = !rawCity || rawCity.toLowerCase() === 'unknown' || rawCity === '';
+            if (isRSU) {
+                rsuRevenue += amount;
+                rsuCount++;
+                rawCity = 'Thunder Bay';
+            }
         }
 
-        const normalizedCity = normalizeCity(rawCity);
-        const displayCity = rawCity.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        const normalizedCity = hasGeographicData ? normalizeCity(rawCity) : 'unknown';
+        const displayCity = rawCity ? rawCity.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : 'Unknown';
 
-        // City aggregation
-        if (!cityData[normalizedCity]) {
-            cityData[normalizedCity] = { revenue: 0, count: 0, displayName: displayCity };
+        // City aggregation (only if we have city data)
+        if (hasGeographicData && normalizedCity) {
+            if (!cityData[normalizedCity]) {
+                cityData[normalizedCity] = { revenue: 0, count: 0, displayName: displayCity };
+            }
+            cityData[normalizedCity].revenue += amount;
+            cityData[normalizedCity].count++;
         }
-        cityData[normalizedCity].revenue += amount;
-        cityData[normalizedCity].count++;
 
         // Postal code aggregation
         if (postal && postal.length >= 3) {
@@ -1657,13 +1684,15 @@ function analyzeDataFull(data) {
         tierData[amount].count++;
         tierData[amount].revenue += amount;
 
-        // Northern vs Southern Ontario
-        if (isNorthernOntario(rawCity) || isRSU) {
-            northernRevenue += amount;
-            northernCount++;
-        } else {
-            southernRevenue += amount;
-            southernCount++;
+        // Northern vs Southern Ontario (only if we have city data)
+        if (hasGeographicData) {
+            if (isNorthernOntario(rawCity) || isRSU) {
+                northernRevenue += amount;
+                northernCount++;
+            } else {
+                southernRevenue += amount;
+                southernCount++;
+            }
         }
     });
 
