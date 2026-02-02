@@ -3369,7 +3369,7 @@ INSTRUCTION: ${instruction.trim()}
 
 Please provide the refined response:`;
 
-        const response = await fetch(`${API_BASE_URL}/api/claude`, {
+        const response = await fetch(`${API_BASE_URL}/api/generate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -3586,6 +3586,11 @@ function renderFavorites() {
     const emptyState = document.getElementById("favoritesEmpty");
     const grid = document.getElementById("favoritesGrid");
 
+    // Guard against missing elements (e.g., during login before page is fully rendered)
+    if (!emptyState || !grid) {
+        return;
+    }
+
     if (favorites.length === 0) {
         emptyState.style.display = "block";
         grid.innerHTML = "";
@@ -3692,11 +3697,17 @@ function getMonthlyBreakdown(history) {
 }
 
 function updateAnalytics() {
+    // Guard against missing elements
+    const analyticsTotal = document.getElementById("analyticsTotal");
+    if (!analyticsTotal) {
+        return;
+    }
+
     // Get ALL users' response history for team-wide analytics
     const allHistory = getAllUsersResponseHistory();
 
     // Total responses (team-wide)
-    document.getElementById("analyticsTotal").textContent = allHistory.length;
+    analyticsTotal.textContent = allHistory.length;
 
     // Today's responses (team-wide)
     const today = new Date().toDateString();
@@ -3805,6 +3816,15 @@ function showHistoryDetail(id) {
 
 // ==================== KNOWLEDGE BASE ====================
 function updateKnowledgeStats() {
+    const statTotal = document.getElementById("statTotal");
+    const stat5050 = document.getElementById("stat5050");
+    const statCta = document.getElementById("statCta");
+
+    // Guard against missing elements
+    if (!statTotal || !stat5050 || !statCta) {
+        return;
+    }
+
     let total5050 = 0, totalCta = 0;
 
     if (typeof KNOWLEDGE_BASE !== 'undefined') {
@@ -3818,13 +3838,19 @@ function updateKnowledgeStats() {
         else { total5050++; totalCta++; }
     });
 
-    document.getElementById("statTotal").textContent = total5050 + totalCta;
-    document.getElementById("stat5050").textContent = total5050;
-    document.getElementById("statCta").textContent = totalCta;
+    statTotal.textContent = total5050 + totalCta;
+    stat5050.textContent = total5050;
+    statCta.textContent = totalCta;
 }
 
 function renderKnowledgeList(searchQuery = "") {
     const container = document.getElementById("knowledgeList");
+
+    // Guard against missing element
+    if (!container) {
+        return;
+    }
+
     let items = [];
 
     // Get all items based on filter
