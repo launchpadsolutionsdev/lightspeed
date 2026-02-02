@@ -13,6 +13,164 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
     ? 'http://localhost:3001'  // Local development
     : 'https://lightspeed-backend.onrender.com';  // Production
 
+// ==================== API HELPER FUNCTIONS ====================
+function getAuthHeaders() {
+    const token = localStorage.getItem('authToken');
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+}
+
+async function handleApiError(response) {
+    const error = await response.json().catch(() => ({}));
+
+    // Handle specific error codes
+    if (error.code === 'TRIAL_LIMIT_REACHED') {
+        showUpgradeModal('limit', error.usageCount, error.limit);
+        throw new Error('LIMIT_REACHED');
+    }
+    if (error.code === 'TRIAL_EXPIRED') {
+        showUpgradeModal('expired');
+        throw new Error('TRIAL_EXPIRED');
+    }
+    if (error.code === 'AUTH_REQUIRED') {
+        showToast('Please sign in to continue', 'error');
+        handleLogout();
+        throw new Error('AUTH_REQUIRED');
+    }
+
+    throw new Error(error.error || error.message || 'API request failed. Please try again.');
+}
+
+function showUpgradeModal(reason, usageCount, limit) {
+    let modal = document.getElementById('upgradeModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'upgradeModal';
+        modal.className = 'modal-overlay show';
+        modal.innerHTML = `
+            <div class="modal-content upgrade-modal">
+                <div class="upgrade-header">
+                    <div class="upgrade-icon">⚡</div>
+                    <h2 id="upgradeTitle">Upgrade to Continue</h2>
+                    <p id="upgradeMessage"></p>
+                </div>
+                <div class="upgrade-features">
+                    <div class="upgrade-feature">
+                        <span class="feature-icon">✓</span>
+                        <span>Unlimited AI generations</span>
+                    </div>
+                    <div class="upgrade-feature">
+                        <span class="feature-icon">✓</span>
+                        <span>Custom knowledge base</span>
+                    </div>
+                    <div class="upgrade-feature">
+                        <span class="feature-icon">✓</span>
+                        <span>Priority support</span>
+                    </div>
+                </div>
+                <div class="upgrade-pricing">
+                    <div class="upgrade-price">$99<span>/month</span></div>
+                    <p>or $89/month billed annually</p>
+                </div>
+                <div class="upgrade-actions">
+                    <button class="btn-primary btn-upgrade" onclick="window.location.href='mailto:hello@launchpadsolutions.ca?subject=Lightspeed%20Upgrade%20Request'">
+                        Contact Us to Upgrade
+                    </button>
+                    <button class="btn-secondary" onclick="document.getElementById('upgradeModal').classList.remove('show')">
+                        Maybe Later
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Add styles
+        const styles = document.createElement('style');
+        styles.textContent = `
+            .upgrade-modal {
+                max-width: 440px;
+                padding: 40px;
+                text-align: center;
+                background: #fff;
+                border-radius: 16px;
+            }
+            .upgrade-header { margin-bottom: 24px; }
+            .upgrade-icon { font-size: 48px; margin-bottom: 16px; }
+            .upgrade-header h2 { margin: 0 0 8px; font-size: 24px; color: #1a1a2e; }
+            .upgrade-header p { margin: 0; color: #4a5568; font-size: 15px; line-height: 1.5; }
+            .upgrade-features {
+                background: #f8fafc;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 24px;
+                text-align: left;
+            }
+            .upgrade-feature {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 8px 0;
+                color: #2d3748;
+            }
+            .feature-icon {
+                color: #48bb78;
+                font-weight: bold;
+                font-size: 18px;
+            }
+            .upgrade-pricing { margin-bottom: 24px; }
+            .upgrade-price {
+                font-size: 36px;
+                font-weight: 700;
+                color: #667eea;
+            }
+            .upgrade-price span { font-size: 16px; font-weight: 400; color: #718096; }
+            .upgrade-pricing p { margin: 8px 0 0; color: #718096; font-size: 14px; }
+            .upgrade-actions { display: flex; flex-direction: column; gap: 12px; }
+            .btn-upgrade {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 16px 24px;
+                border-radius: 10px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .btn-upgrade:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3); }
+            .btn-secondary {
+                background: transparent;
+                color: #718096;
+                border: none;
+                padding: 12px;
+                font-size: 14px;
+                cursor: pointer;
+            }
+            .btn-secondary:hover { color: #4a5568; }
+        `;
+        document.head.appendChild(styles);
+    }
+
+    // Update content based on reason
+    const title = document.getElementById('upgradeTitle');
+    const message = document.getElementById('upgradeMessage');
+
+    if (reason === 'limit') {
+        title.textContent = 'Trial Limit Reached';
+        message.textContent = `You've used all ${limit} free generations. Upgrade now to unlock unlimited access!`;
+    } else if (reason === 'expired') {
+        title.textContent = 'Trial Expired';
+        message.textContent = 'Your 14-day free trial has ended. Upgrade to continue using Lightspeed.';
+    }
+
+    modal.classList.add('show');
+}
+
 // ==================== GOOGLE OAUTH CONFIGURATION ====================
 const GOOGLE_CLIENT_ID = '538611064946-ij0geilde0q1tq0hlpjep886holcmro5.apps.googleusercontent.com';
 
@@ -500,10 +658,16 @@ function showOrganizationSetup(user) {
             const styles = document.createElement("style");
             styles.id = "orgSetupStyles";
             styles.textContent = `
+                #orgSetupModal {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }
                 .org-setup-modal {
                     max-width: 480px;
                     padding: 40px;
                     text-align: center;
+                    background: #ffffff;
+                    border-radius: 16px;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
                 }
                 .org-setup-header {
                     margin-bottom: 32px;
@@ -511,16 +675,26 @@ function showOrganizationSetup(user) {
                 .org-setup-icon {
                     font-size: 48px;
                     margin-bottom: 16px;
+                    display: inline-block;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
                 }
                 .org-setup-header h2 {
-                    margin: 0 0 8px 0;
-                    font-size: 24px;
+                    margin: 0 0 12px 0;
+                    font-size: 28px;
+                    font-weight: 700;
                     color: #1a1a2e;
                 }
                 .org-setup-header p {
                     margin: 0;
-                    color: #666;
+                    color: #4a5568;
                     font-size: 16px;
+                    line-height: 1.5;
+                }
+                .org-setup-header p strong {
+                    color: #667eea;
                 }
                 .org-setup-form .form-group {
                     text-align: left;
@@ -530,38 +704,73 @@ function showOrganizationSetup(user) {
                     display: block;
                     margin-bottom: 8px;
                     font-weight: 600;
-                    color: #333;
+                    color: #1a1a2e;
+                    font-size: 14px;
                 }
                 .org-setup-form input {
                     width: 100%;
                     padding: 14px 16px;
-                    border: 2px solid #e0e0e0;
-                    border-radius: 8px;
+                    border: 2px solid #e2e8f0;
+                    border-radius: 10px;
                     font-size: 16px;
-                    transition: border-color 0.2s;
+                    transition: all 0.2s;
+                    background: #f8fafc;
+                    color: #1a1a2e;
+                    box-sizing: border-box;
+                }
+                .org-setup-form input::placeholder {
+                    color: #a0aec0;
                 }
                 .org-setup-form input:focus {
                     outline: none;
                     border-color: #667eea;
+                    background: #ffffff;
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
                 }
                 .form-hint {
                     display: block;
-                    margin-top: 6px;
+                    margin-top: 8px;
                     font-size: 13px;
-                    color: #888;
+                    color: #718096;
                 }
                 .org-setup-form .btn-lg {
                     width: 100%;
                     padding: 16px 24px;
                     font-size: 18px;
+                    font-weight: 600;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                }
+                .org-setup-form .btn-lg:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+                }
+                .org-setup-form .btn-lg:disabled {
+                    opacity: 0.7;
+                    cursor: not-allowed;
+                    transform: none;
                 }
                 .org-setup-footer {
                     margin-top: 24px;
                     padding-top: 24px;
-                    border-top: 1px solid #eee;
+                    border-top: 1px solid #e2e8f0;
                 }
                 .org-setup-footer p {
                     margin: 0;
+                    color: #718096;
+                    font-size: 14px;
+                }
+                .org-setup-footer p::before {
+                    content: "✓ ";
+                    color: #48bb78;
                     color: #888;
                     font-size: 14px;
                 }
@@ -2909,9 +3118,7 @@ Sign as: ${staffName}`;
 
     const response = await fetch(`${API_BASE_URL}/api/generate`, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
             system: systemPrompt,
             messages: [{ role: "user", content: userPrompt }],
@@ -2920,8 +3127,7 @@ Sign as: ${staffName}`;
     });
 
     if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || "API request failed. Please try again.");
+        await handleApiError(response);
     }
 
     const data = await response.json();
@@ -4462,9 +4668,7 @@ async function generateDraft() {
 
         const response = await fetch(API_BASE_URL + '/api/generate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 system: enhancedSystemPrompt,
                 messages: [{ role: 'user', content: userPrompt }],
@@ -4473,8 +4677,7 @@ async function generateDraft() {
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'API request failed');
+            await handleApiError(response);
         }
 
         const data = await response.json();
@@ -4502,7 +4705,10 @@ async function generateDraft() {
         console.error('Draft generation error:', error);
         document.getElementById('draftLoading').style.display = 'none';
         document.getElementById('draftInputSection').style.display = 'block';
-        showToast('Error generating draft: ' + error.message, 'error');
+        // Don't show toast for handled errors (limit reached, etc.)
+        if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
+            showToast('Error generating draft: ' + error.message, 'error');
+        }
     }
 }
 
@@ -4569,9 +4775,7 @@ async function generateEmailDraft() {
 
         const response = await fetch(API_BASE_URL + '/api/generate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 system: enhancedSystemPrompt,
                 messages: [{ role: 'user', content: userPrompt }],
@@ -4582,8 +4786,7 @@ async function generateEmailDraft() {
         console.log('API response status:', response.status);
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || 'API request failed with status ' + response.status);
+            await handleApiError(response);
         }
 
         const data = await response.json();
@@ -4605,7 +4808,9 @@ async function generateEmailDraft() {
         console.error('Email draft generation error:', error);
         document.getElementById('draftLoading').style.display = 'none';
         document.getElementById('draftEmailTypeSection').style.display = 'block';
-        showToast('Error generating email draft: ' + error.message, 'error');
+        if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
+            showToast('Error generating email draft: ' + error.message, 'error');
+        }
     }
 }
 
@@ -4688,9 +4893,7 @@ async function refineDraft(instruction) {
 
         const response = await fetch(API_BASE_URL + '/api/generate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 system: enhancedSystemPrompt,
                 messages: messages,
@@ -4699,8 +4902,7 @@ async function refineDraft(instruction) {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || 'API request failed');
+            await handleApiError(response);
         }
 
         const data = await response.json();
@@ -4715,7 +4917,9 @@ async function refineDraft(instruction) {
         console.error('Draft refinement error:', error);
         // Restore original content
         document.getElementById('draftOutputContent').textContent = currentContent;
-        showToast('Error refining draft: ' + error.message, 'error');
+        if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
+            showToast('Error refining draft: ' + error.message, 'error');
+        }
     }
 }
 
