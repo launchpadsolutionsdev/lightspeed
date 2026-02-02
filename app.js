@@ -1519,16 +1519,19 @@ function processNamedDataFile() {
         document.getElementById("dataNavTabs").style.display = "none"; // Customers report has single page
         analyzeCustomersReport(dataPendingFileData);
         document.getElementById("dataCustomersDashboard").style.display = "block";
+        document.getElementById("data-page-customers-overview").classList.add("active");
     } else if (currentReportType === 'payment-tickets') {
         document.getElementById("dataPaymentTicketsReportName").textContent = reportName;
         document.getElementById("dataNavTabs").style.display = "none"; // Payment Tickets report has single page
         analyzePaymentTicketsReport(dataPendingFileData);
         document.getElementById("dataPaymentTicketsDashboard").style.display = "block";
+        document.getElementById("data-page-payment-tickets-overview").classList.add("active");
     } else if (currentReportType === 'sellers') {
         document.getElementById("dataSellersReportName").textContent = reportName;
         document.getElementById("dataNavTabs").style.display = "none"; // Sellers report has single page
         analyzeSellersReport(dataPendingFileData);
         document.getElementById("dataSellersDashboard").style.display = "block";
+        document.getElementById("data-page-sellers-overview").classList.add("active");
     } else {
         // Default to customer-purchases
         document.getElementById("dataReportName").textContent = reportName;
@@ -2156,6 +2159,8 @@ function resetDataAnalysis() {
     // Hide all dashboards
     document.getElementById("dataDashboard").classList.remove("visible");
     document.getElementById("dataCustomersDashboard").style.display = "none";
+    document.getElementById("dataPaymentTicketsDashboard").style.display = "none";
+    document.getElementById("dataSellersDashboard").style.display = "none";
 
     // Reset sections
     document.getElementById("dataNamingSection").style.display = "none";
