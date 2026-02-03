@@ -14,36 +14,15 @@ const { authenticate, requireSuperAdmin } = require('../middleware/auth');
  */
 router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
     try {
-        // Get user count
+        // Get total user count
         const userCount = await pool.query('SELECT COUNT(*) FROM users');
 
-        // Get organization count
+        // Get total organization count
         const orgCount = await pool.query('SELECT COUNT(*) FROM organizations');
 
-        // Get active trials count
-        const trialCount = await pool.query(
-            `SELECT COUNT(*) FROM organizations
-             WHERE subscription_status = 'trial' AND trial_ends_at > NOW()`
-        );
-
-        // Get paid subscriptions count
-        const paidCount = await pool.query(
-            `SELECT COUNT(*) FROM organizations
-             WHERE subscription_status = 'active'`
-        );
-
-        // Get usage stats for last 30 days
-        const usageStats = await pool.query(
-            `SELECT tool, SUM(total_tokens) as total_tokens, COUNT(*) as request_count
-             FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '30 days'
-             GROUP BY tool`
-        );
-
-        // Get new users this week
-        const newUsersThisWeek = await pool.query(
-            `SELECT COUNT(*) FROM users
-             WHERE created_at > NOW() - INTERVAL '7 days'`
+        // Get new users today
+        const newUsersToday = await pool.query(
+            `SELECT COUNT(*) FROM users WHERE created_at > CURRENT_DATE`
         );
 
         // Get new orgs this week
@@ -52,30 +31,76 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
              WHERE created_at > NOW() - INTERVAL '7 days'`
         );
 
-        // Get recent users
-        const recentUsers = await pool.query(
-            `SELECT id, email, first_name, last_name, picture, created_at
-             FROM users ORDER BY created_at DESC LIMIT 10`
+        // Get active users in last 7 days
+        const activeUsers7Days = await pool.query(
+            `SELECT COUNT(DISTINCT user_id) FROM usage_logs
+             WHERE created_at > NOW() - INTERVAL '7 days'`
         );
 
-        // Get recent organizations
-        const recentOrgs = await pool.query(
-            `SELECT id, name, subscription_status, created_at
-             FROM organizations ORDER BY created_at DESC LIMIT 10`
+        // Get active users today
+        const activeUsersToday = await pool.query(
+            `SELECT COUNT(DISTINCT user_id) FROM usage_logs
+             WHERE created_at > CURRENT_DATE`
+        );
+
+        // Get total requests in 30 days
+        const totalRequests30Days = await pool.query(
+            `SELECT COUNT(*) FROM usage_logs
+             WHERE created_at > NOW() - INTERVAL '30 days'`
+        );
+
+        // Get requests today
+        const requestsToday = await pool.query(
+            `SELECT COUNT(*) FROM usage_logs WHERE created_at > CURRENT_DATE`
+        );
+
+        // Get tool usage breakdown
+        const toolUsage = await pool.query(
+            `SELECT tool as name, COUNT(*) as requests, SUM(total_tokens) as tokens
+             FROM usage_logs
+             WHERE created_at > NOW() - INTERVAL '30 days'
+             GROUP BY tool
+             ORDER BY requests DESC`
+        );
+
+        // Get daily activity for last 14 days
+        const dailyActivity = await pool.query(
+            `SELECT DATE(created_at) as date, COUNT(*) as requests, COUNT(DISTINCT user_id) as users
+             FROM usage_logs
+             WHERE created_at > NOW() - INTERVAL '14 days'
+             GROUP BY DATE(created_at)
+             ORDER BY date DESC`
+        );
+
+        // Get subscription stats
+        const trialCount = await pool.query(
+            `SELECT COUNT(*) FROM organizations WHERE subscription_status = 'trial'`
+        );
+        const activeCount = await pool.query(
+            `SELECT COUNT(*) FROM organizations WHERE subscription_status = 'active'`
+        );
+        const cancelledCount = await pool.query(
+            `SELECT COUNT(*) FROM organizations WHERE subscription_status = 'cancelled'`
         );
 
         res.json({
-            stats: {
+            overview: {
                 totalUsers: parseInt(userCount.rows[0].count),
                 totalOrganizations: parseInt(orgCount.rows[0].count),
-                activeTrials: parseInt(trialCount.rows[0].count),
-                paidSubscriptions: parseInt(paidCount.rows[0].count),
-                newUsersThisWeek: parseInt(newUsersThisWeek.rows[0].count),
-                newOrgsThisWeek: parseInt(newOrgsThisWeek.rows[0].count)
+                newUsersToday: parseInt(newUsersToday.rows[0].count),
+                newOrgsThisWeek: parseInt(newOrgsThisWeek.rows[0].count),
+                activeUsers7Days: parseInt(activeUsers7Days.rows[0].count),
+                activeUsersToday: parseInt(activeUsersToday.rows[0].count),
+                totalRequests30Days: parseInt(totalRequests30Days.rows[0].count),
+                requestsToday: parseInt(requestsToday.rows[0].count)
             },
-            usage: usageStats.rows,
-            recentUsers: recentUsers.rows,
-            recentOrganizations: recentOrgs.rows
+            toolUsage: toolUsage.rows,
+            dailyActivity: dailyActivity.rows,
+            subscriptions: {
+                trial: parseInt(trialCount.rows[0].count),
+                active: parseInt(activeCount.rows[0].count),
+                cancelled: parseInt(cancelledCount.rows[0].count)
+            }
         });
 
     } catch (error) {
