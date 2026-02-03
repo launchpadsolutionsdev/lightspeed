@@ -61,11 +61,11 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
 
         // Get tool usage breakdown
         const toolUsage = await pool.query(
-            `SELECT tool as name, COUNT(*) as requests, SUM(total_tokens) as tokens
+            `SELECT tool, COUNT(*) as count, SUM(total_tokens) as tokens
              FROM usage_logs
              WHERE created_at > NOW() - INTERVAL '30 days'
              GROUP BY tool
-             ORDER BY requests DESC`
+             ORDER BY count DESC`
         );
 
         // Get daily activity for last 14 days
