@@ -992,7 +992,9 @@ function showToolMenu() {
             adminBtn.style.cssText = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 12px; font-size: 14px;';
             adminBtn.onclick = function() {
                 switchPage('admin');
-                loadAdminDashboard();
+                if (typeof window.loadAdminDashboard === 'function') {
+                    window.loadAdminDashboard();
+                }
             };
             toolMenuUser.insertBefore(adminBtn, toolMenuUser.firstChild);
             console.log('Admin Dashboard button added for super admin');
