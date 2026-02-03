@@ -1,17 +1,47 @@
-# Render Blueprint for Lightspeed API
-# This file can be used for automatic deployment via render.yaml
+# Render Blueprint for Lightspeed
+# Monorepo structure with frontend and backend
 
 services:
+  # Backend API
   - type: web
     name: lightspeed-api
     env: node
     plan: free
+    rootDir: backend
     buildCommand: npm install
     startCommand: npm start
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lightspeed-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
       - key: ANTHROPIC_API_KEY
-        sync: false  # You'll set this manually in the dashboard
+        sync: false  # Set manually in dashboard
+      - key: GOOGLE_CLIENT_ID
+        sync: false  # Set manually in dashboard
       - key: FRONTEND_URL
-        sync: false  # Set to your frontend URL after deploying
+        value: https://www.lightspeedutility.ca
+      - key: TRIAL_DAYS
+        value: 14
       - key: NODE_ENV
         value: production
+
+  # Frontend Static Site
+  - type: web
+    name: lightspeed-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: echo "No build required"
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+
+databases:
+  - name: lightspeed-db
+    plan: free
+    databaseName: lightspeed
+    user: lightspeed

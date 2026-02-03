@@ -301,8 +301,83 @@ function renderDrawSchedule() {
     }
 }
 
+// ==================== INVITE TOKEN HANDLING ====================
+function checkForInviteToken() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteToken = urlParams.get('invite');
+
+    if (inviteToken) {
+        console.log('Invite token detected:', inviteToken);
+        // Store the token for processing after login
+        localStorage.setItem('pendingInviteToken', inviteToken);
+        // Clean up the URL (remove the invite parameter)
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+
+    return inviteToken;
+}
+
+async function processPendingInvite() {
+    const pendingToken = localStorage.getItem('pendingInviteToken');
+
+    if (!pendingToken) return;
+
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+        console.log('No auth token, will process invite after login');
+        return;
+    }
+
+    console.log('Processing pending invite token...');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/organizations/accept-invite`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ token: pendingToken })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Clear the pending token
+            localStorage.removeItem('pendingInviteToken');
+
+            // Update user's organization
+            if (currentUser && data.organization) {
+                currentUser.organization = data.organization;
+                localStorage.setItem("lightspeed_users", JSON.stringify(users));
+            }
+
+            showToast(`Successfully joined ${data.organization?.name || 'the organization'}!`, 'success');
+
+            // Refresh team page if on it
+            if (document.getElementById('teamsPage')?.classList.contains('active')) {
+                loadTeamData();
+            }
+        } else {
+            // Clear invalid token
+            localStorage.removeItem('pendingInviteToken');
+
+            if (data.error === 'You are already a member of this organization') {
+                showToast('You are already a member of this organization.', 'info');
+            } else {
+                showToast(data.error || 'Failed to accept invitation', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error processing invite:', error);
+        // Don't clear the token on network error - user can retry
+        showToast('Failed to process invitation. Please try again.', 'error');
+    }
+}
+
 // ==================== INITIALIZATION ====================
 function init() {
+    // Check for invite token in URL first
+    checkForInviteToken();
+
     // Setup auth event listeners first
     setupAuthEventListeners();
 
@@ -327,6 +402,11 @@ function init() {
     // Always show landing page first for non-logged-in users
     // The landing page is now a marketing page, not just a splash screen
     document.getElementById("landingPage").classList.remove("hidden");
+
+    // If there's a pending invite, show a message prompting login
+    if (localStorage.getItem('pendingInviteToken')) {
+        showToast('Please sign in to accept your invitation', 'info');
+    }
 
     // Setup all event listeners
     setupEventListeners();
@@ -1090,6 +1170,9 @@ function loginUser(user, showMessage = true) {
     if (showMessage) {
         showToast(`Welcome back, ${user.name.split(" ")[0]}!`, "success");
     }
+
+    // Process any pending invite token after login
+    processPendingInvite();
 }
 
 function loadUserData(user) {
