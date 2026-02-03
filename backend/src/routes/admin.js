@@ -127,29 +127,69 @@ router.get('/analytics/engagement', authenticate, requireSuperAdmin, async (req,
              ORDER BY date DESC`
         );
 
-        // Tool usage breakdown
-        const toolUsage = await pool.query(
-            `SELECT tool, COUNT(*) as count, SUM(total_tokens) as tokens
+        // Retention calculation (week over week)
+        const week1Users = await pool.query(
+            `SELECT COUNT(DISTINCT user_id) as count FROM usage_logs
+             WHERE created_at BETWEEN NOW() - INTERVAL '14 days' AND NOW() - INTERVAL '7 days'`
+        );
+        const returnedUsers = await pool.query(
+            `SELECT COUNT(DISTINCT ul2.user_id) as count
+             FROM usage_logs ul1
+             JOIN usage_logs ul2 ON ul1.user_id = ul2.user_id
+             WHERE ul1.created_at BETWEEN NOW() - INTERVAL '14 days' AND NOW() - INTERVAL '7 days'
+             AND ul2.created_at > NOW() - INTERVAL '7 days'`
+        );
+        const week1Count = parseInt(week1Users.rows[0].count) || 1;
+        const returnedCount = parseInt(returnedUsers.rows[0].count) || 0;
+        const retentionRate = Math.round((returnedCount / week1Count) * 100);
+
+        // Feature adoption (percentage of users who used each tool)
+        const totalUsers = await pool.query('SELECT COUNT(*) FROM users');
+        const featureAdoption = await pool.query(
+            `SELECT tool, COUNT(DISTINCT user_id) as users
              FROM usage_logs
              WHERE created_at > NOW() - INTERVAL '${days} days'
-             GROUP BY tool
-             ORDER BY count DESC`
+             GROUP BY tool`
+        );
+        const totalUserCount = parseInt(totalUsers.rows[0].count) || 1;
+        const featureAdoptionData = featureAdoption.rows.map(f => ({
+            tool: f.tool,
+            adoption_rate: Math.round((parseInt(f.users) / totalUserCount) * 100)
+        }));
+
+        // Top users by activity
+        const topUsers = await pool.query(
+            `SELECT u.id, u.first_name, u.last_name, u.email,
+                    COUNT(*) as request_count,
+                    MAX(ul.created_at) as last_active
+             FROM usage_logs ul
+             JOIN users u ON ul.user_id = u.id
+             WHERE ul.created_at > NOW() - INTERVAL '${days} days'
+             GROUP BY u.id, u.first_name, u.last_name, u.email
+             ORDER BY request_count DESC
+             LIMIT 10`
         );
 
-        // Daily signups
-        const dailySignups = await pool.query(
-            `SELECT DATE(created_at) as date, COUNT(*) as signups
-             FROM users
+        // Peak usage hours
+        const peakUsageHours = await pool.query(
+            `SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as request_count
+             FROM usage_logs
              WHERE created_at > NOW() - INTERVAL '${days} days'
-             GROUP BY DATE(created_at)
-             ORDER BY date DESC`
+             GROUP BY EXTRACT(HOUR FROM created_at)
+             ORDER BY hour`
         );
 
         res.json({
             period: `${days} days`,
             dailyActiveUsers: dailyActiveUsers.rows,
-            toolUsage: toolUsage.rows,
-            dailySignups: dailySignups.rows
+            retention: {
+                retentionRate,
+                returnedUsers: returnedCount,
+                week1Users: week1Count
+            },
+            featureAdoption: featureAdoptionData,
+            topUsers: topUsers.rows,
+            peakUsageHours: peakUsageHours.rows
         });
 
     } catch (error) {
