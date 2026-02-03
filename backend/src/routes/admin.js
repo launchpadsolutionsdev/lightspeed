@@ -101,8 +101,8 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
                 avgResponseTimeMs: avgResponseTimeMs,
                 successRate: successRate
             },
-            toolUsage: toolUsage.rows,
-            dailyActivity: dailyActivity.rows,
+            toolUsage: toolUsage.rows || [],
+            dailyActivity: dailyActivity.rows || [],
             subscriptions: {
                 trial: parseInt(trialCount.rows[0].count),
                 active: parseInt(activeCount.rows[0].count),
@@ -188,15 +188,15 @@ router.get('/analytics/engagement', authenticate, requireSuperAdmin, async (req,
 
         res.json({
             period: `${days} days`,
-            dailyActiveUsers: dailyActiveUsers.rows,
+            dailyActiveUsers: dailyActiveUsers.rows || [],
             retention: {
-                retentionRate,
-                returnedUsers: returnedCount,
-                week1Users: week1Count
+                retentionRate: retentionRate || 0,
+                returnedUsers: returnedCount || 0,
+                week1Users: week1Count || 0
             },
-            featureAdoption: featureAdoptionData,
-            topUsers: topUsers.rows,
-            peakUsageHours: peakUsageHours.rows
+            featureAdoption: featureAdoptionData || [],
+            topUsers: topUsers.rows || [],
+            peakUsageHours: peakUsageHours.rows || []
         });
 
     } catch (error) {
