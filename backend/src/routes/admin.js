@@ -61,11 +61,11 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
 
         // Get tool usage breakdown
         const toolUsage = await pool.query(
-            `SELECT tool as name, COUNT(*) as requests, SUM(total_tokens) as tokens
+            `SELECT tool, COUNT(*) as count, SUM(total_tokens) as tokens
              FROM usage_logs
              WHERE created_at > NOW() - INTERVAL '30 days'
              GROUP BY tool
-             ORDER BY requests DESC`
+             ORDER BY count DESC`
         );
 
         // Get daily activity for last 14 days
@@ -101,8 +101,8 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
                 avgResponseTimeMs: avgResponseTimeMs,
                 successRate: successRate
             },
-            toolUsage: toolUsage.rows,
-            dailyActivity: dailyActivity.rows,
+            toolUsage: toolUsage.rows || [],
+            dailyActivity: dailyActivity.rows || [],
             subscriptions: {
                 trial: parseInt(trialCount.rows[0].count),
                 active: parseInt(activeCount.rows[0].count),
@@ -188,15 +188,15 @@ router.get('/analytics/engagement', authenticate, requireSuperAdmin, async (req,
 
         res.json({
             period: `${days} days`,
-            dailyActiveUsers: dailyActiveUsers.rows,
+            dailyActiveUsers: dailyActiveUsers.rows || [],
             retention: {
-                retentionRate,
-                returnedUsers: returnedCount,
-                week1Users: week1Count
+                retentionRate: retentionRate || 0,
+                returnedUsers: returnedCount || 0,
+                week1Users: week1Count || 0
             },
-            featureAdoption: featureAdoptionData,
-            topUsers: topUsers.rows,
-            peakUsageHours: peakUsageHours.rows
+            featureAdoption: featureAdoptionData || [],
+            topUsers: topUsers.rows || [],
+            peakUsageHours: peakUsageHours.rows || []
         });
 
     } catch (error) {
