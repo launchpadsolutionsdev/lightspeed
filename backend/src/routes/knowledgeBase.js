@@ -97,7 +97,7 @@ router.get('/search', authenticate, async (req, res) => {
 router.post('/', authenticate, [
     body('title').notEmpty().withMessage('Title required'),
     body('content').notEmpty().withMessage('Content required'),
-    body('category').isIn(['products', 'policies', 'faqs', 'other']).withMessage('Valid category required')
+    body('category').notEmpty().withMessage('Category required')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -105,7 +105,7 @@ router.post('/', authenticate, [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { title, content, category, tags } = req.body;
+        const { title, content, category, tags, lottery, keywords } = req.body;
 
         // Get user's organization
         const orgResult = await pool.query(
@@ -120,11 +120,18 @@ router.post('/', authenticate, [
         const organizationId = orgResult.rows[0].organization_id;
         const entryId = uuidv4();
 
+        // Combine keywords and lottery into tags for storage
+        const combinedTags = [...(tags || [])];
+        if (lottery) combinedTags.push(`lottery:${lottery}`);
+        if (keywords && keywords.length > 0) {
+            keywords.forEach(k => combinedTags.push(`keyword:${k}`));
+        }
+
         const result = await pool.query(
             `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, created_by, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
              RETURNING *`,
-            [entryId, organizationId, title, content, category, tags || [], req.userId]
+            [entryId, organizationId, title, content, category, combinedTags, req.userId]
         );
 
         res.status(201).json({ entry: result.rows[0] });
@@ -179,7 +186,7 @@ router.get('/:id', authenticate, async (req, res) => {
 router.put('/:id', authenticate, [
     body('title').optional().notEmpty().withMessage('Title cannot be empty'),
     body('content').optional().notEmpty().withMessage('Content cannot be empty'),
-    body('category').optional().isIn(['products', 'policies', 'faqs', 'other']).withMessage('Valid category required')
+    body('category').optional().notEmpty().withMessage('Category cannot be empty')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);

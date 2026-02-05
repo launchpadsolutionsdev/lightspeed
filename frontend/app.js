@@ -1076,6 +1076,49 @@ function loadUserData(user) {
     feedbackList = user.data.feedbackList || [];
     responseHistory = user.data.responseHistory || [];
     favorites = user.data.favorites || [];
+
+    // Load KB entries from backend and merge with local
+    loadKnowledgeFromBackend();
+}
+
+async function loadKnowledgeFromBackend() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/knowledge-base`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const backendEntries = (data.entries || []).map(entry => {
+                // Extract lottery and keywords from tags
+                const tags = entry.tags || [];
+                const lotteryTag = tags.find(t => t.startsWith('lottery:'));
+                const keywordTags = tags.filter(t => t.startsWith('keyword:')).map(t => t.replace('keyword:', ''));
+
+                return {
+                    id: entry.id,
+                    lottery: lotteryTag ? lotteryTag.replace('lottery:', '') : 'both',
+                    category: entry.category,
+                    question: entry.title,
+                    keywords: keywordTags.length > 0 ? keywordTags : [],
+                    response: entry.content,
+                    dateAdded: entry.created_at
+                };
+            });
+
+            // Merge: backend entries take priority, add any local-only entries
+            const backendIds = new Set(backendEntries.map(e => e.id));
+            const localOnly = customKnowledge.filter(k => !backendIds.has(k.id));
+            customKnowledge = [...backendEntries, ...localOnly];
+
+            // Update localStorage to stay in sync
+            saveUserData();
+            updateKnowledgeStats();
+            renderKnowledgeList();
+        }
+    } catch (error) {
+        console.warn('Could not load KB from backend, using localStorage:', error);
+    }
 }
 
 function saveUserData() {
@@ -4317,7 +4360,7 @@ function renderKnowledgeList(searchQuery = "") {
     `).join('');
 }
 
-function addKnowledge() {
+async function addKnowledge() {
     const lottery = document.getElementById("knowledgeLottery").value;
     const category = document.getElementById("knowledgeCategory").value;
     const question = document.getElementById("knowledgeQuestion").value.trim();
@@ -4329,16 +4372,44 @@ function addKnowledge() {
         return;
     }
 
+    const computedKeywords = keywords.length > 0 ? keywords : question.toLowerCase().split(" ").filter(w => w.length > 3);
+
     const newEntry = {
         id: `custom-${Date.now()}`,
         lottery: lottery,
         category: category,
         question: question,
-        keywords: keywords.length > 0 ? keywords : question.toLowerCase().split(" ").filter(w => w.length > 3),
+        keywords: computedKeywords,
         response: response,
         dateAdded: new Date().toISOString()
     };
 
+    // Save to backend API
+    try {
+        const apiResponse = await fetch(`${API_BASE_URL}/api/knowledge-base`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                title: question,
+                content: response,
+                category: category,
+                lottery: lottery,
+                keywords: computedKeywords
+            })
+        });
+
+        if (apiResponse.ok) {
+            const data = await apiResponse.json();
+            // Use the backend-generated ID
+            newEntry.id = data.entry.id;
+        } else {
+            console.warn('Backend KB save failed, using localStorage fallback');
+        }
+    } catch (error) {
+        console.warn('Backend KB save error, using localStorage fallback:', error);
+    }
+
+    // Always save locally too (fallback + immediate UI update)
     customKnowledge.push(newEntry);
     saveUserData();
 
@@ -4356,8 +4427,19 @@ function addKnowledge() {
     setTimeout(() => btn.innerHTML = `<span class="btn-icon">➕</span> Add to Knowledge Base`, 1500);
 }
 
-function deleteKnowledge(id) {
+async function deleteKnowledge(id) {
     if (confirm("Delete this knowledge entry?")) {
+        // Delete from backend API
+        try {
+            await fetch(`${API_BASE_URL}/api/knowledge-base/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+        } catch (error) {
+            console.warn('Backend KB delete error:', error);
+        }
+
+        // Always remove locally too
         customKnowledge = customKnowledge.filter(k => k.id !== id);
         saveUserData();
         updateKnowledgeStats();
@@ -4412,21 +4494,42 @@ function parseAndImportKnowledge() {
         return;
     }
 
-    // Add to knowledge base
-    pairs.forEach(pair => {
-        const newEntry = {
-            id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            lottery: "both",
-            category: "general",
-            question: pair.question,
-            keywords: pair.question.toLowerCase().split(" ").filter(w => w.length > 3),
-            response: pair.response,
-            dateAdded: new Date().toISOString()
-        };
-        customKnowledge.push(newEntry);
-    });
+    // Add to knowledge base locally
+    const newEntries = pairs.map(pair => ({
+        id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        lottery: "both",
+        category: "general",
+        question: pair.question,
+        keywords: pair.question.toLowerCase().split(" ").filter(w => w.length > 3),
+        response: pair.response,
+        dateAdded: new Date().toISOString()
+    }));
 
+    newEntries.forEach(entry => customKnowledge.push(entry));
     saveUserData();
+
+    // Also sync to backend via bulk import
+    try {
+        const importEntries = newEntries.map(entry => ({
+            title: entry.question,
+            content: entry.response,
+            category: entry.category,
+            tags: [`lottery:${entry.lottery}`, ...entry.keywords.map(k => `keyword:${k}`)]
+        }));
+
+        fetch(`${API_BASE_URL}/api/knowledge-base/import`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ entries: importEntries })
+        }).then(resp => {
+            if (resp.ok) {
+                // Reload from backend to get server-generated IDs
+                loadKnowledgeFromBackend();
+            }
+        }).catch(err => console.warn('Backend import failed:', err));
+    } catch (error) {
+        console.warn('Backend KB import error:', error);
+    }
 
     document.getElementById("importModal").classList.remove("show");
     document.getElementById("importContent").value = "";
