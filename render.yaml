@@ -28,17 +28,13 @@ services:
       - key: NODE_ENV
         value: production
 
-  # Frontend Static Site (React + Vite)
+  # Frontend Static Site
   - type: web
     name: lightspeed-frontend
     env: static
-    rootDir: frontend-react
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    rootDir: frontend
+    buildCommand: echo "No build required"
+    staticPublishPath: .
     headers:
       - path: /*
         name: Cache-Control
