@@ -458,15 +458,7 @@ function setupAuthEventListeners() {
         });
     });
 
-    // Switch between login and register
-    document.getElementById("showRegister").addEventListener("click", showRegisterPage);
-    document.getElementById("showLogin").addEventListener("click", showLoginPage);
-
-    // Login form
-    document.getElementById("loginForm").addEventListener("submit", handleLogin);
-
-    // Register form
-    document.getElementById("registerForm").addEventListener("submit", handleRegister);
+    // Google Sign-In is the only auth method - no email/password forms
 
     // User menu (in main app)
     document.getElementById("userMenuBtn").addEventListener("click", toggleUserDropdown);
@@ -708,7 +700,6 @@ function showOrganizationSetup(user) {
     // Hide other pages
     document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
-    document.getElementById("registerPage").classList.remove("visible");
     document.getElementById("toolMenuPage").classList.remove("visible");
 
     // Create and show organization setup modal
@@ -950,27 +941,15 @@ function parseJwt(token) {
 
 function showLoginPage() {
     document.getElementById("loginPage").classList.add("visible");
-    document.getElementById("registerPage").classList.remove("visible");
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
     document.getElementById("toolMenuPage").classList.remove("visible");
-    clearAuthForms();
-}
-
-function showRegisterPage() {
-    document.getElementById("registerPage").classList.add("visible");
-    document.getElementById("loginPage").classList.remove("visible");
-    document.getElementById("mainApp").classList.remove("visible");
-    document.getElementById("dataAnalysisApp").classList.remove("visible");
-    document.getElementById("toolMenuPage").classList.remove("visible");
-    clearAuthForms();
 }
 
 function showToolMenu() {
     document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
-    document.getElementById("registerPage").classList.remove("visible");
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("toolMenuPage").classList.add("visible");
@@ -1045,99 +1024,7 @@ function goBackToMenu() {
     showToolMenu();
 }
 
-function clearAuthForms() {
-    document.getElementById("loginForm").reset();
-    document.getElementById("registerForm").reset();
-    document.querySelectorAll(".auth-message").forEach(el => {
-        el.className = "auth-message";
-        el.textContent = "";
-    });
-    document.querySelectorAll(".auth-error").forEach(el => el.classList.remove("show"));
-    document.querySelectorAll(".auth-input-group input").forEach(el => el.classList.remove("error"));
-}
-
-function handleLogin(e) {
-    e.preventDefault();
-
-    const email = document.getElementById("loginEmail").value.trim().toLowerCase();
-    const password = document.getElementById("loginPassword").value;
-    const messageEl = document.getElementById("loginMessage");
-
-    // Find user
-    const user = users.find(u => u.email === email);
-
-    if (!user) {
-        messageEl.className = "auth-message error";
-        messageEl.textContent = "No account found with this email address.";
-        return;
-    }
-
-    // Check password (simple hash comparison for prototype)
-    if (user.passwordHash !== simpleHash(password)) {
-        messageEl.className = "auth-message error";
-        messageEl.textContent = "Incorrect password. Please try again.";
-        return;
-    }
-
-    // Success!
-    loginUser(user, true);
-}
-
-function handleRegister(e) {
-    e.preventDefault();
-
-    const name = document.getElementById("registerName").value.trim();
-    const email = document.getElementById("registerEmail").value.trim().toLowerCase();
-    const password = document.getElementById("registerPassword").value;
-    const confirm = document.getElementById("registerConfirm").value;
-    const messageEl = document.getElementById("registerMessage");
-
-    // Validation
-    if (password !== confirm) {
-        document.getElementById("registerConfirmError").classList.add("show");
-        document.getElementById("registerConfirm").classList.add("error");
-        return;
-    }
-
-    if (password.length < 6) {
-        document.getElementById("registerPasswordError").classList.add("show");
-        document.getElementById("registerPassword").classList.add("error");
-        return;
-    }
-
-    // Check if email already exists
-    if (users.find(u => u.email === email)) {
-        messageEl.className = "auth-message error";
-        messageEl.textContent = "An account with this email already exists.";
-        return;
-    }
-
-    // Create new user
-    const newUser = {
-        id: generateUserId(),
-        name: name,
-        email: email,
-        passwordHash: simpleHash(password),
-        createdAt: new Date().toISOString(),
-        settings: {
-            defaultName: name.split(" ")[0], // First name
-            orgName: ""
-        },
-        data: {
-            customKnowledge: [],
-            feedbackList: [],
-            responseHistory: [],
-            favorites: []
-        }
-    };
-
-    // Save user
-    users.push(newUser);
-    localStorage.setItem("lightspeed_users", JSON.stringify(users));
-
-    // Log them in
-    loginUser(newUser, true);
-}
+// Email/password auth removed - Google OAuth only
 
 function loginUser(user, showMessage = true) {
     currentUser = user;
@@ -1153,7 +1040,6 @@ function loginUser(user, showMessage = true) {
     // Hide auth pages, show tool menu
     document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
-    document.getElementById("registerPage").classList.remove("visible");
 
     // Show tool menu instead of directly going to main app
     showToolMenu();
@@ -1247,17 +1133,6 @@ function toggleUserDropdown() {
 
 function closeUserDropdown() {
     document.getElementById("userDropdown").classList.remove("show");
-}
-
-// Simple hash function for password (NOT secure for production!)
-function simpleHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return hash.toString(36);
 }
 
 function generateUserId() {
