@@ -8516,8 +8516,8 @@
                     <span class="auth-logo-text">Lightspeed</span>
                 </div>
 
-                <h1 class="auth-title">Welcome back</h1>
-                <p class="auth-subtitle">Sign in to your account to continue</p>
+                <h1 class="auth-title">Welcome to Lightspeed</h1>
+                <p class="auth-subtitle">Sign in with your Google account to continue</p>
 
                 <div class="auth-message" id="loginMessage"></div>
 
@@ -8532,85 +8532,14 @@
                     Sign in with Google
                 </button>
 
-                <div class="auth-divider">or sign in with email</div>
-
-                <form class="auth-form" id="loginForm">
-                    <div class="auth-input-group">
-                        <label for="loginEmail">Email address</label>
-                        <input type="email" id="loginEmail" placeholder="you@example.com" required>
-                        <div class="auth-error" id="loginEmailError">Please enter a valid email</div>
-                    </div>
-
-                    <div class="auth-input-group">
-                        <label for="loginPassword">Password</label>
-                        <input type="password" id="loginPassword" placeholder="••••••••" required>
-                        <div class="auth-error" id="loginPasswordError">Password is required</div>
-                    </div>
-
-                    <button type="submit" class="auth-btn" id="loginBtn">
-                        Sign In with Email
-                    </button>
-                </form>
-
-                <p class="auth-switch">
-                    Don't have an account? <a id="showRegister">Create one</a>
+                <p class="auth-note" style="margin-top: 24px; font-size: 14px; color: var(--text-secondary); text-align: center;">
+                    New users will be automatically registered when signing in for the first time.
                 </p>
             </div>
         </div>
     </div>
 
-    <!-- ==================== REGISTER PAGE ==================== -->
-    <div class="auth-page" id="registerPage">
-        <div class="auth-container">
-            <div class="auth-card">
-                <div class="auth-logo">
-                    <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
-                    <span class="auth-logo-text">Lightspeed</span>
-                </div>
-
-                <h1 class="auth-title">Create your account</h1>
-                <p class="auth-subtitle">Get started with Lightspeed today</p>
-
-                <div class="auth-message" id="registerMessage"></div>
-
-                <form class="auth-form" id="registerForm">
-                    <div class="auth-input-group">
-                        <label for="registerName">Full name</label>
-                        <input type="text" id="registerName" placeholder="Jane Smith" required>
-                        <div class="auth-error" id="registerNameError">Please enter your name</div>
-                    </div>
-
-                    <div class="auth-input-group">
-                        <label for="registerEmail">Email address</label>
-                        <input type="email" id="registerEmail" placeholder="you@example.com" required>
-                        <div class="auth-error" id="registerEmailError">Please enter a valid email</div>
-                    </div>
-
-                    <div class="auth-input-group">
-                        <label for="registerPassword">Password</label>
-                        <input type="password" id="registerPassword" placeholder="At least 6 characters" required minlength="6">
-                        <div class="auth-error" id="registerPasswordError">Password must be at least 6 characters</div>
-                    </div>
-
-                    <div class="auth-input-group">
-                        <label for="registerConfirm">Confirm password</label>
-                        <input type="password" id="registerConfirm" placeholder="••••••••" required>
-                        <div class="auth-error" id="registerConfirmError">Passwords do not match</div>
-                    </div>
-
-                    <button type="submit" class="auth-btn" id="registerBtn">
-                        Create Account
-                    </button>
-                </form>
-
-                <div class="auth-divider">or</div>
-
-                <p class="auth-switch">
-                    Already have an account? <a id="showLogin">Sign in</a>
-                </p>
-            </div>
-        </div>
-    </div>
+    <!-- Register page removed - Google OAuth handles registration -->
 
     <!-- ==================== TOOL MENU PAGE ==================== -->
     <div class="tool-menu-page" id="toolMenuPage">
