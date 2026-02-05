@@ -3527,6 +3527,7 @@ async function handleGenerate() {
         // Save to history
         const historyEntry = {
             id: `history-${Date.now()}`,
+            backendId: null,
             inquiry: customerEmail,
             response: response,
             staffName: staffName,
@@ -3544,6 +3545,28 @@ async function handleGenerate() {
 
         // Save user data with updated history
         saveUserData();
+
+        // Also save to backend for persistent history + rating support
+        try {
+            const toneDesc = toneValue < 33 ? "formal" : toneValue > 66 ? "friendly" : "balanced";
+            const backendResp = await fetch(`${API_BASE_URL}/api/response-history`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    inquiry: customerEmail,
+                    response: response,
+                    format: inquiryType || 'email',
+                    tone: toneDesc
+                })
+            });
+            if (backendResp.ok) {
+                const backendData = await backendResp.json();
+                historyEntry.backendId = backendData.entry.id;
+                saveUserData();
+            }
+        } catch (error) {
+            console.warn('Failed to save response to backend:', error);
+        }
 
         displayResults(response, historyEntry.id);
 
@@ -3583,6 +3606,46 @@ function getAllKnowledge() {
     return [...all, ...customKnowledge];
 }
 
+// Fetch rated examples from backend for AI learning
+async function getRatedExamples() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/response-history/rated-examples`, {
+            headers: getAuthHeaders()
+        });
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (error) {
+        console.warn('Could not fetch rated examples:', error);
+    }
+    return { positive: [], negative: [] };
+}
+
+function buildRatedExamplesContext(ratedExamples) {
+    if (!ratedExamples) return '';
+
+    let context = '';
+
+    if (ratedExamples.positive && ratedExamples.positive.length > 0) {
+        context += '\n\nPREVIOUSLY APPROVED RESPONSES (emulate this style and approach):\n';
+        ratedExamples.positive.forEach((ex, i) => {
+            context += `\nExample ${i + 1}:\nCustomer inquiry: ${ex.inquiry.substring(0, 200)}...\nApproved response: ${ex.response.substring(0, 300)}...\n`;
+        });
+    }
+
+    if (ratedExamples.negative && ratedExamples.negative.length > 0) {
+        context += '\n\nPREVIOUSLY REJECTED RESPONSES (avoid these patterns):\n';
+        ratedExamples.negative.forEach((ex, i) => {
+            context += `\nExample ${i + 1}:\nCustomer inquiry: ${ex.inquiry.substring(0, 200)}...\nRejected response: ${ex.response.substring(0, 300)}...\n`;
+            if (ex.rating_feedback) {
+                context += `Reason: ${ex.rating_feedback}\n`;
+            }
+        });
+    }
+
+    return context;
+}
+
 async function generateCustomResponse(customerEmail, knowledge, staffName, options) {
     const { toneValue, lengthValue, includeLinks, includeSteps } = options;
     const isFacebook = inquiryType === "facebook";
@@ -3596,6 +3659,9 @@ async function generateCustomResponse(customerEmail, knowledge, staffName, optio
     const knowledgeContext = knowledge.slice(0, 30).map(k =>
         `Topic: ${k.question}\nKeywords: ${k.keywords.join(", ")}\nResponse:\n${k.response}`
     ).join("\n\n---\n\n");
+
+    // Fetch rated examples for learning
+    const ratedExamples = await getRatedExamples();
 
     // Get draw schedule context
     let drawScheduleContext = "";
@@ -3658,7 +3724,7 @@ ESCALATION: If the inquiry is unclear, bizarre, nonsensical, confrontational, th
 
 Knowledge base:
 
-${knowledgeContext}`;
+${knowledgeContext}${buildRatedExamplesContext(ratedExamples)}`;
 
     let userPrompt;
     if (isFacebook) {
@@ -3906,7 +3972,7 @@ function performQualityChecks(response) {
     return checks;
 }
 
-function rateResponse(historyId, rating, button) {
+async function rateResponse(historyId, rating, button) {
     const entry = responseHistory.find(h => h.id === historyId);
     if (entry) {
         entry.rating = rating;
@@ -3917,6 +3983,32 @@ function rateResponse(historyId, rating, button) {
     const parent = button.parentElement;
     parent.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('selected'));
     button.classList.add('selected');
+
+    // For negative ratings, ask what went wrong
+    let feedback = null;
+    if (rating === 'negative') {
+        feedback = prompt("What could have been better about this response? (optional)");
+    }
+
+    // Save to backend if we have a backend ID
+    const backendId = entry ? entry.backendId : null;
+    if (backendId) {
+        try {
+            await fetch(`${API_BASE_URL}/api/response-history/${backendId}/rate`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ rating, feedback })
+            });
+        } catch (error) {
+            console.warn('Failed to save rating to backend:', error);
+        }
+    }
+
+    if (rating === 'positive') {
+        showToast("Thanks! This helps Lightspeed learn your preferences.", "success");
+    } else {
+        showToast("Got it — Lightspeed will learn from this feedback.", "info");
+    }
 }
 
 function saveToFavorites() {
