@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth');
 const organizationRoutes = require('./routes/organizations');
 const toolsRoutes = require('./routes/tools');
 const knowledgeBaseRoutes = require('./routes/knowledgeBase');
+const responseHistoryRoutes = require('./routes/responseHistory');
 const adminRoutes = require('./routes/admin');
 const billingRoutes = require('./routes/billing');
 
@@ -77,6 +78,7 @@ app.use('/api/organizations', organizationRoutes);
 app.use('/api/tools', toolsRoutes);
 app.use('/api', toolsRoutes); // Also mount at /api for /api/generate endpoint
 app.use('/api/knowledge-base', knowledgeBaseRoutes);
+app.use('/api/response-history', responseHistoryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/billing', billingRoutes);
 
@@ -91,9 +93,32 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Lightspeed API server running on port ${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/health`);
+// Run pending migrations on startup
+const pool = require('../config/database');
+async function runMigrations() {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const migrationsDir = path.join(__dirname, '..', 'migrations');
+        const files = fs.readdirSync(migrationsDir)
+            .filter(f => f.endsWith('.sql'))
+            .sort();
+
+        for (const file of files) {
+            const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+            await pool.query(sql);
+            console.log(`Migration applied: ${file}`);
+        }
+    } catch (error) {
+        console.error('Migration error:', error.message);
+    }
+}
+
+runMigrations().then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Lightspeed API server running on port ${PORT}`);
+        console.log(`Health check: http://localhost:${PORT}/health`);
+    });
 });
 
 module.exports = app;
