@@ -56,7 +56,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="loading-screen">
+      <div className="loading-screen" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(135deg, #0f0a1a 0%, #1a1225 50%, #0f0a1a 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 9999, color: 'white', gap: '24px' }}>
         <div className="loading-spinner" />
         <p>Loading Lightspeed...</p>
       </div>
