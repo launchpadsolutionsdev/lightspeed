@@ -74,8 +74,8 @@ function showUpgradeModal(reason, usageCount, limit) {
                     </div>
                 </div>
                 <div class="upgrade-pricing">
-                    <div class="upgrade-price">$99<span>/month</span></div>
-                    <p>or $89/month billed annually</p>
+                    <div class="upgrade-price">$499<span>/month</span></div>
+                    <p>or $449/month billed annually (save 10%)</p>
                 </div>
                 <div class="upgrade-actions">
                     <button class="btn-primary btn-upgrade" onclick="window.location.href='mailto:hello@launchpadsolutions.ca?subject=Lightspeed%20Upgrade%20Request'">
