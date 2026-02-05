@@ -3515,9 +3515,9 @@ async function handleGenerate() {
     const startTime = Date.now();
 
     try {
-        const allKnowledge = getAllKnowledge();
+        const relevantKnowledge = getRelevantKnowledge(customerEmail);
         const response = await generateCustomResponse(
-            customerEmail, allKnowledge, staffName,
+            customerEmail, relevantKnowledge, staffName,
             { toneValue, lengthValue, includeLinks, includeSteps }
         );
 
@@ -3603,7 +3603,30 @@ function getAllKnowledge() {
     if (typeof KNOWLEDGE_BASE !== 'undefined') {
         all = [...KNOWLEDGE_BASE["5050"], ...KNOWLEDGE_BASE["cta"]];
     }
-    return [...all, ...customKnowledge];
+    // Custom entries first so they always get included in the AI prompt
+    return [...customKnowledge, ...all];
+}
+
+// Rank knowledge entries by relevance to the customer inquiry
+function getRelevantKnowledge(inquiry) {
+    const allKnowledge = getAllKnowledge();
+    const queryWords = inquiry.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+
+    // Score each entry by how many query words match its keywords or question
+    const scored = allKnowledge.map(entry => {
+        const entryText = `${entry.question} ${entry.keywords.join(' ')} ${entry.response}`.toLowerCase();
+        let score = 0;
+        for (const word of queryWords) {
+            if (entryText.includes(word)) score++;
+        }
+        // Boost custom entries slightly so user-added knowledge is prioritized
+        if (entry.id && entry.id.toString().startsWith('custom')) score += 2;
+        return { entry, score };
+    });
+
+    // Sort by relevance score (highest first), then take top 30
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 30).map(s => s.entry);
 }
 
 // Fetch rated examples from backend for AI learning
