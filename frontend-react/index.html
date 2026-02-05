@@ -8,13 +8,53 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" async></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      /* Inline fallback styles so loading screen is always visible */
+      body { margin: 0; font-family: 'Inter', sans-serif; background: #faf8ff; }
+      #root { min-height: 100vh; }
+      .loading-screen {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(135deg, #0f0a1a 0%, #1a1225 50%, #0f0a1a 100%);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        z-index: 9999; color: white; gap: 24px;
+      }
+      .loading-spinner {
+        width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.15);
+        border-top-color: #a78bfa; border-radius: 50%; animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .error-boundary {
+        min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        background: #faf8ff; padding: 40px; font-family: 'Inter', sans-serif;
+      }
+      .error-boundary-inner {
+        max-width: 600px; background: white; border-radius: 16px; padding: 40px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1); border: 2px solid #ef4444; text-align: center;
+      }
+      .error-boundary h1 { color: #ef4444; font-size: 1.5rem; margin-bottom: 16px; }
+      .error-boundary p { color: #6b7280; margin-bottom: 12px; }
+      .error-boundary pre {
+        text-align: left; background: #f3f4f6; padding: 16px; border-radius: 8px;
+        font-size: 0.8rem; overflow-x: auto; color: #1f2937; margin-top: 16px;
+      }
+      .error-boundary button {
+        margin-top: 20px; padding: 12px 24px; background: #8b5cf6; color: white;
+        border: none; border-radius: 8px; font-size: 1rem; cursor: pointer;
+      }
+    </style>
 </head>
 <body>
     <div id="root"></div>
+    <noscript>
+      <div style="padding: 40px; text-align: center; font-family: sans-serif;">
+        <h1>JavaScript Required</h1>
+        <p>Please enable JavaScript to use Lightspeed.</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
