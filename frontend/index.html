@@ -5621,25 +5621,26 @@
         }
 
         .draft-type-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 16px;
-            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 500px;
             margin: 0 auto;
         }
 
         .draft-type-btn {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
-            gap: 12px;
-            padding: 24px 16px;
+            gap: 14px;
+            padding: 18px 22px;
             background: white;
             border: 2px solid var(--border);
             border-radius: var(--radius-lg);
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
+            text-align: left;
         }
 
         .draft-type-btn:hover {
@@ -5654,14 +5655,15 @@
         }
 
         .draft-type-icon {
-            font-size: 2rem;
+            font-size: 1.5rem;
+            flex-shrink: 0;
         }
 
         .draft-type-label {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             font-weight: 600;
             color: var(--text-primary);
-            text-align: center;
+            text-align: left;
         }
 
         /* Input Section */
@@ -10909,13 +10911,13 @@
                         <p>Select a content type to get started</p>
                     </div>
                     <div class="draft-type-grid">
-                        <button class="draft-type-btn" data-type="social">
-                            <span class="draft-type-icon">📱</span>
-                            <span class="draft-type-label">Social Media Copy</span>
-                        </button>
                         <button class="draft-type-btn" data-type="email">
                             <span class="draft-type-icon">📧</span>
                             <span class="draft-type-label">Email Copy</span>
+                        </button>
+                        <button class="draft-type-btn" data-type="social">
+                            <span class="draft-type-icon">📱</span>
+                            <span class="draft-type-label">Social Media Copy</span>
                         </button>
                         <button class="draft-type-btn" data-type="media-release">
                             <span class="draft-type-icon">📰</span>
