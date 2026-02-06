@@ -465,4 +465,122 @@ router.patch('/users/:userId/super-admin', authenticate, requireSuperAdmin, asyn
     }
 });
 
+/**
+ * GET /api/admin/recent-activity
+ * Recent signups, logins, and usage events
+ */
+router.get('/recent-activity', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { limit = 50 } = req.query;
+
+        // Recent signups
+        const recentSignups = await pool.query(
+            `SELECT id, email, first_name, last_name, created_at
+             FROM users ORDER BY created_at DESC LIMIT $1`, [parseInt(limit)]
+        );
+
+        // Recent usage activity
+        const recentUsage = await pool.query(
+            `SELECT ul.tool, ul.total_tokens, ul.created_at,
+                    u.first_name, u.last_name, u.email,
+                    o.name as organization_name
+             FROM usage_logs ul
+             LEFT JOIN users u ON ul.user_id = u.id
+             LEFT JOIN organizations o ON ul.organization_id = o.id
+             ORDER BY ul.created_at DESC LIMIT $1`, [parseInt(limit)]
+        );
+
+        // Recent logins
+        const recentLogins = await pool.query(
+            `SELECT id, email, first_name, last_name, last_login_at
+             FROM users
+             WHERE last_login_at IS NOT NULL
+             ORDER BY last_login_at DESC LIMIT $1`, [parseInt(limit)]
+        );
+
+        res.json({
+            recentSignups: recentSignups.rows,
+            recentUsage: recentUsage.rows,
+            recentLogins: recentLogins.rows
+        });
+
+    } catch (error) {
+        console.error('Get recent activity error:', error);
+        res.status(500).json({ error: 'Failed to get recent activity' });
+    }
+});
+
+/**
+ * GET /api/admin/cost-estimate
+ * Estimated API costs based on token usage
+ */
+router.get('/cost-estimate', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        // Claude Sonnet 4 pricing: $3/1M input, $15/1M output
+        // We track total_tokens (input+output combined), estimate ~40% input, 60% output
+        const INPUT_RATE = 3.00 / 1000000;
+        const OUTPUT_RATE = 15.00 / 1000000;
+        const INPUT_RATIO = 0.4;
+        const OUTPUT_RATIO = 0.6;
+
+        // Total tokens by period
+        const tokensByPeriod = await pool.query(`
+            SELECT
+                SUM(CASE WHEN created_at > CURRENT_DATE THEN total_tokens ELSE 0 END) as tokens_today,
+                SUM(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN total_tokens ELSE 0 END) as tokens_7d,
+                SUM(CASE WHEN created_at > NOW() - INTERVAL '30 days' THEN total_tokens ELSE 0 END) as tokens_30d,
+                SUM(total_tokens) as tokens_all_time
+            FROM usage_logs
+        `);
+
+        const row = tokensByPeriod.rows[0];
+        const calcCost = (tokens) => {
+            const t = parseInt(tokens) || 0;
+            return ((t * INPUT_RATIO * INPUT_RATE) + (t * OUTPUT_RATIO * OUTPUT_RATE)).toFixed(2);
+        };
+
+        // Cost by tool (30 days)
+        const costByTool = await pool.query(`
+            SELECT tool, SUM(total_tokens) as tokens, COUNT(*) as requests
+            FROM usage_logs
+            WHERE created_at > NOW() - INTERVAL '30 days'
+            GROUP BY tool ORDER BY tokens DESC
+        `);
+
+        // Cost by organization (30 days)
+        const costByOrg = await pool.query(`
+            SELECT o.name, SUM(ul.total_tokens) as tokens, COUNT(*) as requests
+            FROM usage_logs ul
+            JOIN organizations o ON ul.organization_id = o.id
+            WHERE ul.created_at > NOW() - INTERVAL '30 days'
+            GROUP BY o.id, o.name ORDER BY tokens DESC LIMIT 20
+        `);
+
+        // Daily cost trend (last 30 days)
+        const dailyCost = await pool.query(`
+            SELECT DATE(created_at) as date, SUM(total_tokens) as tokens, COUNT(*) as requests
+            FROM usage_logs
+            WHERE created_at > NOW() - INTERVAL '30 days'
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        `);
+
+        res.json({
+            summary: {
+                today: { tokens: parseInt(row.tokens_today) || 0, cost: calcCost(row.tokens_today) },
+                week: { tokens: parseInt(row.tokens_7d) || 0, cost: calcCost(row.tokens_7d) },
+                month: { tokens: parseInt(row.tokens_30d) || 0, cost: calcCost(row.tokens_30d) },
+                allTime: { tokens: parseInt(row.tokens_all_time) || 0, cost: calcCost(row.tokens_all_time) }
+            },
+            byTool: costByTool.rows.map(r => ({ ...r, cost: calcCost(r.tokens) })),
+            byOrg: costByOrg.rows.map(r => ({ ...r, cost: calcCost(r.tokens) })),
+            dailyTrend: dailyCost.rows.map(r => ({ ...r, cost: calcCost(r.tokens) }))
+        });
+
+    } catch (error) {
+        console.error('Get cost estimate error:', error);
+        res.status(500).json({ error: 'Failed to get cost estimates' });
+    }
+});
+
 module.exports = router;
