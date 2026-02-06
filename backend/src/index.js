@@ -16,6 +16,8 @@ const organizationRoutes = require('./routes/organizations');
 const toolsRoutes = require('./routes/tools');
 const knowledgeBaseRoutes = require('./routes/knowledgeBase');
 const responseHistoryRoutes = require('./routes/responseHistory');
+const favoritesRoutes = require('./routes/favorites');
+const feedbackRoutes = require('./routes/feedback');
 const adminRoutes = require('./routes/admin');
 const billingRoutes = require('./routes/billing');
 
@@ -79,6 +81,8 @@ app.use('/api/tools', toolsRoutes);
 app.use('/api', toolsRoutes); // Also mount at /api for /api/generate endpoint
 app.use('/api/knowledge-base', knowledgeBaseRoutes);
 app.use('/api/response-history', responseHistoryRoutes);
+app.use('/api/favorites', favoritesRoutes);
+app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/billing', billingRoutes);
 
