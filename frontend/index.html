@@ -2291,7 +2291,6 @@
             visibility: visible;
         }
 
-        /* Tool menu background effects */
         .tool-menu-bg {
             position: absolute;
             top: 0; left: 0;
@@ -2304,19 +2303,19 @@
         .tool-menu-bg::before {
             content: '';
             position: absolute;
-            top: 20%; left: 10%;
-            width: 400px; height: 400px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
-            animation: pulse 4s ease-in-out infinite;
+            top: 15%; left: 5%;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+            animation: pulse 6s ease-in-out infinite;
         }
 
         .tool-menu-bg::after {
             content: '';
             position: absolute;
-            bottom: 20%; right: 10%;
-            width: 300px; height: 300px;
-            background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, transparent 70%);
-            animation: pulse 4s ease-in-out infinite 2s;
+            bottom: 10%; right: 5%;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            animation: pulse 6s ease-in-out infinite 3s;
         }
 
         .tool-menu-header {
@@ -2325,8 +2324,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: white;
-            border-bottom: 1px solid var(--border);
+            background: rgba(15, 10, 26, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.1);
             position: relative;
             z-index: 1;
         }
@@ -2345,7 +2346,7 @@
         .tool-menu-brand {
             font-size: 1.1rem;
             font-weight: 700;
-            color: var(--text-primary);
+            color: #fff;
         }
 
         .tool-menu-user {
@@ -2361,30 +2362,30 @@
         .tool-menu-user-name {
             font-size: 0.9rem;
             font-weight: 600;
-            color: var(--text-primary);
+            color: #fff;
         }
 
         .tool-menu-user-email {
             font-size: 0.75rem;
-            color: var(--text-muted);
+            color: rgba(255,255,255,0.5);
         }
 
         .tool-menu-logout {
             padding: 8px 16px;
             background: transparent;
-            border: 1px solid var(--border);
+            border: 1px solid rgba(255,255,255,0.15);
             border-radius: var(--radius-md);
             font-size: 0.85rem;
-            color: var(--text-secondary);
+            color: rgba(255,255,255,0.6);
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
         }
 
         .tool-menu-logout:hover {
-            background: var(--bg-light);
-            color: var(--danger);
-            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
         .tool-menu-content {
@@ -2393,138 +2394,312 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 60px 32px;
-            max-width: 900px;
+            padding: 48px 32px;
+            max-width: 960px;
             width: 100%;
             position: relative;
             z-index: 1;
         }
 
-        .tool-menu-hero {
-            text-align: center;
-            margin-bottom: 48px;
+        .tool-menu-greeting {
+            text-align: left;
+            width: 100%;
+            margin-bottom: 36px;
         }
 
         .tool-menu-title {
-            font-size: 2.5rem;
+            font-size: 2.4rem;
             font-weight: 800;
-            background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 12px;
+            color: #fff;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
         }
 
         .tool-menu-subtitle {
-            font-size: 1.1rem;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.45);
+            font-weight: 400;
         }
 
-        .tool-cards-grid {
+        /* ==================== BENTO GRID ==================== */
+        .bento-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 16px;
             width: 100%;
         }
 
-        .tool-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: var(--radius-xl);
-            padding: 32px;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        .bento-card {
             position: relative;
             overflow: hidden;
-            animation: fadeInUp 0.6s ease-out both;
+            border-radius: 20px;
+            padding: 28px;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            animation: fadeInUp 0.5s ease-out both;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .tool-card:nth-child(1) { animation-delay: 0ms; }
-        .tool-card:nth-child(2) { animation-delay: 100ms; }
-        .tool-card:nth-child(3) { animation-delay: 200ms; }
+        .bento-card:nth-child(1) { animation-delay: 0ms; }
+        .bento-card:nth-child(2) { animation-delay: 80ms; }
+        .bento-card:nth-child(3) { animation-delay: 160ms; }
+        .bento-card:nth-child(4) { animation-delay: 240ms; }
 
-        .tool-card::before {
-            content: '';
+        .bento-card-glow {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-light), var(--primary));
-            background-size: 200% auto;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            z-index: 0;
         }
 
-        .tool-card:hover {
-            border-color: rgba(139, 92, 246, 0.3);
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.2);
-        }
-
-        .tool-card:hover::before {
+        .bento-card:hover .bento-card-glow {
             opacity: 1;
-            animation: shimmer 2s linear infinite;
         }
 
-        .tool-card-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 20px;
-            border-radius: var(--radius-lg);
+        .response-glow { background: radial-gradient(ellipse at 30% 50%, rgba(59, 130, 246, 0.12) 0%, transparent 70%); }
+        .draft-glow { background: radial-gradient(ellipse at 30% 50%, rgba(236, 72, 153, 0.12) 0%, transparent 70%); }
+        .data-glow { background: radial-gradient(ellipse at 30% 50%, rgba(34, 197, 94, 0.12) 0%, transparent 70%); }
+        .normalizer-glow { background: radial-gradient(ellipse at 30% 50%, rgba(234, 179, 8, 0.12) 0%, transparent 70%); }
+
+        .bento-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Hero card - Response Assistant - spans 2 rows */
+        .bento-hero {
+            grid-row: 1 / 3;
+            grid-column: 1;
+            display: flex;
+            align-items: stretch;
+            padding: 0;
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
+            border-color: rgba(59, 130, 246, 0.15);
+        }
+
+        .bento-hero-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 36px 32px;
+            flex: 1;
+        }
+
+        .bento-hero .bento-title {
+            font-size: 1.6rem;
+            margin-bottom: 12px;
+        }
+
+        .bento-hero .bento-description {
+            font-size: 0.95rem;
+            line-height: 1.65;
+            color: rgba(255, 255, 255, 0.55);
+            margin-bottom: 20px;
+        }
+
+        .bento-hero:hover {
+            border-color: rgba(59, 130, 246, 0.35);
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%);
+        }
+
+        .bento-hero .response-glow {
+            opacity: 0.5;
+        }
+
+        .bento-hero:hover .response-glow {
+            opacity: 1;
+        }
+
+        /* Standard card - Draft Assistant */
+        .bento-standard {
+            background: linear-gradient(145deg, rgba(236, 72, 153, 0.06) 0%, rgba(139, 92, 246, 0.03) 100%);
+            border-color: rgba(236, 72, 153, 0.1);
+        }
+
+        .bento-standard:hover {
+            border-color: rgba(236, 72, 153, 0.3);
+            background: linear-gradient(145deg, rgba(236, 72, 153, 0.1) 0%, rgba(139, 92, 246, 0.06) 100%);
+        }
+
+        /* Compact cards */
+        .bento-compact {
+            padding: 24px;
+        }
+
+        .bento-compact .bento-title {
+            font-size: 1rem;
+        }
+
+        .bento-compact .bento-description {
+            font-size: 0.82rem;
+        }
+
+        /* Shared bento elements */
+        .bento-icon-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .bento-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5rem;
-            transition: transform 0.4s ease;
+            transition: transform 0.35s ease;
+            flex-shrink: 0;
         }
 
-        .tool-card:hover .tool-card-icon {
-            transform: scale(1.1) rotate(-5deg);
+        .bento-card:hover .bento-icon {
+            transform: scale(1.1);
         }
 
-        .tool-card-icon.draft {
-            background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+        .bento-icon.response {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(99, 102, 241, 0.2));
+            color: #60a5fa;
         }
 
-        .tool-card-icon.response {
-            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+        .bento-icon.draft {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(244, 114, 182, 0.2));
+            color: #f472b6;
         }
 
-        .tool-card-icon.data {
-            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+        .bento-icon.data {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(74, 222, 128, 0.2));
+            color: #4ade80;
         }
 
-        .tool-card-icon.normalizer {
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
+        .bento-icon.normalizer {
+            background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(250, 204, 21, 0.2));
+            color: #facc15;
         }
 
-        .tool-card-title {
-            font-size: 1.25rem;
+        .bento-title {
+            font-size: 1.15rem;
             font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 8px;
+            color: #fff;
+            margin-bottom: 6px;
+            position: relative;
+            z-index: 1;
         }
 
-        .tool-card-description {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
+        .bento-description {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.45);
+            line-height: 1.55;
+            position: relative;
+            z-index: 1;
         }
 
-        .tool-card-badge {
+        .bento-badge {
             display: inline-block;
-            margin-top: 16px;
-            padding: 4px 12px;
-            background: var(--bg-light);
+            padding: 3px 10px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 100px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.45);
             font-weight: 500;
+            margin-top: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .bento-badge.ai-badge {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1));
+            border-color: rgba(139, 92, 246, 0.2);
+            color: rgba(167, 139, 250, 0.9);
+        }
+
+        .bento-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .bento-feature {
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 6px;
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: 500;
+        }
+
+        .bento-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 24px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.15));
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 10px;
+            color: #93c5fd;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: inherit;
+            position: relative;
+            z-index: 1;
+        }
+
+        .bento-cta:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.25));
+            border-color: rgba(59, 130, 246, 0.4);
+            color: #bfdbfe;
+            transform: translateX(2px);
+        }
+
+        .bento-cta svg {
+            transition: transform 0.25s ease;
+        }
+
+        .bento-cta:hover svg {
+            transform: translateX(3px);
+        }
+
+        /* Bento responsive */
+        @media (max-width: 700px) {
+            .bento-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+            }
+
+            .bento-hero {
+                grid-row: auto;
+                grid-column: auto;
+            }
+
+            .tool-menu-content {
+                padding: 32px 16px;
+            }
+
+            .tool-menu-title {
+                font-size: 1.8rem;
+            }
+
+            .tool-menu-greeting {
+                text-align: center;
+            }
         }
 
         /* ==================== MAIN APP ==================== */
@@ -8731,42 +8906,79 @@
         </header>
 
         <div class="tool-menu-content">
-            <div class="tool-menu-hero">
-                <h1 class="tool-menu-title">Let's get to work.</h1>
-                <p class="tool-menu-subtitle">Lightspeed's suite of tools help get your work done, fast.</p>
+            <div class="tool-menu-greeting">
+                <h1 class="tool-menu-title" id="menuGreeting">Good morning.</h1>
+                <p class="tool-menu-subtitle">What would you like to work on?</p>
             </div>
 
-            <div class="tool-cards-grid">
-                <!-- Draft Assistant -->
-                <div class="tool-card" id="toolDraftAssistant">
-                    <div class="tool-card-icon draft">✍️</div>
-                    <h3 class="tool-card-title">Draft Assistant</h3>
-                    <p class="tool-card-description">Create on-brand social media posts, emails, media releases, newsletters, and ads with AI assistance.</p>
-                    <span class="tool-card-badge">AI-Powered</span>
+            <div class="bento-grid">
+                <!-- Response Assistant - Hero Card (spans 2 rows) -->
+                <div class="bento-card bento-hero" id="toolCustomerResponse">
+                    <div class="bento-card-glow response-glow"></div>
+                    <div class="bento-hero-content">
+                        <div class="bento-icon-row">
+                            <div class="bento-icon response">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            </div>
+                            <span class="bento-badge ai-badge">AI-Powered</span>
+                        </div>
+                        <h2 class="bento-title">Response Assistant</h2>
+                        <p class="bento-description">Generate professional, AI-powered responses to customer inquiries. Customize tone, length, and format. Includes knowledge base, analytics, and quick reply templates.</p>
+                        <div class="bento-features">
+                            <span class="bento-feature">Smart Replies</span>
+                            <span class="bento-feature">Knowledge Base</span>
+                            <span class="bento-feature">Analytics</span>
+                            <span class="bento-feature">Templates</span>
+                        </div>
+                        <button class="bento-cta">
+                            Open Response Assistant
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Response Assistant -->
-                <div class="tool-card" id="toolCustomerResponse">
-                    <div class="tool-card-icon response">📧</div>
-                    <h3 class="tool-card-title">Response Assistant</h3>
-                    <p class="tool-card-description">Generate professional, AI-powered responses to customer inquiries with customizable tone and templates.</p>
-                    <span class="tool-card-badge">AI-Powered</span>
+                <!-- Draft Assistant -->
+                <div class="bento-card bento-standard" id="toolDraftAssistant">
+                    <div class="bento-card-glow draft-glow"></div>
+                    <div class="bento-icon-row">
+                        <div class="bento-icon draft">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </div>
+                        <span class="bento-badge ai-badge">AI-Powered</span>
+                    </div>
+                    <h3 class="bento-title">Draft Assistant</h3>
+                    <p class="bento-description">Create on-brand social posts, emails, media releases, and ads.</p>
+                    <div class="bento-features">
+                        <span class="bento-feature">Social</span>
+                        <span class="bento-feature">Email</span>
+                        <span class="bento-feature">Media</span>
+                    </div>
                 </div>
 
                 <!-- Insights Engine -->
-                <div class="tool-card" id="toolDataAnalysis">
-                    <div class="tool-card-icon data">📊</div>
-                    <h3 class="tool-card-title">Insights Engine</h3>
-                    <p class="tool-card-description">Upload Excel files and instantly generate visual dashboards with charts, metrics, and key insights.</p>
-                    <span class="tool-card-badge">Visual Analytics</span>
+                <div class="bento-card bento-compact" id="toolDataAnalysis">
+                    <div class="bento-card-glow data-glow"></div>
+                    <div class="bento-icon-row">
+                        <div class="bento-icon data">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                        </div>
+                    </div>
+                    <h3 class="bento-title">Insights Engine</h3>
+                    <p class="bento-description">Upload data and generate visual dashboards instantly.</p>
+                    <span class="bento-badge">Analytics</span>
                 </div>
 
                 <!-- List Normalizer -->
-                <div class="tool-card" id="toolListNormalizer">
-                    <div class="tool-card-icon normalizer">🔄</div>
-                    <h3 class="tool-card-title">List Normalizer</h3>
-                    <p class="tool-card-description">Transform BUMP customer reports into clean, formatted lists ready for Mailchimp and other platforms.</p>
-                    <span class="tool-card-badge">Data Export</span>
+                <div class="bento-card bento-compact" id="toolListNormalizer">
+                    <div class="bento-card-glow normalizer-glow"></div>
+                    <div class="bento-icon-row">
+                        <div class="bento-icon normalizer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/></svg>
+                        </div>
+                    </div>
+                    <h3 class="bento-title">List Normalizer</h3>
+                    <p class="bento-description">Clean and format customer lists for Mailchimp export.</p>
+                    <span class="bento-badge">Data Export</span>
                 </div>
             </div>
         </div>
