@@ -994,6 +994,11 @@ function showToolMenu() {
             existingAdminBtn.remove();
         }
     }
+
+    // Initialize Ask Lightspeed (refresh sample prompts each time)
+    if (typeof initAskLightspeed === 'function') {
+        initAskLightspeed();
+    }
 }
 
 function openTool(toolId) {
@@ -1056,6 +1061,227 @@ function goBackToMenu() {
     document.getElementById("draftAssistantApp").classList.remove("visible");
     document.getElementById("listNormalizerApp").classList.remove("visible");
     showToolMenu();
+}
+
+// ==================== ASK LIGHTSPEED ====================
+const ASK_SAMPLE_PROMPTS = [
+    "How should I respond to a donor asking about tax receipts?",
+    "Write a thank-you message for a monthly subscriber",
+    "Help me brainstorm social media content ideas for this month",
+    "How do I handle a complaint about a ticket purchase?",
+    "Draft a professional email to a corporate sponsor",
+    "What should I say to someone who didn't win the draw?",
+    "Give me 3 ideas for an engaging Facebook post about our next draw",
+    "How do I explain the 50/50 lottery to someone new?",
+    "Write a brief announcement for our Early Bird draw winner",
+    "Help me respond to a customer having trouble with their account",
+    "What's a good way to promote subscriptions to existing buyers?",
+    "Draft a friendly follow-up to a lapsed donor",
+    "How should I announce a record-breaking Grand Prize?",
+    "Help me write a subject line for our next email campaign",
+    "What tone should I use for a draw reminder email?",
+    "Give me ideas for an Impact Sunday story",
+    "Write a short blurb about where lottery funds go",
+    "How do I politely decline a request we can't fulfill?",
+    "Suggest some calls-to-action for our website",
+    "Help me rewrite this paragraph to sound more exciting"
+];
+
+let askConversation = [];
+let askTone = 'professional';
+let askListenersSetup = false;
+
+function initAskLightspeed() {
+    renderSamplePrompts();
+
+    if (!askListenersSetup) {
+        askListenersSetup = true;
+
+        // Tone pills
+        document.querySelectorAll('.ask-tone').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.ask-tone').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                askTone = btn.dataset.tone;
+            });
+        });
+
+        // Send button
+        document.getElementById('askSendBtn').addEventListener('click', sendAskMessage);
+
+        // Input - enter to send, shift+enter for newline, auto-resize
+        const askInput = document.getElementById('askInput');
+        askInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAskMessage();
+            }
+        });
+        askInput.addEventListener('input', () => {
+            askInput.style.height = 'auto';
+            askInput.style.height = Math.min(askInput.scrollHeight, 120) + 'px';
+        });
+    }
+}
+
+function renderSamplePrompts() {
+    const container = document.getElementById('askPrompts');
+    if (!container) return;
+
+    // Pick 4 random prompts
+    const shuffled = [...ASK_SAMPLE_PROMPTS].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, 4);
+
+    container.innerHTML = selected.map(prompt =>
+        `<button class="ask-prompt-chip" onclick="fillAskPrompt(this)">${escapeHtml(prompt)}</button>`
+    ).join('');
+}
+
+function fillAskPrompt(el) {
+    const input = document.getElementById('askInput');
+    input.value = el.textContent;
+    input.focus();
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+}
+
+async function sendAskMessage() {
+    const input = document.getElementById('askInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    const sendBtn = document.getElementById('askSendBtn');
+    sendBtn.disabled = true;
+
+    // Show chat area
+    const chatArea = document.getElementById('askChat');
+    chatArea.style.display = 'block';
+
+    // Hide sample prompts after first message
+    const prompts = document.getElementById('askPrompts');
+    if (prompts) prompts.style.display = 'none';
+
+    // Add user message
+    askConversation.push({ role: 'user', content: message });
+    appendAskMessage('user', message);
+
+    // Clear input
+    input.value = '';
+    input.style.height = 'auto';
+
+    // Show typing indicator
+    const messagesEl = document.getElementById('askMessages');
+    const typingEl = document.createElement('div');
+    typingEl.className = 'ask-typing';
+    typingEl.id = 'askTyping';
+    typingEl.innerHTML = '<div class="ask-typing-dot"></div><div class="ask-typing-dot"></div><div class="ask-typing-dot"></div>';
+    messagesEl.appendChild(typingEl);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    try {
+        const toneDesc = askTone === 'professional' ? 'professional and helpful' :
+                         askTone === 'friendly' ? 'warm, friendly, and conversational' :
+                         'casual and relaxed';
+
+        const orgName = currentUser?.organization?.name || 'your organization';
+
+        const systemPrompt = `You are Lightspeed AI, a helpful assistant for nonprofit and charitable gaming organizations. You work for ${orgName}.
+
+TONE: Respond in a ${toneDesc} tone.
+
+You help with:
+- Drafting emails, social media posts, and communications
+- Answering questions about charitable gaming, lotteries, and AGCO rules
+- Customer service advice and response suggestions
+- Fundraising and marketing strategy
+- General nonprofit operations
+
+Keep responses concise but thorough. Use markdown formatting when helpful. If asked to write something, provide ready-to-use content.`;
+
+        const response = await fetch(`${API_BASE_URL}/api/generate`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                system: systemPrompt,
+                messages: askConversation.map(m => ({ role: m.role, content: m.content })),
+                max_tokens: 1024
+            })
+        });
+
+        // Remove typing indicator
+        const typing = document.getElementById('askTyping');
+        if (typing) typing.remove();
+
+        if (!response.ok) {
+            throw new Error('Failed to get response');
+        }
+
+        const data = await response.json();
+        const aiText = data.content[0].text;
+
+        askConversation.push({ role: 'assistant', content: aiText });
+        appendAskMessage('ai', aiText);
+
+    } catch (error) {
+        const typing = document.getElementById('askTyping');
+        if (typing) typing.remove();
+        console.error('Ask Lightspeed error:', error);
+        appendAskMessage('ai', 'Sorry, I ran into an issue. Please try again.');
+    } finally {
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
+
+function appendAskMessage(role, text) {
+    const messagesEl = document.getElementById('askMessages');
+    const chatArea = document.getElementById('askChat');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `ask-msg ask-msg-${role}`;
+
+    if (role === 'ai') {
+        // Simple markdown: bold, italic, code blocks, line breaks
+        let html = escapeHtml(text);
+        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+        html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;font-size:0.84em;">$1</code>');
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        html = html.replace(/\n/g, '<br>');
+        msgDiv.innerHTML = html;
+
+        // Add copy button
+        const actions = document.createElement('div');
+        actions.className = 'ask-msg-actions';
+        actions.innerHTML = `<button class="ask-copy-btn" onclick="copyAskMessage(this)">Copy</button>
+            <button class="ask-clear-btn" onclick="clearAskChat()">New chat</button>`;
+        msgDiv.appendChild(actions);
+    } else {
+        msgDiv.textContent = text;
+    }
+
+    messagesEl.appendChild(msgDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function copyAskMessage(btn) {
+    const msgDiv = btn.closest('.ask-msg');
+    // Get text content excluding the action buttons
+    const clone = msgDiv.cloneNode(true);
+    const actions = clone.querySelector('.ask-msg-actions');
+    if (actions) actions.remove();
+    const text = clone.textContent.trim();
+    navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
+}
+
+function clearAskChat() {
+    askConversation = [];
+    document.getElementById('askMessages').innerHTML = '';
+    document.getElementById('askChat').style.display = 'none';
+    document.getElementById('askPrompts').style.display = 'flex';
+    renderSamplePrompts();
 }
 
 // Email/password auth removed - Google OAuth only
