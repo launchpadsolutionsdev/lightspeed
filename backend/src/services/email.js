@@ -59,7 +59,8 @@ async function sendEmail({ to, subject, text, html }) {
         return { success: true, messageId: result.messageId };
 
     } catch (error) {
-        console.error('Email send error:', error);
+        console.error('Email send error:', error.message);
+        console.error('Email error details:', error.code, error.command, error.response);
         return { success: false, error: error.message };
     }
 }
