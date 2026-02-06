@@ -59,10 +59,13 @@ router.post('/', async (req, res) => {
         if (result.success) {
             res.json({ success: true, message: 'Your message has been sent. We\'ll be in touch soon!' });
         } else {
-            // Email service not configured or failed
-            console.warn('Contact form email failed:', result.reason || result.error);
+            // Email service not configured or failed — log details
+            console.error('Contact form email failed:', JSON.stringify(result));
             console.warn('Submission data:', { organizationName, name, title, phone, email, message });
-            res.status(503).json({ error: 'Our email service is temporarily unavailable. Please email us directly at torin@launchpadsolutions.ca' });
+
+            // Include debug info in non-production environments
+            const debugInfo = process.env.NODE_ENV !== 'production' ? ` (Debug: ${result.reason || result.error || 'unknown'})` : '';
+            res.status(503).json({ error: `Our email service is temporarily unavailable. Please email us directly at torin@launchpadsolutions.ca${debugInfo}` });
         }
 
     } catch (error) {

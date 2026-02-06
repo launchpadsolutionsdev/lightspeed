@@ -1002,6 +1002,7 @@ function parseJwt(token) {
 }
 
 function showLoginPage() {
+    pushRoute('/login');
     document.getElementById("loginPage").classList.add("visible");
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
@@ -1010,6 +1011,7 @@ function showLoginPage() {
 }
 
 function showToolMenu() {
+    pushRoute('/dashboard');
     document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
     document.getElementById("appWrapper").classList.remove("visible");
@@ -1068,6 +1070,9 @@ function showToolMenu() {
 function openTool(toolId) {
     currentTool = toolId;
     document.getElementById("toolMenuPage").classList.remove("visible");
+
+    // Update URL
+    pushRoute(TOOL_ROUTES[toolId] || '/dashboard');
 
     // Show the app wrapper (contains sidebar + all tools)
     document.getElementById("appWrapper").classList.add("visible");
@@ -1365,8 +1370,11 @@ function loginUser(user, showMessage = true) {
     document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
 
-    // Show tool menu instead of directly going to main app
-    showToolMenu();
+    // Check if user was trying to reach a specific page before login
+    if (!handlePostLoginRedirect()) {
+        // No pending redirect — show tool menu
+        showToolMenu();
+    }
 
     // Setup main app event listeners if not already done
     setupEventListeners();
@@ -1560,6 +1568,7 @@ function handleLogout() {
     // Show landing page (marketing page)
     document.getElementById("landingPage").classList.remove("hidden");
 
+    pushRoute('/');
     showToast("You've been signed out", "success");
 }
 
@@ -3465,6 +3474,9 @@ function closeSidebar() {
 }
 
 function switchPage(pageId) {
+    // Update URL
+    pushRoute(PAGE_ROUTES[pageId] || TOOL_ROUTES[currentTool] || '/dashboard');
+
     document.querySelectorAll(".sidebar-btn[data-page]").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.page === pageId);
     });
@@ -7330,8 +7342,139 @@ function revealDemoPanel(panel) {
     });
 }
 
+// ==================== URL ROUTER ====================
+const ROUTES = {
+    '/':                    { view: 'landing' },
+    '/home':                { view: 'landing' },
+    '/login':               { view: 'login' },
+    '/dashboard':           { view: 'dashboard' },
+    '/response-assistant':  { view: 'tool', tool: 'customer-response' },
+    '/response-assistant/generator':  { view: 'tool', tool: 'customer-response', page: 'response' },
+    '/response-assistant/templates':  { view: 'tool', tool: 'customer-response', page: 'templates' },
+    '/response-assistant/analytics':  { view: 'tool', tool: 'customer-response', page: 'analytics' },
+    '/response-assistant/knowledge':  { view: 'tool', tool: 'customer-response', page: 'knowledge' },
+    '/response-assistant/teams':      { view: 'tool', tool: 'customer-response', page: 'teams' },
+    '/response-assistant/admin':      { view: 'tool', tool: 'customer-response', page: 'admin' },
+    '/response-assistant/feedback':   { view: 'tool', tool: 'customer-response', page: 'feedback' },
+    '/response-assistant/bulk':       { view: 'tool', tool: 'customer-response', page: 'bulk' },
+    '/data-analysis':       { view: 'tool', tool: 'data-analysis' },
+    '/draft-assistant':     { view: 'tool', tool: 'draft-assistant' },
+    '/list-normalizer':     { view: 'tool', tool: 'list-normalizer' },
+};
+
+// Map tools/pages to URL paths (reverse lookup)
+const TOOL_ROUTES = {
+    'customer-response': '/response-assistant',
+    'data-analysis':     '/data-analysis',
+    'draft-assistant':   '/draft-assistant',
+    'list-normalizer':   '/list-normalizer',
+};
+
+const PAGE_ROUTES = {
+    'response':  '/response-assistant/generator',
+    'templates': '/response-assistant/templates',
+    'analytics': '/response-assistant/analytics',
+    'knowledge': '/response-assistant/knowledge',
+    'teams':     '/response-assistant/teams',
+    'admin':     '/response-assistant/admin',
+    'feedback':  '/response-assistant/feedback',
+    'bulk':      '/response-assistant/bulk',
+};
+
+// Flag to suppress pushState during route navigation (popstate / initial load)
+let _routerNavigating = false;
+
+function pushRoute(path) {
+    if (_routerNavigating) return;
+    if (window.location.pathname !== path) {
+        history.pushState({ path }, '', path);
+    }
+}
+
+function navigateToRoute(path) {
+    const route = ROUTES[path];
+    if (!route) {
+        // Unknown route — go to landing or dashboard depending on auth
+        if (currentUser) {
+            showToolMenu();
+        } else {
+            document.getElementById("landingPage").classList.remove("hidden");
+        }
+        return;
+    }
+
+    if (route.view === 'landing') {
+        if (currentUser) {
+            // Logged-in user hitting / — send to dashboard
+            showToolMenu();
+        } else {
+            handleLogout(); // resets to landing
+            document.getElementById("landingPage").classList.remove("hidden");
+        }
+    } else if (route.view === 'login') {
+        if (currentUser) {
+            showToolMenu();
+        } else {
+            document.getElementById("landingPage").classList.add("hidden");
+            showLoginPage();
+        }
+    } else if (route.view === 'dashboard') {
+        if (!currentUser) {
+            // Save intended destination, show login
+            sessionStorage.setItem('lightspeed_redirect', path);
+            document.getElementById("landingPage").classList.add("hidden");
+            showLoginPage();
+            return;
+        }
+        showToolMenu();
+    } else if (route.view === 'tool') {
+        if (!currentUser) {
+            sessionStorage.setItem('lightspeed_redirect', path);
+            document.getElementById("landingPage").classList.add("hidden");
+            showLoginPage();
+            return;
+        }
+        openTool(route.tool);
+        if (route.page) {
+            switchPage(route.page);
+        }
+    }
+}
+
+// Listen for back/forward button
+window.addEventListener('popstate', (e) => {
+    _routerNavigating = true;
+    navigateToRoute(window.location.pathname);
+    _routerNavigating = false;
+});
+
+// Called after login to redirect to intended page
+function handlePostLoginRedirect() {
+    const redirect = sessionStorage.getItem('lightspeed_redirect');
+    if (redirect) {
+        sessionStorage.removeItem('lightspeed_redirect');
+        _routerNavigating = true;
+        navigateToRoute(redirect);
+        _routerNavigating = false;
+        pushRoute(redirect);
+        return true;
+    }
+    return false;
+}
+
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", () => {
     init();
     initParallaxAndAnimations();
+
+    // After init, check if the URL points somewhere specific
+    const path = window.location.pathname;
+    if (path && path !== '/' && ROUTES[path]) {
+        // Small delay to let init() finish auth check
+        setTimeout(() => {
+            _routerNavigating = true;
+            navigateToRoute(path);
+            _routerNavigating = false;
+        }, 100);
+    }
 });
