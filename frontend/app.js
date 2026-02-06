@@ -682,7 +682,8 @@ async function processGoogleUser(googleUser, credential) {
 
             // Log the user in
             loginUser(user, true);
-            showToast(`Welcome back, ${user.name.split(" ")[0]}!`, "success");
+            const greeting = data.isNewUser ? "Welcome to Lightspeed" : "Welcome back";
+            showToast(`${greeting}, ${user.name.split(" ")[0]}!`, "success");
 
         } else {
             const errorData = await response.json().catch(() => ({}));
@@ -887,7 +888,7 @@ async function handleOrgSetup(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ organizationName: orgName })
+            body: JSON.stringify({ name: orgName })
         });
 
         if (response.ok) {
@@ -3345,7 +3346,7 @@ async function sendInvitation() {
 
         // Show the invite link modal so user can copy and share it
         if (data.inviteLink) {
-            showInviteLinkModal(data.inviteLink, data.email);
+            showInviteLinkModal(data.inviteLink, email, data.emailSent);
         } else {
             showToast('Invitation created successfully!', 'success');
         }
@@ -3481,7 +3482,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showInviteLinkModal(inviteLink, email) {
+function showInviteLinkModal(inviteLink, email, emailSent) {
     // Create modal overlay if it doesn't exist
     let modalOverlay = document.getElementById('inviteLinkModalOverlay');
     if (!modalOverlay) {
@@ -3491,11 +3492,14 @@ function showInviteLinkModal(inviteLink, email) {
         modalOverlay.innerHTML = `
             <div class="modal invite-link-modal">
                 <div class="modal-header">
-                    <h3 class="modal-title">✉️ Invitation Created</h3>
+                    <h3 class="modal-title" id="inviteModalTitle">Invitation Created</h3>
                     <button class="modal-close" onclick="closeInviteLinkModal()">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p class="invite-link-desc">Share this link with <strong id="inviteEmailDisplay"></strong> to invite them to your organization:</p>
+                    <div id="emailSentBanner" style="display:none; background: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: #065f46;">
+                        <strong>Email sent!</strong> An invitation email has been sent to <strong id="emailSentTo"></strong>.
+                    </div>
+                    <p class="invite-link-desc" id="inviteLinkDesc">You can also share this link directly with <strong id="inviteEmailDisplay"></strong>:</p>
                     <div class="invite-link-container">
                         <input type="text" id="inviteLinkInput" readonly class="invite-link-input">
                         <button class="btn-primary copy-link-btn" onclick="copyInviteLink()">
@@ -3516,6 +3520,21 @@ function showInviteLinkModal(inviteLink, email) {
     }
 
     // Populate and show
+    const banner = document.getElementById('emailSentBanner');
+    const desc = document.getElementById('inviteLinkDesc');
+    const title = document.getElementById('inviteModalTitle');
+
+    if (emailSent) {
+        title.textContent = 'Invitation Sent!';
+        banner.style.display = 'block';
+        document.getElementById('emailSentTo').textContent = email;
+        desc.innerHTML = `You can also share this link directly with <strong id="inviteEmailDisplay"></strong>:`;
+    } else {
+        title.textContent = 'Invitation Created';
+        banner.style.display = 'none';
+        desc.innerHTML = `Share this link with <strong id="inviteEmailDisplay"></strong> to invite them to your organization:`;
+    }
+
     document.getElementById('inviteEmailDisplay').textContent = email;
     document.getElementById('inviteLinkInput').value = inviteLink;
     modalOverlay.classList.add('show');
