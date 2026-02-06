@@ -3171,8 +3171,10 @@ async function loadTeamData() {
         }
 
         const orgData = await orgResponse.json();
+        // Backend returns { organizations: [...] } - grab the first one
+        const org = orgData.organizations?.[0] || orgData.organization || null;
 
-        if (!orgData.organization) {
+        if (!org) {
             // User has no organization
             document.getElementById('orgName').textContent = 'No Organization';
             document.getElementById('userRole').textContent = '-';
@@ -3184,13 +3186,14 @@ async function loadTeamData() {
             return;
         }
 
-        currentOrgId = orgData.organization.id;
-        currentUserRole = orgData.organization.role;
+        currentOrgId = org.id;
+        currentUserRole = org.role;
 
         // Update organization details
-        document.getElementById('orgName').textContent = orgData.organization.name || '-';
-        document.getElementById('userRole').textContent = formatRole(orgData.organization.role);
-        document.getElementById('subscriptionStatus').textContent = formatSubscriptionStatus(orgData.organization.subscription_status);
+        document.getElementById('orgName').textContent = org.name || '-';
+        document.getElementById('userRole').textContent = formatRole(org.role);
+        document.getElementById('subscriptionStatus').textContent = formatSubscriptionStatus(org.subscription_status);
+        document.getElementById('totalMembers').textContent = org.member_count || '-';
 
         // Show/hide invite section based on role
         const canInvite = ['owner', 'admin'].includes(currentUserRole);
