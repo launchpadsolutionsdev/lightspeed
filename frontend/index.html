@@ -2425,7 +2425,7 @@
         .bento-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: auto auto;
+            grid-template-rows: 1fr 1fr;
             gap: 16px;
             width: 100%;
         }
@@ -2440,6 +2440,8 @@
             animation: fadeInUp 0.5s ease-out both;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
         }
 
         .bento-card:nth-child(1) { animation-delay: 0ms; }
@@ -2529,9 +2531,15 @@
             background: linear-gradient(145deg, rgba(236, 72, 153, 0.1) 0%, rgba(139, 92, 246, 0.06) 100%);
         }
 
-        /* Compact cards */
+        /* Compact cards row - two cards side by side in one grid cell */
+        .bento-compact-row {
+            display: flex;
+            gap: 16px;
+        }
+
         .bento-compact {
             padding: 24px;
+            flex: 1;
         }
 
         .bento-compact .bento-title {
@@ -2687,6 +2695,10 @@
             .bento-hero {
                 grid-row: auto;
                 grid-column: auto;
+            }
+
+            .bento-compact-row {
+                flex-direction: column;
             }
 
             .tool-menu-content {
@@ -8955,30 +8967,33 @@
                     </div>
                 </div>
 
-                <!-- Insights Engine -->
-                <div class="bento-card bento-compact" id="toolDataAnalysis">
-                    <div class="bento-card-glow data-glow"></div>
-                    <div class="bento-icon-row">
-                        <div class="bento-icon data">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                <!-- Bottom-right: two compact cards side by side -->
+                <div class="bento-compact-row">
+                    <!-- Insights Engine -->
+                    <div class="bento-card bento-compact" id="toolDataAnalysis">
+                        <div class="bento-card-glow data-glow"></div>
+                        <div class="bento-icon-row">
+                            <div class="bento-icon data">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                            </div>
                         </div>
+                        <h3 class="bento-title">Insights Engine</h3>
+                        <p class="bento-description">Upload data and generate visual dashboards instantly.</p>
+                        <span class="bento-badge">Analytics</span>
                     </div>
-                    <h3 class="bento-title">Insights Engine</h3>
-                    <p class="bento-description">Upload data and generate visual dashboards instantly.</p>
-                    <span class="bento-badge">Analytics</span>
-                </div>
 
-                <!-- List Normalizer -->
-                <div class="bento-card bento-compact" id="toolListNormalizer">
-                    <div class="bento-card-glow normalizer-glow"></div>
-                    <div class="bento-icon-row">
-                        <div class="bento-icon normalizer">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/></svg>
+                    <!-- List Normalizer -->
+                    <div class="bento-card bento-compact" id="toolListNormalizer">
+                        <div class="bento-card-glow normalizer-glow"></div>
+                        <div class="bento-icon-row">
+                            <div class="bento-icon normalizer">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/></svg>
+                            </div>
                         </div>
+                        <h3 class="bento-title">List Normalizer</h3>
+                        <p class="bento-description">Clean and format customer lists for Mailchimp export.</p>
+                        <span class="bento-badge">Data Export</span>
                     </div>
-                    <h3 class="bento-title">List Normalizer</h3>
-                    <p class="bento-description">Clean and format customer lists for Mailchimp export.</p>
-                    <span class="bento-badge">Data Export</span>
                 </div>
             </div>
         </div>
