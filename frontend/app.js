@@ -6947,6 +6947,8 @@ function renderLeaderboardHtml(container, leaderboard) {
 // ==================== LIST NORMALIZER ====================
 let listNormalizerListenersSetup = false;
 let normalizerProcessedData = null;
+let normalizerFileName = null;
+const NORMALIZER_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 function setupListNormalizerListeners() {
     if (listNormalizerListenersSetup) return;
@@ -6991,14 +6993,25 @@ function setupListNormalizerListeners() {
     // Reset button
     document.getElementById("normalizerResetBtn").addEventListener("click", resetListNormalizer);
 
+    // Show export history
+    renderNormalizerHistory();
+
     console.log("List Normalizer listeners attached successfully");
 }
 
 function processNormalizerFile(file) {
     if (!file.name.match(/\.xlsx?$/i) && !file.name.match(/\.csv$/i)) {
-        showToast("Please upload an Excel file (.xlsx or .xls)", "error");
+        showToast("Please upload a spreadsheet file (.xlsx, .xls, or .csv)", "error");
         return;
     }
+
+    if (file.size > NORMALIZER_MAX_FILE_SIZE) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        showToast(`File is too large (${sizeMB} MB). Maximum size is 10 MB.`, "error");
+        return;
+    }
+
+    normalizerFileName = file.name;
 
     // Show processing state
     document.getElementById("normalizerUploadSection").style.display = "none";
@@ -7129,6 +7142,9 @@ function processForMailchimp(rawData) {
     const cleanCount = uniqueData.length;
     const removedCount = originalCount - cleanCount;
 
+    // Log usage to backend
+    logNormalizerUsage(originalCount, cleanCount, removedCount);
+
     // Update stats with animation
     setTimeout(() => {
         document.getElementById("normalizerProcessing").style.display = "none";
@@ -7142,6 +7158,24 @@ function processForMailchimp(rawData) {
         // Show preview table
         showNormalizerPreview(uniqueData);
     }, 800);
+}
+
+async function logNormalizerUsage(originalCount, cleanCount, removedCount) {
+    try {
+        await fetch(`${API_BASE_URL}/api/normalize/log`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                originalCount,
+                cleanCount,
+                removedCount,
+                fileName: normalizerFileName
+            })
+        });
+    } catch (err) {
+        // Non-critical — don't interrupt user flow
+        console.warn('[List Normalizer] Failed to log usage:', err.message);
+    }
 }
 
 function showNormalizerPreview(data) {
@@ -7196,10 +7230,77 @@ function downloadNormalizedList() {
     // Download
     XLSX.writeFile(wb, filename);
     showToast(`Downloaded ${filename}`, "success");
+
+    // Save to export history
+    saveNormalizerExport(filename, normalizerProcessedData.length);
+    renderNormalizerHistory();
+}
+
+function saveNormalizerExport(filename, recordCount) {
+    try {
+        const history = JSON.parse(localStorage.getItem('normalizerHistory') || '[]');
+        history.unshift({
+            id: Date.now(),
+            filename,
+            sourceFile: normalizerFileName || 'Unknown',
+            recordCount,
+            date: new Date().toISOString()
+        });
+        // Keep last 20 exports
+        if (history.length > 20) history.length = 20;
+        localStorage.setItem('normalizerHistory', JSON.stringify(history));
+    } catch (err) {
+        console.warn('[List Normalizer] Failed to save history:', err.message);
+    }
+}
+
+function getNormalizerHistory() {
+    try {
+        return JSON.parse(localStorage.getItem('normalizerHistory') || '[]');
+    } catch {
+        return [];
+    }
+}
+
+function clearNormalizerHistory() {
+    localStorage.removeItem('normalizerHistory');
+    renderNormalizerHistory();
+    showToast('Export history cleared', 'success');
+}
+
+function renderNormalizerHistory() {
+    const container = document.getElementById('normalizerHistoryList');
+    if (!container) return;
+
+    const history = getNormalizerHistory();
+    const section = document.getElementById('normalizerHistorySection');
+
+    if (history.length === 0) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+
+    if (section) section.style.display = 'block';
+
+    container.innerHTML = history.map(entry => {
+        const date = new Date(entry.date);
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        return `
+            <div class="normalizer-history-item">
+                <div class="normalizer-history-icon">📄</div>
+                <div class="normalizer-history-details">
+                    <span class="normalizer-history-filename">${escapeHtml(entry.filename)}</span>
+                    <span class="normalizer-history-meta">from ${escapeHtml(entry.sourceFile)} · ${entry.recordCount} records · ${dateStr} at ${timeStr}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function resetListNormalizer() {
     normalizerProcessedData = null;
+    normalizerFileName = null;
     document.getElementById("normalizerUploadSection").style.display = "block";
     document.getElementById("normalizerProcessing").style.display = "none";
     document.getElementById("normalizerResults").style.display = "none";

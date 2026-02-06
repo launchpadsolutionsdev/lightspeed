@@ -5792,6 +5792,89 @@
             color: var(--primary);
         }
 
+        /* Export History */
+        .normalizer-history-section {
+            margin-top: 32px;
+            padding-top: 28px;
+            border-top: 1px solid var(--border);
+        }
+
+        .normalizer-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .normalizer-history-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .normalizer-history-clear-btn {
+            background: none;
+            border: none;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .normalizer-history-clear-btn:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .normalizer-history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .normalizer-history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-input, #f5f3ff);
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+
+        .normalizer-history-item:hover {
+            background: var(--accent, #c4b5fd);
+        }
+
+        .normalizer-history-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .normalizer-history-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .normalizer-history-filename {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .normalizer-history-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .normalizer-info-cards {
@@ -11609,6 +11692,15 @@
                             <h4>Mailchimp Ready</h4>
                             <p>Exports NAME and EMAIL columns sorted and ready to import</p>
                         </div>
+                    </div>
+
+                    <!-- Export History -->
+                    <div class="normalizer-history-section" id="normalizerHistorySection" style="display: none;">
+                        <div class="normalizer-history-header">
+                            <h3>Recent Exports</h3>
+                            <button class="normalizer-history-clear-btn" onclick="clearNormalizerHistory()">Clear History</button>
+                        </div>
+                        <div class="normalizer-history-list" id="normalizerHistoryList"></div>
                     </div>
                 </div>
 

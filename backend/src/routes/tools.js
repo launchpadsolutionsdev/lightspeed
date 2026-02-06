@@ -157,7 +157,7 @@ ${JSON.stringify(data, null, 2)}`;
 
 /**
  * POST /api/normalize
- * Normalize list data (List Normalizer)
+ * Normalize list data via AI (List Normalizer - general purpose)
  */
 router.post('/normalize', authenticate, async (req, res) => {
     try {
@@ -212,6 +212,36 @@ Return ONLY the normalized data, no explanations or additional text.`;
     } catch (error) {
         console.error('Normalize error:', error);
         res.status(500).json({ error: error.message || 'Failed to normalize data' });
+    }
+});
+
+/**
+ * POST /api/normalize/log
+ * Log client-side list normalizer usage (no AI tokens, just record counts)
+ */
+router.post('/normalize/log', authenticate, async (req, res) => {
+    try {
+        const { originalCount, cleanCount, removedCount, fileName } = req.body;
+
+        const orgResult = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [req.userId]
+        );
+
+        const organizationId = orgResult.rows[0]?.organization_id;
+
+        if (organizationId) {
+            await pool.query(
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'list_normalizer', $3, NOW())`,
+                [organizationId, req.userId, cleanCount || 0]
+            );
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Normalize log error:', error);
+        res.status(500).json({ error: 'Failed to log usage' });
     }
 });
 
