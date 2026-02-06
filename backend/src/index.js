@@ -124,6 +124,13 @@ runMigrations().then(() => {
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`Lightspeed API server running on port ${PORT}`);
         console.log(`Health check: http://localhost:${PORT}/health`);
+
+        // Warn if email is not configured
+        if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+            console.warn('\n⚠  EMAIL NOT CONFIGURED — contact form and team invites will not send.');
+            console.warn('   Set SMTP_HOST, SMTP_USER, and SMTP_PASS in your .env file.');
+            console.warn('   For Gmail: SMTP_HOST=smtp.gmail.com, SMTP_USER=you@gmail.com, SMTP_PASS=<app-password>\n');
+        }
     });
 });
 

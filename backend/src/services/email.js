@@ -1,20 +1,23 @@
 /**
  * Email Service
- * Email sending functionality (placeholder - needs SendGrid/Mailgun setup)
+ * Email sending functionality via Gmail SMTP (App Password required)
  */
 
 const nodemailer = require('nodemailer');
 
-// Create transporter (configure with actual SMTP settings in production)
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.example.com',
-    port: process.env.SMTP_PORT || 587,
-    secure: false,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-    }
-});
+// Create transporter — defaults to Gmail SMTP
+let transporter;
+if (process.env.SMTP_HOST || process.env.SMTP_USER) {
+    transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: false,
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
+    });
+}
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@lightspeedutility.ca';
 const FROM_NAME = process.env.FROM_NAME || 'Lightspeed';
@@ -29,10 +32,9 @@ const FROM_NAME = process.env.FROM_NAME || 'Lightspeed';
  */
 async function sendEmail({ to, subject, text, html }) {
     // Check if email is configured
-    if (!process.env.SMTP_HOST) {
-        console.log('Email not configured. Would send to:', to);
-        console.log('Subject:', subject);
-        console.log('Body:', text);
+    if (!transporter) {
+        console.warn('[EMAIL] SMTP not configured — set SMTP_USER and SMTP_PASS env vars.');
+        console.warn('[EMAIL] Would have sent to:', to, '| Subject:', subject);
         return { success: false, reason: 'Email not configured' };
     }
 

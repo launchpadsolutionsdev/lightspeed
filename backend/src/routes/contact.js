@@ -59,9 +59,10 @@ router.post('/', async (req, res) => {
         if (result.success) {
             res.json({ success: true, message: 'Your message has been sent. We\'ll be in touch soon!' });
         } else {
-            // Email service not configured - log and still acknowledge
-            console.log('Contact form submission (email not configured):', { organizationName, name, title, phone, email, message });
-            res.json({ success: true, message: 'Your message has been received. We\'ll be in touch soon!' });
+            // Email service not configured or failed
+            console.warn('Contact form email failed:', result.reason || result.error);
+            console.warn('Submission data:', { organizationName, name, title, phone, email, message });
+            res.status(503).json({ error: 'Our email service is temporarily unavailable. Please email us directly at torin@launchpadsolutions.ca' });
         }
 
     } catch (error) {
