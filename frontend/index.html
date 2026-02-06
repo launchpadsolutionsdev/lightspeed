@@ -2534,13 +2534,189 @@
         }
 
         .app.visible {
-            display: block;
+            display: flex;
             animation: fadeIn 0.5s ease;
+        }
+
+        .app-main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
+        }
+
+        /* ==================== SIDEBAR ==================== */
+        .sidebar {
+            width: 220px;
+            background: linear-gradient(180deg, #0f0a1a 0%, #1a1230 50%, #0f0a1a 100%);
+            border-right: 1px solid rgba(139, 92, 246, 0.15);
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 101;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 20px 16px 16px;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+        }
+
+        .sidebar-header .logo {
+            width: 32px;
+            height: 32px;
+        }
+
+        .sidebar-header .brand-name {
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .sidebar-header .brand-tagline {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sidebar-group {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-group-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: rgba(255,255,255,0.3);
+            padding: 8px 12px 4px;
+        }
+
+        .sidebar-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .sidebar-btn:hover {
+            background: rgba(139, 92, 246, 0.1);
+            color: rgba(255,255,255,0.9);
+        }
+
+        .sidebar-btn.active {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(168, 85, 247, 0.15));
+            color: #fff;
+            box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.3);
+        }
+
+        .sidebar-btn-icon {
+            font-size: 1rem;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .sidebar-btn-label {
+            white-space: nowrap;
+        }
+
+        .sidebar-footer {
+            padding: 10px;
+            border-top: 1px solid rgba(139, 92, 246, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .sidebar-btn-settings,
+        .sidebar-btn-back {
+            font-size: 0.8rem;
+            padding: 8px 12px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .sidebar-btn-back:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: rgba(239, 68, 68, 0.8);
+        }
+
+        .sidebar-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .sidebar-overlay.visible {
+            display: block;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                transform: translateX(-100%);
+                box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-toggle {
+                display: flex;
+            }
         }
 
         /* Header */
@@ -2562,6 +2738,10 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+        }
+
+        .header-spacer {
+            flex: 1;
         }
 
         .logo-section {
@@ -2590,67 +2770,7 @@
             letter-spacing: 0.5px;
         }
 
-        /* Back to Menu Button */
-        .back-to-menu {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            background: var(--bg-light);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
-            font-weight: 500;
-        }
-
-        .back-to-menu:hover {
-            background: var(--border);
-            color: var(--text-primary);
-        }
-
-        .back-to-menu-icon {
-            font-size: 1rem;
-        }
-
-        /* Navigation */
-        .nav {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .nav-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            background: transparent;
-            border: none;
-            border-radius: var(--radius-md);
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-family: inherit;
-            transition: all 0.2s ease;
-        }
-
-        .nav-btn:hover {
-            background: var(--bg-light);
-            color: var(--text-primary);
-        }
-
-        .nav-btn.active {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-        }
-
-        .nav-btn-icon { font-size: 1rem; }
-
+        /* Old nav styles kept for compatibility */
         .nav-divider {
             width: 1px;
             height: 24px;
@@ -7202,8 +7322,6 @@
                 flex-wrap: wrap;
                 gap: 12px;
             }
-
-            .nav { flex-wrap: wrap; justify-content: center; }
             .container { padding: 16px; }
             .hero-title { font-size: 2.5rem; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -7215,12 +7333,6 @@
         /* ==================== SUPER ADMIN DASHBOARD STYLES ==================== */
         #adminNavBtn {
             display: none;
-            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
-            border: 2px solid rgba(255,255,255,0.2);
-        }
-        #adminNavBtn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
         }
         #page-admin {
             padding: 2rem;
@@ -8623,67 +8735,90 @@
 
     <!-- ==================== MAIN APP (Customer Response Tool) ==================== -->
     <div class="app" id="mainApp">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-inner">
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <button class="back-to-menu" id="backToMenuBtn">
-                        <span class="back-to-menu-icon">←</span>
-                        Back to Menu
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="appSidebar">
+            <div class="sidebar-header">
+                <img class="logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
+                <div class="brand">
+                    <div class="brand-name">Response Assistant</div>
+                    <div class="brand-tagline">Lightspeed</div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">Respond</div>
+                    <button class="sidebar-btn active" data-page="response">
+                        <span class="sidebar-btn-icon">&#9889;</span>
+                        <span class="sidebar-btn-label">Generator</span>
                     </button>
-                    <div class="logo-section" id="logoHome">
-                        <img class="logo" src="launchpad-logo.svg" alt="Launchpad Logo" onerror="this.style.display='none'">
-                        <div class="brand">
-                            <div class="brand-name">Response Assistant</div>
-                            <div class="brand-tagline">Lightspeed by Launchpad</div>
-                        </div>
-                    </div>
+                    <button class="sidebar-btn" data-page="templates">
+                        <span class="sidebar-btn-icon">&#128203;</span>
+                        <span class="sidebar-btn-label">Quick Replies</span>
+                    </button>
                 </div>
 
-                <nav class="nav">
-                    <button class="nav-btn active" data-page="response">
-                        <span class="nav-btn-icon">⚡</span>
-                        Generator
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">Insights</div>
+                    <button class="sidebar-btn" data-page="analytics">
+                        <span class="sidebar-btn-icon">&#128202;</span>
+                        <span class="sidebar-btn-label">Analytics</span>
                     </button>
-                    <button class="nav-btn" data-page="templates">
-                        <span class="nav-btn-icon">📋</span>
-                        Quick Replies
+                    <button class="sidebar-btn" data-page="knowledge">
+                        <span class="sidebar-btn-icon">&#128218;</span>
+                        <span class="sidebar-btn-label">Knowledge</span>
                     </button>
-                    <button class="nav-btn" data-page="analytics">
-                        <span class="nav-btn-icon">📊</span>
-                        Analytics
+                </div>
+
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">Manage</div>
+                    <button class="sidebar-btn" id="teamsNavBtn" data-page="teams">
+                        <span class="sidebar-btn-icon">&#128101;</span>
+                        <span class="sidebar-btn-label">Teams</span>
                     </button>
-                    <button class="nav-btn" data-page="knowledge">
-                        <span class="nav-btn-icon">📚</span>
-                        Knowledge
+                    <button class="sidebar-btn" id="adminNavBtn" data-page="admin" style="display: none;">
+                        <span class="sidebar-btn-icon">&#128737;&#65039;</span>
+                        <span class="sidebar-btn-label">Admin</span>
                     </button>
-                    <button class="nav-btn" id="teamsNavBtn" data-page="teams">
-                        <span class="nav-btn-icon">👥</span>
-                        Teams
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="sidebar-btn sidebar-btn-settings" id="settingsToggle" title="Settings">
+                    <span class="sidebar-btn-icon">&#9881;&#65039;</span>
+                    <span class="sidebar-btn-label">Settings</span>
+                </button>
+                <button class="sidebar-btn sidebar-btn-back" id="backToMenuBtn">
+                    <span class="sidebar-btn-icon">&#8592;</span>
+                    <span class="sidebar-btn-label">Back to Menu</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Header (slim - just user menu) -->
+        <div class="app-main">
+        <header class="header">
+            <div class="header-inner">
+                <button class="sidebar-toggle" id="sidebarToggle" title="Toggle menu">
+                    <span>&#9776;</span>
+                </button>
+                <div class="header-spacer"></div>
+                <div class="user-menu">
+                    <button class="user-btn" id="userMenuBtn">
+                        <div class="user-avatar" id="userAvatar">U</div>
+                        <span class="user-name" id="userName">User</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">&#9660;</span>
                     </button>
-                    <button class="nav-btn" id="adminNavBtn" data-page="admin" style="display: none;">
-                        <span class="nav-btn-icon">🛡️</span>
-                        Admin
-                    </button>
-                    <div class="nav-divider"></div>
-                    <button class="settings-btn" id="settingsToggle" title="Settings">⚙️</button>
-                    <div class="user-menu">
-                        <button class="user-btn" id="userMenuBtn">
-                            <div class="user-avatar" id="userAvatar">U</div>
-                            <span class="user-name" id="userName">User</span>
-                            <span style="font-size: 0.7rem; color: var(--text-muted);">▼</span>
+                    <div class="user-dropdown" id="userDropdown">
+                        <button class="user-dropdown-item" id="accountBtn">
+                            <span>&#128100;</span> My Account
                         </button>
-                        <div class="user-dropdown" id="userDropdown">
-                            <button class="user-dropdown-item" id="accountBtn">
-                                <span>👤</span> My Account
-                            </button>
-                            <div class="user-dropdown-divider"></div>
-                            <button class="user-dropdown-item danger" id="logoutBtn">
-                                <span>🚪</span> Sign Out
-                            </button>
-                        </div>
+                        <div class="user-dropdown-divider"></div>
+                        <button class="user-dropdown-item danger" id="logoutBtn">
+                            <span>&#128682;</span> Sign Out
+                        </button>
                     </div>
-                </nav>
+                </div>
             </div>
         </header>
 
@@ -9230,7 +9365,7 @@
                     <span class="footer-brand-text">Lightspeed by Launchpad</span>
                 </div>
                 <div class="footer-links">
-                    <button class="footer-link" onclick="switchPage('feedback')">💬 Feedback</button>
+                    <button class="footer-link" onclick="switchPage('feedback')">&#128172; Feedback</button>
                     <a href="https://launchpadsolutions.ca" target="_blank" class="footer-link">Visit Launchpad</a>
                 </div>
                 <div class="footer-legal">
@@ -9239,10 +9374,11 @@
                     <button class="footer-legal-link" onclick="showLegalModal('terms')">Terms of Service</button>
                 </div>
                 <div class="footer-copyright">
-                    © 2026 Launchpad Solutions. All rights reserved.
+                    &copy; 2026 Launchpad Solutions. All rights reserved.
                 </div>
             </div>
         </footer>
+        </div><!-- /.app-main -->
     </div>
 
     <!-- ==================== DATA ANALYSIS TOOL ==================== -->
