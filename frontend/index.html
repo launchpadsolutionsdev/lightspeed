@@ -5913,6 +5913,56 @@
             color: white;
         }
 
+        /* Write Anything Button Accent */
+        .draft-type-btn-write {
+            position: relative;
+            border-color: rgba(139, 92, 246, 0.3);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.04), rgba(167, 139, 250, 0.04));
+        }
+
+        .draft-type-btn-write:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08));
+        }
+
+        .draft-type-subtitle {
+            font-size: 0.78rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        /* Write Anything Toggle Pills */
+        .wa-toggle-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .wa-toggle-pill {
+            padding: 8px 16px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .wa-toggle-pill:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .wa-toggle-pill.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
         /* Generate Button */
         .draft-generate-btn {
             display: flex;
@@ -10927,6 +10977,11 @@
                             <span class="draft-type-icon">📣</span>
                             <span class="draft-type-label">Facebook/Instagram Ad</span>
                         </button>
+                        <button class="draft-type-btn draft-type-btn-write" data-type="write-anything">
+                            <span class="draft-type-icon">✨</span>
+                            <span class="draft-type-label">Write Anything</span>
+                            <span class="draft-type-subtitle">Freeform AI writing studio</span>
+                        </button>
                     </div>
                 </div>
 
@@ -11101,6 +11156,64 @@
                         <button class="draft-generate-btn" id="draftGenerateBtn">
                             <span class="draft-generate-icon">✨</span>
                             Generate Draft
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Write Anything Input Section -->
+                <div class="draft-input-section write-anything-section" id="writeAnythingSection" style="display: none;">
+                    <div class="draft-input-header">
+                        <span class="draft-type-badge">✨ Write Anything</span>
+                        <button class="draft-change-type" id="writeAnythingChangeType">Change type</button>
+                    </div>
+
+                    <div class="draft-form">
+                        <div class="draft-form-group">
+                            <label class="draft-label">What do you want to write?</label>
+                            <textarea id="writeAnythingTopic" class="draft-textarea" placeholder="E.g., A thank-you letter to donors, a board report summary, a volunteer recruitment post, talking points for a gala speech..."></textarea>
+                        </div>
+
+                        <div class="draft-form-group">
+                            <label class="draft-label">Additional context (optional)</label>
+                            <textarea id="writeAnythingContext" class="draft-textarea draft-textarea-sm" placeholder="Any background info, key points, audience details, or specific requirements..."></textarea>
+                        </div>
+
+                        <!-- Tone Selector -->
+                        <div class="draft-form-group">
+                            <label class="draft-label">Tone</label>
+                            <div class="wa-toggle-group">
+                                <button class="wa-toggle-pill active" data-wa-tone="balanced">Balanced</button>
+                                <button class="wa-toggle-pill" data-wa-tone="warm">Warm</button>
+                                <button class="wa-toggle-pill" data-wa-tone="formal">Formal</button>
+                                <button class="wa-toggle-pill" data-wa-tone="persuasive">Persuasive</button>
+                                <button class="wa-toggle-pill" data-wa-tone="conversational">Conversational</button>
+                            </div>
+                        </div>
+
+                        <!-- Format Selector -->
+                        <div class="draft-form-group">
+                            <label class="draft-label">Format</label>
+                            <div class="wa-toggle-group">
+                                <button class="wa-toggle-pill active" data-wa-format="paragraphs">Paragraphs</button>
+                                <button class="wa-toggle-pill" data-wa-format="bullet-points">Bullet Points</button>
+                                <button class="wa-toggle-pill" data-wa-format="numbered-list">Numbered List</button>
+                                <button class="wa-toggle-pill" data-wa-format="outline">Outline</button>
+                            </div>
+                        </div>
+
+                        <!-- Length Selector -->
+                        <div class="draft-form-group">
+                            <label class="draft-label">Length</label>
+                            <div class="wa-toggle-group">
+                                <button class="wa-toggle-pill" data-wa-length="brief">Brief</button>
+                                <button class="wa-toggle-pill active" data-wa-length="standard">Standard</button>
+                                <button class="wa-toggle-pill" data-wa-length="detailed">Detailed</button>
+                            </div>
+                        </div>
+
+                        <button class="draft-generate-btn" id="writeAnythingGenerateBtn">
+                            <span class="draft-generate-icon">✨</span>
+                            Generate Content
                         </button>
                     </div>
                 </div>
