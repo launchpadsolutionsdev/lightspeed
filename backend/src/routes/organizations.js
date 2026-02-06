@@ -68,7 +68,17 @@ router.get('/:orgId', authenticate, requireOrganization, async (req, res) => {
 router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
     body('name').optional().notEmpty().withMessage('Name cannot be empty'),
     body('brandVoice').optional(),
-    body('timezone').optional()
+    body('timezone').optional(),
+    body('websiteUrl').optional(),
+    body('licenceNumber').optional(),
+    body('storeLocation').optional(),
+    body('supportEmail').optional(),
+    body('ceoName').optional(),
+    body('ceoTitle').optional(),
+    body('mediaContactName').optional(),
+    body('mediaContactEmail').optional(),
+    body('ctaWebsiteUrl').optional(),
+    body('mission').optional()
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -76,23 +86,31 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { name, brandVoice, timezone } = req.body;
+        const fieldMap = {
+            name: 'name',
+            brandVoice: 'brand_voice',
+            timezone: 'timezone',
+            websiteUrl: 'website_url',
+            licenceNumber: 'licence_number',
+            storeLocation: 'store_location',
+            supportEmail: 'support_email',
+            ceoName: 'ceo_name',
+            ceoTitle: 'ceo_title',
+            mediaContactName: 'media_contact_name',
+            mediaContactEmail: 'media_contact_email',
+            ctaWebsiteUrl: 'cta_website_url',
+            mission: 'mission'
+        };
 
         const updates = [];
         const values = [];
         let paramCount = 1;
 
-        if (name !== undefined) {
-            updates.push(`name = $${paramCount++}`);
-            values.push(name);
-        }
-        if (brandVoice !== undefined) {
-            updates.push(`brand_voice = $${paramCount++}`);
-            values.push(brandVoice);
-        }
-        if (timezone !== undefined) {
-            updates.push(`timezone = $${paramCount++}`);
-            values.push(timezone);
+        for (const [bodyKey, dbColumn] of Object.entries(fieldMap)) {
+            if (req.body[bodyKey] !== undefined) {
+                updates.push(`${dbColumn} = $${paramCount++}`);
+                values.push(req.body[bodyKey]);
+            }
         }
 
         if (updates.length === 0) {
