@@ -1,15 +1,13 @@
 /* ==================== SUPER ADMIN DASHBOARD STYLES ==================== */
 
-/* Admin Nav Button */
+/* Admin Nav Button (sidebar) */
 #adminNavBtn {
     display: none;
-    background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
-    border: 2px solid rgba(255,255,255,0.2);
 }
 
-#adminNavBtn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+#adminNavBtn.active {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(167, 139, 250, 0.2));
+    color: #a78bfa;
 }
 
 /* Admin Page Container */

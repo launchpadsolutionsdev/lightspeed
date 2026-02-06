@@ -1206,14 +1206,31 @@ function setupEventListeners() {
     eventListenersSetup = true;
 
     // Navigation
-    document.querySelectorAll(".nav-btn").forEach(btn => {
+    document.querySelectorAll(".sidebar-btn[data-page]").forEach(btn => {
         btn.addEventListener("click", () => switchPage(btn.dataset.page));
     });
 
-    // Logo click - go to generator page
-    document.getElementById("logoHome").addEventListener("click", () => {
-        switchPage("response");
-    });
+    // Sidebar toggle for mobile
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener("click", toggleSidebar);
+    }
+
+    // Create overlay for mobile sidebar
+    if (!document.getElementById("sidebarOverlay")) {
+        const overlay = document.createElement("div");
+        overlay.id = "sidebarOverlay";
+        overlay.className = "sidebar-overlay";
+        overlay.addEventListener("click", closeSidebar);
+        document.body.appendChild(overlay);
+    }
+
+    // Sidebar header click - go to generator page
+    const sidebarHeader = document.querySelector(".sidebar-header");
+    if (sidebarHeader) {
+        sidebarHeader.style.cursor = "pointer";
+        sidebarHeader.addEventListener("click", () => switchPage("response"));
+    }
 
     // Response Generator
     document.getElementById("generateBtn").addEventListener("click", handleGenerate);
@@ -3020,13 +3037,32 @@ function renderSellersTable(sellerData, totalNetSales, totalCash, totalCC, total
 }
 
 // ==================== NAVIGATION ====================
+function toggleSidebar() {
+    const sidebar = document.getElementById("appSidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    if (sidebar) {
+        sidebar.classList.toggle("open");
+        if (overlay) overlay.classList.toggle("visible", sidebar.classList.contains("open"));
+    }
+}
+
+function closeSidebar() {
+    const sidebar = document.getElementById("appSidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    if (sidebar) sidebar.classList.remove("open");
+    if (overlay) overlay.classList.remove("visible");
+}
+
 function switchPage(pageId) {
-    document.querySelectorAll(".nav-btn").forEach(btn => {
+    document.querySelectorAll(".sidebar-btn[data-page]").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.page === pageId);
     });
     document.querySelectorAll(".page").forEach(page => {
         page.classList.toggle("active", page.id === `page-${pageId}`);
     });
+
+    // Close sidebar on mobile after navigation
+    closeSidebar();
 
     // Refresh page-specific data
     if (pageId === "knowledge") {
