@@ -417,8 +417,7 @@ function setupAuthEventListeners() {
     // Landing page CTAs - show login/register
     const launchAppBtns = [
         document.getElementById("navLaunchAppBtn"),
-        document.getElementById("heroGetStartedBtn"),
-        document.getElementById("ctaGetStartedBtn")
+        document.getElementById("heroGetStartedBtn")
     ];
 
     launchAppBtns.forEach(btn => {
@@ -476,6 +475,52 @@ function setupAuthEventListeners() {
             }
         });
     });
+
+    // Contact form submission
+    const contactForm = document.getElementById('landingContactForm');
+    if (contactForm) {
+        contactForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('contactSubmitBtn');
+            const status = document.getElementById('contactFormStatus');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Sending... <span>→</span>';
+            status.textContent = '';
+            status.className = 'contact-form-status';
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('contactName').value.trim(),
+                        title: document.getElementById('contactTitle').value.trim(),
+                        organizationName: document.getElementById('contactOrg').value.trim(),
+                        phone: document.getElementById('contactPhone').value.trim(),
+                        email: document.getElementById('contactEmail').value.trim(),
+                        message: document.getElementById('contactMessage').value.trim()
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    status.textContent = data.message || 'Message sent! We\'ll be in touch soon.';
+                    status.className = 'contact-form-status success';
+                    contactForm.reset();
+                } else {
+                    status.textContent = data.error || 'Something went wrong. Please try again.';
+                    status.className = 'contact-form-status error';
+                }
+            } catch (error) {
+                status.textContent = 'Unable to send message. Please email us directly at torin@launchpadsolutions.ca';
+                status.className = 'contact-form-status error';
+            }
+
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Send Message <span>→</span>';
+        });
+    }
 
     // Google Sign-In is the only auth method - no email/password forms
 
