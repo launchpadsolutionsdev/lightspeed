@@ -1,15 +1,10 @@
 // Lightspeed by Launchpad Solutions
-// Generic Knowledge Base for Hospital Lotteries & Charitable Gaming
+// Generic Knowledge Base for Charitable Gaming & Lottery Organizations in Ontario
 //
-// PLACEHOLDERS USED:
-// the Thunder Bay Regional Health Sciences Foundation - The lottery/charity name (e.g., "the Thunder Bay Regional Health Sciences Foundation")
-// [LOTTERY_NAME] - The specific lottery name (e.g., "Thunder Bay 50/50")
-// www.thunderbay5050.ca - Main lottery website
-// your subscription account (click here: https://account.tbay5050draw.ca) - Account management portal URL
-// [SUPPORT_EMAIL] - Support email address
-// [SUPPORT_PHONE] - Support phone number
-// [DRAW_DAY] - Day of the week for draws (e.g., "Friday")
-// [DRAW_TIME] - Time of draw (e.g., "12:00 PM EST")
+// This knowledge base is organization-agnostic. All responses use generic phrasing
+// such as "our organization", "our website", "your account portal", and
+// "our support email" so that any licensed charitable lottery in Ontario can
+// adopt it without modification.
 
 // ==================== FACEBOOK COMMENT GUIDELINES ====================
 // IMPORTANT: For Facebook comments, NEVER offer to take direct action like resending tickets,
@@ -17,7 +12,7 @@
 // Facebook is a public platform and we cannot verify identity or handle sensitive account matters there.
 //
 // Standard Facebook redirect response:
-// "Please email us at info@thunderbay5050.ca and our team will assist you as soon as possible."
+// "Please email us at our support email and our team will assist you as soon as possible."
 
 const KNOWLEDGE_BASE = {
     // ==================== 50/50 LOTTERY KNOWLEDGE ====================
@@ -29,7 +24,7 @@ const KNOWLEDGE_BASE = {
             question: "Customer didn't receive their ticket confirmation email",
             response: `Hi there,
 
-Thank you for reaching out and for your support of the Thunder Bay Regional Health Sciences Foundation!
+Thank you for reaching out and for your support of our organization!
 
 I'm sorry to hear your ticket confirmation didn't arrive. Sometimes these emails can end up in spam or junk folders, so please check there first.
 
@@ -53,7 +48,7 @@ I've just forwarded your ticket confirmation to the email address on file. Pleas
 
 If you'd like me to send them to a different email address, just let me know and I'll update that for you.
 
-Thank you for supporting the Thunder Bay Regional Health Sciences Foundation!
+Thank you for supporting our organization!
 
 Best regards`
         },
@@ -105,25 +100,9 @@ Here's how it works:
 • Your tickets are purchased and emailed to you automatically
 • You're entered into every draw without having to remember to buy tickets
 
-You can cancel or modify your subscription at any time through your account at your subscription account (click here: https://account.tbay5050draw.ca), or just reach out to us and we'll help you make changes.
+You can cancel or modify your subscription at any time through your account portal, or just reach out to us and we'll help you make changes.
 
 Would you like help setting up a subscription?
-
-Best regards`
-        },
-        {
-            id: "5050-how-to-subscribe",
-            keywords: ["how to subscribe", "subscribe", "set up subscription", "automatic tickets", "monthly tickets"],
-            question: "Customer wants to know how to subscribe",
-            response: `Hi there,
-
-Thank you for reaching out!
-
-When you go to purchase your tickets on www.thunderbay5050.ca, you'll see a checkbox option at the bottom of the page, just above the "Buy Tickets" button. Selecting this box will sign you up for a subscription.
-
-Your tickets will then be automatically purchased and sent to you each draw period, and your payment method will be charged automatically.
-
-Thank you for your support, and good luck in the draw!
 
 Best regards`
         },
@@ -135,7 +114,7 @@ Best regards`
 
 I can help you with that!
 
-You can cancel your subscription anytime by logging into your account at your subscription account (click here: https://account.tbay5050draw.ca) and going to the subscription management section.
+You can cancel your subscription anytime by logging into your account portal and going to the subscription management section.
 
 Alternatively, I can cancel it for you right now. Could you please confirm your account email address so I can locate your subscription?
 
@@ -171,7 +150,7 @@ Best regards`
 
 Of course! You can modify your subscription at any time.
 
-The easiest way is to log into your account at your subscription account (click here: https://account.tbay5050draw.ca) and adjust your subscription settings there.
+The easiest way is to log into your account portal and adjust your subscription settings there.
 
 If you'd prefer, I can make the change for you. Just let me know:
 • Your account email address
@@ -269,7 +248,7 @@ Best regards`
 
 Thank you for reaching out!
 
-You can update your payment method at any time by logging into your account at your subscription account (click here: https://account.tbay5050draw.ca).
+You can update your payment method at any time by logging into your account portal.
 
 Once logged in, navigate to your profile or account settings. From there, you'll be able to add, remove, or modify your payment methods and billing information.
 
@@ -293,10 +272,10 @@ If you win:
 • We never ask winners to pay fees or provide banking info to claim prizes
 
 To check results yourself:
-• Visit www.thunderbay5050.ca after each draw to see the winning numbers
+• Visit our website after each draw to see the winning numbers
 • Compare them against the ticket numbers in your confirmation email
 
-The winning numbers are typically posted shortly after the draw concludes. But don't worry - we call all our winners, so you don't need to check manually!
+The winning numbers are typically posted shortly after the draw concludes. But don't worry - we contact all our winners, so you don't need to check manually!
 
 Good luck!
 
@@ -310,92 +289,23 @@ Best regards`
 
 Great question! Our draws happen throughout the month - we have multiple Early Bird draws plus the Grand Prize draw at the end of each month.
 
-All draws take place at 11:00 AM, and the deadline to purchase tickets for each draw is 11:59 PM the night before.
-
-For the full schedule of upcoming Early Bird draws and the Grand Prize draw date, please visit www.thunderbay5050.ca - the dates change each month so the website always has the most current information!
+For the full schedule of upcoming Early Bird draws and the Grand Prize draw date, please visit our website - the dates change each month so the website always has the most current information!
 
 Is there anything else I can help you with?
 
 Best regards`
         },
         {
-            id: "5050-ticket-validity",
-            keywords: ["how long valid", "ticket expire", "when expire", "validity period", "tickets good for", "still valid", "last month tickets", "old tickets", "previous tickets"],
-            question: "Customer wants to know how long tickets are valid",
-            response: `Hi there,
-
-For our 50/50 lottery, tickets are valid only for the specific draw period in which they were purchased.
-
-Unlike some lotteries where tickets carry over, each 50/50 draw is independent. This means:
-• Tickets purchased for the current draw are only entered into that draw
-• After the draw, those ticket numbers are no longer active
-• To be entered into the next draw, you'll need to purchase new tickets
-
-This is why many of our supporters choose to set up a subscription - it ensures you never miss a draw!
-
-Let me know if you have any other questions.
-
-Best regards`
-        },
-        {
-            id: "5050-jackpot-size",
-            keywords: ["jackpot", "how much", "prize amount", "pot size", "current jackpot"],
-            question: "Customer wants to know the current jackpot",
-            response: `Hi there,
-
-The jackpot amount changes as more tickets are sold - the winner takes home 50% of the total pot!
-
-For the most up-to-date jackpot amount, please visit www.thunderbay5050.ca. The jackpot counter updates in real-time as tickets are purchased.
-
-The more tickets sold, the bigger the prize - so spread the word!
-
-Good luck!
-
-Best regards`
-        },
-        {
-            id: "5050-where-winners",
-            keywords: ["where are winners", "who won", "winner list", "see winners", "this month's winners"],
-            question: "Customer wants to see the list of winners",
-            response: `Hi there,
-
-Thank you for reaching out!
-
-You can view our winners by visiting www.thunderbay5050.ca and looking for the "Winners" section.
-
-We post all our winners after each draw so you can see who's won!
-
-We appreciate your support and good luck with the draws!
-
-Best regards`
-        },
-        {
-            id: "5050-odds-of-winning",
-            keywords: ["odds of winning", "chances of winning", "probability", "what are the odds", "how likely"],
-            question: "Customer asking about odds of winning",
-            response: `Hi there,
-
-In a 50/50 lottery, your odds of winning depend on the total number of tickets sold.
-
-Here's how it works: each ticket has an equal chance of being drawn. So if 10,000 tickets are sold and you buy 1 ticket, your odds are 1 in 10,000. If you buy 10 tickets, your odds improve to 10 in 10,000 (or 1 in 1,000).
-
-The exact odds vary each draw based on ticket sales, but buying more tickets does increase your chances!
-
-Good luck!
-
-Best regards`
-        },
-        {
             id: "5050-how-draw-works",
-            keywords: ["how does draw work", "how do you draw", "draw process", "how is winner chosen", "is it random"],
-            question: "Customer wants to know how the draw works",
+            keywords: ["how does draw work", "how do you draw", "draw process", "how is winner chosen", "is it random", "odds of winning", "chances of winning", "probability"],
+            question: "Customer wants to know how the draw works or their odds",
             response: `Hi there,
 
 Our lottery is licensed and regulated by the Alcohol & Gaming Commission of Ontario (AGCO).
 
 Winners are randomly selected using an AGCO-approved electronic raffle system - the same type of system used by major sporting events and hospital raffles across Canada. Each draw is conducted under strict regulatory oversight to ensure complete fairness and transparency.
 
-Every ticket has an equal chance of being drawn, and the process is completely random.
+In a 50/50 lottery, each ticket has an equal chance of being drawn. Your odds depend on the total number of tickets sold - buying more tickets does increase your chances.
 
 If you have any other questions about how the lottery works, feel free to ask!
 
@@ -412,7 +322,7 @@ Best regards`
 I'm sorry you're having trouble accessing your account. Let me help!
 
 To reset your password:
-1. Go to your subscription account (click here: https://account.tbay5050draw.ca)
+1. Go to your account portal
 2. Click "Forgot Password" below the login fields
 3. Enter your email address
 4. Check your inbox for a password reset link
@@ -430,7 +340,7 @@ Best regards`
             question: "Customer wants to update their account information",
             response: `Hi there,
 
-You can update your account information by logging into your account at your subscription account (click here: https://account.tbay5050draw.ca).
+You can update your account information by logging into your account portal.
 
 Once logged in, look for "Account Settings" or "Profile" where you can update:
 • Email address
@@ -442,34 +352,15 @@ If you need help making changes or can't access your account, just let me know w
 
 Best regards`
         },
-        {
-            id: "5050-cant-find-purchase",
-            keywords: ["can't find", "no record", "not in system", "can't locate", "no purchase found"],
-            question: "Can't locate customer's purchase",
-            response: `Hi there,
-
-Thank you for reaching out. I've reviewed your request but couldn't locate any details under the name or email provided.
-
-Could you please share:
-• The last four digits of the credit card used
-• Any other name or email that may have been used for the purchase
-• The approximate date and amount of the purchase
-
-This will help me look into it further for you.
-
-We appreciate your support!
-
-Best regards`
-        },
 
         // ----- TECHNICAL ISSUES -----
         {
             id: "5050-location-blocked",
-            keywords: ["location blocked", "can't access", "blocked", "not available in my area", "geolocation", "VPN", "location error", "location services"],
-            question: "Customer is blocked due to location",
+            keywords: ["location blocked", "can't access", "blocked", "not available in my area", "geolocation", "VPN", "location error", "location services", "outside ontario", "other province", "not in ontario"],
+            question: "Customer is blocked due to location or asking about buying from outside Ontario",
             response: `Hi there,
 
-I'm sorry you're experiencing this issue. Our lottery is licensed by AGCO (Alcohol and Gaming Commission of Ontario) and can only sell tickets to people physically located within Ontario at the time of purchase.
+Our lottery is licensed by AGCO (Alcohol and Gaming Commission of Ontario) and can only sell tickets to people physically located within Ontario at the time of purchase.
 
 If you're in Ontario but still seeing a location error, here are some things to try:
 • Disable any VPN or proxy services you may be using
@@ -477,50 +368,16 @@ If you're in Ontario but still seeing a location error, here are some things to 
 • Try a different browser or device
 • If on mobile, ensure GPS is enabled
 
-If you're using satellite internet, please note that depending on the time of day, your connection may route through servers outside Ontario. Try again at a different time.
+If you're using satellite internet, please note that depending on the time of day, your connection may route through servers outside Ontario. Try again at a different time. Some internet service providers also have IP addresses that register outside of Ontario - if this is the case, you may need to contact your provider to resolve it, or try purchasing on a different connection such as mobile data.
 
 If you continue to have issues and you're certain you're in Ontario, please let me know and I can look into it further.
 
 Best regards`
         },
         {
-            id: "5050-eastlink",
-            keywords: ["eastlink", "east link", "eastlink internet"],
-            question: "EastLink Internet users experiencing location issues",
-            response: `Hi there,
-
-This issue is specific to EastLink internet customers, and unfortunately we're unable to resolve it on our end.
-
-The issue is that EastLink's IP addresses sometimes register as being outside of Ontario, which triggers our geolocation block.
-
-The solution is to contact EastLink directly and ask them to correct this issue. Their customer service line is 1-888-345-1111.
-
-Alternatively, you can try purchasing tickets using a different internet connection (such as mobile data) or from a different device.
-
-Thank you for your patience!
-
-Best regards`
-        },
-        {
-            id: "5050-outside-ontario",
-            keywords: ["outside ontario", "other province", "united states", "not in ontario", "different province", "another country"],
-            question: "Customer asking if they can buy from outside Ontario",
-            response: `Hi there,
-
-Thank you for reaching out!
-
-Unfortunately, our lottery is licensed by the Alcohol and Gaming Commission of Ontario (AGCO), which means only people physically located inside Ontario at the time of purchase are able to participate.
-
-It is not our intention to exclude anyone from supporting our cause, however we are bound by the laws and regulations of the province of Ontario.
-
-Please let me know if you have any further questions!
-
-Best regards`
-        },
-        {
             id: "5050-website-not-working",
-            keywords: ["website not working", "site down", "error message", "page not loading", "website problem", "can't access website", "trouble purchasing"],
-            question: "Customer is having website issues",
+            keywords: ["website not working", "site down", "error message", "page not loading", "website problem", "can't access website", "trouble purchasing", "mobile app", "app download", "phone app"],
+            question: "Customer is having website or technical issues",
             response: `Hi there,
 
 I'm sorry to hear you're having trouble with the website. Let me help troubleshoot.
@@ -532,6 +389,8 @@ Please try the following:
 • Make sure location services are enabled for your browser
 • Try accessing the site from a different device
 
+We don't currently have a dedicated mobile app, but our website is fully mobile-responsive and works great on smartphones and tablets. You can also add the website to your home screen for quick access.
+
 If you're still having issues, could you please let me know:
 • What browser you're using
 • What error message (if any) you're seeing
@@ -541,27 +400,8 @@ This will help me investigate and get you back on track!
 
 Best regards`
         },
-        {
-            id: "5050-mobile-app",
-            keywords: ["mobile app", "app download", "phone app", "is there an app", "android app", "iphone app"],
-            question: "Customer asking about mobile app",
-            response: `Hi there,
 
-We don't currently have a dedicated mobile app, but our website at www.thunderbay5050.ca is fully mobile-responsive and works great on smartphones and tablets!
-
-Simply visit the website in your phone's browser to:
-• Purchase tickets
-• Check draw results
-• Manage your subscription
-
-You can also add the website to your home screen for quick access - it will work just like an app!
-
-Let me know if you have any other questions.
-
-Best regards`
-        },
-
-        // ----- GROUPS -----
+        // ----- GROUPS & GIFTS -----
         {
             id: "5050-group-tickets",
             keywords: ["add group", "group members", "add names", "change group", "group ticket"],
@@ -607,33 +447,15 @@ Best regards`
             question: "Customer asking for a tax receipt",
             response: `Hi there,
 
-Thank you for your support of the Thunder Bay Regional Health Sciences Foundation!
+Thank you for your support of our organization!
 
 Unfortunately, we're not able to issue tax receipts for lottery ticket purchases. Under Canadian tax law, lottery tickets are not considered charitable donations, even when the proceeds support a charitable cause.
 
 The purchase is considered a gaming transaction rather than a donation, which is why tax receipts cannot be provided.
 
-If you're interested in making a tax-deductible donation to the Thunder Bay Regional Health Sciences Foundation, I'd be happy to provide information on how to do that separately.
+If you're interested in making a tax-deductible donation to our charity, I'd be happy to provide information on how to do that separately.
 
 Thank you for understanding!
-
-Best regards`
-        },
-        {
-            id: "5050-how-funds-used",
-            keywords: ["where does money go", "how are funds used", "what does it support", "how does it help", "proceeds go to", "hospital", "impact"],
-            question: "Customer wants to know how lottery proceeds are used",
-            response: `Hi there,
-
-Thank you for asking - it's wonderful to know you care about where your support goes!
-
-Proceeds from our lottery directly support the Thunder Bay Regional Health Sciences Foundation and its mission. Lottery funds help provide vital equipment, programs, and services that make a real difference in our community.
-
-Every ticket purchased helps us continue this important work. We're so grateful for supporters like you who make it possible.
-
-If you'd like more specific information about current initiatives or how funds are allocated, I'd be happy to connect you with our foundation team.
-
-Thank you for your support!
 
 Best regards`
         },
@@ -647,27 +469,27 @@ Great question! To purchase tickets, you must:
 
 • Be 18 years of age or older
 • Be physically located in Ontario at the time of purchase
-• Not be an employee or immediate family member of the Thunder Bay Regional Health Sciences Foundation or the lottery operator
+• Not be an employee or immediate family member of the charitable organization or the lottery operator
 
 These rules are set by AGCO (Alcohol and Gaming Commission of Ontario) to ensure fair and responsible gaming.
 
-If you meet these requirements, you're welcome to play! Visit www.thunderbay5050.ca to get your tickets.
+If you meet these requirements, you're welcome to play! Visit our website to get your tickets.
 
 Best regards`
         },
         {
             id: "5050-is-it-legit",
-            keywords: ["scam", "is this real", "legitimate", "fake", "fraud", "rigged", "fixed"],
-            question: "Customer questioning if lottery is legitimate",
+            keywords: ["scam", "is this real", "legitimate", "fake", "fraud", "rigged", "fixed", "where does money go", "how are funds used", "what does it support", "how does it help", "proceeds"],
+            question: "Customer questioning if lottery is legitimate or asking how funds are used",
             response: `Hi there,
 
 Great question - it's smart to be cautious!
 
 Our lottery is 100% legitimate. It's licensed and regulated by the Alcohol & Gaming Commission of Ontario (AGCO). All draws are conducted using AGCO-approved systems, and we operate under strict regulatory oversight.
 
-Lottery proceeds support the Thunder Bay Regional Health Sciences Foundation and have helped fund vital equipment and programs for our community.
+Lottery proceeds directly support our charitable organization and its mission. Every ticket purchased helps fund vital programs, equipment, and services that make a real difference in our community.
 
-You can learn more about our lottery and see our winners at www.thunderbay5050.ca.
+You can learn more about our lottery and see our winners on our website. If you'd like more specific information about current initiatives or how funds are allocated, I'd be happy to connect you with our team.
 
 If you have any other concerns, please don't hesitate to reach out!
 
@@ -683,7 +505,7 @@ Best regards`
 
 Thank you for reaching out.
 
-I want to make sure your concern is addressed properly, so I'm going to pass your email along to my manager who will be able to look into this further and get back to you.
+I want to make sure your concern is addressed properly, so I'm going to pass your message along to my manager who will be able to look into this further and get back to you.
 
 Thank you for your patience!
 
@@ -756,55 +578,20 @@ Best regards`
         },
         {
             id: "cta-cards-remaining",
-            keywords: ["cards left", "remaining cards", "how many cards", "cards eliminated", "which cards left"],
-            question: "Customer asking about remaining cards in the deck",
+            keywords: ["cards left", "remaining cards", "how many cards", "cards eliminated", "which cards left", "when does it end", "how long", "end date", "game over"],
+            question: "Customer asking about remaining cards or when the game ends",
             response: `Hi there,
 
-You can see exactly which cards remain in the deck on our website at www.thunderbay5050.ca.
+You can see exactly which cards remain in the deck on our website.
 
 We display:
 • Which cards have been revealed (eliminated)
 • How many cards are left in the deck
 • The improving odds of finding the Ace of Spades
 
-As more cards are eliminated each week, your chances of hitting the big jackpot increase!
+Catch the Ace continues until someone finds the Ace of Spades - there's no set end date. As more cards are eliminated each week, your chances of hitting the big jackpot increase, and the excitement builds!
 
-Best regards`
-        },
-        {
-            id: "cta-select-card",
-            keywords: ["select card", "pick card", "choose card", "which card", "card selection"],
-            question: "Customer asking about how card selection works",
-            response: `Hi there,
-
-Great question! When you purchase your tickets, each ticket is assigned a card selection number. Here's how it works:
-
-• Each ticket has a randomly assigned card position (1-52)
-• If your ticket is drawn as the winner, that card number determines which card you reveal
-
-The exact process is explained on your ticket confirmation, but rest assured - if you win the weekly draw, we'll guide you through the card selection process!
-
-Good luck!
-
-Best regards`
-        },
-        {
-            id: "cta-when-does-it-end",
-            keywords: ["when does it end", "how long", "end date", "game over", "final draw"],
-            question: "Customer asking when the game ends",
-            response: `Hi there,
-
-Catch the Ace continues until someone finds the Ace of Spades! There's no set end date.
-
-Each week:
-• A new ticket is drawn
-• That winner reveals a card
-• If it's the Ace of Spades, they win the progressive jackpot and the game resets
-• If not, the game continues and the jackpot grows
-
-As more cards are eliminated, the excitement builds - and eventually, someone will find that Ace!
-
-Don't miss your chance to be part of it. Get your tickets at www.thunderbay5050.ca.
+Don't miss your chance to be part of it - get your tickets on our website.
 
 Best regards`
         },
@@ -812,15 +599,15 @@ Best regards`
         // ----- TICKETS -----
         {
             id: "cta-tickets-not-received",
-            keywords: ["didn't receive", "no tickets", "didn't get", "haven't received", "where are my tickets"],
-            question: "Customer didn't receive their ticket confirmation email",
+            keywords: ["didn't receive", "no tickets", "didn't get", "haven't received", "where are my tickets", "resend", "send again", "forward", "wrong email", "typo email"],
+            question: "Customer didn't receive tickets or wants them resent",
             response: `Hi there,
 
-Thank you for reaching out and for supporting the Thunder Bay Regional Health Sciences Foundation!
+Thank you for reaching out and for supporting our organization!
 
 I'm sorry your tickets haven't arrived. These emails can sometimes end up in spam or junk folders, so please check there first.
 
-If you still can't find them, I can resend your ticket confirmation right away. Just confirm the email address you used when purchasing.
+If you still can't find them, I can resend your ticket confirmation right away. Just confirm the email address you used when purchasing. If you need the tickets sent to a different email address, let me know that too.
 
 Rest assured, your tickets are safely in our system even if the email went astray.
 
@@ -828,37 +615,23 @@ Thank you for your patience!
 
 Best regards`
         },
-        {
-            id: "cta-resend-tickets",
-            keywords: ["resend", "send again", "forward", "forwarded", "send tickets again"],
-            question: "Customer wants tickets resent",
-            response: `Hi there,
-
-Of course! I've forwarded your tickets to you. Please scroll down in the email to view all your ticket numbers.
-
-If you don't receive them within the next 30 minutes, please check your spam/junk folder.
-
-We appreciate your support and good luck!
-
-Best regards`
-        },
 
         // ----- SUBSCRIPTIONS -----
         {
             id: "cta-subscription",
-            keywords: ["subscription", "weekly auto", "automatic weekly", "subscribe", "recurring"],
-            question: "Customer wants to set up a weekly subscription",
+            keywords: ["subscription", "weekly auto", "automatic weekly", "subscribe", "recurring", "how to subscribe", "set up subscription"],
+            question: "Customer wants to set up or learn about a weekly subscription",
             response: `Hi there,
 
 Setting up a subscription is easy and ensures you never miss a draw!
 
 Here's how to subscribe:
-1. Visit www.thunderbay5050.ca
+1. Visit our website
 2. Select your ticket package
 3. During checkout, select the subscription option
 4. Your payment method will be charged automatically each week before the draw
 
-You can manage or cancel your subscription anytime at your subscription account (click here: https://account.tbay5050draw.ca).
+You can manage or cancel your subscription anytime through your account portal.
 
 With a subscription, your tickets are purchased and emailed to you automatically each week - one less thing to remember!
 
@@ -868,33 +641,19 @@ Best regards`
         },
         {
             id: "cta-cancel-subscription",
-            keywords: ["cancel subscription", "stop subscription", "unsubscribe", "stop weekly", "end subscription"],
-            question: "Customer wants to cancel their subscription",
+            keywords: ["cancel subscription", "stop subscription", "unsubscribe", "stop weekly", "end subscription", "manage subscription", "change subscription"],
+            question: "Customer wants to cancel or manage their subscription",
             response: `Hi there,
 
 I can help you with that!
 
-You can cancel your subscription by logging into your account at your subscription account (click here: https://account.tbay5050draw.ca) and navigating to subscription settings.
+You can manage or cancel your subscription by logging into your account portal and navigating to your subscription settings.
 
-Or, if you'd prefer, I can cancel it for you. Just confirm the email address on your account.
+Or, if you'd prefer, I can make changes or cancel it for you. Just confirm the email address on your account.
 
-Please note: Any tickets already purchased for this week's draw remain valid - the cancellation only stops future automatic purchases.
+Please note: Any tickets already purchased for this week's draw remain valid - changes only affect future automatic purchases.
 
 Let me know how you'd like to proceed!
-
-Best regards`
-        },
-        {
-            id: "cta-manage-subscription",
-            keywords: ["manage subscription", "subscription settings", "change subscription"],
-            question: "Customer wants to manage their subscription",
-            response: `Hi there,
-
-You can manage your subscription by visiting www.thunderbay5050.ca and clicking "Manage Subscriptions" at the top of the page.
-
-You'll be prompted to log in, and once you're in, you can modify or cancel your subscription anytime!
-
-Let me know if you need any help.
 
 Best regards`
         },
@@ -918,15 +677,15 @@ Best regards`
         // ----- DRAWS & WINNING -----
         {
             id: "cta-when-is-draw",
-            keywords: ["when is draw", "draw time", "what day", "when does draw happen", "draw date"],
-            question: "Customer wants to know when the draw takes place",
+            keywords: ["when is draw", "draw time", "what day", "when does draw happen", "draw date", "jackpot", "current jackpot", "prize amount", "how much"],
+            question: "Customer wants to know about draw schedule or current jackpot",
             response: `Hi there,
 
-Our weekly draw takes place at 11:00 AM. The deadline to purchase tickets is 11:59 PM the night before each draw.
+For the current draw schedule and progressive jackpot amount, please visit our website - both are displayed prominently and updated regularly.
 
-You can watch the draw live on our website or social media channels! The winning ticket number and revealed card are also posted on www.thunderbay5050.ca shortly after.
+The deadline to purchase tickets is typically the night before each draw. You can watch the draw live on our website or social media channels, and the winning ticket number and revealed card are posted on our website shortly after.
 
-For the current draw schedule, please visit www.thunderbay5050.ca!
+Remember, there's a weekly prize for the ticket holder who gets to pick a card, even if they don't find the Ace of Spades. So there's something to win every week!
 
 Good luck!
 
@@ -941,7 +700,7 @@ Best regards`
 Here's how to find out if you've won:
 
 After each draw:
-• The winning ticket number is posted on www.thunderbay5050.ca
+• The winning ticket number is posted on our website
 • Compare it to the ticket numbers in your confirmation email
 
 If you win:
@@ -949,23 +708,7 @@ If you win:
 • You'll have the exciting opportunity to pick a card from the deck!
 • We never ask for payment or banking details to claim prizes
 
-The winning numbers are posted within minutes of the draw concluding. But don't worry - we call all our winners, so you don't need to check manually!
-
-Good luck!
-
-Best regards`
-        },
-        {
-            id: "cta-current-jackpot",
-            keywords: ["jackpot", "how much", "current jackpot", "prize amount", "progressive pot"],
-            question: "Customer asking about the current jackpot",
-            response: `Hi there,
-
-The progressive jackpot grows each week until someone finds the Ace of Spades!
-
-For the current jackpot amount, please visit www.thunderbay5050.ca - it's displayed prominently on the homepage and updates in real-time.
-
-Remember, there's also a weekly prize for the ticket holder who gets to pick a card, even if they don't find the Ace of Spades. So there's something to win every week!
+The winning numbers are posted within minutes of the draw concluding. But don't worry - we contact all our winners, so you don't need to check manually!
 
 Good luck!
 
@@ -1020,11 +763,11 @@ Best regards`
         // ----- TECHNICAL & ACCOUNT -----
         {
             id: "cta-location-blocked",
-            keywords: ["blocked", "location", "can't access", "not available", "geolocation", "location error", "location blocking"],
-            question: "Customer is location blocked",
+            keywords: ["blocked", "location", "can't access", "not available", "geolocation", "location error", "location blocking", "outside ontario", "other province", "not in ontario"],
+            question: "Customer is location blocked or asking about buying from outside Ontario",
             response: `Hi there,
 
-I'm sorry you're having trouble accessing our lottery. We're licensed by AGCO and can only sell tickets to customers physically located in Ontario.
+Our Catch the Ace lottery is licensed by AGCO and can only sell tickets to customers physically located in Ontario at the time of purchase.
 
 If you're in Ontario but seeing a location error, please try:
 • Disabling any VPN or proxy services
@@ -1032,48 +775,35 @@ If you're in Ontario but seeing a location error, please try:
 • Using a different browser or device
 • If on mobile, ensure GPS is enabled
 
-If you're using satellite internet, please note that your connection may sometimes route through servers outside Ontario. Try again at a different time.
+If you're using satellite internet, please note that your connection may sometimes route through servers outside Ontario. Try again at a different time. Some internet service providers also have IP addresses that register outside of Ontario - you may need to contact your provider or try a different connection such as mobile data.
 
 If you continue to experience issues while in Ontario, let me know and I'll investigate further.
 
 Best regards`
         },
         {
-            id: "cta-eastlink",
-            keywords: ["eastlink", "east link"],
-            question: "EastLink Internet users experiencing location issues",
+            id: "cta-login-issues",
+            keywords: ["can't login", "forgot password", "reset password", "locked out", "login problem", "update account", "change email", "change phone", "update info", "change address"],
+            question: "Customer having login or account issues",
             response: `Hi there,
 
-This issue is specific to EastLink internet customers, and unfortunately we're unable to resolve it on our end.
+I'm sorry you're having trouble. Let me help!
 
-The issue is that EastLink's IP addresses sometimes register as being outside of Ontario.
+To reset your password:
+1. Go to your account portal
+2. Click "Forgot Password"
+3. Enter your email address
+4. Check your inbox for a reset link (check spam/junk too)
+5. Click the link and create a new password
 
-The solution is to contact EastLink directly at 1-888-345-1111 and ask them to correct this issue.
+Once logged in, you can navigate to your profile or account settings to update your email address, phone number, mailing address, and payment methods.
 
-Alternatively, you can try purchasing tickets using a different internet connection (such as mobile data).
-
-Thank you for your patience!
+If you don't receive the reset email or continue to have issues, please let me know your account email address and I'll look into it.
 
 Best regards`
         },
         {
-            id: "cta-outside-ontario",
-            keywords: ["outside ontario", "other province", "not in ontario", "different province"],
-            question: "Customer asking about buying from outside Ontario",
-            response: `Hi there,
-
-Thank you for reaching out!
-
-Unfortunately, our Catch the Ace lottery is licensed by the Alcohol and Gaming Commission of Ontario (AGCO), which means only people physically located inside Ontario are able to participate.
-
-It is not our intention to exclude anyone from supporting our cause, however we are bound by the laws of the province of Ontario.
-
-Please let me know if you have any further questions!
-
-Best regards`
-        },
-        {
-            id: "cta-cant-access-website",
+            id: "cta-website-issues",
             keywords: ["can't access", "website not working", "won't load", "error buying", "trouble purchasing", "website problem"],
             question: "Customer having trouble accessing the website",
             response: `Hi there,
@@ -1092,144 +822,40 @@ If the problem persists, please let me know what device and browser you're using
 
 Best regards`
         },
-        {
-            id: "cta-login-issues",
-            keywords: ["can't login", "forgot password", "reset password", "locked out", "login problem"],
-            question: "Customer having login issues",
-            response: `Hi there,
-
-I'm sorry you're having trouble logging in. Let me help!
-
-To reset your password:
-1. Go to your subscription account (click here: https://account.tbay5050draw.ca)
-2. Click "Forgot Password"
-3. Enter your email address
-4. Check your inbox for a reset link (check spam/junk too)
-5. Click the link and create a new password
-
-If you don't receive the email or continue to have issues, please let me know your account email address and I'll look into it.
-
-Best regards`
-        },
-        {
-            id: "cta-update-info",
-            keywords: ["update account", "change email", "change phone", "update info", "change address"],
-            question: "Customer wants to update account information",
-            response: `Hi there,
-
-You can update your account information by logging in at your subscription account (click here: https://account.tbay5050draw.ca).
-
-Once logged in, navigate to your profile or account settings to update:
-• Email address
-• Phone number
-• Mailing address
-• Payment methods
-
-If you can't access your account or need help making changes, just let me know what you'd like updated and I can assist.
-
-Best regards`
-        },
-        {
-            id: "cta-wrong-email",
-            keywords: ["wrong email", "incorrect email", "typo email", "email mistake"],
-            question: "Customer used wrong email address",
-            response: `Hi there,
-
-Thank you for reaching out!
-
-I've corrected the email address on your account and resent your tickets to you. Please let me know if they don't arrive within the next 30 minutes - and be sure to check your junk/spam folder just in case.
-
-Thank you for your support, and good luck!
-
-Best regards`
-        },
 
         // ----- GENERAL -----
         {
-            id: "cta-who-can-play",
-            keywords: ["who can play", "eligibility", "age", "requirements", "can I play"],
-            question: "Customer asking about eligibility",
+            id: "cta-eligibility-and-legitimacy",
+            keywords: ["who can play", "eligibility", "age", "requirements", "can I play", "scam", "is this real", "legitimate", "fake", "fraud", "rigged", "where does money go", "how are funds used", "proceeds"],
+            question: "Customer asking about eligibility, legitimacy, or how funds are used",
             response: `Hi there,
 
-To participate in our Catch the Ace lottery, you must:
+Our Catch the Ace lottery is 100% legitimate - it's licensed and regulated by the Alcohol & Gaming Commission of Ontario (AGCO). All draws are conducted using AGCO-approved systems under strict regulatory oversight.
 
+To participate, you must:
 • Be 18 years of age or older
 • Be physically located in Ontario at the time of purchase
-• Not be an employee or immediate family member of the Thunder Bay Regional Health Sciences Foundation or the lottery operator
+• Not be an employee or immediate family member of our charitable organization or the lottery operator
 
-These requirements are set by AGCO (Alcohol and Gaming Commission of Ontario) to ensure fair and responsible gaming.
+Proceeds from our Catch the Ace lottery directly support our charitable organization and its mission. Every ticket purchased helps fund essential programs, equipment, and services that make a real difference in our community.
 
-If you meet these criteria, head to www.thunderbay5050.ca to get your tickets for this week's draw!
+If you'd like more information, feel free to ask!
 
 Best regards`
         },
         {
             id: "cta-tax-receipt",
-            keywords: ["tax receipt", "donation receipt", "charitable receipt", "tax purposes"],
-            question: "Customer asking for a tax receipt",
+            keywords: ["tax receipt", "donation receipt", "charitable receipt", "tax purposes", "gift", "buy for someone", "for someone else"],
+            question: "Customer asking for a tax receipt or about gifting tickets",
             response: `Hi there,
 
-Thank you for your support of the Thunder Bay Regional Health Sciences Foundation!
+Thank you for your support of our organization!
 
-Unfortunately, we cannot issue tax receipts for lottery ticket purchases. Under Canadian tax law, lottery tickets are considered a gaming purchase rather than a charitable donation, even though the proceeds support our charitable work.
+Regarding tax receipts: unfortunately, we cannot issue tax receipts for lottery ticket purchases. Under Canadian tax law, lottery tickets are considered a gaming purchase rather than a charitable donation, even though the proceeds support our charitable work. If you're interested in making a tax-deductible donation, I'd be happy to provide information on how to do that separately.
 
-If you're interested in making a tax-deductible donation to the Thunder Bay Regional Health Sciences Foundation, I'd be happy to provide information on how to do that separately.
+Regarding gifting: you can purchase tickets on behalf of someone else. Simply use your information to make the purchase, then forward the ticket confirmation to your recipient. Any prize would be awarded to whoever's account the tickets are registered under.
 
-Thank you for understanding, and good luck in the draw!
-
-Best regards`
-        },
-        {
-            id: "cta-how-funds-used",
-            keywords: ["where does money go", "how are funds used", "what does it support", "proceeds", "hospital", "impact"],
-            question: "Customer asking how funds are used",
-            response: `Hi there,
-
-Thank you for asking - we love supporters who care about the impact of their contribution!
-
-Proceeds from our Catch the Ace lottery directly support the Thunder Bay Regional Health Sciences Foundation and its mission to serve our community.
-
-Every ticket purchased helps fund essential programs, equipment, and services that make a real difference in people's lives.
-
-If you'd like more specific information about current initiatives, I'd be happy to connect you with our foundation team.
-
-Thank you for your support!
-
-Best regards`
-        },
-        {
-            id: "cta-gift-tickets",
-            keywords: ["gift", "buy for someone", "for someone else", "gift tickets", "present"],
-            question: "Customer wants to gift tickets",
-            response: `Hi there,
-
-What a great gift idea - the chance to win a jackpot!
-
-You can purchase tickets on behalf of someone else. When you buy:
-1. Use YOUR information to create the account and purchase
-2. Forward the ticket confirmation email to your gift recipient
-
-Important: Any prize would be awarded to whoever's account the tickets are registered under. If you want the recipient to claim winnings directly, they should create their own account.
-
-Let me know if you have any other questions!
-
-Best regards`
-        },
-        {
-            id: "cta-is-it-legit",
-            keywords: ["scam", "is this real", "legitimate", "fake", "fraud", "rigged"],
-            question: "Customer questioning if lottery is legitimate",
-            response: `Hi there,
-
-Great question - it's always smart to be careful!
-
-Our Catch the Ace lottery is 100% legitimate. It's licensed and regulated by the Alcohol & Gaming Commission of Ontario (AGCO). All draws are conducted using AGCO-approved systems under strict regulatory oversight.
-
-Lottery proceeds directly support the Thunder Bay Regional Health Sciences Foundation and have helped fund vital equipment and programs for our community.
-
-You can learn more and see our winners at www.thunderbay5050.ca.
-
-If you have any other questions, please don't hesitate to ask!
+Thank you for your support, and good luck in the draw!
 
 Best regards`
         },
@@ -1243,7 +869,7 @@ Best regards`
 
 Thank you for reaching out.
 
-I want to make sure your concern is addressed properly, so I'm going to pass your email along to my manager who will be able to look into this further and get back to you.
+I want to make sure your concern is addressed properly, so I'm going to pass your message along to my manager who will be able to look into this further and get back to you.
 
 Thank you for your patience!
 
@@ -1334,35 +960,19 @@ Great question! Our lottery is licensed and regulated by the Alcohol and Gaming 
 - A neutral third party (someone who hasn't purchased a ticket) should conduct the draw
 - All draws must follow the exact format approved by the licensing authority
 
-These regulations ensure complete fairness and transparency for all participants. Any variation from the approved format would be a breach of our licence terms and conditions.
+These regulations ensure complete fairness and transparency for all participants. Any variation from the approved format would be a breach of the licence terms and conditions.
 
 Best regards`
         },
-        {
-            id: "agco-winner-notification",
-            keywords: ["how will I know", "how do winners find out", "notification", "contacted", "announced", "publicized"],
-            question: "How are winners notified and announced?",
-            response: `Hi there,
-
-According to AGCO regulations, winners must be publicized in the manner approved in our lottery licence application.
-
-For our lottery:
-- Winners are contacted directly by phone using the number provided during purchase
-- Winners are also posted on our website
-
-You don't need to constantly check your numbers - if you win, we will reach out to you!
-
-Best regards`
-        },
-        // ----- PRIZES -----
         {
             id: "agco-prize-requirements",
-            keywords: ["prize rules", "prize requirements", "what can be won", "prize value", "merchandise prize"],
-            question: "What are the rules around raffle prizes?",
+            keywords: ["prize rules", "prize requirements", "what can be won", "prize value", "merchandise prize", "how will I know", "notification", "contacted", "announced"],
+            question: "What are the rules around raffle prizes and winner notification?",
             response: `Hi there,
 
-AGCO has several requirements for raffle prizes:
+AGCO has several requirements for raffle prizes and winner notification:
 
+Prize rules:
 - The total prize value must be at least 20% of total ticket sales
 - Prizes must be awarded free and clear of any liens or encumbrances
 - Winners receive unconditional ownership of prizes
@@ -1371,6 +981,12 @@ AGCO has several requirements for raffle prizes:
 - Prizes may be distributed via e-transfer or gift cards (but gift cards cannot have depreciating value or fees)
 
 For 50/50 draws specifically, the prize is 50% of ticket sales for that draw period.
+
+Winner notification:
+- Winners must be publicized in the manner approved in the lottery licence application
+- Winners are contacted directly by phone and email
+
+You don't need to constantly check your numbers - if you win, we will reach out to you!
 
 Best regards`
         },
@@ -1409,7 +1025,7 @@ AGCO has specific requirements for lottery subscriptions:
 - You must be located in Ontario when you sign up for a subscription
 - The previous draw must close before the next recurring payment is processed
 
-You can manage your subscription anytime at https://account.tbay5050draw.ca
+You can manage your subscription anytime through your account portal.
 
 Best regards`
         },
@@ -1424,7 +1040,7 @@ Unfortunately, we cannot provide tax receipts for lottery ticket purchases.
 
 According to CRA rules, lottery tickets are not considered charitable donations, even when the lottery supports a charity. This is because you receive something of value in return (the chance to win a prize).
 
-However, please know that your purchase still makes a real difference! The proceeds from our lottery directly support the Thunder Bay Regional Health Sciences Foundation and healthcare in our community.
+However, please know that your purchase still makes a real difference! The proceeds from our lottery directly support our charitable organization and the work we do in our community.
 
 Thank you for your support!
 
@@ -1459,7 +1075,7 @@ Yes! Our lottery is fully licensed and regulated by the Alcohol and Gaming Commi
 
 The AGCO is the provincial authority responsible for regulating the alcohol, gaming, horse racing, and cannabis retail sectors in Ontario. Our lottery operates under strict terms and conditions set by the AGCO to ensure fairness, transparency, and consumer protection.
 
-You can verify our licence status through the AGCO if you wish. Our lottery supports the Thunder Bay Regional Health Sciences Foundation, a registered charitable organization.
+You can verify our licence status through the AGCO if you wish. Our lottery supports a registered charitable organization dedicated to serving the community.
 
 Thank you for your trust and support!
 

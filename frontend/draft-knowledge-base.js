@@ -1,6 +1,7 @@
 // ==================== DRAFT ASSISTANT KNOWLEDGE BASE ====================
 // This file contains examples and guidelines for generating content
-// Last updated: January 2026
+// Generic for any charitable gaming / lottery / nonprofit organization in Ontario
+// Last updated: February 2026
 
 const DRAFT_KNOWLEDGE_BASE = {
     // ==================== BRAND GUIDELINES ====================
@@ -29,8 +30,8 @@ const DRAFT_KNOWLEDGE_BASE = {
                 format: "Keep concise and action-oriented"
             }
         },
-        website: "www.thunderbay5050.ca",
-        store: "Thunder Bay 50/50 store inside Intercity Shopping Centre",
+        website: "[Organization Website]",
+        store: "[In-Person Ticket Location]",
         requirements: "Must be 18+ and in Ontario to play"
     },
 
@@ -42,9 +43,9 @@ const DRAFT_KNOWLEDGE_BASE = {
             "Maximum 2 emojis per post",
             "Always include licence disclaimer at end",
             "Never use 'jackpot' - use 'Grand Prize'",
-            "ALWAYS include this line: 'Purchase tickets online at www.thunderbay5050.ca or at the Thunder Bay 50/50 store inside the Intercity Shopping Centre!'"
+            "ALWAYS include this line: 'Purchase tickets online at [Organization Website] or at [In-Person Ticket Location]!'"
         ],
-        requiredLine: "Purchase tickets online at www.thunderbay5050.ca or at the Thunder Bay 50/50 store inside the Intercity Shopping Centre!",
+        requiredLine: "Purchase tickets online at [Organization Website] or at [In-Person Ticket Location]!",
         examples: [
             {
                 type: "General Promotion",
@@ -52,58 +53,58 @@ const DRAFT_KNOWLEDGE_BASE = {
 
 Monday, Tuesday and Thursday you can win $5,000. Wednesday's prize is $10,000!
 
-A $20 ticket gets you 30 numbers in every draw – that's the Early Birds AND the $5,000+ Grand Prize on November 28.
+A $20 ticket gets you 30 numbers in every draw – that's the Early Birds AND the Grand Prize on [Draw Date].
 
-Get tickets: www.thunderbay5050.ca
+Get tickets: [Organization Website]
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             },
             {
                 type: "Winner Announcement",
-                content: `A BIG congratulations to Bernice, our $5,000 Early Bird #1 winner! 🎉
+                content: `A BIG congratulations to [Winner First Name], our $5,000 Early Bird #1 winner! 🎉
 
-Get your tickets at www.thunderbay5050.ca for chances at our remaining Early Birds and the Grand Prize draw on November 28.
+Get your tickets at [Organization Website] for chances at our remaining Early Birds and the Grand Prize draw on [Draw Date].
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             },
             {
                 type: "Draw Reminder",
-                content: `There are only 2 days left to get your Thunder Bay 50/50 October tickets for tomorrow's Grand Prize draw.
+                content: `There are only 2 days left to get your [Organization Name] [Month] tickets for tomorrow's Grand Prize draw.
 
 This is the last day to get your tickets in time for tomorrow's Grand Prize.
 
-The Grand Prize is currently sitting at $201,080, guaranteed to be AT LEAST $250,000.
+The Grand Prize is currently sitting at $[Amount], guaranteed to be AT LEAST $[Guaranteed Minimum].
 
 $20 = 30 chances to win!
 
-Get tickets: www.thunderbay5050.ca
+Get tickets: [Organization Website]
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             },
             {
                 type: "Early Bird Focus",
                 content: `This week's Early Bird schedule is LIVE 🎉
 
-Wed, Feb 5: Early Bird #1 – $10,000
-Thu, Feb 6: Early Birds #2-6 – 5 x $5,000 prizes
-Fri, Feb 7: Early Birds #7-9 – 3 x $10,000 prizes
-Sat, Feb 8: Early Bird #10 – $25,000!
+Wed, [Date]: Early Bird #1 – $10,000
+Thu, [Date]: Early Birds #2-6 – 5 x $5,000 prizes
+Fri, [Date]: Early Birds #7-9 – 3 x $10,000 prizes
+Sat, [Date]: Early Bird #10 – $25,000!
 
-Get your February tickets now at www.thunderbay5050.ca for your shot at over $100,000 in Early Bird prizes PLUS the Grand Prize on February 27.
+Get your [Month] tickets now at [Organization Website] for your shot at over $100,000 in Early Bird prizes PLUS the Grand Prize on [Grand Prize Date].
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             },
             {
                 type: "Milestone/Record",
-                content: `🚨 THUNDER BAY 50/50 RECORD ALERT 🚨
+                content: `🚨 [Organization Name] RECORD ALERT 🚨
 
-The Grand Prize has hit $3 MILLION – a new record!
+The Grand Prize has hit $[Milestone Amount] – a new record!
 
-There's still time to get your tickets before Friday's deadline.
+There's still time to get your tickets before [Day]'s deadline.
 
-Get tickets: www.thunderbay5050.ca
+Get tickets: [Organization Website]
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             }
         ]
     },
@@ -119,44 +120,44 @@ Licence #RAF1296922`
         ],
         examples: [
             {
-                subject: "February Draw is LIVE – Over $100K in Early Birds!",
-                content: `The Thunder Bay 50/50 February draw is officially LIVE! 🎉
+                subject: "[Month] Draw is LIVE – Over $100K in Early Birds!",
+                content: `The [Organization Name] [Month] draw is officially LIVE! 🎉
 
-This month features over $100,000 in Early Bird prizes leading up to the Grand Prize draw on February 27.
+This month features over $100,000 in Early Bird prizes leading up to the Grand Prize draw on [Grand Prize Date].
 
 Early Bird Schedule:
-• Wed, Feb 5: $10,000
-• Thu, Feb 6: 5 x $5,000
-• Fri, Feb 7: 3 x $10,000
-• Sat, Feb 8: $25,000
+• [Day, Date]: $10,000
+• [Day, Date]: 5 x $5,000
+• [Day, Date]: 3 x $10,000
+• [Day, Date]: $25,000
 
-The Grand Prize is guaranteed to be at least $5,000 (50% of ticket sales).
+The Grand Prize is guaranteed to be at least $[Guaranteed Minimum] (50% of ticket sales).
 
-Get your February tickets now at www.thunderbay5050.ca
+Get your [Month] tickets now at [Organization Website]
 
 Good luck!`
             },
             {
-                subject: "March Draw Now Open – First Early Bird Wednesday!",
-                content: `The March Thunder Bay 50/50 draw is now open!
+                subject: "[Month] Draw Now Open – First Early Bird [Day]!",
+                content: `The [Month] [Organization Name] draw is now open!
 
-Our first Early Bird draw is this Wednesday, March 5 for $10,000.
+Our first Early Bird draw is this [Day], [Date] for $10,000.
 
-This month we have 15 Early Bird draws totaling over $100,000 in prizes, plus the Grand Prize draw on March 27.
+This month we have 15 Early Bird draws totaling over $100,000 in prizes, plus the Grand Prize draw on [Grand Prize Date].
 
 A $20 ticket gets you 30 numbers in every single draw – that's all the Early Birds AND the Grand Prize.
 
-Get your tickets: www.thunderbay5050.ca`
+Get your tickets: [Organization Website]`
             },
             {
                 subject: "New Year, New Draw – January 50/50 is LIVE",
-                content: `Happy New Year! The January Thunder Bay 50/50 draw is officially open.
+                content: `Happy New Year! The January [Organization Name] draw is officially open.
 
 Start the year with a chance to win big! Our Early Bird draws begin next week with prizes ranging from $5,000 to $25,000.
 
-The Grand Prize draw is January 30, with a guaranteed minimum of $5,000.
+The Grand Prize draw is January [Date], with a guaranteed minimum of $[Guaranteed Minimum].
 
-Get your January tickets at www.thunderbay5050.ca`
+Get your January tickets at [Organization Website]`
             }
         ]
     },
@@ -172,33 +173,33 @@ Get your January tickets at www.thunderbay5050.ca`
         ],
         examples: [
             {
-                subject: "⏰ 2 Days Left – Grand Prize Draw Friday",
-                content: `There are only 2 days left to get your Thunder Bay 50/50 tickets!
+                subject: "⏰ 2 Days Left – Grand Prize Draw [Day]",
+                content: `There are only 2 days left to get your [Organization Name] tickets!
 
-The Grand Prize draw is this Friday at 11:00 AM. The prize is currently over $200,000 and growing.
+The Grand Prize draw is this [Day] at [Draw Time]. The prize is currently over $[Current Amount] and growing.
 
 Don't miss your chance – get your tickets before the deadline:
-www.thunderbay5050.ca`
+[Organization Website]`
             },
             {
                 subject: "Tomorrow's Early Bird: $25,000!",
                 content: `Tomorrow is our biggest Early Bird of the month – $25,000!
 
-Make sure you have your tickets before tomorrow's draw at 11:00 AM.
+Make sure you have your tickets before tomorrow's draw at [Draw Time].
 
 A $20 ticket gets you 30 chances to win.
 
-Get tickets: www.thunderbay5050.ca`
+Get tickets: [Organization Website]`
             },
             {
-                subject: "Last Week for February Tickets",
-                content: `This is the final week to get your February Thunder Bay 50/50 tickets.
+                subject: "Last Week for [Month] Tickets",
+                content: `This is the final week to get your [Month] [Organization Name] tickets.
 
-We still have 3 Early Bird draws remaining this week, plus the Grand Prize draw on Thursday.
+We still have 3 Early Bird draws remaining this week, plus the Grand Prize draw on [Day].
 
-Current Grand Prize: $180,000+
+Current Grand Prize: $[Current Amount]+
 
-Get your tickets: www.thunderbay5050.ca`
+Get your tickets: [Organization Website]`
             }
         ]
     },
@@ -214,57 +215,57 @@ Get your tickets: www.thunderbay5050.ca`
         ],
         examples: [
             {
-                subject: "Congratulations to Our $2.1 Million Winner!",
+                subject: "Congratulations to Our Grand Prize Winner!",
                 content: `We have a winner! 🎉
 
-Congratulations to Sarah from Thunder Bay, who won $2,147,890 in our November Grand Prize draw!
+Congratulations to [Winner First Name] from [Winner City], who won $[Prize Amount] in our [Month] Grand Prize draw!
 
-Thank you to everyone who participated. Your support helps fund life-saving equipment at Thunder Bay Regional Health Sciences Centre.
+Thank you to everyone who participated. Your support helps fund [organization's cause/mission].
 
-The December draw is now open – get your tickets at www.thunderbay5050.ca`
+The [Next Month] draw is now open – get your tickets at [Organization Website]`
             },
             {
                 subject: "Early Bird Winner: $10,000!",
-                content: `Congratulations to Mike, our $10,000 Early Bird winner!
+                content: `Congratulations to [Winner First Name], our $10,000 Early Bird winner!
 
-There are still more Early Birds to come this month, plus the Grand Prize draw on February 27.
+There are still more Early Birds to come this month, plus the Grand Prize draw on [Grand Prize Date].
 
-Get your tickets for your chance to win: www.thunderbay5050.ca`
+Get your tickets for your chance to win: [Organization Website]`
             },
             {
-                subject: "December Grand Prize: $7.7 MILLION Winner!",
+                subject: "[Month] Grand Prize: $[Prize Amount] Winner!",
                 content: `RECORD-BREAKING NEWS! 🎉
 
-Congratulations to Patrick from Timmins, who just won $7,708,290 – our biggest Grand Prize EVER!
+Congratulations to [Winner First Name] from [Winner City], who just won $[Prize Amount] – our biggest Grand Prize EVER!
 
-This incredible prize was made possible by supporters like you. Thank you for playing and supporting healthcare in our region.
+This incredible prize was made possible by supporters like you. Thank you for playing and supporting [organization's cause] in our community.
 
-The January draw is now open. Could you be our next big winner?
+The [Next Month] draw is now open. Could you be our next big winner?
 
-Get tickets: www.thunderbay5050.ca`
+Get tickets: [Organization Website]`
             }
         ]
     },
 
     // ==================== EMAIL: IMPACT SUNDAY ====================
     emailImpactSunday: {
-        description: "Sunday emails highlighting the impact of 50/50 proceeds on healthcare",
+        description: "Sunday emails highlighting the impact of 50/50 proceeds on the organization's mission",
         guidelines: [
-            "Focus on the healthcare impact, not ticket sales",
+            "Focus on the community/mission impact, not ticket sales",
             "Condense/shorten the context provided by the user - don't add to it",
             "Make the connection between playing and helping",
             "Keep it heartfelt but concise"
         ],
         examples: [
             {
-                subject: "Your Impact: New MRI Technology",
-                content: `Every Thunder Bay 50/50 ticket helps fund life-saving equipment at our hospital.
+                subject: "Your Impact: [Impact Headline]",
+                content: `Every [Organization Name] ticket helps fund [organization's cause/mission].
 
-Thanks to your support, the Thunder Bay Regional Health Sciences Foundation recently funded a new MRI machine that will help doctors diagnose conditions faster and more accurately.
+Thanks to your support, [Organization Name] recently funded [specific impact item or initiative] that will [describe benefit to community].
 
-This technology will serve thousands of patients in our region every year.
+This will serve [number of beneficiaries or scope of impact] in our community every year.
 
-Thank you for playing and making a difference in our community.`
+Thank you for playing and making a difference.`
             }
         ]
     },
@@ -281,33 +282,33 @@ Thank you for playing and making a difference in our community.`
         examples: [
             {
                 subject: "🚨 FINAL HOURS – Grand Prize Draw Tomorrow",
-                content: `This is it – your last chance to get Thunder Bay 50/50 tickets!
+                content: `This is it – your last chance to get [Organization Name] tickets!
 
-The Grand Prize draw is TOMORROW at 11:00 AM.
+The Grand Prize draw is TOMORROW at [Draw Time].
 
-Current Grand Prize: $2,547,890
+Current Grand Prize: $[Current Amount]
 
-Ticket sales close tonight at 11:59 PM.
+Ticket sales close tonight at [Sales Close Time].
 
-Get your tickets NOW: www.thunderbay5050.ca`
+Get your tickets NOW: [Organization Website]`
             },
             {
-                subject: "⏰ Hours Left – Don't Miss the $3M Grand Prize",
+                subject: "⏰ Hours Left – Don't Miss the Grand Prize",
                 content: `FINAL REMINDER: Ticket sales close TONIGHT!
 
-The Grand Prize has hit $3 MILLION – our biggest ever!
+The Grand Prize has hit $[Current Amount] – our biggest ever!
 
 Tomorrow's winner could be you, but only if you get your tickets before midnight.
 
-www.thunderbay5050.ca`
+[Organization Website]`
             },
             {
-                subject: "Last Call for February Tickets",
-                content: `This is your last chance to get February Thunder Bay 50/50 tickets.
+                subject: "Last Call for [Month] Tickets",
+                content: `This is your last chance to get [Month] [Organization Name] tickets.
 
-Sales close tonight at 11:59 PM. The Grand Prize draw is tomorrow at 11:00 AM.
+Sales close tonight at [Sales Close Time]. The Grand Prize draw is tomorrow at [Draw Time].
 
-Don't miss out: www.thunderbay5050.ca`
+Don't miss out: [Organization Website]`
             }
         ]
     },
@@ -317,7 +318,7 @@ Don't miss out: www.thunderbay5050.ca`
         description: "Press releases for media distribution",
         guidelines: [
             "Professional, journalistic tone",
-            "Include quotes from Glenn Craig (President & CEO) and/or other stakeholders",
+            "Include quotes from organizational leadership (CEO/President) and/or other stakeholders",
             "Lead with the most newsworthy information",
             "Include full contact information and boilerplate",
             "Use proper media release formatting"
@@ -325,131 +326,131 @@ Don't miss out: www.thunderbay5050.ca`
         examples: [
             {
                 type: "Grand Prize Winner Announcement",
-                headline: "Record-Breaking December 50/50 Delivers $7.7M Win for Timmins Resident",
+                headline: "Record-Breaking [Month] 50/50 Delivers $[Prize Amount] Win for [Winner City] Resident",
                 content: `FOR IMMEDIATE RELEASE
 
-THUNDER BAY, ON – The Thunder Bay Regional Health Sciences Foundation has announced that Patrick Chilton of Timmins is the winner of the December Thunder Bay 50/50 Grand Prize – a record-breaking $7,708,290.
+[CITY], ON – [Organization Name] has announced that [Winner Full Name] of [Winner City] is the winner of the [Month] [Draw Program Name] Grand Prize – a record-breaking $[Prize Amount].
 
-"This is an extraordinary moment for our 50/50 program," said Glenn Craig, President & CEO of the Thunder Bay Regional Health Sciences Foundation. "Patrick's win represents the largest prize in our history, and it's a testament to the incredible support we receive from communities across Northern Ontario."
+"This is an extraordinary moment for our 50/50 program," said [CEO/President Name], [Title] of [Organization Name]. "[Winner First Name]'s win represents the largest prize in our history, and it's a testament to the incredible support we receive from communities across Ontario."
 
-The December draw saw unprecedented participation, with ticket sales reaching new heights. The 50/50 program has now generated over $50 million in proceeds for healthcare equipment and programs at Thunder Bay Regional Health Sciences Centre.
+The [Month] draw saw unprecedented participation, with ticket sales reaching new heights. The 50/50 program has now generated over $[Total Raised] in proceeds for [organization's cause/mission].
 
-"I still can't believe it," said Chilton. "I've been playing for a while, but I never imagined winning something like this."
+"I still can't believe it," said [Winner Last Name]. "I've been playing for a while, but I never imagined winning something like this."
 
-The January draw is now open, with tickets available at www.thunderbay5050.ca.
+The [Next Month] draw is now open, with tickets available at [Organization Website].
 
-About Thunder Bay Regional Health Sciences Foundation
-The Thunder Bay Regional Health Sciences Foundation raises funds to support Thunder Bay Regional Health Sciences Centre, Northwestern Ontario's largest hospital. The Foundation's 50/50 program is one of the most successful hospital lotteries in Canada.
+About [Organization Name]
+[Organization boilerplate: brief description of the organization, its mission, and its 50/50 program.]
 
 -30-
 
 Media Contact:
-Torin Gunnell
-Communications Officer
-Thunder Bay Regional Health Sciences Foundation
-tgunnell@tbrhsc.net`
+[Media Contact Name]
+[Media Contact Title]
+[Organization Name]
+[Media Contact Email]`
             },
             {
                 type: "Grand Prize Winner Announcement",
-                headline: "Hanmer Couple Wins Over $2 Million in Thunder Bay 50/50 September Draw",
+                headline: "[Winner City] Resident Wins Over $[Prize Amount] in [Organization Name] [Month] Draw",
                 content: `FOR IMMEDIATE RELEASE
 
-THUNDER BAY, ON – Real and Rita Dallaire of Hanmer, Ontario are the lucky winners of the September Thunder Bay 50/50 Grand Prize, taking home an incredible $2,116,498.
+[CITY], ON – [Winner Full Name] of [Winner City], Ontario is the lucky winner of the [Month] [Draw Program Name] Grand Prize, taking home an incredible $[Prize Amount].
 
-"We are thrilled to congratulate Real and Rita on this life-changing win," said Glenn Craig, President & CEO of the Thunder Bay Regional Health Sciences Foundation. "Their support, along with thousands of others who purchased tickets, is helping us fund critical healthcare equipment and programs for our region."
+"We are thrilled to congratulate [Winner First Name] on this life-changing win," said [CEO/President Name], [Title] of [Organization Name]. "Their support, along with thousands of others who purchased tickets, is helping us fund [organization's cause/mission]."
 
-The Dallaires purchased their winning ticket online at www.thunderbay5050.ca. The September draw saw strong participation from supporters across Ontario.
+[Winner Full Name] purchased their winning ticket online at [Organization Website]. The [Month] draw saw strong participation from supporters across Ontario.
 
-"We play every month," said Real Dallaire. "We love knowing that our tickets help the hospital, and now this happens. It's unbelievable."
+"I play every month," said [Winner First Name]. "I love knowing that my tickets help [brief mission reference], and now this happens. It's unbelievable."
 
-The Thunder Bay 50/50 has generated millions of dollars for healthcare in Northwestern Ontario since its launch. Proceeds support the purchase of medical equipment, technology upgrades, and patient care programs at Thunder Bay Regional Health Sciences Centre.
+[Organization Name] has generated millions of dollars for [cause area] since its launch. Proceeds support [specific areas funded by the organization].
 
-The October draw is now open, with tickets available at www.thunderbay5050.ca.
+The [Next Month] draw is now open, with tickets available at [Organization Website].
 
 -30-
 
 Media Contact:
-Torin Gunnell
-Communications Officer
-Thunder Bay Regional Health Sciences Foundation
-tgunnell@tbrhsc.net`
+[Media Contact Name]
+[Media Contact Title]
+[Organization Name]
+[Media Contact Email]`
             },
             {
                 type: "Program/Store Announcement",
-                headline: "Thunder Bay 50/50 Store Secures Long-Term Home Inside Intercity Shopping Centre",
+                headline: "[Draw Program Name] Secures Long-Term Home at [Location Name]",
                 content: `FOR IMMEDIATE RELEASE
 
-THUNDER BAY, ON – The Thunder Bay Regional Health Sciences Foundation is pleased to announce that the Thunder Bay 50/50 store has secured a long-term location inside Intercity Shopping Centre.
+[CITY], ON – [Organization Name] is pleased to announce that the [Draw Program Name] in-person ticket location has secured a long-term home at [Location Name].
 
-"This is a significant milestone for our 50/50 program," said Glenn Craig, President & CEO of the Thunder Bay Regional Health Sciences Foundation. "Having a permanent presence in Intercity gives our supporters a convenient location to purchase tickets and learn about the impact of their support."
+"This is a significant milestone for our 50/50 program," said [CEO/President Name], [Title] of [Organization Name]. "Having a permanent presence at [Location Name] gives our supporters a convenient location to purchase tickets and learn about the impact of their support."
 
-The store, located near the food court entrance, offers in-person ticket sales during mall hours. Staff and volunteers are on hand to assist customers and answer questions about the program.
+The location offers in-person ticket sales during regular hours. Staff and volunteers are on hand to assist customers and answer questions about the program.
 
-"We've seen tremendous support from shoppers at Intercity," said Torin Gunnell, Communications Officer for the Foundation. "Many people stop by regularly to get their monthly tickets, and it's been a great way to connect with our community."
+"We've seen tremendous support from visitors at [Location Name]," said [Spokesperson Name], [Spokesperson Title] for [Organization Name]. "Many people stop by regularly to get their monthly tickets, and it's been a great way to connect with our community."
 
-The Thunder Bay 50/50 remains one of the most successful hospital lotteries in Canada, generating millions of dollars annually for healthcare equipment and programs at Thunder Bay Regional Health Sciences Centre.
+[Draw Program Name] remains one of the most successful charitable lotteries in Ontario, generating millions of dollars annually for [organization's cause/mission].
 
-Tickets are available in-store at Intercity Shopping Centre or online at www.thunderbay5050.ca.
+Tickets are available in-person at [Location Name] or online at [Organization Website].
 
 -30-
 
 Media Contact:
-Torin Gunnell
-Communications Officer
-Thunder Bay Regional Health Sciences Foundation
-tgunnell@tbrhsc.net`
+[Media Contact Name]
+[Media Contact Title]
+[Organization Name]
+[Media Contact Email]`
             },
             {
                 type: "Foundation Impact Announcement",
-                headline: "Hospital Foundation Makes Largest Gift in Its History to Support Local Healthcare",
+                headline: "[Organization Name] Makes Largest Gift in Its History to Support [Cause Area]",
                 content: `FOR IMMEDIATE RELEASE
 
-THUNDER BAY, ON – The Thunder Bay Regional Health Sciences Foundation has announced a historic $22.8 million grant to Thunder Bay Regional Health Sciences Centre – the largest single gift in the Foundation's history.
+[CITY], ON – [Organization Name] has announced a historic $[Gift Amount] grant to [Beneficiary Organization/Program] – the largest single gift in the organization's history.
 
-"This represents a transformational investment in healthcare for Northwestern Ontario," said Glenn Craig, President & CEO of the Thunder Bay Regional Health Sciences Foundation. "This funding will support critical equipment purchases, technology upgrades, and programs that will benefit patients for years to come."
+"This represents a transformational investment in [cause area] for our community," said [CEO/President Name], [Title] of [Organization Name]. "This funding will support [specific areas of impact] that will benefit [beneficiaries] for years to come."
 
-The grant was made possible through the Foundation's various fundraising programs, including the highly successful Thunder Bay 50/50, donor contributions, and investment returns.
+The grant was made possible through the organization's various fundraising programs, including the highly successful [Draw Program Name], donor contributions, and investment returns.
 
-"Our community's generosity is truly remarkable," said Craig. "Every ticket purchased, every donation made, contributes to moments like this – where we can make a significant impact on the quality of care available in our region."
+"Our community's generosity is truly remarkable," said [CEO/President Name]. "Every ticket purchased, every donation made, contributes to moments like this – where we can make a significant impact on [cause area] in our community."
 
-The funding will support multiple priority areas at the Health Sciences Centre, including diagnostic imaging equipment, surgical technology, and patient care programs.
+The funding will support multiple priority areas, including [list of priority areas].
 
 -30-
 
 Media Contact:
-Torin Gunnell
-Communications Officer
-Thunder Bay Regional Health Sciences Foundation
-tgunnell@tbrhsc.net`
+[Media Contact Name]
+[Media Contact Title]
+[Organization Name]
+[Media Contact Email]`
             },
             {
                 type: "Media Advisory",
-                headline: "MEDIA ADVISORY: Thunder Bay 50/50 Grand Prize Exceeds $2.5 Million Guarantee in Record Time",
+                headline: "MEDIA ADVISORY: [Draw Program Name] Grand Prize Exceeds $[Guarantee Amount] Guarantee in Record Time",
                 content: `MEDIA ADVISORY
 FOR IMMEDIATE RELEASE
 
-THUNDER BAY, ON – The Thunder Bay 50/50 December Grand Prize has exceeded its $2.5 million guarantee in record time, with ticket sales continuing to climb.
+[CITY], ON – The [Draw Program Name] [Month] Grand Prize has exceeded its $[Guarantee Amount] guarantee in record time, with ticket sales continuing to climb.
 
-WHAT: Thunder Bay 50/50 December Grand Prize milestone announcement
+WHAT: [Draw Program Name] [Month] Grand Prize milestone announcement
 
 DETAILS:
-• The Grand Prize has surpassed $2.5 million with days still remaining before the draw
+• The Grand Prize has surpassed $[Guarantee Amount] with days still remaining before the draw
 • This marks the fastest the program has reached this milestone
 • Final prize amount will be determined by total ticket sales (50% of proceeds)
 
-DRAW DATE: [Date] at 11:00 AM
+DRAW DATE: [Date] at [Draw Time]
 
-WHERE TO PURCHASE: www.thunderbay5050.ca or at the Thunder Bay 50/50 store in Intercity Shopping Centre
+WHERE TO PURCHASE: [Organization Website] or at [In-Person Ticket Location]
 
-QUOTE: "The response from our supporters has been incredible," said Glenn Craig, President & CEO of the Thunder Bay Regional Health Sciences Foundation. "We're on track for one of our biggest Grand Prizes ever."
+QUOTE: "The response from our supporters has been incredible," said [CEO/President Name], [Title] of [Organization Name]. "We're on track for one of our biggest Grand Prizes ever."
 
 -30-
 
 Media Contact:
-Torin Gunnell
-Communications Officer
-Thunder Bay Regional Health Sciences Foundation
-tgunnell@tbrhsc.net`
+[Media Contact Name]
+[Media Contact Title]
+[Organization Name]
+[Media Contact Email]`
             }
         ]
     },
@@ -458,18 +459,18 @@ tgunnell@tbrhsc.net`
     emailAddOns: {
         subscriptions: {
             name: "Subscriptions",
-            description: "Information about Thunder Bay 50/50 subscription options",
-            content: `Did you know you can subscribe to the Thunder Bay 50/50? Never miss a draw! Set up a monthly subscription and your tickets are automatically purchased each month. Visit www.thunderbay5050.ca to set up your subscription today!`
+            description: "Information about 50/50 subscription options",
+            content: `Did you know you can subscribe to [Organization Name]? Never miss a draw! Set up a monthly subscription and your tickets are automatically purchased each month. Visit [Organization Website] to set up your subscription today!`
         },
         rewardsPlus: {
             name: "Rewards+",
             description: "Information about the Rewards+ program",
-            content: `Join Rewards+ and earn points with every ticket purchase! Redeem your points for bonus entries, exclusive merchandise, and more. Sign up at www.thunderbay5050.ca!`
+            content: `Join Rewards+ and earn points with every ticket purchase! Redeem your points for bonus entries, exclusive merchandise, and more. Sign up at [Organization Website]!`
         },
         catchTheAce: {
-            name: "Thunder Bay Catch The Ace",
+            name: "Catch The Ace",
             description: "Information about the Catch The Ace lottery",
-            content: `The Thunder Bay Catch The Ace is LIVE! You LOVE the Thunder Bay 50/50, so you might love our other raffles too! The Thunder Bay Catch The Ace is a weekly progressive lottery that supports the Our Hearts at Home Campaign to bring Cardiovascular Surgery to Northwestern Ontario! We've awarded over $500,000 in prizes so far, come see what the fun is all about at www.thunderbaycatchtheace.ca!`
+            content: `The [Organization Name] Catch The Ace is LIVE! You LOVE the 50/50, so you might love our other raffles too! Catch The Ace is a weekly progressive lottery that supports [Catch The Ace cause/campaign]. We've awarded over $[Total Prizes Awarded] in prizes so far, come see what the fun is all about at [Catch The Ace Website]!`
         }
     },
 
@@ -486,48 +487,48 @@ tgunnell@tbrhsc.net`
             {
                 type: "Value Proposition",
                 headline: "30 Chances to Win for Just $20",
-                content: `Support healthcare. Win big.
+                content: `Support [cause area]. Win big.
 
 $20 = 30 numbers in EVERY draw this month.
 
 That's Early Birds AND the Grand Prize.
 
-Get tickets: www.thunderbay5050.ca
+Get tickets: [Organization Website]
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             },
             {
                 type: "Grand Prize Focus",
-                headline: "Grand Prize Over $2 Million",
-                content: `The Thunder Bay 50/50 Grand Prize is over $2 MILLION.
+                headline: "Grand Prize Over $[Current Amount]",
+                content: `The [Organization Name] Grand Prize is over $[Current Amount].
 
 Could you be our next big winner?
 
-Tickets from $10 at www.thunderbay5050.ca
+Tickets from $10 at [Organization Website]
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             },
             {
                 type: "Early Bird Focus",
-                headline: "$25,000 Early Bird This Saturday",
-                content: `This Saturday: $25,000 Early Bird draw!
+                headline: "$25,000 Early Bird This [Day]",
+                content: `This [Day]: $25,000 Early Bird draw!
 
 Every ticket this month includes chances at ALL Early Birds plus the Grand Prize.
 
-www.thunderbay5050.ca
+[Organization Website]
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             },
             {
                 type: "Impact Message",
-                headline: "Win Big. Help Local Healthcare.",
-                content: `Every Thunder Bay 50/50 ticket supports life-saving equipment at our hospital.
+                headline: "Win Big. Support [Cause Area].",
+                content: `Every [Organization Name] ticket supports [organization's cause/mission].
 
 Plus, you could win the Grand Prize!
 
-Tickets: www.thunderbay5050.ca
+Tickets: [Organization Website]
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             },
             {
                 type: "Urgency/Deadline",
@@ -536,9 +537,9 @@ Licence #RAF1296922`
 
 The Grand Prize draw is tomorrow. Don't miss your chance.
 
-Get tickets NOW: www.thunderbay5050.ca
+Get tickets NOW: [Organization Website]
 
-Licence #RAF1296922`
+Licence #[Licence Number]`
             }
         ]
     },
