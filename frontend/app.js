@@ -458,6 +458,20 @@ function setupAuthEventListeners() {
         });
     });
 
+    // FAQ accordion
+    document.querySelectorAll('.landing-faq-question').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.closest('.landing-faq-item');
+            const wasOpen = item.classList.contains('open');
+            // Close all items
+            document.querySelectorAll('.landing-faq-item').forEach(i => i.classList.remove('open'));
+            // Toggle clicked item
+            if (!wasOpen) {
+                item.classList.add('open');
+            }
+        });
+    });
+
     // Google Sign-In is the only auth method - no email/password forms
 
     // User menu (in main app)

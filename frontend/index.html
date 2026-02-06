@@ -790,58 +790,6 @@
         }
 
         /* Testimonials/Social Proof */
-        .landing-proof {
-            padding: 100px 40px;
-            text-align: center;
-        }
-
-        .landing-proof-quote {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .landing-proof-text {
-            font-size: 1.75rem;
-            font-weight: 500;
-            color: white;
-            line-height: 1.5;
-            margin-bottom: 30px;
-            font-style: italic;
-        }
-
-        .landing-proof-author {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-        }
-
-        .landing-proof-avatar {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-
-        .landing-proof-info {
-            text-align: left;
-        }
-
-        .landing-proof-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: white;
-        }
-
-        .landing-proof-role {
-            font-size: 0.9rem;
-            color: rgba(255,255,255,0.5);
-        }
-
         /* CTA Section */
         .landing-cta-section {
             padding: 100px 40px;
@@ -1182,49 +1130,6 @@
             }
         }
 
-        /* ==================== ALWAYS IMPROVING SECTION ==================== */
-        .landing-improving {
-            padding: 100px 40px;
-            background: linear-gradient(180deg, rgba(139, 92, 246, 0.03) 0%, transparent 100%);
-        }
-
-        .landing-improving-features {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-            max-width: 400px;
-            margin: 0 auto;
-        }
-
-        .landing-improving-feature {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 28px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 100px;
-            transition: all 0.3s ease;
-            width: 100%;
-            justify-content: center;
-        }
-
-        .landing-improving-feature:hover {
-            background: rgba(255,255,255,0.05);
-            border-color: rgba(139, 92, 246, 0.3);
-        }
-
-        .landing-improving-icon {
-            font-size: 1.25rem;
-        }
-
-        .landing-improving-feature span {
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: rgba(255,255,255,0.8);
-        }
-
         /* ==================== PRICING SECTION ==================== */
         .landing-pricing {
             padding: 100px 40px;
@@ -1450,6 +1355,102 @@
             .landing-pricing-card.featured:hover {
                 transform: translateY(-4px);
             }
+        }
+
+        /* ==================== FAQ SECTION ==================== */
+        .landing-faq {
+            padding: 100px 40px;
+            background: linear-gradient(180deg, #f8f6ff 0%, #ffffff 50%, #f8f6ff 100%);
+            position: relative;
+        }
+
+        .landing-faq .landing-section-tag {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+        }
+
+        .landing-faq .landing-section-title {
+            color: var(--text-primary);
+        }
+
+        .landing-faq .landing-section-subtitle {
+            color: var(--text-secondary);
+        }
+
+        .landing-faq-list {
+            max-width: 720px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .landing-faq-item {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .landing-faq-item:hover {
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .landing-faq-item.open {
+            border-color: rgba(139, 92, 246, 0.4);
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.08);
+        }
+
+        .landing-faq-question {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: color 0.2s ease;
+        }
+
+        .landing-faq-question:hover {
+            color: var(--primary);
+        }
+
+        .landing-faq-icon {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+            margin-left: 16px;
+        }
+
+        .landing-faq-item.open .landing-faq-icon {
+            transform: rotate(45deg);
+            color: var(--primary);
+        }
+
+        .landing-faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .landing-faq-item.open .landing-faq-answer {
+            max-height: 300px;
+        }
+
+        .landing-faq-answer-inner {
+            padding: 0 24px 20px;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
         }
 
         /* ==================== LIVE DEMO SECTION ==================== */
@@ -8598,9 +8599,10 @@
                 <span>Lightspeed</span>
             </div>
             <div class="landing-nav-links">
+                <a class="landing-nav-link" onclick="document.querySelector('.landing-demo').scrollIntoView({behavior: 'smooth'})">Demo</a>
                 <a class="landing-nav-link" onclick="document.querySelector('.landing-features').scrollIntoView({behavior: 'smooth'})">Features</a>
                 <a class="landing-nav-link" onclick="document.querySelector('.landing-pricing').scrollIntoView({behavior: 'smooth'})">Pricing</a>
-                <a class="landing-nav-link" onclick="document.querySelector('.landing-proof').scrollIntoView({behavior: 'smooth'})">About</a>
+                <a class="landing-nav-link" onclick="document.querySelector('.landing-faq').scrollIntoView({behavior: 'smooth'})">FAQ</a>
                 <a class="landing-nav-link" onclick="document.querySelector('.landing-cta-section').scrollIntoView({behavior: 'smooth'})">Contact</a>
                 <button class="landing-nav-cta" id="navLaunchAppBtn">Launch App →</button>
             </div>
@@ -8712,111 +8714,6 @@
                         <div class="landing-stat-value">1,000+</div>
                         <div class="landing-stat-label">Real-World Training Examples</div>
                     </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Trusted By + Value Prop Wrapper -->
-        <div class="landing-trusted-value-wrapper">
-            <!-- Trusted By Section -->
-            <!-- Value Proposition Section -->
-            <section class="landing-value-prop">
-                <div class="landing-section-header">
-                    <div class="landing-section-tag">Why Lightspeed</div>
-                    <h2 class="landing-section-title">Leverage the Power of AI.</h2>
-                    <p class="landing-section-subtitle">Lightspeed was developed by the team behind Canada's largest hospital 50/50 lottery. Every feature was born from real operational challenges. The result is a suite of tools trained on tens of thousands of real-world examples. Machine learning allows for continuous improvement — the more you use Lightspeed, the smarter it gets.</p>
-                </div>
-
-                <div class="landing-value-grid">
-                    <div class="landing-value-card animate-on-scroll delay-1">
-                        <div class="landing-value-icon">🧠</div>
-                        <h3 class="landing-value-title">Trained on Real Work</h3>
-                        <p class="landing-value-desc">Lightspeed is trained on thousands of real customer service interactions, marketing campaigns, and data tasks from active lottery operations.</p>
-                    </div>
-                    <div class="landing-value-card animate-on-scroll delay-2">
-                        <div class="landing-value-icon">📁</div>
-                        <h3 class="landing-value-title">Tailored to Your Organization</h3>
-                        <p class="landing-value-desc">Every Lightspeed instance comes with a dedicated knowledge base built around your organization — your brand voice, your draw schedule, your FAQ, your team's workflow.</p>
-                    </div>
-                    <div class="landing-value-card animate-on-scroll delay-3">
-                        <div class="landing-value-icon">🚀</div>
-                        <h3 class="landing-value-title">Gets Smarter Over Time</h3>
-                        <p class="landing-value-desc">Lightspeed learns in real time as you use it. The more your team works with it, the more it adapts to your style, your tone, and your needs.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Trusted By Section -->
-            <section class="landing-trusted">
-                <p class="landing-trusted-label">Trusted by the teams behind some of Canada's largest charitable gaming initiatives</p>
-                <div class="landing-trusted-logos">
-                    <img src="logos/thunderbay-5050.png" alt="Thunder Bay 50/50" class="landing-trusted-logo">
-                    <img src="logos/rotary-house.png" alt="Fort William Rotary House Lottery" class="landing-trusted-logo">
-                    <img src="logos/cruisin-cure.png" alt="Cruisin' for a Cure Jeep Raffle" class="landing-trusted-logo">
-                    <img src="logos/catch-the-ace.png" alt="Catch The Ace" class="landing-trusted-logo">
-                </div>
-            </section>
-        </div><!-- End Value Prop + Trusted By Wrapper -->
-
-        <!-- Features Section -->
-        <section class="landing-features" id="features">
-            <div class="landing-section-header">
-                <div class="landing-section-tag">Features</div>
-                <h2 class="landing-section-title">Work at Lightspeed.</h2>
-                <p class="landing-section-subtitle">Four purpose-built tools that tackle the most time-consuming tasks in charitable gaming and nonprofit operations. Your time is valuable — stop spending it on work AI can do better and faster.</p>
-            </div>
-
-            <div class="landing-features-grid">
-                <!-- Draft Assistant -->
-                <div class="landing-feature-card animate-on-scroll delay-1">
-                    <div class="landing-feature-icon draft">✍️</div>
-                    <h3 class="landing-feature-title">Draft Assistant</h3>
-                    <p class="landing-feature-desc">Generate on-brand social media posts, emails, press releases, and newsletters in seconds. Lightspeed knows your organization's voice because it's been trained on your actual content — so you can write faster.</p>
-                    <ul class="landing-feature-list">
-                        <li>Social media posts & captions</li>
-                        <li>Email campaigns & newsletters</li>
-                        <li>Press releases & media advisories</li>
-                        <li>Trained on your brand voice & past campaigns</li>
-                    </ul>
-                </div>
-
-                <!-- Response Assistant -->
-                <div class="landing-feature-card animate-on-scroll delay-2">
-                    <div class="landing-feature-icon response">📧</div>
-                    <h3 class="landing-feature-title">Response Assistant</h3>
-                    <p class="landing-feature-desc">Turn customer inquiries into professional, empathetic responses instantly. Built on a knowledge base specific to your organization, Response Assistant handles winner questions, support tickets, and donor communications with consistency and care.</p>
-                    <ul class="landing-feature-list">
-                        <li>AI-powered reply generation</li>
-                        <li>Dedicated knowledge base (FAQ, draw schedules, AGCO rules)</li>
-                        <li>Consistent, on-brand tone across every reply</li>
-                        <li>Response history tracking</li>
-                    </ul>
-                </div>
-
-                <!-- Insights Engine -->
-                <div class="landing-feature-card animate-on-scroll delay-3">
-                    <div class="landing-feature-icon insights">📊</div>
-                    <h3 class="landing-feature-title">Insights Engine</h3>
-                    <p class="landing-feature-desc">Upload your reports and instantly generate beautiful dashboards with charts, metrics, and actionable insights. Designed for seamless integration with BUMP Raffle and other charitable gaming service providers — just export your data and let Lightspeed do the rest. No spreadsheet skills required.</p>
-                    <ul class="landing-feature-list">
-                        <li>Seamless BUMP Raffle and other provider data integration</li>
-                        <li>Automated chart & dashboard generation</li>
-                        <li>Key metrics at a glance</li>
-                        <li>Export-ready visualizations for reports & presentations</li>
-                    </ul>
-                </div>
-
-                <!-- List Normalizer -->
-                <div class="landing-feature-card animate-on-scroll delay-4">
-                    <div class="landing-feature-icon normalizer">🔄</div>
-                    <h3 class="landing-feature-title">List Normalizer</h3>
-                    <p class="landing-feature-desc">Transform messy customer data into clean, formatted lists ready for Mailchimp and your email platform. What used to take hours now takes 30 seconds — trained on real-world data normalization tasks from active lottery operations.</p>
-                    <ul class="landing-feature-list">
-                        <li>Auto-format names & emails</li>
-                        <li>Remove invalid entries & deduplicate records</li>
-                        <li>One-click Mailchimp export</li>
-                        <li>Trained on thousands of real data cleanup tasks</li>
-                    </ul>
                 </div>
             </div>
         </section>
@@ -9057,7 +8954,111 @@
             </div>
         </section>
 
-        <!-- How It Works Section (NEW) -->
+        <!-- Trusted By + Value Prop Wrapper -->
+        <div class="landing-trusted-value-wrapper">
+            <!-- Value Proposition Section -->
+            <section class="landing-value-prop">
+                <div class="landing-section-header">
+                    <div class="landing-section-tag">Why Lightspeed</div>
+                    <h2 class="landing-section-title">Leverage the Power of AI.</h2>
+                    <p class="landing-section-subtitle">Lightspeed was developed by the team behind Canada's largest hospital 50/50 lottery. Every feature was born from real operational challenges. The result is a suite of tools trained on tens of thousands of real-world examples. Machine learning allows for continuous improvement — the more you use Lightspeed, the smarter it gets.</p>
+                </div>
+
+                <div class="landing-value-grid">
+                    <div class="landing-value-card animate-on-scroll delay-1">
+                        <div class="landing-value-icon">🧠</div>
+                        <h3 class="landing-value-title">Trained on Real Work</h3>
+                        <p class="landing-value-desc">Lightspeed is trained on thousands of real customer service interactions, marketing campaigns, and data tasks from active lottery operations.</p>
+                    </div>
+                    <div class="landing-value-card animate-on-scroll delay-2">
+                        <div class="landing-value-icon">📁</div>
+                        <h3 class="landing-value-title">Tailored to Your Organization</h3>
+                        <p class="landing-value-desc">Every Lightspeed instance comes with a dedicated knowledge base built around your organization — your brand voice, your draw schedule, your FAQ, your team's workflow.</p>
+                    </div>
+                    <div class="landing-value-card animate-on-scroll delay-3">
+                        <div class="landing-value-icon">🚀</div>
+                        <h3 class="landing-value-title">Gets Smarter Over Time</h3>
+                        <p class="landing-value-desc">Lightspeed learns in real time as you use it. The more your team works with it, the more it adapts to your style, your tone, and your needs.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trusted By Section -->
+            <section class="landing-trusted">
+                <p class="landing-trusted-label">Trusted by the teams behind some of Canada's largest charitable gaming initiatives</p>
+                <div class="landing-trusted-logos">
+                    <img src="logos/thunderbay-5050.png" alt="Thunder Bay 50/50" class="landing-trusted-logo">
+                    <img src="logos/rotary-house.png" alt="Fort William Rotary House Lottery" class="landing-trusted-logo">
+                    <img src="logos/cruisin-cure.png" alt="Cruisin' for a Cure Jeep Raffle" class="landing-trusted-logo">
+                    <img src="logos/catch-the-ace.png" alt="Catch The Ace" class="landing-trusted-logo">
+                </div>
+            </section>
+        </div>
+
+        <!-- Features Section -->
+        <section class="landing-features" id="features">
+            <div class="landing-section-header">
+                <div class="landing-section-tag">Features</div>
+                <h2 class="landing-section-title">Work at Lightspeed.</h2>
+                <p class="landing-section-subtitle">Four purpose-built tools that tackle the most time-consuming tasks in charitable gaming and nonprofit operations. Your time is valuable — stop spending it on work AI can do better and faster.</p>
+            </div>
+
+            <div class="landing-features-grid">
+                <!-- Draft Assistant -->
+                <div class="landing-feature-card animate-on-scroll delay-1">
+                    <div class="landing-feature-icon draft">✍️</div>
+                    <h3 class="landing-feature-title">Draft Assistant</h3>
+                    <p class="landing-feature-desc">Generate on-brand social media posts, emails, press releases, and newsletters in seconds. Lightspeed knows your organization's voice because it's been trained on your actual content — so you can write faster.</p>
+                    <ul class="landing-feature-list">
+                        <li>Social media posts & captions</li>
+                        <li>Email campaigns & newsletters</li>
+                        <li>Press releases & media advisories</li>
+                        <li>Trained on your brand voice & past campaigns</li>
+                    </ul>
+                </div>
+
+                <!-- Response Assistant -->
+                <div class="landing-feature-card animate-on-scroll delay-2">
+                    <div class="landing-feature-icon response">📧</div>
+                    <h3 class="landing-feature-title">Response Assistant</h3>
+                    <p class="landing-feature-desc">Turn customer inquiries into professional, empathetic responses instantly. Built on a knowledge base specific to your organization, Response Assistant handles winner questions, support tickets, and donor communications with consistency and care.</p>
+                    <ul class="landing-feature-list">
+                        <li>AI-powered reply generation</li>
+                        <li>Dedicated knowledge base (FAQ, draw schedules, AGCO rules)</li>
+                        <li>Consistent, on-brand tone across every reply</li>
+                        <li>Response history tracking</li>
+                    </ul>
+                </div>
+
+                <!-- Insights Engine -->
+                <div class="landing-feature-card animate-on-scroll delay-3">
+                    <div class="landing-feature-icon insights">📊</div>
+                    <h3 class="landing-feature-title">Insights Engine</h3>
+                    <p class="landing-feature-desc">Upload your reports and instantly generate beautiful dashboards with charts, metrics, and actionable insights. Designed for seamless integration with BUMP Raffle and other charitable gaming service providers — just export your data and let Lightspeed do the rest. No spreadsheet skills required.</p>
+                    <ul class="landing-feature-list">
+                        <li>Seamless BUMP Raffle and other provider data integration</li>
+                        <li>Automated chart & dashboard generation</li>
+                        <li>Key metrics at a glance</li>
+                        <li>Export-ready visualizations for reports & presentations</li>
+                    </ul>
+                </div>
+
+                <!-- List Normalizer -->
+                <div class="landing-feature-card animate-on-scroll delay-4">
+                    <div class="landing-feature-icon normalizer">🔄</div>
+                    <h3 class="landing-feature-title">List Normalizer</h3>
+                    <p class="landing-feature-desc">Transform messy customer data into clean, formatted lists ready for Mailchimp and your email platform. What used to take hours now takes 30 seconds — trained on real-world data normalization tasks from active lottery operations.</p>
+                    <ul class="landing-feature-list">
+                        <li>Auto-format names & emails</li>
+                        <li>Remove invalid entries & deduplicate records</li>
+                        <li>One-click Mailchimp export</li>
+                        <li>Trained on thousands of real data cleanup tasks</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
         <section class="landing-how-it-works">
             <div class="landing-section-header">
                 <div class="landing-section-tag">How It Works</div>
@@ -9082,44 +9083,6 @@
                     <div class="landing-step-number">3</div>
                     <h3 class="landing-step-title">Launch & Learn</h3>
                     <p class="landing-step-desc">We train your team, provide documentation, and offer hands-on support. Lightspeed continues learning as you use it.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Social Proof / About Section -->
-        <section class="landing-proof">
-            <div class="landing-proof-quote">
-                <p class="landing-proof-text">"Lightspeed was built in response to the real challenges faced by the teams operating Canada's largest 50/50 raffles. By automating frequent, complex manual work, Lightspeed allows nonprofit teams to spend more time on what truly matters. In a sector with high expectations and limited resources, it helps organizations do more, faster."</p>
-                <div class="landing-proof-author">
-                    <div class="landing-proof-avatar">🚀</div>
-                    <div class="landing-proof-info">
-                        <div class="landing-proof-name">Launchpad Solutions</div>
-                        <div class="landing-proof-role">Thunder Bay, Ontario</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Always Improving Section (NEW) -->
-        <section class="landing-improving">
-            <div class="landing-section-header">
-                <div class="landing-section-tag">Always Improving</div>
-                <h2 class="landing-section-title">Lightspeed evolves with you.</h2>
-                <p class="landing-section-subtitle">Built to grow with your organization, Lightspeed continuously learns from your work and improves over time. New features, smarter suggestions, and deeper integration — all based on how you actually use it.</p>
-            </div>
-
-            <div class="landing-improving-features">
-                <div class="landing-improving-feature">
-                    <div class="landing-improving-icon">🔄</div>
-                    <span>Continuous model updates</span>
-                </div>
-                <div class="landing-improving-feature">
-                    <div class="landing-improving-icon">📚</div>
-                    <span>Expandable knowledge base</span>
-                </div>
-                <div class="landing-improving-feature">
-                    <div class="landing-improving-icon">🤝</div>
-                    <span>Ongoing support & training</span>
                 </div>
             </div>
         </section>
@@ -9189,6 +9152,87 @@
 
             <div class="landing-pricing-setup">
                 <p><strong>One-time setup fee:</strong> Custom quote based on organization size and knowledge base complexity. <a href="mailto:hello@launchpadsolutions.ca">Contact us</a> for details.</p>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="landing-faq" id="faq">
+            <div class="landing-section-header">
+                <div class="landing-section-tag">FAQ</div>
+                <h2 class="landing-section-title">Common questions, straight answers.</h2>
+                <p class="landing-section-subtitle">Everything you need to know before getting started.</p>
+            </div>
+
+            <div class="landing-faq-list">
+                <div class="landing-faq-item">
+                    <button class="landing-faq-question">
+                        Do I need any technical skills to use Lightspeed?
+                        <span class="landing-faq-icon">+</span>
+                    </button>
+                    <div class="landing-faq-answer">
+                        <div class="landing-faq-answer-inner">Not at all. Lightspeed was designed for nonprofit teams, not developers. If you can write an email, you can use Lightspeed. Every tool has a simple interface — type your input, click generate, and review the result. Our team handles all the technical setup for you.</div>
+                    </div>
+                </div>
+
+                <div class="landing-faq-item">
+                    <button class="landing-faq-question">
+                        How long does it take to get set up?
+                        <span class="landing-faq-icon">+</span>
+                    </button>
+                    <div class="landing-faq-answer">
+                        <div class="landing-faq-answer-inner">Most organizations are fully onboarded within one to two weeks. That includes a discovery call, building your custom knowledge base, configuring tools to your brand voice, and training your team. You can start using the free trial immediately while we prepare your full setup.</div>
+                    </div>
+                </div>
+
+                <div class="landing-faq-item">
+                    <button class="landing-faq-question">
+                        Does Lightspeed get smarter the more I use it?
+                        <span class="landing-faq-icon">+</span>
+                    </button>
+                    <div class="landing-faq-answer">
+                        <div class="landing-faq-answer-inner">Yes. Lightspeed is built on machine learning that continuously improves over time. The more your team works with it, the better it understands your organization's voice, preferences, and common requests. Your knowledge base also grows as we add new examples, guidelines, and feedback from your team's real usage.</div>
+                    </div>
+                </div>
+
+                <div class="landing-faq-item">
+                    <button class="landing-faq-question">
+                        Can I use Lightspeed with my existing email and marketing tools?
+                        <span class="landing-faq-icon">+</span>
+                    </button>
+                    <div class="landing-faq-answer">
+                        <div class="landing-faq-answer-inner">Absolutely. Lightspeed generates content you can copy and paste into any platform — Mailchimp, Constant Contact, social media schedulers, your CRM, or email client. The List Normalizer exports clean CSV files ready for direct import into Mailchimp and other services. Insights Engine works with data exports from BUMP Raffle and other providers.</div>
+                    </div>
+                </div>
+
+                <div class="landing-faq-item">
+                    <button class="landing-faq-question">
+                        What happens after the free trial ends?
+                        <span class="landing-faq-icon">+</span>
+                    </button>
+                    <div class="landing-faq-answer">
+                        <div class="landing-faq-answer-inner">After your 7-day trial, you can choose a Monthly or Annual plan to continue using Lightspeed with unlimited generations and your custom knowledge base. If you decide it's not the right fit, no problem — there's no credit card required for the trial, so nothing to cancel.</div>
+                    </div>
+                </div>
+
+                <div class="landing-faq-item">
+                    <button class="landing-faq-question">
+                        Is my organization's data secure?
+                        <span class="landing-faq-icon">+</span>
+                    </button>
+                    <div class="landing-faq-answer">
+                        <div class="landing-faq-answer-inner">Yes. Lightspeed uses encrypted connections for all data in transit, and your organization's knowledge base is isolated and private to your account. We don't share your data with other organizations or use it to train models for other customers. Your content stays yours.</div>
+                    </div>
+                </div>
+
+                <div class="landing-faq-item">
+                    <button class="landing-faq-question">
+                        Is Lightspeed only for 50/50 lottery organizations?
+                        <span class="landing-faq-icon">+</span>
+                    </button>
+                    <div class="landing-faq-answer">
+                        <div class="landing-faq-answer-inner">Lightspeed was built from experience in charitable gaming, but the tools work for any nonprofit operation. If your team handles customer communications, creates marketing content, manages donor data, or generates reports, Lightspeed can help — regardless of your specific program type.</div>
+                    </div>
+                </div>
             </div>
         </section>
 
