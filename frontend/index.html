@@ -5446,6 +5446,275 @@
         }
 
         /* ==================== LIST NORMALIZER TOOL STYLES ==================== */
+        /* Hub Landing */
+        .normalizer-hub {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .normalizer-hub-hero {
+            margin-bottom: 48px;
+        }
+
+        .normalizer-hub-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .normalizer-hub-hero h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0 0 12px 0;
+        }
+
+        .normalizer-hub-hero p {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        .normalizer-hub-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .normalizer-hub-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px 24px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .normalizer-hub-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+
+        .normalizer-hub-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(124, 58, 237, 0.12);
+            border-color: var(--primary-light);
+        }
+
+        .normalizer-hub-card:hover::before {
+            opacity: 1;
+        }
+
+        .normalizer-hub-card-icon {
+            font-size: 36px;
+        }
+
+        .normalizer-hub-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .normalizer-hub-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin: 0;
+            flex: 1;
+        }
+
+        .normalizer-hub-card-tag {
+            display: inline-block;
+            background: var(--bg-input, #f5f3ff);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            align-self: flex-start;
+        }
+
+        @media (max-width: 600px) {
+            .normalizer-hub-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Sub-tool container */
+        .normalizer-sub-tool {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px 20px 0;
+        }
+
+        .normalizer-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .normalizer-back-btn:hover {
+            background: var(--bg-input, #f5f3ff);
+        }
+
+        .normalizer-back-btn span {
+            font-size: 18px;
+        }
+
+        /* Raw Data Normalizer specific */
+        .raw-normalizer-preview {
+            margin-top: 32px;
+            text-align: left;
+        }
+
+        .raw-normalizer-preview h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0 0 12px 0;
+        }
+
+        .raw-normalizer-columns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .raw-normalizer-col-tag {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            background: var(--bg-input, #f5f3ff);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 14px;
+        }
+
+        .raw-normalizer-col-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .raw-normalizer-col-sample {
+            font-size: 11px;
+            color: var(--text-muted);
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .raw-normalizer-instructions {
+            margin-bottom: 20px;
+        }
+
+        .raw-normalizer-label {
+            display: block;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .raw-normalizer-textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            color: var(--text);
+            background: var(--bg-card);
+            resize: vertical;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+
+        .raw-normalizer-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        .raw-normalizer-textarea::placeholder {
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        .raw-normalizer-quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .raw-normalizer-chip {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .raw-normalizer-chip:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--bg-input, #f5f3ff);
+        }
+
+        .raw-normalizer-process-btn {
+            margin-top: 20px;
+            width: 100%;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+
+        .raw-normalizer-process-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+        }
+
         .normalizer-container {
             max-width: 900px;
             margin: 0 auto;
@@ -11655,94 +11924,233 @@
         </header>
 
         <div class="container">
-            <div class="normalizer-container">
-                <!-- Upload Section -->
-                <div class="normalizer-upload-section" id="normalizerUploadSection">
-                    <input type="file" id="normalizerFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
-
-                    <div class="normalizer-hero">
-                        <div class="normalizer-icon">🔄</div>
-                        <h1>Transform Your Customer Lists</h1>
-                        <p>Upload a BUMP Customers report and get a clean, Mailchimp-ready file in seconds.</p>
-                    </div>
-
-                    <div class="normalizer-dropzone" id="normalizerDropzone">
-                        <div class="normalizer-dropzone-icon">📤</div>
-                        <p class="normalizer-dropzone-text">Drag and drop your Customers report here</p>
-                        <span class="normalizer-dropzone-divider">or</span>
-                        <button class="normalizer-upload-btn" onclick="document.getElementById('normalizerFileInput').click()">
-                            Browse Files
-                        </button>
-                        <p class="normalizer-dropzone-hint">Accepts .xlsx, .xls, and .csv files</p>
-                    </div>
-
-                    <div class="normalizer-info-cards">
-                        <div class="normalizer-info-card">
-                            <span class="normalizer-info-icon">✨</span>
-                            <h4>Auto-Formatted</h4>
-                            <p>Combines first and last names into a single NAME column</p>
-                        </div>
-                        <div class="normalizer-info-card">
-                            <span class="normalizer-info-icon">🧹</span>
-                            <h4>Clean Data</h4>
-                            <p>Removes entries without email addresses automatically</p>
-                        </div>
-                        <div class="normalizer-info-card">
-                            <span class="normalizer-info-icon">📧</span>
-                            <h4>Mailchimp Ready</h4>
-                            <p>Exports NAME and EMAIL columns sorted and ready to import</p>
-                        </div>
-                    </div>
-
-                    <!-- Export History -->
-                    <div class="normalizer-history-section" id="normalizerHistorySection" style="display: none;">
-                        <div class="normalizer-history-header">
-                            <h3>Recent Exports</h3>
-                            <button class="normalizer-history-clear-btn" onclick="clearNormalizerHistory()">Clear History</button>
-                        </div>
-                        <div class="normalizer-history-list" id="normalizerHistoryList"></div>
-                    </div>
+            <!-- ===== HUB LANDING (tool selection) ===== -->
+            <div class="normalizer-hub" id="normalizerHub">
+                <div class="normalizer-hub-hero">
+                    <div class="normalizer-hub-icon">📋</div>
+                    <h1>List Normalizer</h1>
+                    <p>Clean, transform, and standardize your data. Choose a tool to get started.</p>
                 </div>
 
-                <!-- Processing Section -->
-                <div class="normalizer-processing" id="normalizerProcessing" style="display: none;">
-                    <div class="normalizer-spinner"></div>
-                    <p>Processing your list...</p>
+                <div class="normalizer-hub-cards">
+                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('marketing')">
+                        <div class="normalizer-hub-card-icon">📧</div>
+                        <h3>Marketing Contact List</h3>
+                        <p>Transform BUMP Customer reports into clean, Mailchimp-ready contact lists with NAME and EMAIL columns.</p>
+                        <span class="normalizer-hub-card-tag">BUMP → Mailchimp</span>
+                    </button>
+
+                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('raw')">
+                        <div class="normalizer-hub-card-icon">🔧</div>
+                        <h3>Raw Data Normalizer</h3>
+                        <p>Upload any spreadsheet and use AI to clean, deduplicate, reformat, and standardize your data.</p>
+                        <span class="normalizer-hub-card-tag">Any Format</span>
+                    </button>
                 </div>
+            </div>
 
-                <!-- Results Section -->
-                <div class="normalizer-results" id="normalizerResults" style="display: none;">
-                    <div class="normalizer-success-icon">✅</div>
-                    <h2>Your List is Ready!</h2>
+            <!-- ===== MARKETING CONTACT LIST NORMALIZER (existing tool) ===== -->
+            <div class="normalizer-sub-tool" id="normalizerMarketingView" style="display: none;">
+                <button class="normalizer-back-btn" onclick="showNormalizerHub()">
+                    <span>←</span> Back to List Normalizer
+                </button>
 
-                    <div class="normalizer-stats">
-                        <div class="normalizer-stat">
-                            <span class="normalizer-stat-value" id="normalizerOriginalCount">0</span>
-                            <span class="normalizer-stat-label">Original Records</span>
+                <div class="normalizer-container">
+                    <!-- Upload Section -->
+                    <div class="normalizer-upload-section" id="normalizerUploadSection">
+                        <input type="file" id="normalizerFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+
+                        <div class="normalizer-hero">
+                            <div class="normalizer-icon">📧</div>
+                            <h1>Marketing Contact List</h1>
+                            <p>Upload a BUMP Customers report and get a clean, Mailchimp-ready file in seconds.</p>
                         </div>
-                        <div class="normalizer-stat-arrow">→</div>
-                        <div class="normalizer-stat">
-                            <span class="normalizer-stat-value" id="normalizerCleanCount">0</span>
-                            <span class="normalizer-stat-label">Clean Records</span>
+
+                        <div class="normalizer-dropzone" id="normalizerDropzone">
+                            <div class="normalizer-dropzone-icon">📤</div>
+                            <p class="normalizer-dropzone-text">Drag and drop your Customers report here</p>
+                            <span class="normalizer-dropzone-divider">or</span>
+                            <button class="normalizer-upload-btn" onclick="document.getElementById('normalizerFileInput').click()">
+                                Browse Files
+                            </button>
+                            <p class="normalizer-dropzone-hint">Accepts .xlsx, .xls, and .csv files</p>
                         </div>
-                        <div class="normalizer-stat removed">
-                            <span class="normalizer-stat-value" id="normalizerRemovedCount">0</span>
-                            <span class="normalizer-stat-label">Removed (No Email)</span>
+
+                        <div class="normalizer-info-cards">
+                            <div class="normalizer-info-card">
+                                <span class="normalizer-info-icon">✨</span>
+                                <h4>Auto-Formatted</h4>
+                                <p>Combines first and last names into a single NAME column</p>
+                            </div>
+                            <div class="normalizer-info-card">
+                                <span class="normalizer-info-icon">🧹</span>
+                                <h4>Clean Data</h4>
+                                <p>Removes entries without email addresses automatically</p>
+                            </div>
+                            <div class="normalizer-info-card">
+                                <span class="normalizer-info-icon">📧</span>
+                                <h4>Mailchimp Ready</h4>
+                                <p>Exports NAME and EMAIL columns sorted and ready to import</p>
+                            </div>
+                        </div>
+
+                        <!-- Export History -->
+                        <div class="normalizer-history-section" id="normalizerHistorySection" style="display: none;">
+                            <div class="normalizer-history-header">
+                                <h3>Recent Exports</h3>
+                                <button class="normalizer-history-clear-btn" onclick="clearNormalizerHistory()">Clear History</button>
+                            </div>
+                            <div class="normalizer-history-list" id="normalizerHistoryList"></div>
                         </div>
                     </div>
 
-                    <div class="normalizer-preview">
-                        <h3>Preview</h3>
-                        <div class="normalizer-preview-table" id="normalizerPreviewTable"></div>
+                    <!-- Processing Section -->
+                    <div class="normalizer-processing" id="normalizerProcessing" style="display: none;">
+                        <div class="normalizer-spinner"></div>
+                        <p>Processing your list...</p>
                     </div>
 
-                    <div class="normalizer-actions">
-                        <button class="normalizer-download-btn" id="normalizerDownloadBtn">
-                            <span>📥</span> Download Mailchimp List
-                        </button>
-                        <button class="normalizer-reset-btn" id="normalizerResetBtn">
-                            ↻ Process Another File
-                        </button>
+                    <!-- Results Section -->
+                    <div class="normalizer-results" id="normalizerResults" style="display: none;">
+                        <div class="normalizer-success-icon">✅</div>
+                        <h2>Your List is Ready!</h2>
+
+                        <div class="normalizer-stats">
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="normalizerOriginalCount">0</span>
+                                <span class="normalizer-stat-label">Original Records</span>
+                            </div>
+                            <div class="normalizer-stat-arrow">→</div>
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="normalizerCleanCount">0</span>
+                                <span class="normalizer-stat-label">Clean Records</span>
+                            </div>
+                            <div class="normalizer-stat removed">
+                                <span class="normalizer-stat-value" id="normalizerRemovedCount">0</span>
+                                <span class="normalizer-stat-label">Removed (No Email)</span>
+                            </div>
+                        </div>
+
+                        <div class="normalizer-preview">
+                            <h3>Preview</h3>
+                            <div class="normalizer-preview-table" id="normalizerPreviewTable"></div>
+                        </div>
+
+                        <div class="normalizer-actions">
+                            <button class="normalizer-download-btn" id="normalizerDownloadBtn">
+                                <span>📥</span> Download Mailchimp List
+                            </button>
+                            <button class="normalizer-reset-btn" id="normalizerResetBtn">
+                                ↻ Process Another File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== RAW DATA NORMALIZER (new tool) ===== -->
+            <div class="normalizer-sub-tool" id="normalizerRawView" style="display: none;">
+                <button class="normalizer-back-btn" onclick="showNormalizerHub()">
+                    <span>←</span> Back to List Normalizer
+                </button>
+
+                <div class="normalizer-container">
+                    <div class="normalizer-upload-section" id="rawNormalizerUploadSection">
+                        <input type="file" id="rawNormalizerFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+
+                        <div class="normalizer-hero">
+                            <div class="normalizer-icon">🔧</div>
+                            <h1>Raw Data Normalizer</h1>
+                            <p>Upload any spreadsheet and tell our AI how you want it cleaned and transformed.</p>
+                        </div>
+
+                        <div class="normalizer-dropzone" id="rawNormalizerDropzone">
+                            <div class="normalizer-dropzone-icon">📤</div>
+                            <p class="normalizer-dropzone-text">Drag and drop any spreadsheet here</p>
+                            <span class="normalizer-dropzone-divider">or</span>
+                            <button class="normalizer-upload-btn" onclick="document.getElementById('rawNormalizerFileInput').click()">
+                                Browse Files
+                            </button>
+                            <p class="normalizer-dropzone-hint">Accepts .xlsx, .xls, and .csv files</p>
+                        </div>
+
+                        <!-- Column Preview (shown after file upload) -->
+                        <div class="raw-normalizer-preview" id="rawNormalizerColumnPreview" style="display: none;">
+                            <h3>Detected Columns</h3>
+                            <div class="raw-normalizer-columns" id="rawNormalizerColumns"></div>
+
+                            <div class="raw-normalizer-instructions">
+                                <label class="raw-normalizer-label">What would you like to do with this data?</label>
+                                <textarea class="raw-normalizer-textarea" id="rawNormalizerInstructions" rows="4" placeholder="Examples:&#10;• Remove duplicate rows based on email&#10;• Combine 'First Name' and 'Last Name' into a single 'Full Name' column&#10;• Remove rows where 'Status' is 'Inactive'&#10;• Standardize phone numbers to (XXX) XXX-XXXX format&#10;• Keep only columns: Name, Email, Phone"></textarea>
+                                <div class="raw-normalizer-quick-actions">
+                                    <button class="raw-normalizer-chip" onclick="addRawInstruction('Remove duplicate rows')">Remove Duplicates</button>
+                                    <button class="raw-normalizer-chip" onclick="addRawInstruction('Remove rows with empty cells')">Remove Empty Rows</button>
+                                    <button class="raw-normalizer-chip" onclick="addRawInstruction('Standardize all text to Title Case')">Title Case</button>
+                                    <button class="raw-normalizer-chip" onclick="addRawInstruction('Sort alphabetically by the first column')">Sort A-Z</button>
+                                    <button class="raw-normalizer-chip" onclick="addRawInstruction('Trim whitespace from all cells')">Trim Whitespace</button>
+                                </div>
+                            </div>
+
+                            <button class="normalizer-upload-btn raw-normalizer-process-btn" id="rawNormalizerProcessBtn" onclick="processRawNormalizer()">
+                                ✨ Process with AI
+                            </button>
+                        </div>
+
+                        <div class="normalizer-info-cards">
+                            <div class="normalizer-info-card">
+                                <span class="normalizer-info-icon">🤖</span>
+                                <h4>AI-Powered</h4>
+                                <p>Describe what you want in plain English and AI handles the rest</p>
+                            </div>
+                            <div class="normalizer-info-card">
+                                <span class="normalizer-info-icon">🔀</span>
+                                <h4>Any Format</h4>
+                                <p>Works with any spreadsheet structure — no fixed column names required</p>
+                            </div>
+                            <div class="normalizer-info-card">
+                                <span class="normalizer-info-icon">📊</span>
+                                <h4>Full Control</h4>
+                                <p>Choose exactly which columns to keep, rename, merge, or transform</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Processing Section -->
+                    <div class="normalizer-processing" id="rawNormalizerProcessing" style="display: none;">
+                        <div class="normalizer-spinner"></div>
+                        <p>AI is processing your data...</p>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div class="normalizer-results" id="rawNormalizerResults" style="display: none;">
+                        <div class="normalizer-success-icon">✅</div>
+                        <h2>Your Data is Ready!</h2>
+
+                        <div class="normalizer-stats">
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="rawNormalizerOriginalCount">0</span>
+                                <span class="normalizer-stat-label">Original Rows</span>
+                            </div>
+                            <div class="normalizer-stat-arrow">→</div>
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="rawNormalizerCleanCount">0</span>
+                                <span class="normalizer-stat-label">Processed Rows</span>
+                            </div>
+                        </div>
+
+                        <div class="normalizer-preview">
+                            <h3>Preview</h3>
+                            <div class="normalizer-preview-table" id="rawNormalizerPreviewTable"></div>
+                        </div>
+
+                        <div class="normalizer-actions">
+                            <button class="normalizer-download-btn" id="rawNormalizerDownloadBtn">
+                                <span>📥</span> Download Processed File
+                            </button>
+                            <button class="normalizer-reset-btn" id="rawNormalizerResetBtn">
+                                ↻ Process Another File
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

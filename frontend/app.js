@@ -1094,6 +1094,7 @@ function openTool(toolId) {
     } else if (toolId === 'list-normalizer') {
         document.getElementById("listNormalizerApp").classList.add("visible");
         setupListNormalizerListeners();
+        showNormalizerHub();
     }
 
     // Update sidebar active states
@@ -6948,7 +6949,35 @@ function renderLeaderboardHtml(container, leaderboard) {
 let listNormalizerListenersSetup = false;
 let normalizerProcessedData = null;
 let normalizerFileName = null;
+let rawNormalizerListenersSetup = false;
+let rawNormalizerRawData = null;
+let rawNormalizerProcessedData = null;
+let rawNormalizerFileName = null;
 const NORMALIZER_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+// --- Hub Navigation ---
+function showNormalizerHub() {
+    document.getElementById('normalizerHub').style.display = 'block';
+    document.getElementById('normalizerMarketingView').style.display = 'none';
+    document.getElementById('normalizerRawView').style.display = 'none';
+    pushRoute('/list-normalizer');
+}
+
+function openNormalizerSubTool(subTool) {
+    document.getElementById('normalizerHub').style.display = 'none';
+    document.getElementById('normalizerMarketingView').style.display = 'none';
+    document.getElementById('normalizerRawView').style.display = 'none';
+
+    if (subTool === 'marketing') {
+        document.getElementById('normalizerMarketingView').style.display = 'block';
+        setupListNormalizerListeners();
+        pushRoute('/list-normalizer/marketing');
+    } else if (subTool === 'raw') {
+        document.getElementById('normalizerRawView').style.display = 'block';
+        setupRawNormalizerListeners();
+        pushRoute('/list-normalizer/raw');
+    }
+}
 
 function setupListNormalizerListeners() {
     if (listNormalizerListenersSetup) return;
@@ -7307,6 +7336,255 @@ function resetListNormalizer() {
     document.getElementById("normalizerFileInput").value = '';
 }
 
+// --- Raw Data Normalizer ---
+function setupRawNormalizerListeners() {
+    if (rawNormalizerListenersSetup) return;
+
+    const dropzone = document.getElementById("rawNormalizerDropzone");
+    const fileInput = document.getElementById("rawNormalizerFileInput");
+
+    if (!dropzone || !fileInput) return;
+
+    rawNormalizerListenersSetup = true;
+
+    dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.classList.add("dragover");
+    });
+
+    dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("dragover");
+    });
+
+    dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file) loadRawNormalizerFile(file);
+    });
+
+    fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) loadRawNormalizerFile(file);
+    });
+
+    document.getElementById("rawNormalizerDownloadBtn").addEventListener("click", downloadRawNormalized);
+    document.getElementById("rawNormalizerResetBtn").addEventListener("click", resetRawNormalizer);
+}
+
+function loadRawNormalizerFile(file) {
+    if (!file.name.match(/\.xlsx?$/i) && !file.name.match(/\.csv$/i)) {
+        showToast("Please upload a spreadsheet file (.xlsx, .xls, or .csv)", "error");
+        return;
+    }
+
+    if (file.size > NORMALIZER_MAX_FILE_SIZE) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        showToast(`File is too large (${sizeMB} MB). Maximum size is 10 MB.`, "error");
+        return;
+    }
+
+    rawNormalizerFileName = file.name;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            rawNormalizerRawData = XLSX.utils.sheet_to_json(sheet);
+
+            if (rawNormalizerRawData.length === 0) {
+                showToast("The file appears to be empty", "error");
+                return;
+            }
+
+            // Show column preview
+            showRawNormalizerColumnPreview(rawNormalizerRawData);
+        } catch (error) {
+            showToast("Error reading file: " + error.message, "error");
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function showRawNormalizerColumnPreview(data) {
+    const allColumns = new Set();
+    data.forEach(row => Object.keys(row).forEach(key => allColumns.add(key)));
+    const columns = Array.from(allColumns);
+
+    const container = document.getElementById("rawNormalizerColumns");
+    container.innerHTML = columns.map(col => {
+        const sampleValues = data.slice(0, 3)
+            .map(row => row[col])
+            .filter(v => v !== undefined && v !== null && String(v).trim() !== '')
+            .map(v => escapeHtml(String(v).substring(0, 40)));
+        return `
+            <div class="raw-normalizer-col-tag">
+                <span class="raw-normalizer-col-name">${escapeHtml(col)}</span>
+                <span class="raw-normalizer-col-sample">${sampleValues.join(', ') || 'empty'}</span>
+            </div>
+        `;
+    }).join('');
+
+    document.getElementById("rawNormalizerColumnPreview").style.display = "block";
+
+    // Hide dropzone, keep info cards visible
+    document.getElementById("rawNormalizerDropzone").style.display = "none";
+}
+
+function addRawInstruction(text) {
+    const textarea = document.getElementById("rawNormalizerInstructions");
+    if (textarea.value && !textarea.value.endsWith('\n')) {
+        textarea.value += '\n';
+    }
+    textarea.value += '• ' + text;
+    textarea.focus();
+}
+
+async function processRawNormalizer() {
+    const instructions = document.getElementById("rawNormalizerInstructions").value.trim();
+    if (!instructions) {
+        showToast("Please describe how you'd like the data transformed", "error");
+        return;
+    }
+
+    if (!rawNormalizerRawData || rawNormalizerRawData.length === 0) {
+        showToast("No data loaded", "error");
+        return;
+    }
+
+    // Show processing
+    document.getElementById("rawNormalizerUploadSection").style.display = "none";
+    document.getElementById("rawNormalizerProcessing").style.display = "block";
+
+    try {
+        // Prepare a sample of data for AI (first 50 rows to keep token count manageable)
+        const sampleSize = Math.min(rawNormalizerRawData.length, 50);
+        const dataSample = rawNormalizerRawData.slice(0, sampleSize);
+        const totalRows = rawNormalizerRawData.length;
+
+        const response = await fetch(`${API_BASE_URL}/api/normalize`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                data: JSON.stringify(dataSample),
+                instructions: `Total rows in file: ${totalRows} (showing first ${sampleSize}).
+Columns detected: ${Object.keys(rawNormalizerRawData[0]).join(', ')}
+
+User instructions: ${instructions}
+
+IMPORTANT: Return ONLY a valid JSON array of objects. Each object is one row with the output column names as keys. Apply the transformations to ALL ${sampleSize} sample rows provided. No markdown, no explanation — just the JSON array.`,
+                outputFormat: 'json'
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Server error (${response.status})`);
+        }
+
+        const result = await response.json();
+        const aiText = (result.content && result.content[0] && result.content[0].text) || '';
+
+        // Parse JSON from AI response
+        let processedRows;
+        try {
+            // Try to extract JSON array from the response
+            const jsonMatch = aiText.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) throw new Error('No JSON array found in response');
+            processedRows = JSON.parse(jsonMatch[0]);
+        } catch (parseErr) {
+            throw new Error('AI returned invalid data. Try simpler instructions.');
+        }
+
+        if (!Array.isArray(processedRows) || processedRows.length === 0) {
+            throw new Error('AI returned empty results. Try different instructions.');
+        }
+
+        rawNormalizerProcessedData = processedRows;
+        const originalCount = rawNormalizerRawData.length;
+        const cleanCount = processedRows.length;
+
+        // Show results
+        document.getElementById("rawNormalizerProcessing").style.display = "none";
+        document.getElementById("rawNormalizerResults").style.display = "block";
+
+        animateValue(document.getElementById("rawNormalizerOriginalCount"), 0, originalCount, 1000);
+        animateValue(document.getElementById("rawNormalizerCleanCount"), 0, cleanCount, 1000);
+
+        showRawNormalizerPreview(processedRows);
+
+    } catch (error) {
+        showToast("Error: " + error.message, "error");
+        resetRawNormalizer();
+    }
+}
+
+function showRawNormalizerPreview(data) {
+    const container = document.getElementById("rawNormalizerPreviewTable");
+    if (!data || data.length === 0) { container.innerHTML = ''; return; }
+
+    const columns = Object.keys(data[0]);
+    const previewData = data.slice(0, 10);
+
+    let html = `
+        <table>
+            <thead>
+                <tr>${columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+                ${previewData.map(row => `
+                    <tr>${columns.map(c => `<td>${escapeHtml(String(row[c] ?? ''))}</td>`).join('')}</tr>
+                `).join('')}
+                ${data.length > 10 ? `
+                    <tr>
+                        <td colspan="${columns.length}" style="text-align: center; color: var(--text-muted); font-style: italic;">
+                            ... and ${(data.length - 10).toLocaleString()} more rows
+                        </td>
+                    </tr>
+                ` : ''}
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+}
+
+function downloadRawNormalized() {
+    if (!rawNormalizerProcessedData || rawNormalizerProcessedData.length === 0) {
+        showToast("No data to download", "error");
+        return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(rawNormalizerProcessedData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Processed Data");
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `Processed_Data_${dateStr}.xlsx`;
+
+    XLSX.writeFile(wb, filename);
+    showToast(`Downloaded ${filename}`, "success");
+
+    saveNormalizerExport(filename, rawNormalizerProcessedData.length);
+    renderNormalizerHistory();
+}
+
+function resetRawNormalizer() {
+    rawNormalizerRawData = null;
+    rawNormalizerProcessedData = null;
+    rawNormalizerFileName = null;
+    document.getElementById("rawNormalizerUploadSection").style.display = "block";
+    document.getElementById("rawNormalizerProcessing").style.display = "none";
+    document.getElementById("rawNormalizerResults").style.display = "none";
+    document.getElementById("rawNormalizerFileInput").value = '';
+    document.getElementById("rawNormalizerColumnPreview").style.display = "none";
+    document.getElementById("rawNormalizerDropzone").style.display = "flex";
+    document.getElementById("rawNormalizerInstructions").value = '';
+}
+
 // ==================== PARALLAX & SCROLL ANIMATIONS ====================
 
 function initParallaxAndAnimations() {
@@ -7460,7 +7738,9 @@ const ROUTES = {
     '/response-assistant/bulk':       { view: 'tool', tool: 'customer-response', page: 'bulk' },
     '/data-analysis':       { view: 'tool', tool: 'data-analysis' },
     '/draft-assistant':     { view: 'tool', tool: 'draft-assistant' },
-    '/list-normalizer':     { view: 'tool', tool: 'list-normalizer' },
+    '/list-normalizer':              { view: 'tool', tool: 'list-normalizer' },
+    '/list-normalizer/marketing':    { view: 'tool', tool: 'list-normalizer', subTool: 'marketing' },
+    '/list-normalizer/raw':          { view: 'tool', tool: 'list-normalizer', subTool: 'raw' },
 };
 
 // Map tools/pages to URL paths (reverse lookup)
@@ -7538,6 +7818,9 @@ function navigateToRoute(path) {
         openTool(route.tool);
         if (route.page) {
             switchPage(route.page);
+        }
+        if (route.subTool) {
+            openNormalizerSubTool(route.subTool);
         }
     }
 }
