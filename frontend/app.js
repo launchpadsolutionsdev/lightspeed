@@ -955,6 +955,17 @@ function showToolMenu() {
     document.getElementById("listNormalizerApp").classList.remove("visible");
     document.getElementById("toolMenuPage").classList.add("visible");
 
+    // Update greeting based on time of day
+    const hour = new Date().getHours();
+    const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const greetingEl = document.getElementById("menuGreeting");
+    if (greetingEl && currentUser) {
+        const firstName = currentUser.name ? currentUser.name.split(' ')[0] : '';
+        greetingEl.textContent = firstName ? `${timeGreeting}, ${firstName}.` : `${timeGreeting}.`;
+    } else if (greetingEl) {
+        greetingEl.textContent = `${timeGreeting}.`;
+    }
+
     // Update user info in menu
     if (currentUser) {
         document.getElementById("menuUserName").textContent = currentUser.name;
