@@ -630,6 +630,19 @@
             margin-top: 8px;
         }
 
+        /* Dark-to-Light Transition Zone */
+        .landing-hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(180deg, transparent 0%, #f8f6ff 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
         /* Value Prop + Trusted By Combined Section */
         .landing-trusted-value-wrapper {
             background: #ffffff;
@@ -755,6 +768,47 @@
         .landing-feature-icon.response { background: linear-gradient(135deg, rgba(224, 242, 254, 0.2), rgba(186, 230, 253, 0.2)); }
         .landing-feature-icon.insights { background: linear-gradient(135deg, rgba(220, 252, 231, 0.2), rgba(187, 247, 208, 0.2)); }
         .landing-feature-icon.normalizer { background: linear-gradient(135deg, rgba(254, 243, 199, 0.2), rgba(253, 230, 138, 0.2)); }
+
+        /* Feature Icon Glow Effect */
+        .landing-feature-icon {
+            position: relative;
+        }
+
+        .landing-feature-icon::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 20px;
+            opacity: 0;
+            filter: blur(12px);
+            animation: iconGlow 4s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        .landing-feature-icon.draft::after {
+            background: rgba(251, 207, 232, 0.4);
+            animation-delay: 0s;
+        }
+
+        .landing-feature-icon.response::after {
+            background: rgba(186, 230, 253, 0.4);
+            animation-delay: 1s;
+        }
+
+        .landing-feature-icon.insights::after {
+            background: rgba(187, 247, 208, 0.4);
+            animation-delay: 2s;
+        }
+
+        .landing-feature-icon.normalizer::after {
+            background: rgba(253, 230, 138, 0.4);
+            animation-delay: 3s;
+        }
+
+        @keyframes iconGlow {
+            0%, 100% { opacity: 0; transform: scale(0.9); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
 
         .landing-feature-title {
             font-size: 1.35rem;
@@ -1177,9 +1231,33 @@
 
         .landing-pricing-card.featured {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            border-color: transparent;
+            border: 2px solid transparent;
             transform: scale(1.05);
             box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
+            overflow: hidden;
+        }
+
+        .landing-pricing-card.featured::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: conic-gradient(from var(--border-angle, 0deg), #7c3aed, #a78bfa, #c4b5fd, #e9d5ff, #c4b5fd, #a78bfa, #7c3aed);
+            border-radius: 22px;
+            z-index: -1;
+            animation: rotateBorder 4s linear infinite;
+        }
+
+        @keyframes rotateBorder {
+            to { --border-angle: 360deg; }
+        }
+
+        @property --border-angle {
+            syntax: '<angle>';
+            inherits: false;
+            initial-value: 0deg;
         }
 
         .landing-pricing-card.featured:hover {
@@ -1810,6 +1888,40 @@
             font-size: 0.7rem;
             color: var(--accent);
             margin-bottom: 12px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .demo-response-badge.visible {
+            opacity: 1;
+        }
+
+        /* Demo typing reveal */
+        .demo-typing-reveal {
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .demo-typing-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .demo-typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: var(--accent);
+            margin-left: 2px;
+            animation: demoBlink 0.8s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes demoBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
 
         /* Insights Engine Demo */
@@ -8703,15 +8815,15 @@
                 </div>
                 <div class="landing-stats">
                     <div class="landing-stat">
-                        <div class="landing-stat-value">4</div>
+                        <div class="landing-stat-value" data-count="4" data-suffix="">0</div>
                         <div class="landing-stat-label">Purpose-Built Tools</div>
                     </div>
                     <div class="landing-stat">
-                        <div class="landing-stat-value">10x</div>
+                        <div class="landing-stat-value" data-count="7.6" data-suffix="x" data-decimals="1">0x</div>
                         <div class="landing-stat-label">Faster Workflows</div>
                     </div>
                     <div class="landing-stat">
-                        <div class="landing-stat-value">1,000+</div>
+                        <div class="landing-stat-value" data-count="10000" data-suffix="+" data-format="comma">0+</div>
                         <div class="landing-stat-label">Real-World Training Examples</div>
                     </div>
                 </div>

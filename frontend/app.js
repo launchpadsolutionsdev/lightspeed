@@ -446,14 +446,19 @@ function setupAuthEventListeners() {
             const descPanel = document.querySelector(`.tool-description-panel[data-tool="${demoId}"]`);
             if (descPanel) descPanel.classList.add('active');
 
+            let activePanel;
             if (demoId === 'draft') {
-                document.getElementById('demoDraft').classList.add('active');
+                activePanel = document.getElementById('demoDraft');
             } else if (demoId === 'response') {
-                document.getElementById('demoResponse').classList.add('active');
+                activePanel = document.getElementById('demoResponse');
             } else if (demoId === 'insights') {
-                document.getElementById('demoInsights').classList.add('active');
+                activePanel = document.getElementById('demoInsights');
             } else if (demoId === 'normalizer') {
-                document.getElementById('demoNormalizer').classList.add('active');
+                activePanel = document.getElementById('demoNormalizer');
+            }
+            if (activePanel) {
+                activePanel.classList.add('active');
+                revealDemoPanel(activePanel);
             }
         });
     });
@@ -7183,6 +7188,101 @@ function initParallaxAndAnimations() {
 
         animatedElements.forEach(el => observer.observe(el));
     }
+
+    // Animated counter for stats bar
+    const statValues = document.querySelectorAll('.landing-stat-value[data-count]');
+    if (statValues.length > 0 && landingPage) {
+        let statsAnimated = false;
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !statsAnimated) {
+                    statsAnimated = true;
+                    animateCounters();
+                }
+            });
+        }, { root: landingPage, threshold: 0.3 });
+
+        const statsBar = document.querySelector('.landing-stats');
+        if (statsBar) statsObserver.observe(statsBar);
+    }
+
+    // Demo typing reveal on tab switch
+    const demoSection = document.querySelector('.landing-demo');
+    if (demoSection && landingPage) {
+        let demoRevealed = false;
+        const demoObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !demoRevealed) {
+                    demoRevealed = true;
+                    revealDemoPanel(document.querySelector('.landing-demo-panel.active'));
+                }
+            });
+        }, { root: landingPage, threshold: 0.2 });
+        demoObserver.observe(demoSection);
+    }
+}
+
+function animateCounters() {
+    document.querySelectorAll('.landing-stat-value[data-count]').forEach(el => {
+        const target = parseFloat(el.dataset.count);
+        const suffix = el.dataset.suffix || '';
+        const decimals = parseInt(el.dataset.decimals) || 0;
+        const useComma = el.dataset.format === 'comma';
+        const duration = 2000;
+        const startTime = performance.now();
+
+        function update(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // Ease-out cubic for a satisfying deceleration
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = eased * target;
+
+            let display;
+            if (decimals > 0) {
+                display = current.toFixed(decimals);
+            } else {
+                display = Math.floor(current).toString();
+            }
+
+            if (useComma) {
+                display = parseInt(display).toLocaleString();
+            }
+
+            el.textContent = display + suffix;
+
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            }
+        }
+
+        requestAnimationFrame(update);
+    });
+}
+
+function revealDemoPanel(panel) {
+    if (!panel) return;
+
+    // Find badges and output sections within this panel
+    const badges = panel.querySelectorAll('.demo-response-badge');
+    const outputEls = panel.querySelectorAll('.demo-draft-output, .demo-response-output, .demo-insights-container, .demo-normalizer-clean');
+
+    // Hide badges initially, reveal after delay
+    badges.forEach(badge => {
+        badge.classList.remove('visible');
+        setTimeout(() => {
+            badge.classList.add('visible');
+        }, 800);
+    });
+
+    // Progressive reveal of output content
+    outputEls.forEach((el, i) => {
+        el.classList.add('demo-typing-reveal');
+        el.classList.remove('revealed');
+        setTimeout(() => {
+            el.classList.add('revealed');
+        }, 400 + (i * 200));
+    });
 }
 
 // ==================== INIT ====================
