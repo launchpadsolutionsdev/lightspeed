@@ -844,7 +844,7 @@
         }
 
         /* Testimonials/Social Proof */
-        /* CTA Section */
+        /* Contact Section */
         .landing-cta-section {
             padding: 100px 40px;
             text-align: center;
@@ -852,10 +852,10 @@
         }
 
         .landing-cta-box {
-            max-width: 700px;
+            max-width: 640px;
             margin: 0 auto;
-            padding: 60px;
-            background: rgba(255,255,255,0.03);
+            padding: 48px;
+            background: rgba(255,255,255,0.04);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 24px;
         }
@@ -864,20 +864,123 @@
             font-size: 2.25rem;
             font-weight: 800;
             color: white;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .landing-cta-subtitle {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             color: rgba(255,255,255,0.6);
             margin-bottom: 32px;
         }
 
-        .landing-cta-buttons {
-            display: flex;
+        .landing-contact-form {
+            text-align: left;
+        }
+
+        .contact-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
+        }
+
+        .contact-form-group {
+            margin-bottom: 16px;
+        }
+
+        .contact-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 6px;
+        }
+
+        .contact-required {
+            color: #a78bfa;
+        }
+
+        .contact-input,
+        .contact-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            color: white;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease, background 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .contact-input::placeholder,
+        .contact-textarea::placeholder {
+            color: rgba(255,255,255,0.25);
+        }
+
+        .contact-input:focus,
+        .contact-textarea:focus {
+            outline: none;
+            border-color: rgba(139, 92, 246, 0.5);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .contact-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .contact-submit-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: 100px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            margin-top: 8px;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .contact-submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(139, 92, 246, 0.4);
+        }
+
+        .contact-submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .contact-form-status {
+            margin-top: 16px;
+            font-size: 0.9rem;
+            min-height: 24px;
+        }
+
+        .contact-form-status.success {
+            color: #86efac;
+        }
+
+        .contact-form-status.error {
+            color: #fca5a5;
+        }
+
+        @media (max-width: 600px) {
+            .contact-form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .landing-cta-box {
+                padding: 32px 24px;
+            }
         }
 
         /* Footer */
@@ -9343,21 +9446,46 @@
             </div>
         </section>
 
-        <!-- CTA Section -->
+        <!-- Contact Section -->
         <section class="landing-cta-section" id="contact">
             <div class="landing-cta-box">
-                <h2 class="landing-cta-title">Let's build something together.</h2>
-                <p class="landing-cta-subtitle">Book a discovery call to learn how Lightspeed can work for your team.</p>
-                <div class="landing-cta-buttons">
-                    <button class="landing-cta-primary" id="ctaGetStartedBtn">
-                        Book a Call
+                <h2 class="landing-cta-title">Get in touch.</h2>
+                <p class="landing-cta-subtitle">Tell us about your organization and we'll show you how Lightspeed can help.</p>
+                <form class="landing-contact-form" id="landingContactForm">
+                    <div class="contact-form-row">
+                        <div class="contact-form-group">
+                            <label class="contact-label">Name <span class="contact-required">*</span></label>
+                            <input type="text" class="contact-input" id="contactName" placeholder="Your full name" required>
+                        </div>
+                        <div class="contact-form-group">
+                            <label class="contact-label">Title</label>
+                            <input type="text" class="contact-input" id="contactTitle" placeholder="e.g. Executive Director">
+                        </div>
+                    </div>
+                    <div class="contact-form-row">
+                        <div class="contact-form-group">
+                            <label class="contact-label">Organization</label>
+                            <input type="text" class="contact-input" id="contactOrg" placeholder="Your organization name">
+                        </div>
+                        <div class="contact-form-group">
+                            <label class="contact-label">Phone</label>
+                            <input type="tel" class="contact-input" id="contactPhone" placeholder="(555) 555-5555">
+                        </div>
+                    </div>
+                    <div class="contact-form-group">
+                        <label class="contact-label">Email <span class="contact-required">*</span></label>
+                        <input type="email" class="contact-input" id="contactEmail" placeholder="you@organization.ca" required>
+                    </div>
+                    <div class="contact-form-group">
+                        <label class="contact-label">Message <span class="contact-required">*</span></label>
+                        <textarea class="contact-textarea" id="contactMessage" placeholder="Tell us about your organization, what challenges you're facing, or what you'd like to learn about Lightspeed..." required></textarea>
+                    </div>
+                    <button type="submit" class="contact-submit-btn" id="contactSubmitBtn">
+                        Send Message
                         <span>→</span>
                     </button>
-                    <a href="mailto:hello@launchpadsolutions.ca" class="landing-cta-secondary" style="text-decoration: none;">
-                        Send Us a Message
-                        <span>✉️</span>
-                    </a>
-                </div>
+                    <div class="contact-form-status" id="contactFormStatus"></div>
+                </form>
             </div>
         </section>
 
