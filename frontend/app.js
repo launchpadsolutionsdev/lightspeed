@@ -1360,6 +1360,10 @@ function setupEventListeners() {
     if (sendInviteBtn) {
         sendInviteBtn.addEventListener("click", sendInvitation);
     }
+    const saveOrgProfileBtn = document.getElementById("saveOrgProfileBtn");
+    if (saveOrgProfileBtn) {
+        saveOrgProfileBtn.addEventListener("click", saveOrgProfile);
+    }
     const inviteEmailInput = document.getElementById("inviteEmail");
     if (inviteEmailInput) {
         inviteEmailInput.addEventListener("keydown", (e) => {
@@ -3195,9 +3199,15 @@ async function loadTeamData() {
         document.getElementById('subscriptionStatus').textContent = formatSubscriptionStatus(org.subscription_status);
         document.getElementById('totalMembers').textContent = org.member_count || '-';
 
-        // Show/hide invite section based on role
-        const canInvite = ['owner', 'admin'].includes(currentUserRole);
-        document.getElementById('inviteSection').style.display = canInvite ? 'block' : 'none';
+        // Show/hide invite section and org profile based on role
+        const canManageOrg = ['owner', 'admin'].includes(currentUserRole);
+        document.getElementById('inviteSection').style.display = canManageOrg ? 'block' : 'none';
+        document.getElementById('orgProfileSection').style.display = canManageOrg ? 'block' : 'none';
+
+        // Populate org profile fields
+        if (canManageOrg) {
+            populateOrgProfile(org);
+        }
 
         // Load members
         await loadMembers();
@@ -3205,6 +3215,75 @@ async function loadTeamData() {
     } catch (error) {
         console.error('Error loading team data:', error);
         showToast('Failed to load team data', 'error');
+    }
+}
+
+function populateOrgProfile(org) {
+    if (!org) return;
+    const fields = {
+        orgProfileWebsite: org.website_url || '',
+        orgProfileLicence: org.licence_number || '',
+        orgProfileStoreLocation: org.store_location || '',
+        orgProfileSupportEmail: org.support_email || '',
+        orgProfileCeoName: org.ceo_name || '',
+        orgProfileCeoTitle: org.ceo_title || '',
+        orgProfileMediaContactName: org.media_contact_name || '',
+        orgProfileMediaContactEmail: org.media_contact_email || '',
+        orgProfileCtaWebsite: org.cta_website_url || '',
+        orgProfileMission: org.mission || ''
+    };
+    for (const [id, value] of Object.entries(fields)) {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    }
+}
+
+async function saveOrgProfile() {
+    if (!currentOrgId) return;
+
+    const btn = document.getElementById('saveOrgProfileBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try {
+        const payload = {
+            websiteUrl: document.getElementById('orgProfileWebsite').value.trim(),
+            licenceNumber: document.getElementById('orgProfileLicence').value.trim(),
+            storeLocation: document.getElementById('orgProfileStoreLocation').value.trim(),
+            supportEmail: document.getElementById('orgProfileSupportEmail').value.trim(),
+            ceoName: document.getElementById('orgProfileCeoName').value.trim(),
+            ceoTitle: document.getElementById('orgProfileCeoTitle').value.trim(),
+            mediaContactName: document.getElementById('orgProfileMediaContactName').value.trim(),
+            mediaContactEmail: document.getElementById('orgProfileMediaContactEmail').value.trim(),
+            ctaWebsiteUrl: document.getElementById('orgProfileCtaWebsite').value.trim(),
+            mission: document.getElementById('orgProfileMission').value.trim()
+        };
+
+        const response = await fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || 'Failed to save');
+        }
+
+        const data = await response.json();
+
+        // Update the cached organization data so Draft/Response Assistants use new values immediately
+        if (currentUser) {
+            currentUser.organization = { ...currentUser.organization, ...data.organization };
+        }
+
+        showToast('Organization profile saved!', 'success');
+    } catch (error) {
+        console.error('Save org profile error:', error);
+        showToast('Failed to save profile: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Profile';
     }
 }
 
@@ -3819,9 +3898,18 @@ async function generateCustomResponse(customerEmail, knowledge, staffName, optio
         drawScheduleContext = DRAW_SCHEDULE.getAIContext();
     }
 
+    // Get org profile values for dynamic prompts
+    const org = currentUser?.organization;
+    const orgName = org?.name || 'our organization';
+    const orgWebsite = org?.website_url || '';
+    const orgSupportEmail = org?.support_email || '';
+
     // Format instructions based on inquiry type
     let formatInstructions = "";
     if (isFacebook) {
+        const fbEmailDirective = orgSupportEmail
+            ? `"Please email us at ${orgSupportEmail} and our team will assist you as soon as possible."`
+            : '"Please email us and our team will assist you as soon as possible."';
         formatInstructions = `FORMAT: This is a FACEBOOK COMMENT response.
 - CRITICAL: Response MUST be under 400 characters total (including signature)
 - Write in a single paragraph - NO line breaks, NO bullet points, NO numbered lists
@@ -3833,29 +3921,38 @@ async function generateCustomResponse(customerEmail, knowledge, staffName, optio
 FACEBOOK PRIVACY RULE - VERY IMPORTANT:
 - NEVER offer to take direct action on Facebook (e.g., "I'll resend your tickets", "I've forwarded this to our team", "Let me look into your account")
 - Facebook is a public platform where we cannot verify identity or handle sensitive account matters
-- Instead, ALWAYS direct the customer to email us: "Please email us at info@thunderbay5050.ca and our team will assist you as soon as possible."
-- You can acknowledge their concern briefly, but the solution must be to email us
-- Example: "Sorry to hear you're having trouble! Please email us at info@thunderbay5050.ca and our team will assist you as soon as possible. -${staffName}"`;
+- Instead, ALWAYS direct the customer to email us: ${fbEmailDirective}
+- You can acknowledge their concern briefly, but the solution must be to email us`;
     } else {
-        formatInstructions = `${includeLinks ? "LINKS: Include relevant website links when helpful (www.thunderbay5050.ca for main site, https://account.tbay5050draw.ca for subscription management)." : "LINKS: Minimize links unless essential."}
+        const linkInfo = orgWebsite ? `(${orgWebsite} for main site)` : '';
+        formatInstructions = `${includeLinks ? `LINKS: Include relevant website links when helpful ${linkInfo}.` : "LINKS: Minimize links unless essential."}
 ${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : "FORMAT: Use flowing paragraphs, avoid numbered lists unless necessary."}`;
     }
 
-    const systemPrompt = `You are a helpful customer support assistant for Thunder Bay 50/50, an AGCO-licensed lottery supporting the Thunder Bay Regional Health Sciences Foundation.
+    // Build dynamic org info section
+    let orgInfoSection = `ORGANIZATION INFO:\n- Organization: ${orgName}`;
+    if (orgWebsite) orgInfoSection += `\n- Lottery Website: ${orgWebsite} (ONLY use this URL - do NOT make up other URLs)`;
+    if (orgSupportEmail) orgInfoSection += `\n- Support Email: ${orgSupportEmail}`;
+    if (org?.store_location) orgInfoSection += `\n- In-Person Location: ${org.store_location}`;
+    if (org?.licence_number) orgInfoSection += `\n- Licence Number: ${org.licence_number}`;
+    if (org?.cta_website_url) orgInfoSection += `\n- Catch The Ace Website: ${org.cta_website_url}`;
+    orgInfoSection += `\n- All draws happen at 11:00 AM`;
+    orgInfoSection += `\n- Ticket purchase deadline: 11:59 PM the night before each draw`;
+
+    if (orgWebsite) {
+        orgInfoSection += `\n\nIMPORTANT: Only use the URLs listed above. Do NOT invent or guess other URLs - they may not exist.`;
+    }
+    if (org?.mission) {
+        orgInfoSection += `\n\nORGANIZATION MISSION: ${org.mission}`;
+    }
+
+    const systemPrompt = `You are a helpful customer support assistant for ${orgName}, an AGCO-licensed lottery organization.
 
 TONE: Write in a ${toneDesc} tone.
 LENGTH: Keep the response ${lengthDesc}.
 ${formatInstructions}
 
-ORGANIZATION INFO:
-- Organization: the Thunder Bay Regional Health Sciences Foundation (ALWAYS include "the" before the name)
-- Lottery Website: www.thunderbay5050.ca (ONLY use this URL - do NOT make up other URLs)
-- Subscription Management: https://account.tbay5050draw.ca
-- All draws happen at 11:00 AM
-- Ticket purchase deadline: 11:59 PM the night before each draw
-
-IMPORTANT: Only use the URLs listed above. Do NOT invent or guess other URLs like "tbrhsf.on.ca" or similar - they don't exist. If you need to reference a website, use www.thunderbay5050.ca.
-IMPORTANT: Always say "the Thunder Bay Regional Health Sciences Foundation" - the word "the" before the name is required.
+${orgInfoSection}
 
 ${drawScheduleContext}
 
@@ -3878,9 +3975,10 @@ ${knowledgeContext}${buildRatedExamplesContext(ratedExamples)}`;
 
     let userPrompt;
     if (isFacebook) {
+        const fbEmailRef = orgSupportEmail ? `direct them to email ${orgSupportEmail} for assistance` : 'direct them to email for assistance';
         userPrompt = `Write a FACEBOOK COMMENT reply to this inquiry. Remember: under 400 characters, single paragraph, end with -${staffName}
 
-IMPORTANT: Do NOT offer to take any direct action. Instead, direct them to email info@thunderbay5050.ca for assistance.
+IMPORTANT: Do NOT offer to take any direct action. Instead, ${fbEmailRef}.
 
 INQUIRY:
 ${customerEmail}`;
@@ -5096,30 +5194,26 @@ const EMAIL_DETAILS_LABELS = {
     'last-chance': 'Deadline and prize information'
 };
 
-const DRAFT_SYSTEM_PROMPT = `You are a professional copywriter for the Thunder Bay Regional Health Sciences Foundation and their Thunder Bay 50/50 lottery program. You write content that is warm, professional, optimistic, exciting, community-focused, trustworthy, fun/playful, and can be urgent when appropriate.
+const DRAFT_SYSTEM_PROMPT = `You are a professional copywriter for [Organization Name] and their 50/50 lottery program. You write content that is warm, professional, optimistic, exciting, community-focused, trustworthy, fun/playful, and can be urgent when appropriate.
 
 CRITICAL RULES YOU MUST ALWAYS FOLLOW:
 - NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
-- NEVER say how much has been "raised" - instead say "nearly $100 million in prizes have been awarded since January 2021"
-- When mentioning impact, ALWAYS use: "Thanks to our donors, event participants, and Thunder Bay 50/50 supporters..." before describing the impact
-- Website is always: www.thunderbay5050.ca
-- In-store location: Thunder Bay 50/50 store inside the Intercity Shopping Centre
+- NEVER say how much has been "raised" - instead highlight the total prizes awarded to date
+- When mentioning impact, ALWAYS use: "Thanks to our donors, event participants, and 50/50 supporters..." before describing the impact
+- Website is always: [Organization Website]
+- In-store location: [In-Person Ticket Location]
 - Must be 18 years or older to purchase
 - Must be physically present in Ontario at time of purchase
-- The Thunder Bay 50/50 launched in January 2021
 - Monthly draws with Early Bird Prizes throughout the month, Grand Prize draw on the last Friday of the month
-- Largest Grand Prize ever was $7,720,930 in December 2025
-- The Foundation supports capital equipment purchases at the Thunder Bay Regional Health Sciences Centre
-- Over $81 million in lifetime contributions to the Hospital
-- 11 multi-millionaire winners created to date
+- The Foundation supports capital equipment purchases at our local healthcare facility
 
 KEY PHRASES TO USE:
-- "You LOVE the Thunder Bay 50/50, and you might LOVE our other raffles just as much!"
-- "Purchase tickets at www.thunderbay5050.ca or inside the Thunder Bay 50/50 store inside the Intercity Shopping Centre!"
+- "You LOVE our 50/50, and you might LOVE our other raffles just as much!"
+- "Purchase tickets at [Organization Website] or at [In-Person Ticket Location]!"
 
 PEOPLE WHO GET QUOTED:
-- Glenn Craig, President & CEO, Thunder Bay Regional Health Sciences Foundation
-- Torin Gunnell, Director, Lotteries
+- [CEO/President Name], [CEO/President Title], [Organization Name]
+- [Media Contact Name]
 
 EMOJI USAGE: Minimal - usually just one emoji after the first sentence/paragraph. Never overuse.
 
@@ -5128,7 +5222,7 @@ CONTENT TYPE SPECIFIC RULES:
 FOR SOCIAL MEDIA:
 - Lead with excitement or key announcement
 - Keep it punchy but informative
-- Include the disclaimer: "Must be 18 years or older to purchase: Lottery Licence RAF1500864" (or current licence number)
+- Include the disclaimer: "Must be 18 years or older to purchase: Lottery Licence [Licence Number]" (or current licence number)
 - One emoji max, placed after first paragraph
 
 FOR EMAIL:
@@ -5138,27 +5232,26 @@ FOR EMAIL:
 
 FOR MEDIA RELEASES:
 - Professional journalistic style
-- Include quotes from Glenn Craig or Torin Gunnell
+- Include quotes from [CEO/President Name] or [Media Contact Name]
 - Structure: Lead paragraph with key news, supporting details, quotes, background info
 - End with "About" boilerplate if appropriate
 
 FOR FACEBOOK/INSTAGRAM ADS:
 - MAXIMUM 120 characters
-- MUST include www.thunderbay5050.ca
+- MUST include [Organization Website]
 - Focus on urgency and excitement
 - Goal is always ticket sales
 - One emoji allowed`;
 
 // Email-specific system prompts based on category
 const EMAIL_SYSTEM_PROMPTS = {
-    'new-draw': `You are a professional email copywriter for the Thunder Bay 50/50 lottery. You write NEW DRAW ANNOUNCEMENT emails that announce the launch of a new monthly draw.
+    'new-draw': `You are a professional email copywriter for [Organization Name]'s 50/50 lottery. You write NEW DRAW ANNOUNCEMENT emails that announce the launch of a new monthly draw.
 
 CRITICAL RULES:
 - NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
-- Website: www.thunderbay5050.ca
-- In-store: Thunder Bay 50/50 store inside the Intercity Shopping Centre
+- Website: [Organization Website]
+- In-store: [In-Person Ticket Location]
 - Must be 18+ and physically in Ontario to purchase
-- The Thunder Bay 50/50 launched in January 2021
 - Grand Prize draw is on the last Friday of the month
 
 TONE & STYLE for New Draw Announcements:
@@ -5174,7 +5267,7 @@ COMMON PHRASES TO USE:
 - "Ring in the new [month] with plenty of chances to WIN!"
 - "Here's everything you need to know about this month's draw"
 - "Don't wait to get your tickets!"
-- "Check out our two other raffles! You LOVE the Thunder Bay 50/50, and you might LOVE our other raffles just as much!"
+- "Check out our two other raffles! You LOVE our 50/50, and you might LOVE our other raffles just as much!"
 
 SUBJECT LINE STYLE:
 - Use dollar amounts and emojis
@@ -5187,11 +5280,11 @@ EMAIL STRUCTURE:
 4. Mention other raffles (Catch The Ace, Pink Jeep if applicable)
 5. Standard footer with lottery licence`,
 
-    'draw-reminder': `You are a professional email copywriter for the Thunder Bay 50/50 lottery. You write DRAW REMINDER emails that remind subscribers about upcoming draws.
+    'draw-reminder': `You are a professional email copywriter for [Organization Name]'s 50/50 lottery. You write DRAW REMINDER emails that remind subscribers about upcoming draws.
 
 CRITICAL RULES:
 - NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
-- Website: www.thunderbay5050.ca
+- Website: [Organization Website]
 - Draws happen at 11AM - winners get called
 - Must be 18+ and physically in Ontario to purchase
 
@@ -5223,11 +5316,11 @@ EMAIL STRUCTURE:
 6. Mention Catch The Ace
 7. Standard footer`,
 
-    'winners': `You are a professional email copywriter for the Thunder Bay 50/50 lottery. You write WINNER ANNOUNCEMENT emails that celebrate and announce draw winners.
+    'winners': `You are a professional email copywriter for [Organization Name]'s 50/50 lottery. You write WINNER ANNOUNCEMENT emails that celebrate and announce draw winners.
 
 CRITICAL RULES:
 - NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
-- Website: www.thunderbay5050.ca
+- Website: [Organization Website]
 - Winners get called at 11AM after the draw
 - Include winning ticket numbers when announcing
 
@@ -5257,13 +5350,13 @@ EMAIL STRUCTURE:
 5. Mention Catch The Ace
 6. Standard footer`,
 
-    'impact-sunday': `You are a professional email copywriter for the Thunder Bay Regional Health Sciences Foundation. You write IMPACT SUNDAY emails that show donors how their 50/50 ticket purchases make a real difference in healthcare.
+    'impact-sunday': `You are a professional email copywriter for [Organization Name]. You write IMPACT SUNDAY emails that show donors how their 50/50 ticket purchases make a real difference in healthcare.
 
 CRITICAL RULES:
 - This is about DONOR IMPACT, not about winning money
 - Focus on the equipment purchased or program funded
 - Include quotes from hospital staff whenever possible
-- Link to the Impact page: https://www.healthsciencesfoundation.ca/our-impact
+- Link to the organization's Impact page when available
 - NEVER use the word "jackpot" - ALWAYS say "Grand Prize"
 - Always thank donors for making this possible
 
@@ -5271,13 +5364,13 @@ TONE & STYLE for Impact Sunday:
 - Warm, grateful, and inspiring
 - Tell the STORY of the equipment/funding and its impact
 - Make it personal - mention specific departments, staff names, patient benefits
-- Use phrases like "Thanks to our donors, event participants, and Thunder Bay 50/50 supporters..."
+- Use phrases like "Thanks to our donors, event participants, and 50/50 supporters..."
 - Show the connection between ticket purchases and healthcare improvements
 
 COMMON PHRASES TO USE:
 - "IMPACT SUNDAY: You helped make this possible!💙"
-- "Thanks to our donors, event participants, and Thunder Bay 50/50 supporters..."
-- "Your support of the Thunder Bay 50/50 directly funds..."
+- "Thanks to our donors, event participants, and 50/50 supporters..."
+- "Your support of our 50/50 directly funds..."
 - "See how your support is making a difference"
 - Link text: "See Your Impact" pointing to impact page
 
@@ -5295,11 +5388,11 @@ EMAIL STRUCTURE:
 6. Reminder about current 50/50 with link to winners area
 7. Standard footer with lottery licence`,
 
-    'last-chance': `You are a professional email copywriter for the Thunder Bay 50/50 lottery. You write LAST CHANCE emails that create urgency for final ticket purchases before major deadlines.
+    'last-chance': `You are a professional email copywriter for [Organization Name]'s 50/50 lottery. You write LAST CHANCE emails that create urgency for final ticket purchases before major deadlines.
 
 CRITICAL RULES:
 - NEVER use the word "jackpot" - ALWAYS say "Grand Prize" instead
-- Website: www.thunderbay5050.ca
+- Website: [Organization Website]
 - Deadline is typically 11:59PM the night before the draw
 - Grand Prize draw is at 11AM on the last Friday of the month
 
@@ -5332,6 +5425,30 @@ EMAIL STRUCTURE:
 7. Subscription reminder if applicable
 8. Standard footer`
 };
+
+// Helper function to replace org profile placeholders with actual values
+function replaceOrgPlaceholders(text) {
+    const org = currentUser?.organization;
+    if (!org || !text) return text;
+    const replacements = {
+        '[Organization Name]': org.name,
+        '[Organization Website]': org.website_url,
+        '[In-Person Ticket Location]': org.store_location,
+        '[Licence Number]': org.licence_number,
+        '[Catch The Ace Website]': org.cta_website_url,
+        '[CEO/President Name]': org.ceo_name,
+        '[CEO/President Title]': org.ceo_title,
+        '[Media Contact Name]': org.media_contact_name,
+        '[Media Contact Email]': org.media_contact_email,
+        '[Support Email]': org.support_email
+    };
+    for (const [placeholder, value] of Object.entries(replacements)) {
+        if (value) {
+            text = text.replaceAll(placeholder, value);
+        }
+    }
+    return text;
+}
 
 // Helper function to build enhanced system prompt with examples from knowledge base
 function buildEnhancedSystemPrompt(contentType, emailType = null) {
@@ -5373,6 +5490,9 @@ function buildEnhancedSystemPrompt(contentType, emailType = null) {
             basePrompt += examples;
         }
     }
+
+    // Replace org profile placeholders with actual values
+    basePrompt = replaceOrgPlaceholders(basePrompt);
 
     return basePrompt;
 }
@@ -5610,16 +5730,19 @@ async function generateDraft() {
 
     // Add required line for social media posts
     if (currentDraftType === 'social') {
-        const requiredLine = typeof DRAFT_KNOWLEDGE_BASE !== 'undefined'
+        let requiredLine = typeof DRAFT_KNOWLEDGE_BASE !== 'undefined'
             ? DRAFT_KNOWLEDGE_BASE.getSocialMediaRequiredLine()
-            : 'Purchase tickets online at www.thunderbay5050.ca or at the Thunder Bay 50/50 store inside the Intercity Shopping Centre!';
+            : 'Purchase tickets online at [Organization Website] or at the [In-Person Ticket Location]!';
+        requiredLine = replaceOrgPlaceholders(requiredLine);
         userPrompt += '\n\nIMPORTANT: You MUST include this exact line in the post: "' + requiredLine + '"';
     }
     userPrompt += quoteInfo;
     userPrompt += "\n\nTone: " + currentDraftTone;
 
     if (currentDraftType === 'ad') {
-        userPrompt += "\n\nREMEMBER: Maximum 120 characters and MUST include www.thunderbay5050.ca";
+        const org = currentUser?.organization;
+        const adUrl = org?.website_url || '[Organization Website]';
+        userPrompt += "\n\nREMEMBER: Maximum 120 characters and MUST include " + adUrl;
     }
 
     lastDraftRequest = { topic, details, quoteInfo };
@@ -5716,15 +5839,15 @@ async function generateEmailDraft() {
         userPrompt += "\n\nAt the end of the email, include the following additional sections:";
 
         if (addSubscriptions && typeof DRAFT_KNOWLEDGE_BASE !== 'undefined') {
-            userPrompt += "\n\n--- SUBSCRIPTIONS SECTION ---\n" + DRAFT_KNOWLEDGE_BASE.getEmailAddOn('subscriptions');
+            userPrompt += "\n\n--- SUBSCRIPTIONS SECTION ---\n" + replaceOrgPlaceholders(DRAFT_KNOWLEDGE_BASE.getEmailAddOn('subscriptions'));
         }
 
         if (addRewardsPlus && typeof DRAFT_KNOWLEDGE_BASE !== 'undefined') {
-            userPrompt += "\n\n--- REWARDS+ SECTION ---\n" + DRAFT_KNOWLEDGE_BASE.getEmailAddOn('rewards-plus');
+            userPrompt += "\n\n--- REWARDS+ SECTION ---\n" + replaceOrgPlaceholders(DRAFT_KNOWLEDGE_BASE.getEmailAddOn('rewards-plus'));
         }
 
         if (addCatchTheAce && typeof DRAFT_KNOWLEDGE_BASE !== 'undefined') {
-            userPrompt += "\n\n--- CATCH THE ACE SECTION ---\n" + DRAFT_KNOWLEDGE_BASE.getEmailAddOn('catch-the-ace');
+            userPrompt += "\n\n--- CATCH THE ACE SECTION ---\n" + replaceOrgPlaceholders(DRAFT_KNOWLEDGE_BASE.getEmailAddOn('catch-the-ace'));
         }
     }
 
@@ -5924,7 +6047,7 @@ Best,
         title: "Cancel Subscription",
         content: `Hi there,
 
-I understand you'd like to cancel your subscription. You can manage your subscription directly at https://account.tbay5050draw.ca - simply log in with your email and click "Manage Subscription" to cancel.
+I understand you'd like to cancel your subscription. You can manage your subscription directly through your account portal - simply log in with your email and click "Manage Subscription" to cancel.
 
 If you need any assistance with the process, please don't hesitate to reach out!
 
@@ -5937,7 +6060,7 @@ Best,
         title: "Modify Subscription",
         content: `Hi there,
 
-You can modify your subscription (change the amount or update payment info) by visiting https://account.tbay5050draw.ca and logging in with your email.
+You can modify your subscription (change the amount or update payment info) by visiting your account portal and logging in with your email.
 
 From there, you can update your subscription amount, payment method, or pause/cancel as needed.
 
@@ -5980,7 +6103,7 @@ Best,
         title: "Can't Log In to View Tickets",
         content: `Hi there,
 
-I understand the confusion! The account login at https://account.tbay5050draw.ca is only for managing your subscription - you cannot view your ticket numbers there.
+I understand the confusion! The account portal is only for managing your subscription - you cannot view your ticket numbers there.
 
 Your ticket numbers are only available in the confirmation email you received when you made your purchase. If you need that email resent, please let me know!
 
@@ -5995,7 +6118,7 @@ Best,
 
 Unfortunately, we're unable to provide tax receipts for lottery ticket purchases. Under CRA rules, lottery tickets are not considered charitable donations, even when the lottery supports a charity.
 
-Thank you for your understanding and for supporting the Thunder Bay Regional Health Sciences Foundation!
+Thank you for your understanding and for supporting [Organization Name]!
 
 Best,
 [NAME]`
@@ -6025,7 +6148,7 @@ function renderTemplates() {
     }
 
     container.innerHTML = filtered.map(template => {
-        const content = template.content.replace(/\[NAME\]/g, staffName);
+        const content = replaceOrgPlaceholders(template.content.replace(/\[NAME\]/g, staffName));
         return `
             <div class="template-card">
                 <div class="template-category">${template.category}</div>
@@ -6042,7 +6165,7 @@ function copyTemplate(templateId, btn) {
     if (!template) return;
 
     const staffName = defaultName || "Name";
-    const content = template.content.replace(/\[NAME\]/g, staffName);
+    const content = replaceOrgPlaceholders(template.content.replace(/\[NAME\]/g, staffName));
 
     navigator.clipboard.writeText(content).then(() => {
         btn.classList.add("copied");

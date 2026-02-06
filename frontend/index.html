@@ -7764,6 +7764,42 @@
             color: var(--text-muted);
             margin: 0;
         }
+        .org-profile-note {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 0 0 1rem 0;
+        }
+        .org-profile-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .org-profile-row.single {
+            grid-template-columns: 1fr;
+        }
+        .org-profile-row .form-group {
+            margin: 0;
+        }
+        .org-profile-row .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 0.35rem;
+        }
+        .org-profile-row textarea.invite-input {
+            resize: vertical;
+            min-height: 70px;
+        }
+        #saveOrgProfileBtn {
+            margin-top: 0.5rem;
+        }
+        @media (max-width: 640px) {
+            .org-profile-row {
+                grid-template-columns: 1fr;
+            }
+        }
         .members-list {
             display: flex;
             flex-direction: column;
@@ -9292,6 +9328,71 @@
                                     <span class="org-value" id="totalMembers">-</span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Organization Profile Section -->
+                    <div class="teams-card" id="orgProfileSection">
+                        <div class="teams-card-header">
+                            <h3>🏢 Organization Profile</h3>
+                        </div>
+                        <div class="teams-card-body">
+                            <p class="org-profile-note">These details are used by the Draft and Response Assistants to personalize generated content for your organization.</p>
+                            <form id="orgProfileForm" class="org-profile-form">
+                                <div class="org-profile-row">
+                                    <div class="form-group">
+                                        <label for="orgProfileWebsite">Website URL</label>
+                                        <input type="text" id="orgProfileWebsite" name="website_url" placeholder="www.yourorganization.ca" class="invite-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="orgProfileLicence">Licence Number</label>
+                                        <input type="text" id="orgProfileLicence" name="licence_number" placeholder="e.g., RAF1296922" class="invite-input">
+                                    </div>
+                                </div>
+                                <div class="org-profile-row">
+                                    <div class="form-group">
+                                        <label for="orgProfileStoreLocation">In-Person Location</label>
+                                        <input type="text" id="orgProfileStoreLocation" name="store_location" placeholder="e.g., Your store inside Shopping Centre" class="invite-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="orgProfileSupportEmail">Support Email</label>
+                                        <input type="email" id="orgProfileSupportEmail" name="support_email" placeholder="support@yourorg.ca" class="invite-input">
+                                    </div>
+                                </div>
+                                <div class="org-profile-row">
+                                    <div class="form-group">
+                                        <label for="orgProfileCeoName">CEO/President Name</label>
+                                        <input type="text" id="orgProfileCeoName" name="ceo_name" placeholder="e.g., Jane Smith" class="invite-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="orgProfileCeoTitle">CEO/President Title</label>
+                                        <input type="text" id="orgProfileCeoTitle" name="ceo_title" placeholder="e.g., President &amp; CEO" class="invite-input">
+                                    </div>
+                                </div>
+                                <div class="org-profile-row">
+                                    <div class="form-group">
+                                        <label for="orgProfileMediaContactName">Media Contact Name</label>
+                                        <input type="text" id="orgProfileMediaContactName" name="media_contact_name" placeholder="e.g., John Doe" class="invite-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="orgProfileMediaContactEmail">Media Contact Email</label>
+                                        <input type="email" id="orgProfileMediaContactEmail" name="media_contact_email" placeholder="press@yourorg.ca" class="invite-input">
+                                    </div>
+                                </div>
+                                <div class="org-profile-row">
+                                    <div class="form-group">
+                                        <label for="orgProfileCtaWebsite">Catch The Ace Website</label>
+                                        <input type="text" id="orgProfileCtaWebsite" name="cta_website_url" placeholder="www.yourcatchtheace.ca (if applicable)" class="invite-input">
+                                    </div>
+                                </div>
+                                <div class="org-profile-row">
+                                    <div class="form-group" style="flex: 1;">
+                                        <label for="orgProfileMission">Organization Mission</label>
+                                        <textarea id="orgProfileMission" name="mission" placeholder="Describe your organization's mission..." class="invite-input" rows="3"></textarea>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-primary" id="saveOrgProfileBtn">Save Profile</button>
+                            </form>
                         </div>
                     </div>
 
