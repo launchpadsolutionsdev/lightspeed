@@ -5442,7 +5442,8 @@ const DRAFT_TYPE_LABELS = {
     'social': 'Social Media Copy',
     'email': 'Email Copy',
     'media-release': 'Media Release',
-    'ad': 'Facebook/Instagram Ad'
+    'ad': 'Facebook/Instagram Ad',
+    'write-anything': 'Write Anything'
 };
 
 const EMAIL_TYPE_LABELS = {
@@ -5515,6 +5516,54 @@ FOR FACEBOOK/INSTAGRAM ADS:
 - Focus on urgency and excitement
 - Goal is always ticket sales
 - One emoji allowed`;
+
+// Write Anything - Best Practices Guide & System Prompt
+const WRITE_ANYTHING_GUIDE = `You are a versatile professional writer for [Organization Name]. You help create any type of written content the user requests — from internal documents to external communications, from creative pieces to formal reports.
+
+WRITING PRINCIPLES:
+1. CLARITY FIRST: Every sentence should serve a purpose. Avoid filler words, clichés, and corporate jargon unless the audience specifically expects it.
+2. AUDIENCE AWARENESS: Adapt vocabulary, sentence structure, and depth of detail to the intended reader. A board report reads differently from a volunteer email.
+3. STRONG OPENINGS: Lead with the most important or compelling information. Don't bury the point.
+4. ACTIVE VOICE: Prefer active voice ("The team raised $50,000") over passive ("$50,000 was raised by the team") unless formality demands otherwise.
+5. CONCRETE DETAILS: Use specific numbers, names, and examples instead of vague generalities. "Served 1,200 patients last quarter" beats "served many patients."
+6. CONSISTENT TONE: Maintain the chosen tone throughout. Don't shift from warm to clinical mid-piece.
+7. SCANNABLE STRUCTURE: Use headers, short paragraphs, and lists for longer pieces. Readers skim before they read.
+8. PURPOSEFUL ENDINGS: Close with a clear call to action, summary, or forward-looking statement — never just trail off.
+
+ORGANIZATION CONTEXT:
+- Organization: [Organization Name]
+- Website: [Organization Website]
+- Mission: [Organization Mission]
+- CEO/President: [CEO/President Name], [CEO/President Title]
+- Media Contact: [Media Contact Name]
+- Support Email: [Support Email]
+
+Use this context naturally when relevant to the content being written. Don't force organization details into content where they don't belong.
+
+TONE GUIDE:
+- Balanced: Professional yet approachable. Clear and direct without being cold.
+- Warm: Friendly, empathetic, community-focused. Like writing to someone you genuinely care about.
+- Formal: Polished, authoritative, structured. Suitable for board reports, official correspondence, grant applications.
+- Persuasive: Compelling, action-oriented, emotionally resonant. Drives the reader toward a specific outcome.
+- Conversational: Casual, relatable, engaging. Like talking to a colleague over coffee.
+
+FORMAT GUIDE:
+- Paragraphs: Flowing prose with clear paragraph breaks. Best for letters, articles, narratives.
+- Bullet Points: Concise, scannable items. Best for summaries, key takeaways, lists of benefits.
+- Numbered List: Sequential or ranked items. Best for steps, priorities, instructions.
+- Outline: Hierarchical structure with headers and sub-points. Best for plans, proposals, complex topics.
+
+LENGTH GUIDE:
+- Brief: Get to the point quickly. 100-200 words. Every word earns its place.
+- Standard: Thorough but focused. 300-500 words. Room for context and detail.
+- Detailed: Comprehensive coverage. 600-1000 words. Full exploration of the topic with supporting points.
+
+IMPORTANT RULES:
+- Always produce publication-ready content — no placeholder text or "[insert here]" markers
+- Match the requested tone, format, and length precisely
+- If the user's request relates to lotteries, fundraising, or the organization's programs, incorporate relevant context naturally
+- Never fabricate statistics, quotes, or specific claims unless the user provides them
+- Provide only the written content — no meta-commentary, explanations, or preamble unless asked`;
 
 // Email-specific system prompts based on category
 const EMAIL_SYSTEM_PROMPTS = {
@@ -5841,6 +5890,26 @@ function setupDraftAssistant() {
     // Email generate button
     document.getElementById('draftEmailGenerateBtn').addEventListener('click', generateEmailDraft);
 
+    // Write Anything - change type button
+    document.getElementById('writeAnythingChangeType').addEventListener('click', () => {
+        document.getElementById('writeAnythingSection').style.display = 'none';
+        document.getElementById('draftTypeSection').style.display = 'block';
+        document.getElementById('draftHeaderActions').style.display = 'none';
+    });
+
+    // Write Anything - toggle pill groups
+    document.querySelectorAll('.wa-toggle-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            // Determine which group this pill belongs to
+            const group = pill.closest('.wa-toggle-group');
+            group.querySelectorAll('.wa-toggle-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+        });
+    });
+
+    // Write Anything - generate button
+    document.getElementById('writeAnythingGenerateBtn').addEventListener('click', generateWriteAnything);
+
     // Quote toggles (for multiple quotes)
     document.querySelectorAll('.draft-quote-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -5877,7 +5946,9 @@ function setupDraftAssistant() {
     // Regenerate button
     document.getElementById('draftRegenerateBtn').addEventListener('click', () => {
         if (lastDraftRequest) {
-            if (lastDraftRequest.isEmail) {
+            if (lastDraftRequest.isWriteAnything) {
+                generateWriteAnything();
+            } else if (lastDraftRequest.isEmail) {
                 generateEmailDraft();
             } else {
                 generateDraft();
@@ -5938,8 +6009,25 @@ function selectDraftType(type) {
         return;
     }
 
+    // For write-anything type, show the writing studio
+    if (type === 'write-anything') {
+        document.getElementById('draftEmailTypeSection').style.display = 'none';
+        document.getElementById('draftInputSection').style.display = 'none';
+        document.getElementById('writeAnythingSection').style.display = 'block';
+        // Reset write anything form
+        document.getElementById('writeAnythingTopic').value = '';
+        document.getElementById('writeAnythingContext').value = '';
+        // Reset toggle pills to defaults
+        document.querySelectorAll('.wa-toggle-pill').forEach(p => p.classList.remove('active'));
+        document.querySelector('.wa-toggle-pill[data-wa-tone="balanced"]').classList.add('active');
+        document.querySelector('.wa-toggle-pill[data-wa-format="paragraphs"]').classList.add('active');
+        document.querySelector('.wa-toggle-pill[data-wa-length="standard"]').classList.add('active');
+        return;
+    }
+
     // For other types, show the regular input section
     document.getElementById('draftEmailTypeSection').style.display = 'none';
+    document.getElementById('writeAnythingSection').style.display = 'none';
     document.getElementById('draftInputSection').style.display = 'block';
     document.getElementById('draftTypeBadge').textContent = DRAFT_TYPE_LABELS[type];
 
@@ -6071,6 +6159,82 @@ async function generateDraft() {
         // Don't show toast for handled errors (limit reached, etc.)
         if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error generating draft: ' + error.message, 'error');
+        }
+    }
+}
+
+async function generateWriteAnything() {
+    const topic = document.getElementById('writeAnythingTopic').value.trim();
+    if (!topic) {
+        showToast('Please describe what you want to write', 'error');
+        return;
+    }
+
+    const context = document.getElementById('writeAnythingContext').value.trim();
+
+    // Get selected toggles
+    const toneEl = document.querySelector('.wa-toggle-pill[data-wa-tone].active');
+    const formatEl = document.querySelector('.wa-toggle-pill[data-wa-format].active');
+    const lengthEl = document.querySelector('.wa-toggle-pill[data-wa-length].active');
+    const tone = toneEl ? toneEl.dataset.waTone : 'balanced';
+    const format = formatEl ? formatEl.dataset.waFormat : 'paragraphs';
+    const length = lengthEl ? lengthEl.dataset.waLength : 'standard';
+
+    // Build user prompt
+    let userPrompt = topic;
+    if (context) {
+        userPrompt += '\n\nAdditional context: ' + context;
+    }
+    userPrompt += '\n\nTone: ' + tone;
+    userPrompt += '\nFormat: ' + format.replace('-', ' ');
+    userPrompt += '\nLength: ' + length;
+
+    lastDraftRequest = { topic, context, isWriteAnything: true };
+
+    // Show loading
+    document.getElementById('writeAnythingSection').style.display = 'none';
+    document.getElementById('draftLoading').style.display = 'block';
+    document.getElementById('draftHeaderActions').style.display = 'none';
+
+    try {
+        // Build system prompt from Write Anything guide with org placeholders
+        const systemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
+
+        const response = await fetch(API_BASE_URL + '/api/generate', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                system: systemPrompt,
+                messages: [{ role: 'user', content: userPrompt }],
+                max_tokens: 2048
+            })
+        });
+
+        if (!response.ok) {
+            await handleApiError(response);
+        }
+
+        const data = await response.json();
+        const generatedContent = data.content[0].text;
+
+        // Show output
+        document.getElementById('draftLoading').style.display = 'none';
+        document.getElementById('draftOutputSection').style.display = 'block';
+        document.getElementById('draftOutputBadge').textContent = '✨ Write Anything';
+        document.getElementById('draftOutputContent').textContent = generatedContent;
+        document.getElementById('draftHeaderActions').style.display = 'flex';
+
+        // Show standard disclaimer
+        const disclaimer = document.getElementById('draftDisclaimer');
+        disclaimer.innerHTML = '⚠️ Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
+        disclaimer.style.display = 'block';
+
+    } catch (error) {
+        console.error('Write Anything generation error:', error);
+        document.getElementById('draftLoading').style.display = 'none';
+        document.getElementById('writeAnythingSection').style.display = 'block';
+        if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
+            showToast('Error generating content: ' + error.message, 'error');
         }
     }
 }
@@ -6215,6 +6379,17 @@ function resetDraftAssistant() {
     document.getElementById('emailAddRewardsPlus').checked = false;
     document.getElementById('emailAddCatchTheAce').checked = false;
 
+    // Reset Write Anything fields
+    document.getElementById('writeAnythingTopic').value = '';
+    document.getElementById('writeAnythingContext').value = '';
+    document.querySelectorAll('.wa-toggle-pill').forEach(p => p.classList.remove('active'));
+    const defaultTone = document.querySelector('.wa-toggle-pill[data-wa-tone="balanced"]');
+    const defaultFormat = document.querySelector('.wa-toggle-pill[data-wa-format="paragraphs"]');
+    const defaultLength = document.querySelector('.wa-toggle-pill[data-wa-length="standard"]');
+    if (defaultTone) defaultTone.classList.add('active');
+    if (defaultFormat) defaultFormat.classList.add('active');
+    if (defaultLength) defaultLength.classList.add('active');
+
     // Reset tone buttons
     document.querySelectorAll('.draft-tone-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.draft-tone-btn[data-tone="balanced"]').classList.add('active');
@@ -6226,6 +6401,7 @@ function resetDraftAssistant() {
     document.getElementById('draftOutputSection').style.display = 'none';
     document.getElementById('draftInputSection').style.display = 'none';
     document.getElementById('draftEmailTypeSection').style.display = 'none';
+    document.getElementById('writeAnythingSection').style.display = 'none';
     document.getElementById('draftLoading').style.display = 'none';
     document.getElementById('draftTypeSection').style.display = 'block';
     document.getElementById('draftHeaderActions').style.display = 'none';
@@ -6243,9 +6419,14 @@ async function refineDraft(instruction) {
 
     try {
         // Build the enhanced system prompt
-        const enhancedSystemPrompt = lastDraftRequest && lastDraftRequest.isEmail
-            ? buildEnhancedSystemPrompt('email', lastDraftRequest.emailType)
-            : buildEnhancedSystemPrompt(currentDraftType);
+        let enhancedSystemPrompt;
+        if (lastDraftRequest && lastDraftRequest.isWriteAnything) {
+            enhancedSystemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
+        } else if (lastDraftRequest && lastDraftRequest.isEmail) {
+            enhancedSystemPrompt = buildEnhancedSystemPrompt('email', lastDraftRequest.emailType);
+        } else {
+            enhancedSystemPrompt = buildEnhancedSystemPrompt(currentDraftType);
+        }
 
         // Build conversation messages for refinement
         const messages = [
