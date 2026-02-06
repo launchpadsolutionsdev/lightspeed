@@ -486,11 +486,8 @@ function setupAuthEventListeners() {
     document.getElementById("toolDataAnalysis").addEventListener("click", () => openTool('data-analysis'));
     document.getElementById("toolListNormalizer").addEventListener("click", () => openTool('list-normalizer'));
 
-    // Back to menu buttons
+    // Back to menu button (in sidebar)
     document.getElementById("backToMenuBtn").addEventListener("click", goBackToMenu);
-    document.getElementById("dataBackToMenuBtn").addEventListener("click", goBackToMenu);
-    document.getElementById("draftBackToMenuBtn").addEventListener("click", goBackToMenu);
-    document.getElementById("listNormalizerBackBtn").addEventListener("click", goBackToMenu);
 
     // Google Sign-In button
     document.getElementById("googleSignInBtn").addEventListener("click", handleGoogleSignIn);
@@ -951,8 +948,11 @@ function showLoginPage() {
 function showToolMenu() {
     document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
+    document.getElementById("appWrapper").classList.remove("visible");
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
+    document.getElementById("draftAssistantApp").classList.remove("visible");
+    document.getElementById("listNormalizerApp").classList.remove("visible");
     document.getElementById("toolMenuPage").classList.add("visible");
 
     // Update user info in menu
@@ -971,11 +971,7 @@ function showToolMenu() {
             adminBtn.innerHTML = '🛡️ Admin Dashboard';
             adminBtn.style.cssText = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 12px; font-size: 14px;';
             adminBtn.onclick = function() {
-                // Hide tool menu
-                document.getElementById("toolMenuPage").classList.remove("visible");
-                // Show main app (where admin page lives)
-                document.getElementById("mainApp").classList.add("visible");
-                // Switch to admin page
+                openTool('customer-response');
                 switchPage('admin');
                 if (typeof window.loadAdminDashboard === 'function') {
                     window.loadAdminDashboard();
@@ -993,6 +989,9 @@ function openTool(toolId) {
     currentTool = toolId;
     document.getElementById("toolMenuPage").classList.remove("visible");
 
+    // Show the app wrapper (contains sidebar + all tools)
+    document.getElementById("appWrapper").classList.add("visible");
+
     // Hide all tool apps first
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
@@ -1003,21 +1002,44 @@ function openTool(toolId) {
         document.getElementById("mainApp").classList.add("visible");
     } else if (toolId === 'data-analysis') {
         document.getElementById("dataAnalysisApp").classList.add("visible");
-        // Re-attach listeners when opening Data Analysis tool
         setupDataAnalysisListeners();
     } else if (toolId === 'draft-assistant') {
         document.getElementById("draftAssistantApp").classList.add("visible");
-        // Initialize Draft Assistant
         setupDraftAssistant();
     } else if (toolId === 'list-normalizer') {
         document.getElementById("listNormalizerApp").classList.add("visible");
-        // Initialize List Normalizer
         setupListNormalizerListeners();
+    }
+
+    // Update sidebar active states
+    updateSidebarForTool(toolId);
+}
+
+function updateSidebarForTool(toolId) {
+    // Update tool-level buttons
+    document.querySelectorAll(".sidebar-btn[data-tool]").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tool === toolId);
+    });
+
+    // Show/hide Response Assistant sub-pages group
+    const responsePages = document.getElementById("sidebarResponsePages");
+    if (responsePages) {
+        responsePages.style.display = toolId === 'customer-response' ? 'block' : 'none';
+    }
+
+    // If switching to Response Assistant, make sure Generator is active by default
+    if (toolId === 'customer-response') {
+        const hasActivePage = document.querySelector(".sidebar-btn[data-page].active");
+        if (!hasActivePage) {
+            const genBtn = document.querySelector('.sidebar-btn[data-page="response"]');
+            if (genBtn) genBtn.classList.add("active");
+        }
     }
 }
 
 function goBackToMenu() {
     currentTool = null;
+    document.getElementById("appWrapper").classList.remove("visible");
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
@@ -1275,16 +1297,30 @@ function setupEventListeners() {
     if (eventListenersSetup) return;
     eventListenersSetup = true;
 
-    // Navigation
-    document.querySelectorAll(".sidebar-btn[data-page]").forEach(btn => {
-        btn.addEventListener("click", () => switchPage(btn.dataset.page));
+    // Navigation - tool switching buttons in sidebar
+    document.querySelectorAll(".sidebar-btn[data-tool]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            openTool(btn.dataset.tool);
+            closeSidebar(); // Close mobile sidebar after tool switch
+        });
     });
 
-    // Sidebar toggle for mobile
-    const sidebarToggle = document.getElementById("sidebarToggle");
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener("click", toggleSidebar);
-    }
+    // Navigation - page switching buttons in sidebar (Response Assistant sub-pages)
+    document.querySelectorAll(".sidebar-btn[data-page]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            // Ensure we're on the Response Assistant if clicking a page button
+            if (currentTool !== 'customer-response') {
+                openTool('customer-response');
+            }
+            switchPage(btn.dataset.page);
+        });
+    });
+
+    // Sidebar toggle for mobile - all toggle buttons
+    ["sidebarToggle", "dataSidebarToggle", "draftSidebarToggle", "listNormalizerSidebarToggle"].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener("click", toggleSidebar);
+    });
 
     // Create overlay for mobile sidebar
     if (!document.getElementById("sidebarOverlay")) {
