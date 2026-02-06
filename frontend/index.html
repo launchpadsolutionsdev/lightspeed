@@ -1231,38 +1231,32 @@
 
         .landing-pricing-card.featured {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            border: 2px solid transparent;
+            border: 2px solid rgba(167, 139, 250, 0.5);
             transform: scale(1.05);
             box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
-            overflow: hidden;
+            animation: edgeGlow 3s ease-in-out infinite;
         }
 
-        .landing-pricing-card.featured::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: conic-gradient(from var(--border-angle, 0deg), #7c3aed, #a78bfa, #c4b5fd, #e9d5ff, #c4b5fd, #a78bfa, #7c3aed);
-            border-radius: 22px;
-            z-index: -1;
-            animation: rotateBorder 4s linear infinite;
-        }
-
-        @keyframes rotateBorder {
-            to { --border-angle: 360deg; }
-        }
-
-        @property --border-angle {
-            syntax: '<angle>';
-            inherits: false;
-            initial-value: 0deg;
+        @keyframes edgeGlow {
+            0%, 100% {
+                border-color: rgba(167, 139, 250, 0.3);
+                box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3),
+                            inset 0 0 20px rgba(167, 139, 250, 0.05),
+                            0 0 15px rgba(139, 92, 246, 0.15);
+            }
+            50% {
+                border-color: rgba(196, 181, 253, 0.7);
+                box-shadow: 0 20px 40px rgba(139, 92, 246, 0.35),
+                            inset 0 0 30px rgba(167, 139, 250, 0.1),
+                            0 0 30px rgba(139, 92, 246, 0.3),
+                            0 0 60px rgba(139, 92, 246, 0.1);
+            }
         }
 
         .landing-pricing-card.featured:hover {
             transform: scale(1.05) translateY(-4px);
-            box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4);
+            box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4),
+                        0 0 40px rgba(139, 92, 246, 0.25);
         }
 
         .landing-pricing-card.featured .landing-pricing-name,
@@ -8924,13 +8918,14 @@
                                     <div class="demo-response-label">AI-Generated Response</div>
                                     <div class="demo-response-output">
                                         <div class="demo-response-badge">✨ Generated in 2.3 seconds</div>
-                                        Hi Sarah,<br><br>
+                                        <div class="demo-response-text">Hi Sarah,<br><br>
                                         Thank you for reaching out and for supporting our 50/50 draw!<br><br>
                                         I completely understand your concern. I've looked into your purchase and can confirm that your $50 ticket purchase was successfully registered in our system. Your tickets are valid and entered into the draw.<br><br>
                                         I've just resent your confirmation email to the address on file. Please check your spam folder if you don't see it in the next few minutes.<br><br>
                                         Best of luck in the draw!<br><br>
                                         Sincerely,<br>
                                         <em>Your Name</em>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
