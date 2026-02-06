@@ -1077,8 +1077,10 @@ function loadUserData(user) {
     responseHistory = user.data.responseHistory || [];
     favorites = user.data.favorites || [];
 
-    // Load KB entries from backend and merge with local
+    // Load data from backend and merge with local
     loadKnowledgeFromBackend();
+    loadFavoritesFromBackend();
+    loadResponseHistoryFromBackend();
 }
 
 async function loadKnowledgeFromBackend() {
@@ -1118,6 +1120,73 @@ async function loadKnowledgeFromBackend() {
         }
     } catch (error) {
         console.warn('Could not load KB from backend, using localStorage:', error);
+    }
+}
+
+async function loadFavoritesFromBackend() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/favorites`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const backendEntries = (data.entries || []).map(entry => ({
+                id: entry.id,
+                title: entry.title,
+                inquiry: entry.inquiry,
+                response: entry.response,
+                dateAdded: entry.created_at
+            }));
+
+            // Merge: backend entries take priority
+            const backendIds = new Set(backendEntries.map(e => e.id));
+            const localOnly = favorites.filter(f => !backendIds.has(f.id));
+            favorites = [...backendEntries, ...localOnly];
+
+            saveUserData();
+            renderFavorites();
+        }
+    } catch (error) {
+        console.warn('Could not load favorites from backend:', error);
+    }
+}
+
+async function loadResponseHistoryFromBackend() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/response-history`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const backendEntries = (data.entries || []).map(entry => ({
+                id: entry.id,
+                backendId: entry.id,
+                inquiry: entry.inquiry,
+                response: entry.response,
+                staffName: `${entry.first_name || ''} ${entry.last_name || ''}`.trim() || 'Unknown',
+                category: entry.format || 'email',
+                timestamp: entry.created_at,
+                responseTime: 0,
+                rating: entry.rating || null
+            }));
+
+            // Merge: backend entries take priority, keep local-only entries
+            const backendIds = new Set(backendEntries.map(e => e.id));
+            const localOnly = responseHistory.filter(h => !backendIds.has(h.id) && !backendIds.has(h.backendId));
+            responseHistory = [...backendEntries, ...localOnly];
+
+            // Sort by timestamp descending
+            responseHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            // Cap at 500
+            if (responseHistory.length > 500) responseHistory = responseHistory.slice(0, 500);
+
+            saveUserData();
+        }
+    } catch (error) {
+        console.warn('Could not load response history from backend:', error);
     }
 }
 
@@ -4070,7 +4139,7 @@ async function rateResponse(historyId, rating, button) {
     }
 }
 
-function saveToFavorites() {
+async function saveToFavorites() {
     if (!currentResponse || !currentInquiry) return;
 
     const title = prompt("Give this template a name:", detectCategory(currentInquiry));
@@ -4083,6 +4152,21 @@ function saveToFavorites() {
         response: currentResponse,
         dateAdded: new Date().toISOString()
     };
+
+    // Save to backend
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/favorites`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ title, inquiry: currentInquiry, response: currentResponse })
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            favorite.id = data.entry.id;
+        }
+    } catch (error) {
+        console.warn('Failed to save favorite to backend:', error);
+    }
 
     favorites.push(favorite);
     saveUserData();
@@ -4222,8 +4306,18 @@ function useFavorite(id) {
     }
 }
 
-function deleteFavorite(id) {
+async function deleteFavorite(id) {
     if (confirm("Delete this favorite?")) {
+        // Delete from backend
+        try {
+            await fetch(`${API_BASE_URL}/api/favorites/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+        } catch (error) {
+            console.warn('Failed to delete favorite from backend:', error);
+        }
+
         favorites = favorites.filter(f => f.id !== id);
         saveUserData();
         renderFavorites();
@@ -4298,92 +4392,128 @@ function getMonthlyBreakdown(history) {
         .map(([key, data]) => data);
 }
 
-function updateAnalytics() {
+async function updateAnalytics() {
     // Guard against missing elements
     const analyticsTotal = document.getElementById("analyticsTotal");
     if (!analyticsTotal) {
         return;
     }
 
-    // Get ALL users' response history for team-wide analytics
-    const allHistory = getAllUsersResponseHistory();
+    // Fetch real analytics from the backend database
+    try {
+        const [statsResp, historyResp] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/response-history/stats`, { headers: getAuthHeaders() }),
+            fetch(`${API_BASE_URL}/api/response-history`, { headers: getAuthHeaders() })
+        ]);
 
-    // Total responses (team-wide)
-    analyticsTotal.textContent = allHistory.length;
+        if (!statsResp.ok || !historyResp.ok) {
+            console.warn('Analytics API failed, falling back to localStorage');
+            updateAnalyticsFromLocalStorage();
+            return;
+        }
 
-    // Today's responses (team-wide)
-    const today = new Date().toDateString();
-    const todayCount = allHistory.filter(h =>
-        new Date(h.timestamp).toDateString() === today
-    ).length;
-    document.getElementById("analyticsToday").textContent = todayCount;
+        const stats = await statsResp.json();
+        const historyData = await historyResp.json();
 
-    // Positive rating percentage (team-wide)
-    const rated = allHistory.filter(h => h.rating);
-    const positive = rated.filter(h => h.rating === 'positive').length;
-    const percentage = rated.length > 0 ? Math.round(positive / rated.length * 100) : 0;
-    document.getElementById("analyticsPositive").textContent = `${percentage}%`;
+        // Total responses (team-wide from DB)
+        analyticsTotal.textContent = stats.total;
 
-    // Average response time (team-wide)
-    const times = allHistory.filter(h => h.responseTime).map(h => h.responseTime);
-    const avgTime = times.length > 0 ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0;
-    document.getElementById("analyticsAvgTime").textContent = `${avgTime}s`;
+        // Today's responses
+        document.getElementById("analyticsToday").textContent = stats.today;
 
-    // Category chart (team-wide)
-    const categories = {};
-    allHistory.forEach(h => {
-        categories[h.category || 'general'] = (categories[h.category || 'general'] || 0) + 1;
-    });
+        // Positive rating percentage
+        document.getElementById("analyticsPositive").textContent = `${stats.positiveRate}%`;
 
-    const maxCount = Math.max(...Object.values(categories), 1);
-    const chartHtml = Object.entries(categories)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([cat, count]) => `
+        // Average response time (not tracked in DB yet, show dash)
+        document.getElementById("analyticsAvgTime").textContent = stats.total > 0 ? '-' : '0s';
+
+        // Category chart from backend
+        const categories = stats.categories || [];
+        const maxCount = Math.max(...categories.map(c => parseInt(c.count)), 1);
+        const chartHtml = categories.slice(0, 5).map(cat => `
             <div class="bar-item">
-                <div class="bar-label">${cat.charAt(0).toUpperCase() + cat.slice(1)}</div>
+                <div class="bar-label">${(cat.category || 'general').charAt(0).toUpperCase() + (cat.category || 'general').slice(1)}</div>
                 <div class="bar-track">
-                    <div class="bar-fill" style="width: ${count / maxCount * 100}%"></div>
+                    <div class="bar-fill" style="width: ${parseInt(cat.count) / maxCount * 100}%"></div>
                 </div>
-                <div class="bar-value">${count}</div>
+                <div class="bar-value">${cat.count}</div>
             </div>
         `).join('');
 
-    document.getElementById("categoryChart").innerHTML = chartHtml ||
-        '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No data yet</div>';
+        document.getElementById("categoryChart").innerHTML = chartHtml ||
+            '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No data yet</div>';
 
-    // Monthly breakdown (team-wide)
-    const monthlyData = getMonthlyBreakdown(allHistory);
-    const monthlyHtml = monthlyData.length > 0 ? monthlyData.map(month => `
-        <div class="monthly-stat-row">
-            <div class="monthly-stat-name">${month.name}</div>
-            <div class="monthly-stat-count">${month.count} responses</div>
-            <div class="monthly-stat-rating">${month.rated > 0 ? Math.round(month.positive / month.rated * 100) + '% positive' : 'No ratings'}</div>
-        </div>
-    `).join('') : '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No data yet</div>';
+        // Monthly breakdown from backend
+        const monthlyData = stats.monthly || [];
+        const monthlyHtml = monthlyData.length > 0 ? monthlyData.map(month => {
+            const date = new Date(month.month + '-01');
+            const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const rated = parseInt(month.rated);
+            const positive = parseInt(month.positive);
+            return `
+                <div class="monthly-stat-row">
+                    <div class="monthly-stat-name">${monthName}</div>
+                    <div class="monthly-stat-count">${month.count} responses</div>
+                    <div class="monthly-stat-rating">${rated > 0 ? Math.round(positive / rated * 100) + '% positive' : 'No ratings'}</div>
+                </div>
+            `;
+        }).join('') : '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No data yet</div>';
 
-    document.getElementById("monthlyBreakdown").innerHTML = monthlyHtml;
+        document.getElementById("monthlyBreakdown").innerHTML = monthlyHtml;
 
-    // Team history list (show who generated each response)
-    const historyHtml = allHistory.slice(0, 15).map(h => `
-        <div class="history-item" onclick="showHistoryDetail('${h.id}')">
-            <div class="history-header">
-                <span class="history-type">${h.category || 'general'}</span>
-                <span class="history-date">${new Date(h.timestamp).toLocaleDateString()}</span>
-            </div>
-            <div class="history-preview">${escapeHtml((h.inquiry || '').substring(0, 100))}...</div>
-            <div class="history-meta">
-                <span>👤 ${h.userName || h.staffName || 'Unknown'}</span>
-                <span>⏱️ ${h.responseTime || 0}s</span>
-                ${h.rating ? `<span>${h.rating === 'positive' ? '👍' : '👎'}</span>` : ''}
-            </div>
-        </div>
-    `).join('');
+        // Team history list from backend
+        const entries = historyData.entries || [];
+        const historyHtml = entries.slice(0, 15).map(h => {
+            const userName = `${h.first_name || ''} ${h.last_name || ''}`.trim() || 'Unknown';
+            return `
+                <div class="history-item" onclick="showHistoryDetail('${h.id}')">
+                    <div class="history-header">
+                        <span class="history-type">${h.format || 'email'}</span>
+                        <span class="history-date">${new Date(h.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div class="history-preview">${escapeHtml((h.inquiry || '').substring(0, 100))}...</div>
+                    <div class="history-meta">
+                        <span>&#128100; ${escapeHtml(userName)}</span>
+                        ${h.rating ? `<span>${h.rating === 'positive' ? '&#128077;' : '&#128078;'}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
 
-    document.getElementById("historyList").innerHTML = historyHtml ||
-        '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No response history yet.</div>';
+        document.getElementById("historyList").innerHTML = historyHtml ||
+            '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No response history yet.</div>';
 
-    // Render leaderboard
+        // Render leaderboard from backend data
+        renderLeaderboardFromData(stats.leaderboard || []);
+
+    } catch (error) {
+        console.warn('Analytics fetch error, falling back to localStorage:', error);
+        updateAnalyticsFromLocalStorage();
+    }
+}
+
+// Fallback analytics using localStorage (when backend is unreachable)
+function updateAnalyticsFromLocalStorage() {
+    const allHistory = getAllUsersResponseHistory();
+
+    document.getElementById("analyticsTotal").textContent = allHistory.length;
+
+    const today = new Date().toDateString();
+    document.getElementById("analyticsToday").textContent = allHistory.filter(h =>
+        new Date(h.timestamp).toDateString() === today
+    ).length;
+
+    const rated = allHistory.filter(h => h.rating);
+    const positive = rated.filter(h => h.rating === 'positive').length;
+    document.getElementById("analyticsPositive").textContent = `${rated.length > 0 ? Math.round(positive / rated.length * 100) : 0}%`;
+
+    const times = allHistory.filter(h => h.responseTime).map(h => h.responseTime);
+    document.getElementById("analyticsAvgTime").textContent = `${times.length > 0 ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0}s`;
+
+    document.getElementById("categoryChart").innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Connect to see team data</div>';
+    document.getElementById("monthlyBreakdown").innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Connect to see team data</div>';
+    document.getElementById("historyList").innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Connect to see team data</div>';
+
     renderLeaderboard();
 }
 
@@ -4692,7 +4822,7 @@ function parseAndImportKnowledge() {
 }
 
 // ==================== FEEDBACK ====================
-function submitFeedback() {
+async function submitFeedback() {
     const name = document.getElementById("feedbackName").value.trim();
     const email = document.getElementById("feedbackEmail").value.trim();
     const type = document.getElementById("feedbackType").value;
@@ -4708,6 +4838,24 @@ function submitFeedback() {
         name, email, type, message,
         dateSubmitted: new Date().toISOString()
     };
+
+    // Save to backend
+    try {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            const resp = await fetch(`${API_BASE_URL}/api/feedback`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ name, email, type, message })
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                feedback.backendId = data.entry?.id;
+            }
+        }
+    } catch (err) {
+        console.error('Failed to save feedback to backend:', err);
+    }
 
     feedbackList.push(feedback);
     saveUserData();
@@ -6047,6 +6195,22 @@ function getLeaderboard() {
         }));
 }
 
+function renderLeaderboardFromData(leaderboard) {
+    const container = document.getElementById("leaderboardContainer");
+    if (!container) return;
+
+    if (leaderboard.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                No data yet. Generate some responses to see the leaderboard!
+            </div>
+        `;
+        return;
+    }
+
+    renderLeaderboardHtml(container, leaderboard);
+}
+
 function renderLeaderboard() {
     const container = document.getElementById("leaderboardContainer");
     if (!container) return;
@@ -6062,24 +6226,27 @@ function renderLeaderboard() {
         return;
     }
 
-    // Top 3 for podium
+    renderLeaderboardHtml(container, leaderboard);
+}
+
+function renderLeaderboardHtml(container, leaderboard) {
     const podiumHtml = leaderboard.length >= 1 ? `
         <div class="leaderboard-podium">
             ${leaderboard[1] ? `
                 <div class="podium-item second">
-                    <div class="podium-rank">🥈</div>
+                    <div class="podium-rank">&#129352;</div>
                     <div class="podium-name">${escapeHtml(leaderboard[1].name)}</div>
                     <div class="podium-count">${leaderboard[1].count} responses</div>
                 </div>
             ` : ''}
             <div class="podium-item first">
-                <div class="podium-rank">🥇</div>
+                <div class="podium-rank">&#129351;</div>
                 <div class="podium-name">${escapeHtml(leaderboard[0].name)}</div>
                 <div class="podium-count">${leaderboard[0].count} responses</div>
             </div>
             ${leaderboard[2] ? `
                 <div class="podium-item third">
-                    <div class="podium-rank">🥉</div>
+                    <div class="podium-rank">&#129353;</div>
                     <div class="podium-name">${escapeHtml(leaderboard[2].name)}</div>
                     <div class="podium-count">${leaderboard[2].count} responses</div>
                 </div>
@@ -6087,7 +6254,6 @@ function renderLeaderboard() {
         </div>
     ` : '';
 
-    // Rest of the list (4th place and below)
     const listHtml = leaderboard.length > 3 ? `
         <div class="leaderboard-list">
             ${leaderboard.slice(3).map(entry => `
