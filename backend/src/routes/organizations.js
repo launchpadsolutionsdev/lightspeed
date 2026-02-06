@@ -9,6 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
 const { authenticate, requireOrganization, requireAdmin, requireOwner } = require('../middleware/auth');
+const { sendInvitationEmail } = require('../services/email');
 
 const FRONTEND_URL = 'https://www.lightspeedutility.ca';
 
@@ -204,12 +205,41 @@ router.post('/:orgId/invite', authenticate, requireOrganization, requireAdmin, [
         // Generate invite link
         const inviteLink = `${FRONTEND_URL}?invite=${token}`;
 
-        // TODO: Send email with invite link
-        // For now, return the link to be shared manually
+        // Get inviter's name and org name for the email
+        const inviterResult = await pool.query(
+            'SELECT first_name, last_name FROM users WHERE id = $1',
+            [req.userId]
+        );
+        const inviter = inviterResult.rows[0];
+        const inviterName = `${inviter.first_name} ${inviter.last_name}`.trim() || 'A team member';
+
+        const orgResult = await pool.query(
+            'SELECT name FROM organizations WHERE id = $1',
+            [req.organization.id]
+        );
+        const organizationName = orgResult.rows[0]?.name || 'your organization';
+
+        // Send invitation email
+        let emailSent = false;
+        try {
+            const emailResult = await sendInvitationEmail({
+                to: email,
+                inviterName,
+                organizationName,
+                inviteLink
+            });
+            emailSent = emailResult.success;
+            if (!emailSent) {
+                console.log('Email not sent (SMTP not configured), invite link returned for manual sharing');
+            }
+        } catch (emailError) {
+            console.error('Failed to send invitation email:', emailError);
+        }
 
         res.status(201).json({
-            message: 'Invitation created',
+            message: emailSent ? 'Invitation sent via email' : 'Invitation created - share the link manually',
             inviteLink,
+            emailSent,
             invitation: {
                 id: inviteId,
                 email,

@@ -124,6 +124,8 @@ router.post('/google', async (req, res) => {
         );
 
         const token = generateToken(user.id);
+        const organization = orgResult.rows[0] || null;
+        const needsOrganization = !organization;
 
         res.json({
             token,
@@ -135,8 +137,9 @@ router.post('/google', async (req, res) => {
                 picture: user.picture,
                 isSuperAdmin: user.is_super_admin
             },
-            organization: orgResult.rows[0] || null,
-            isNewUser
+            organization,
+            isNewUser,
+            needsOrganization
         });
 
     } catch (error) {
@@ -160,6 +163,7 @@ router.get('/me', authenticate, async (req, res) => {
             [req.userId]
         );
 
+        const organization = orgResult.rows[0] || null;
         res.json({
             user: {
                 id: req.user.id,
@@ -169,7 +173,8 @@ router.get('/me', authenticate, async (req, res) => {
                 picture: req.user.picture,
                 isSuperAdmin: req.user.is_super_admin
             },
-            organization: orgResult.rows[0] || null
+            organization,
+            needsOrganization: !organization
         });
 
     } catch (error) {
