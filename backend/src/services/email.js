@@ -19,8 +19,16 @@ if (process.env.SMTP_HOST || process.env.SMTP_USER) {
     });
 }
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@lightspeedutility.ca';
+// For Gmail, FROM_EMAIL must match SMTP_USER or Gmail will reject/rewrite it
+const FROM_EMAIL = process.env.FROM_EMAIL || process.env.SMTP_USER || 'noreply@lightspeedutility.ca';
 const FROM_NAME = process.env.FROM_NAME || 'Lightspeed';
+
+// Verify SMTP connection on startup
+if (transporter) {
+    transporter.verify()
+        .then(() => console.log('[EMAIL] SMTP connection verified — emails will send.'))
+        .catch(err => console.error('[EMAIL] SMTP connection FAILED:', err.message));
+}
 
 /**
  * Send an email
