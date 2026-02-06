@@ -3728,9 +3728,9 @@ function showError(message) {
 function getAllKnowledge() {
     let all = [];
     if (typeof KNOWLEDGE_BASE !== 'undefined') {
-        all = [...KNOWLEDGE_BASE["5050"], ...KNOWLEDGE_BASE["cta"]];
+        all = [...(KNOWLEDGE_BASE["5050"] || []), ...(KNOWLEDGE_BASE["cta"] || []), ...(KNOWLEDGE_BASE["agco"] || [])];
     }
-    // Custom entries first so they always get included in the AI prompt
+    // Custom (org-specific DB) entries first so they always get included in the AI prompt
     return [...customKnowledge, ...all];
 }
 
