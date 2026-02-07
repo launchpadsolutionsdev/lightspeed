@@ -103,8 +103,8 @@ lightspeed/
 - Invite links work via `?invite=token` URL parameter
 
 ## Pricing (Updated)
-- Monthly: **$499/month**
-- Annual: **$449/month** ($5,388/year) - 10% discount
+- Monthly: **$199/month**
+- Annual: **$169/month** ($2,028/year) - 15% discount
 - No usage limits currently enforced (beta period)
 
 ## Database Schema (PostgreSQL)
@@ -147,7 +147,7 @@ To deploy changes:
 - **lightspeed-db** - PostgreSQL database
 
 ## Recent Changes (This Session)
-1. Updated pricing to $499/month with 10% annual discount
+1. Updated pricing to $199/month with 15% annual discount
 2. Fixed admin dashboard (missing fields, null safety)
 3. Fixed admin button navigation (mainApp visibility)
 4. Removed email/password authentication - Google OAuth only
@@ -182,7 +182,7 @@ To deploy changes:
 - [ ] Knowledge base CRUD works
 - [ ] Team invite link modal appears
 - [ ] Admin dashboard loads (if super admin)
-- [ ] Pricing shows $499/$449
+- [ ] Pricing shows $199/$169
 
 ## Contact
 - Support email: hello@launchpadsolutions.ca
