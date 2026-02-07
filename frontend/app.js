@@ -8542,17 +8542,23 @@ function handlePostLoginRedirect() {
 
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", () => {
+    // Capture the URL BEFORE init() runs (init may change it via showToolMenu → pushRoute)
+    const initialPath = window.location.pathname;
+
     init();
     initParallaxAndAnimations();
 
     // After init, check if the URL points somewhere specific
-    const path = window.location.pathname;
-    if (path && path !== '/' && ROUTES[path]) {
+    if (initialPath && initialPath !== '/' && ROUTES[initialPath]) {
         // Small delay to let init() finish auth check
         setTimeout(() => {
             _routerNavigating = true;
-            navigateToRoute(path);
+            navigateToRoute(initialPath);
             _routerNavigating = false;
+            // Restore the original URL (init may have changed it to /dashboard)
+            if (window.location.pathname !== initialPath) {
+                history.replaceState({ path: initialPath }, '', initialPath);
+            }
         }, 100);
     }
 });
