@@ -1370,9 +1370,10 @@ function loginUser(user, showMessage = true) {
     // Load user's data
     loadUserData(user);
 
-    // Update UI
-    document.getElementById("userAvatar").textContent = user.name.charAt(0).toUpperCase();
-    document.getElementById("userName").textContent = user.name.split(" ")[0];
+    // Update UI (defensive against missing name)
+    const displayName = user.name || user.email || "User";
+    document.getElementById("userAvatar").textContent = displayName.charAt(0).toUpperCase();
+    document.getElementById("userName").textContent = displayName.split(" ")[0];
 
     // Hide auth pages, show tool menu
     document.getElementById("landingPage").classList.add("hidden");
@@ -1429,7 +1430,11 @@ function loginUser(user, showMessage = true) {
 }
 
 function loadUserData(user) {
-    defaultName = user.settings.defaultName || user.name.split(" ")[0];
+    // Defensive: ensure nested objects exist (guards against corrupted localStorage)
+    if (!user.settings) user.settings = {};
+    if (!user.data) user.data = {};
+
+    defaultName = user.settings.defaultName || (user.name ? user.name.split(" ")[0] : "User");
     orgName = user.settings.orgName || "";
     customKnowledge = user.data.customKnowledge || [];
     feedbackList = user.data.feedbackList || [];
@@ -8593,13 +8598,32 @@ document.addEventListener("DOMContentLoaded", () => {
         // (loginUser already handled routing if user was logged in)
         delete window._initialPath;
 
-        // Debug: log visibility state of all major containers
+        // Safety net: detect blank page and recover
+        const landingVisible = !document.getElementById('landingPage')?.classList.contains('hidden');
+        const toolMenuVisible = document.getElementById('toolMenuPage')?.classList.contains('visible');
+        const appWrapperVisible = document.getElementById('appWrapper')?.classList.contains('visible');
+        const loginVisible = document.getElementById('loginPage')?.classList.contains('visible');
+
         console.log('[BOOT] Visibility check:', {
-            landingPage: !document.getElementById('landingPage')?.classList.contains('hidden'),
-            toolMenuPage: document.getElementById('toolMenuPage')?.classList.contains('visible'),
-            appWrapper: document.getElementById('appWrapper')?.classList.contains('visible'),
-            loginPage: document.getElementById('loginPage')?.classList.contains('visible'),
+            landingPage: landingVisible,
+            toolMenuPage: toolMenuVisible,
+            appWrapper: appWrapperVisible,
+            loginPage: loginVisible,
         });
+
+        // If NOTHING is visible, the user would see a blank page — recover now
+        if (!landingVisible && !toolMenuVisible && !appWrapperVisible && !loginVisible) {
+            console.warn('[BOOT] Blank page detected! No container is visible. Recovering...');
+            if (currentUser) {
+                // User is logged in but nothing rendered — show the dashboard
+                console.log('[BOOT] Recovery: showing tool menu for logged-in user');
+                showToolMenu();
+            } else {
+                // Not logged in — show landing page
+                console.log('[BOOT] Recovery: showing landing page');
+                document.getElementById('landingPage').classList.remove('hidden');
+            }
+        }
     } catch (err) {
         console.error('[BOOT] Fatal error during initialization:', err);
         // Show error visually so the user sees something
