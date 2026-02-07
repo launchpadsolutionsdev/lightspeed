@@ -7460,23 +7460,22 @@ async function processRawNormalizer() {
     document.getElementById("rawNormalizerProcessing").style.display = "block";
 
     try {
-        // Prepare a sample of data for AI (first 50 rows to keep token count manageable)
-        const sampleSize = Math.min(rawNormalizerRawData.length, 50);
+        // Send a small sample (10 rows) so the AI can generate a transform function
+        const sampleSize = Math.min(rawNormalizerRawData.length, 10);
         const dataSample = rawNormalizerRawData.slice(0, sampleSize);
         const totalRows = rawNormalizerRawData.length;
+        const columns = Object.keys(rawNormalizerRawData[0]);
 
         const response = await fetch(`${API_BASE_URL}/api/normalize`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({
-                data: JSON.stringify(dataSample),
-                instructions: `Total rows in file: ${totalRows} (showing first ${sampleSize}).
-Columns detected: ${Object.keys(rawNormalizerRawData[0]).join(', ')}
+                data: JSON.stringify(dataSample, null, 2),
+                instructions: `Columns: ${columns.join(', ')}
+Total rows in file: ${totalRows} (sample of ${sampleSize} shown).
 
-User instructions: ${instructions}
-
-IMPORTANT: Return ONLY a valid JSON array of objects. Each object is one row with the output column names as keys. Apply the transformations to ALL ${sampleSize} sample rows provided. No markdown, no explanation — just the JSON array.`,
-                outputFormat: 'json'
+User instructions: ${instructions}`,
+                outputFormat: 'transform'
             })
         });
 
@@ -7487,32 +7486,76 @@ IMPORTANT: Return ONLY a valid JSON array of objects. Each object is one row wit
         }
 
         const result = await response.json();
-        console.log('[Raw Normalizer] API response:', result);
-        const aiText = (result.content && result.content[0] && result.content[0].text) || '';
+        let aiText = (result.content && result.content[0] && result.content[0].text) || '';
+        console.log('[Raw Normalizer] AI returned transform function:', aiText.substring(0, 500));
 
         if (!aiText) {
             throw new Error('AI returned an empty response. Please try again.');
         }
 
-        // Parse JSON from AI response
-        let processedRows;
+        // Strip markdown code fences if AI included them
+        aiText = aiText.replace(/^```(?:javascript|js)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+
+        // Build the transform function from AI-generated code
+        let transformFn;
         try {
-            // Try to extract JSON array from the response
-            const jsonMatch = aiText.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) throw new Error('No JSON array found');
-            processedRows = JSON.parse(jsonMatch[0]);
-        } catch (parseErr) {
-            console.error('[Raw Normalizer] Parse error. AI text:', aiText.substring(0, 500));
-            throw new Error('AI returned invalid data. Try simpler instructions.');
+            transformFn = new Function('row', aiText);
+        } catch (syntaxErr) {
+            console.error('[Raw Normalizer] Function syntax error:', syntaxErr.message, '\nCode:', aiText);
+            throw new Error('AI generated invalid code. Try rephrasing your instructions.');
         }
 
-        if (!Array.isArray(processedRows) || processedRows.length === 0) {
-            throw new Error('AI returned empty results. Try different instructions.');
+        // Test on first row to validate
+        try {
+            const testResult = transformFn(rawNormalizerRawData[0]);
+            if (testResult !== null && typeof testResult !== 'object') {
+                throw new Error('Function must return an object or null');
+            }
+        } catch (testErr) {
+            console.error('[Raw Normalizer] Transform test failed:', testErr.message);
+            throw new Error('Transform function failed on test row. Try simpler instructions.');
         }
 
-        rawNormalizerProcessedData = processedRows;
+        // Apply transform to ALL rows
+        const processedRows = [];
+        let errors = 0;
+        for (let i = 0; i < rawNormalizerRawData.length; i++) {
+            try {
+                const result = transformFn(rawNormalizerRawData[i]);
+                if (result !== null && result !== undefined) {
+                    processedRows.push(result);
+                }
+            } catch {
+                errors++;
+            }
+        }
+
+        if (processedRows.length === 0) {
+            throw new Error('Transform produced no results. All rows were filtered out or errored.');
+        }
+
+        if (errors > 0) {
+            console.warn(`[Raw Normalizer] ${errors} rows had errors during transform`);
+        }
+
+        // Check for dedup instruction
+        const wantDedup = /dedup|duplicate|unique/i.test(instructions);
+        let finalRows = processedRows;
+        if (wantDedup && processedRows.length > 0) {
+            const outputCols = Object.keys(processedRows[0]);
+            // Deduplicate by full row content
+            const seen = new Set();
+            finalRows = processedRows.filter(row => {
+                const key = outputCols.map(c => String(row[c] || '').toLowerCase().trim()).join('|');
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+
+        rawNormalizerProcessedData = finalRows;
         const originalCount = rawNormalizerRawData.length;
-        const cleanCount = processedRows.length;
+        const cleanCount = finalRows.length;
 
         // Show results
         document.getElementById("rawNormalizerProcessing").style.display = "none";
@@ -7521,7 +7564,7 @@ IMPORTANT: Return ONLY a valid JSON array of objects. Each object is one row wit
         animateValue(document.getElementById("rawNormalizerOriginalCount"), 0, originalCount, 1000);
         animateValue(document.getElementById("rawNormalizerCleanCount"), 0, cleanCount, 1000);
 
-        showRawNormalizerPreview(processedRows);
+        showRawNormalizerPreview(finalRows);
 
     } catch (error) {
         console.error('[Raw Normalizer] Error:', error);
