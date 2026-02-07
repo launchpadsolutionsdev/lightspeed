@@ -2580,6 +2580,24 @@
             color: rgba(255,255,255,0.5);
         }
 
+        .tool-menu-billing {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            color: rgba(139, 92, 246, 0.8);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .tool-menu-billing:hover {
+            background: rgba(139, 92, 246, 0.1);
+            color: #a78bfa;
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+
         .tool-menu-logout {
             padding: 8px 16px;
             background: transparent;
@@ -10242,6 +10260,7 @@
                     <div class="tool-menu-user-name" id="menuUserName">User</div>
                     <div class="tool-menu-user-email" id="menuUserEmail">user@example.com</div>
                 </div>
+                <button class="tool-menu-billing" id="menuBillingBtn" style="display:none;" onclick="openBillingPortal()">Manage Subscription</button>
                 <button class="tool-menu-logout" id="menuLogoutBtn">Sign Out</button>
             </div>
         </header>

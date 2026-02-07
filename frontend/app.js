@@ -46,6 +46,72 @@ async function handleApiError(response) {
     throw new Error(error.error || error.message || 'API request failed. Please try again.');
 }
 
+// ==================== STRIPE CHECKOUT ====================
+async function startCheckout(plan) {
+    if (!currentUser) {
+        // Not logged in — save plan choice and send to login
+        localStorage.setItem('selectedPlan', plan);
+        document.getElementById('landingPage').classList.add('hidden');
+        showLoginPage();
+        return;
+    }
+
+    try {
+        showToast('Redirecting to checkout...', 'info');
+        const response = await fetch(`${API_BASE_URL}/api/billing/create-checkout-session`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ plan })
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            showToast(err.error || 'Failed to start checkout', 'error');
+            return;
+        }
+
+        const { url } = await response.json();
+        window.location.href = url;
+    } catch (error) {
+        console.error('Checkout error:', error);
+        showToast('Could not connect to billing. Please try again.', 'error');
+    }
+}
+
+async function openBillingPortal() {
+    try {
+        showToast('Opening billing portal...', 'info');
+        const response = await fetch(`${API_BASE_URL}/api/billing/create-portal-session`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            showToast(err.error || 'Failed to open billing portal', 'error');
+            return;
+        }
+
+        const { url } = await response.json();
+        window.location.href = url;
+    } catch (error) {
+        console.error('Billing portal error:', error);
+        showToast('Could not connect to billing. Please try again.', 'error');
+    }
+}
+
+function checkPostCheckoutMessage() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') === 'success') {
+        showToast('Subscription activated! Welcome to Lightspeed.', 'success');
+        // Clean URL
+        history.replaceState(null, '', window.location.pathname);
+    } else if (params.get('checkout') === 'cancelled') {
+        showToast('Checkout cancelled. You can subscribe anytime from your dashboard.', 'info');
+        history.replaceState(null, '', window.location.pathname);
+    }
+}
+
 function showUpgradeModal(reason, usageCount, limit) {
     let modal = document.getElementById('upgradeModal');
     if (!modal) {
@@ -78,8 +144,11 @@ function showUpgradeModal(reason, usageCount, limit) {
                     <p>or $169/month billed annually (save 15%)</p>
                 </div>
                 <div class="upgrade-actions">
-                    <button class="btn-primary btn-upgrade" onclick="window.location.href='mailto:hello@launchpadsolutions.ca?subject=Lightspeed%20Upgrade%20Request'">
-                        Contact Us to Upgrade
+                    <button class="btn-primary btn-upgrade" onclick="startCheckout('monthly')">
+                        Subscribe Monthly — $199/mo
+                    </button>
+                    <button class="btn-primary btn-upgrade" onclick="startCheckout('annual')" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);">
+                        Subscribe Annually — $169/mo
                     </button>
                     <button class="btn-secondary" onclick="document.getElementById('upgradeModal').classList.remove('show')">
                         Maybe Later
@@ -577,19 +646,13 @@ function setupAuthEventListeners() {
 
     if (pricingMonthlyBtn) {
         pricingMonthlyBtn.addEventListener("click", () => {
-            // Store selected plan for after signup
-            localStorage.setItem("selectedPlan", "monthly");
-            document.getElementById("landingPage").classList.add("hidden");
-            showLoginPage();
+            startCheckout('monthly');
         });
     }
 
     if (pricingAnnualBtn) {
         pricingAnnualBtn.addEventListener("click", () => {
-            // Store selected plan for after signup
-            localStorage.setItem("selectedPlan", "annual");
-            document.getElementById("landingPage").classList.add("hidden");
-            showLoginPage();
+            startCheckout('annual');
         });
     }
 
@@ -977,9 +1040,22 @@ async function handleOrgSetup(e) {
             // Close modal and proceed
             document.getElementById("orgSetupModal").classList.remove("show");
 
-            // Show tool menu
+            // Check if user selected a plan before signing up
+            const selectedPlan = localStorage.getItem('selectedPlan');
+            if (selectedPlan) {
+                localStorage.removeItem('selectedPlan');
+            }
+
+            // Show tool menu (pass false to suppress default toast)
             loginUser(currentUser, false);
-            showToast(`Welcome to Lightspeed! Your 14-day trial has started.`, "success");
+
+            if (selectedPlan) {
+                // User chose a plan from pricing — send them to checkout
+                showToast('Setting up your subscription...', 'info');
+                await startCheckout(selectedPlan);
+            } else {
+                showToast(`Welcome to Lightspeed! Your 14-day trial has started.`, "success");
+            }
 
         } else {
             const errorData = await response.json().catch(() => ({}));
@@ -1066,6 +1142,19 @@ function showToolMenu() {
         } else if (!currentUser.isSuperAdmin && existingAdminBtn) {
             existingAdminBtn.remove();
         }
+    }
+
+    // Fetch subscription status and show billing button if subscribed
+    const billingBtn = document.getElementById('menuBillingBtn');
+    if (billingBtn) {
+        fetch(`${API_BASE_URL}/api/billing/subscription`, { headers: getAuthHeaders() })
+            .then(r => r.ok ? r.json() : null)
+            .then(sub => {
+                if (sub && sub.hasPaymentMethod) {
+                    billingBtn.style.display = '';
+                }
+            })
+            .catch(() => {}); // Silently ignore — not critical
     }
 
     // Initialize Ask Lightspeed (refresh sample prompts each time)
@@ -1427,6 +1516,17 @@ function loginUser(user, showMessage = true) {
 
     // Process any pending invite token after login
     processPendingInvite();
+
+    // Check if user selected a plan from the pricing page before signing in
+    const selectedPlan = localStorage.getItem('selectedPlan');
+    if (selectedPlan) {
+        localStorage.removeItem('selectedPlan');
+        console.log('[LOGIN] User had selected plan:', selectedPlan, '— starting checkout');
+        startCheckout(selectedPlan);
+    }
+
+    // Check for post-checkout messages (e.g. ?checkout=success in URL)
+    checkPostCheckoutMessage();
 }
 
 function loadUserData(user) {
