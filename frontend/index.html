@@ -5448,113 +5448,266 @@
         /* ==================== LIST NORMALIZER TOOL STYLES ==================== */
         /* Hub Landing */
         .normalizer-hub {
-            max-width: 900px;
+            max-width: 960px;
             margin: 0 auto;
-            padding: 60px 20px;
+            padding: 48px 20px;
             text-align: center;
         }
 
         .normalizer-hub-hero {
-            margin-bottom: 48px;
+            margin-bottom: 40px;
         }
 
         .normalizer-hub-icon {
-            font-size: 64px;
-            margin-bottom: 16px;
+            font-size: 56px;
+            margin-bottom: 12px;
             animation: float 3s ease-in-out infinite;
         }
 
         .normalizer-hub-hero h1 {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             color: var(--text);
-            margin: 0 0 12px 0;
+            margin: 0 0 8px 0;
         }
 
         .normalizer-hub-hero p {
-            font-size: 16px;
+            font-size: 15px;
             color: var(--text-muted);
             margin: 0;
         }
 
-        .normalizer-hub-cards {
+        /* Bento-style grid */
+        .nhub-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            max-width: 940px;
-            margin: 0 auto;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 16px;
+            width: 100%;
         }
 
-        .normalizer-hub-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 32px 24px;
-            text-align: left;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        .nhub-card {
             position: relative;
             overflow: hidden;
+            border-radius: 20px;
+            padding: 28px;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            animation: fadeInUp 0.5s ease-out both;
+            background: rgba(124, 58, 237, 0.03);
+            border: 1px solid rgba(124, 58, 237, 0.08);
+            display: flex;
+            flex-direction: column;
+            text-align: left;
         }
 
-        .normalizer-hub-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
-            opacity: 0;
-            transition: opacity 0.25s;
-        }
+        .nhub-card:nth-child(1) { animation-delay: 0ms; }
+        .nhub-card:nth-child(2) { animation-delay: 80ms; }
+        .nhub-compact-row .nhub-card:nth-child(1) { animation-delay: 160ms; }
+        .nhub-compact-row .nhub-card:nth-child(2) { animation-delay: 240ms; }
+        .nhub-compact-row .nhub-card:nth-child(3) { animation-delay: 320ms; }
 
-        .normalizer-hub-card:hover {
+        .nhub-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(124, 58, 237, 0.12);
-            border-color: var(--primary-light);
+            box-shadow: 0 16px 48px rgba(124, 58, 237, 0.12);
         }
 
-        .normalizer-hub-card:hover::before {
-            opacity: 1;
+        /* Glow effects */
+        .nhub-glow {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            z-index: 0;
         }
 
-        .normalizer-hub-card-icon {
-            font-size: 36px;
+        .nhub-card:hover .nhub-glow { opacity: 1; }
+
+        .nhub-glow-blue   { background: radial-gradient(ellipse at 30% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 70%); }
+        .nhub-glow-purple { background: radial-gradient(ellipse at 30% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 70%); }
+        .nhub-glow-amber  { background: radial-gradient(ellipse at 30% 50%, rgba(234, 179, 8, 0.08) 0%, transparent 70%); }
+        .nhub-glow-green  { background: radial-gradient(ellipse at 30% 50%, rgba(34, 197, 94, 0.08) 0%, transparent 70%); }
+        .nhub-glow-red    { background: radial-gradient(ellipse at 30% 50%, rgba(239, 68, 68, 0.08) 0%, transparent 70%); }
+
+        /* Hero card (Marketing Contact List) */
+        .nhub-hero {
+            grid-row: 1 / 2;
+            grid-column: 1;
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.06) 0%, rgba(139, 92, 246, 0.03) 100%);
+            border-color: rgba(59, 130, 246, 0.12);
         }
 
-        .normalizer-hub-card h3 {
-            font-size: 18px;
+        .nhub-hero:hover {
+            border-color: rgba(59, 130, 246, 0.25);
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.09) 0%, rgba(139, 92, 246, 0.05) 100%);
+        }
+
+        /* Standard card (Raw Data Normalizer) */
+        .nhub-standard {
+            grid-row: 1 / 2;
+            grid-column: 2;
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.06) 0%, rgba(167, 139, 250, 0.03) 100%);
+            border-color: rgba(139, 92, 246, 0.12);
+        }
+
+        .nhub-standard:hover {
+            border-color: rgba(139, 92, 246, 0.25);
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.09) 0%, rgba(167, 139, 250, 0.05) 100%);
+        }
+
+        /* Compact row (bottom) */
+        .nhub-compact-row {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 16px;
+        }
+
+        .nhub-compact {
+            flex: 1;
+            padding: 22px;
+        }
+
+        .nhub-compact .nhub-title { font-size: 0.95rem; }
+        .nhub-compact .nhub-desc { font-size: 0.8rem; }
+
+        /* Icon rows */
+        .nhub-icon-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .nhub-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            transition: transform 0.35s ease;
+            flex-shrink: 0;
+        }
+
+        .nhub-compact .nhub-icon {
+            width: 38px;
+            height: 38px;
+            font-size: 19px;
+        }
+
+        .nhub-card:hover .nhub-icon { transform: scale(1.1); }
+
+        .nhub-icon-blue   { background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.15)); }
+        .nhub-icon-purple { background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(167, 139, 250, 0.15)); }
+        .nhub-icon-amber  { background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(250, 204, 21, 0.15)); }
+        .nhub-icon-green  { background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(74, 222, 128, 0.15)); }
+        .nhub-icon-red    { background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(248, 113, 113, 0.12)); }
+
+        /* Badges */
+        .nhub-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            background: rgba(124, 58, 237, 0.06);
+            border: 1px solid rgba(124, 58, 237, 0.1);
+            border-radius: 20px;
+            font-size: 11px;
             font-weight: 600;
-            color: var(--text);
-            margin: 0;
+            color: var(--primary);
+            letter-spacing: 0.3px;
         }
 
-        .normalizer-hub-card p {
-            font-size: 14px;
+        .nhub-badge-ai {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.1));
+            border-color: rgba(139, 92, 246, 0.15);
+            color: var(--primary);
+        }
+
+        /* Text */
+        .nhub-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .nhub-desc {
+            font-size: 0.85rem;
             color: var(--text-muted);
-            line-height: 1.5;
-            margin: 0;
+            line-height: 1.55;
+            position: relative;
+            z-index: 1;
             flex: 1;
         }
 
-        .normalizer-hub-card-tag {
-            display: inline-block;
-            background: var(--bg-input, #f5f3ff);
-            color: var(--primary);
-            font-size: 12px;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 20px;
-            align-self: flex-start;
+        /* Feature tags */
+        .nhub-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 14px;
+            position: relative;
+            z-index: 1;
         }
 
-        @media (max-width: 600px) {
-            .normalizer-hub-cards {
+        .nhub-feature {
+            padding: 3px 10px;
+            background: rgba(124, 58, 237, 0.05);
+            border: 1px solid rgba(124, 58, 237, 0.08);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .nhub-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            background: rgba(124, 58, 237, 0.05);
+            border: 1px solid rgba(124, 58, 237, 0.08);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-top: 12px;
+            align-self: flex-start;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* CTA arrow */
+        .nhub-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            position: relative;
+            z-index: 1;
+            transition: gap 0.25s ease;
+        }
+
+        .nhub-card:hover .nhub-cta { gap: 10px; }
+
+        /* Responsive */
+        @media (max-width: 700px) {
+            .nhub-grid {
                 grid-template-columns: 1fr;
+            }
+            .nhub-hero, .nhub-standard {
+                grid-column: 1;
+                grid-row: auto;
+            }
+            .nhub-compact-row {
+                flex-direction: column;
             }
         }
 
@@ -12121,41 +12274,75 @@
                     <p>Clean, transform, and standardize your data. Choose a tool to get started.</p>
                 </div>
 
-                <div class="normalizer-hub-cards">
-                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('marketing')">
-                        <div class="normalizer-hub-card-icon">📧</div>
-                        <h3>Marketing Contact List</h3>
-                        <p>Transform BUMP Customer reports into clean, Mailchimp-ready contact lists. Automatically combines first and last names, removes entries without emails, deduplicates, and exports a sorted NAME + EMAIL file ready to import into Mailchimp.</p>
-                        <span class="normalizer-hub-card-tag">BUMP → Mailchimp</span>
-                    </button>
+                <div class="nhub-grid">
+                    <!-- Marketing Contact List - Hero Card -->
+                    <div class="nhub-card nhub-hero" onclick="openNormalizerSubTool('marketing')">
+                        <div class="nhub-glow nhub-glow-blue"></div>
+                        <div class="nhub-icon-row">
+                            <div class="nhub-icon nhub-icon-blue">📧</div>
+                            <span class="nhub-badge">Most Used</span>
+                        </div>
+                        <h3 class="nhub-title">Marketing Contact List</h3>
+                        <p class="nhub-desc">Transform BUMP Customer reports into clean, Mailchimp-ready contact lists. Automatically combines first and last names, removes entries without emails, deduplicates, and exports a sorted NAME + EMAIL file.</p>
+                        <div class="nhub-features">
+                            <span class="nhub-feature">Auto-Format</span>
+                            <span class="nhub-feature">Dedup</span>
+                            <span class="nhub-feature">Mailchimp Ready</span>
+                        </div>
+                        <div class="nhub-cta">
+                            Open Tool
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        </div>
+                    </div>
 
-                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('raw')">
-                        <div class="normalizer-hub-card-icon">🔧</div>
-                        <h3>Raw Data Normalizer</h3>
-                        <p>Upload any spreadsheet and describe what you want in plain English. AI generates a transformation that runs across your entire file — rename columns, merge fields, filter rows, reformat values, and more. Works with any file structure.</p>
-                        <span class="normalizer-hub-card-tag">AI-Powered</span>
-                    </button>
+                    <!-- Raw Data Normalizer - Standard Card -->
+                    <div class="nhub-card nhub-standard" onclick="openNormalizerSubTool('raw')">
+                        <div class="nhub-glow nhub-glow-purple"></div>
+                        <div class="nhub-icon-row">
+                            <div class="nhub-icon nhub-icon-purple">🔧</div>
+                            <span class="nhub-badge nhub-badge-ai">AI-Powered</span>
+                        </div>
+                        <h3 class="nhub-title">Raw Data Normalizer</h3>
+                        <p class="nhub-desc">Upload any spreadsheet and describe what you want in plain English. AI generates a transformation that runs across your entire file — rename columns, merge fields, filter rows, and more.</p>
+                        <div class="nhub-features">
+                            <span class="nhub-feature">Any Format</span>
+                            <span class="nhub-feature">Plain English</span>
+                            <span class="nhub-feature">Bulk Transform</span>
+                        </div>
+                    </div>
 
-                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('duplicates')">
-                        <div class="normalizer-hub-card-icon">🔍</div>
-                        <h3>Duplicate Finder</h3>
-                        <p>Upload a list and instantly find duplicate entries by email, name, phone, or any column. Preview duplicate groups side-by-side, then choose to keep the first, last, or remove all duplicates. Download a clean, deduplicated file.</p>
-                        <span class="normalizer-hub-card-tag">Deduplication</span>
-                    </button>
+                    <!-- Bottom row: 3 compact cards -->
+                    <div class="nhub-compact-row">
+                        <div class="nhub-card nhub-compact" onclick="openNormalizerSubTool('duplicates')">
+                            <div class="nhub-glow nhub-glow-amber"></div>
+                            <div class="nhub-icon-row">
+                                <div class="nhub-icon nhub-icon-amber">🔍</div>
+                            </div>
+                            <h3 class="nhub-title">Duplicate Finder</h3>
+                            <p class="nhub-desc">Find duplicate entries by any column. Preview groups side-by-side and download a deduplicated file.</p>
+                            <span class="nhub-tag">Deduplication</span>
+                        </div>
 
-                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('compare')">
-                        <div class="normalizer-hub-card-icon">⚖️</div>
-                        <h3>List Comparator</h3>
-                        <p>Upload two lists and compare them side-by-side. See which entries are only in List A, only in List B, or in both. Perfect for finding new subscribers, identifying who dropped off, or merging lists without duplicates.</p>
-                        <span class="normalizer-hub-card-tag">Compare &amp; Merge</span>
-                    </button>
+                        <div class="nhub-card nhub-compact" onclick="openNormalizerSubTool('compare')">
+                            <div class="nhub-glow nhub-glow-green"></div>
+                            <div class="nhub-icon-row">
+                                <div class="nhub-icon nhub-icon-green">⚖️</div>
+                            </div>
+                            <h3 class="nhub-title">List Comparator</h3>
+                            <p class="nhub-desc">Compare two lists to find what's unique to each or shared between both. Download any segment.</p>
+                            <span class="nhub-tag">Compare &amp; Merge</span>
+                        </div>
 
-                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('email-cleaner')">
-                        <div class="normalizer-hub-card-icon">✉️</div>
-                        <h3>Email Cleaner</h3>
-                        <p>Validate and clean an email list in seconds. Catches typos (gmial.com → gmail.com), removes invalid formats, flags role-based addresses (info@, admin@) that hurt deliverability, and strips duplicates. Export a clean, verified list.</p>
-                        <span class="normalizer-hub-card-tag">Validation</span>
-                    </button>
+                        <div class="nhub-card nhub-compact" onclick="openNormalizerSubTool('email-cleaner')">
+                            <div class="nhub-glow nhub-glow-red"></div>
+                            <div class="nhub-icon-row">
+                                <div class="nhub-icon nhub-icon-red">✉️</div>
+                            </div>
+                            <h3 class="nhub-title">Email Cleaner</h3>
+                            <p class="nhub-desc">Fix typos, remove invalid emails, flag role-based addresses, and export a clean verified list.</p>
+                            <span class="nhub-tag">Validation</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
