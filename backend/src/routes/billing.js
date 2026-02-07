@@ -12,8 +12,8 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Stripe Price IDs
 const PRICES = {
-    monthly: 'price_1Sy1ZGD0OAjcDsbxIPhkdNP9',
-    annual: 'price_1Sy1ZGD0OAjcDsbxmJMjLusk'
+    monthly: 'price_1Sy220D0OAjcDsbxhriCFRTT',
+    annual: 'price_1Sy220D0OAjcDsbxhAjDMmPM'
 };
 
 /**
