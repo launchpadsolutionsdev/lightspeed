@@ -197,7 +197,14 @@ const email = (row['Email'] || '').toString().trim();
 if (!email) return null;
 return { 'Full Name': (firstName + ' ' + lastName).trim(), 'Email': email.toLowerCase() };`;
 
-            userPrompt = `Here are sample rows from the spreadsheet:\n${data}\n\nUser instructions: ${instructions}\n\nReturn ONLY the JavaScript function body. No explanation, no markdown.`;
+            userPrompt = `Here are sample rows from the spreadsheet:
+${data}
+
+CRITICAL: The EXACT column names you must use to access row data are shown in the JSON keys above. Copy them exactly — they are case-sensitive and may contain spaces or special characters.
+
+User instructions: ${instructions}
+
+Return ONLY the JavaScript function body. No explanation, no markdown, no \`\`\` fences.`;
         } else if (outputFormat === 'json') {
             systemPrompt = `You are a data transformation expert. You receive spreadsheet data as a JSON array of objects and user instructions describing how to transform it. Apply the transformations and return ONLY a valid JSON array of objects — no markdown fences, no explanation, no extra text. Just the raw JSON array starting with [ and ending with ].`;
             userPrompt = `Here is the data:\n${data}\n\n${instructions || 'Clean and normalize this data.'}`;
