@@ -1040,9 +1040,22 @@ async function handleOrgSetup(e) {
             // Close modal and proceed
             document.getElementById("orgSetupModal").classList.remove("show");
 
-            // Show tool menu
+            // Check if user selected a plan before signing up
+            const selectedPlan = localStorage.getItem('selectedPlan');
+            if (selectedPlan) {
+                localStorage.removeItem('selectedPlan');
+            }
+
+            // Show tool menu (pass false to suppress default toast)
             loginUser(currentUser, false);
-            showToast(`Welcome to Lightspeed! Your 14-day trial has started.`, "success");
+
+            if (selectedPlan) {
+                // User chose a plan from pricing — send them to checkout
+                showToast('Setting up your subscription...', 'info');
+                await startCheckout(selectedPlan);
+            } else {
+                showToast(`Welcome to Lightspeed! Your 14-day trial has started.`, "success");
+            }
 
         } else {
             const errorData = await response.json().catch(() => ({}));
