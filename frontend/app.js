@@ -1379,11 +1379,15 @@ function loginUser(user, showMessage = true) {
     document.getElementById("loginPage").classList.remove("visible");
 
     // Check if user was trying to reach a specific page before login
-    if (!handlePostLoginRedirect()) {
+    const hadRedirect = handlePostLoginRedirect();
+    console.log('[LOGIN] handlePostLoginRedirect returned:', hadRedirect);
+    if (!hadRedirect) {
         // Check if there's an initial path from page load (e.g. browser refresh on /list-normalizer)
         const initialPath = window._initialPath;
         const route = initialPath ? ROUTES[initialPath] : null;
+        console.log('[LOGIN] initialPath:', initialPath, 'route:', route);
         if (route && route.view === 'tool') {
+            console.log('[LOGIN] Opening tool:', route.tool);
             _routerNavigating = true;
             openTool(route.tool);
             if (route.page) switchPage(route.page);
@@ -1391,9 +1395,10 @@ function loginUser(user, showMessage = true) {
             _routerNavigating = false;
             history.replaceState({ path: initialPath }, '', initialPath);
         } else if (route && route.view === 'dashboard') {
+            console.log('[LOGIN] Showing dashboard');
             showToolMenu();
         } else {
-            // Default — show tool menu (dashboard)
+            console.log('[LOGIN] Default: showing dashboard');
             showToolMenu();
         }
     }
@@ -8563,22 +8568,46 @@ function handlePostLoginRedirect() {
 
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", () => {
-    // Check if we were redirected from 404.html (SPA catch-all)
-    const spaRedirect = sessionStorage.getItem('spa_redirect');
-    if (spaRedirect) {
-        sessionStorage.removeItem('spa_redirect');
-        // Restore the original URL in the address bar
-        history.replaceState(null, '', spaRedirect);
+    try {
+        console.log('[BOOT] DOMContentLoaded fired, URL:', window.location.pathname);
+
+        // Check if we were redirected from 404.html (SPA catch-all)
+        const spaRedirect = sessionStorage.getItem('spa_redirect');
+        if (spaRedirect) {
+            sessionStorage.removeItem('spa_redirect');
+            console.log('[BOOT] SPA redirect detected, restoring path:', spaRedirect);
+            history.replaceState(null, '', spaRedirect);
+        }
+
+        // Capture the URL BEFORE init() runs (init may change it via showToolMenu → pushRoute)
+        // Store globally so loginUser() can use it for direct navigation
+        window._initialPath = spaRedirect || window.location.pathname;
+        console.log('[BOOT] Initial path set to:', window._initialPath);
+
+        init();
+        console.log('[BOOT] init() completed');
+
+        initParallaxAndAnimations();
+
+        // Clear the initial path flag after init completes
+        // (loginUser already handled routing if user was logged in)
+        delete window._initialPath;
+
+        // Debug: log visibility state of all major containers
+        console.log('[BOOT] Visibility check:', {
+            landingPage: !document.getElementById('landingPage')?.classList.contains('hidden'),
+            toolMenuPage: document.getElementById('toolMenuPage')?.classList.contains('visible'),
+            appWrapper: document.getElementById('appWrapper')?.classList.contains('visible'),
+            loginPage: document.getElementById('loginPage')?.classList.contains('visible'),
+        });
+    } catch (err) {
+        console.error('[BOOT] Fatal error during initialization:', err);
+        // Show error visually so the user sees something
+        document.body.innerHTML = '<div style="color:white;padding:40px;font-family:sans-serif;">' +
+            '<h2>Something went wrong during startup</h2>' +
+            '<p>' + err.message + '</p>' +
+            '<p style="opacity:0.6">Check browser console (F12) for details.</p>' +
+            '<button onclick="localStorage.clear();sessionStorage.clear();location.href=\'/\'" style="margin-top:20px;padding:10px 20px;cursor:pointer;">Reset &amp; Reload</button>' +
+            '</div>';
     }
-
-    // Capture the URL BEFORE init() runs (init may change it via showToolMenu → pushRoute)
-    // Store globally so loginUser() can use it for direct navigation
-    window._initialPath = spaRedirect || window.location.pathname;
-
-    init();
-    initParallaxAndAnimations();
-
-    // Clear the initial path flag after init completes
-    // (loginUser already handled routing if user was logged in)
-    delete window._initialPath;
 });
