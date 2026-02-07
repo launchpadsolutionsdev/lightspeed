@@ -167,32 +167,53 @@ router.post('/normalize', authenticate, async (req, res) => {
             return res.status(400).json({ error: 'Data required for normalization' });
         }
 
-        const isJsonOutput = outputFormat === 'json';
+        const isTransformMode = outputFormat === 'transform';
 
-        let systemPrompt = isJsonOutput
-            ? `You are a data transformation expert. You receive spreadsheet data as a JSON array of objects and user instructions describing how to transform it. Apply the transformations and return ONLY a valid JSON array of objects — no markdown fences, no explanation, no extra text. Just the raw JSON array starting with [ and ending with ].`
-            : `You are a data formatting expert. Clean and normalize the provided data according to the specified format. Return ONLY the normalized data, no explanations or additional text.`;
+        let systemPrompt, userPrompt;
 
-        let userPrompt = '';
+        if (isTransformMode) {
+            systemPrompt = `You are a data transformation expert. You receive sample rows from a spreadsheet (as JSON) and user instructions for how to transform the data.
 
-        if (isJsonOutput) {
+Your job is to return ONLY a JavaScript function body that transforms a single row.
+
+The function receives one argument: \`row\` — an object where keys are column names and values are cell values (strings or numbers).
+
+The function must return:
+- A new object with the desired output columns, OR
+- null to exclude/remove that row
+
+Rules:
+- Return ONLY the raw function body — no \`function\` keyword, no markdown fences, no explanation
+- Use plain JavaScript (no imports, no async, no DOM access)
+- Column names in the input are EXACTLY as provided in the sample — use those exact keys
+- Handle missing/null values gracefully with || '' or similar
+- String operations: .trim(), .toLowerCase(), .toUpperCase(), etc.
+- For deduplication, return the row as-is — deduplication will be handled separately by the caller
+
+Example — if user says "combine First Name and Last Name into Full Name, keep Email, remove rows without email":
+const firstName = (row['First Name'] || '').toString().trim();
+const lastName = (row['Last Name'] || '').toString().trim();
+const email = (row['Email'] || '').toString().trim();
+if (!email) return null;
+return { 'Full Name': (firstName + ' ' + lastName).trim(), 'Email': email.toLowerCase() };`;
+
+            userPrompt = `Here are sample rows from the spreadsheet:\n${data}\n\nUser instructions: ${instructions}\n\nReturn ONLY the JavaScript function body. No explanation, no markdown.`;
+        } else if (outputFormat === 'json') {
+            systemPrompt = `You are a data transformation expert. You receive spreadsheet data as a JSON array of objects and user instructions describing how to transform it. Apply the transformations and return ONLY a valid JSON array of objects — no markdown fences, no explanation, no extra text. Just the raw JSON array starting with [ and ending with ].`;
             userPrompt = `Here is the data:\n${data}\n\n${instructions || 'Clean and normalize this data.'}`;
         } else {
+            systemPrompt = `You are a data formatting expert. Clean and normalize the provided data according to the specified format. Return ONLY the normalized data, no explanations or additional text.`;
             userPrompt = `Normalize and clean this data`;
-            if (outputFormat) {
-                userPrompt += ` into ${outputFormat} format`;
-            }
+            if (outputFormat) userPrompt += ` into ${outputFormat} format`;
             userPrompt += `:\n\n${data}`;
-            if (instructions) {
-                userPrompt += `\n\nAdditional instructions: ${instructions}`;
-            }
+            if (instructions) userPrompt += `\n\nAdditional instructions: ${instructions}`;
         }
 
         // Call Claude API
         const response = await claudeService.generateResponse({
             messages: [{ role: 'user', content: userPrompt }],
             system: systemPrompt,
-            max_tokens: 8192
+            max_tokens: isTransformMode ? 2048 : 8192
         });
 
         // Get organization for logging
