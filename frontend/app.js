@@ -7495,6 +7495,13 @@ User instructions: ${instructions}`,
 
         // Strip markdown code fences if AI included them
         aiText = aiText.replace(/^```(?:javascript|js)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+        // Also strip any leading explanation text before actual code
+        const firstStatement = aiText.search(/^(const |let |var |if |return |\/\/)/m);
+        if (firstStatement > 0) {
+            aiText = aiText.substring(firstStatement);
+        }
+
+        console.log('[Raw Normalizer] Cleaned function code:\n', aiText);
 
         // Build the transform function from AI-generated code
         let transformFn;
@@ -7502,18 +7509,22 @@ User instructions: ${instructions}`,
             transformFn = new Function('row', aiText);
         } catch (syntaxErr) {
             console.error('[Raw Normalizer] Function syntax error:', syntaxErr.message, '\nCode:', aiText);
-            throw new Error('AI generated invalid code. Try rephrasing your instructions.');
+            throw new Error('AI generated code with a syntax error: ' + syntaxErr.message);
         }
 
         // Test on first row to validate
+        const testRow = rawNormalizerRawData[0];
         try {
-            const testResult = transformFn(rawNormalizerRawData[0]);
+            const testResult = transformFn(testRow);
+            console.log('[Raw Normalizer] Test row input:', JSON.stringify(testRow).substring(0, 200));
+            console.log('[Raw Normalizer] Test row output:', JSON.stringify(testResult).substring(0, 200));
             if (testResult !== null && typeof testResult !== 'object') {
-                throw new Error('Function must return an object or null');
+                throw new Error('Function returned ' + typeof testResult + ' instead of an object');
             }
         } catch (testErr) {
             console.error('[Raw Normalizer] Transform test failed:', testErr.message);
-            throw new Error('Transform function failed on test row. Try simpler instructions.');
+            console.error('[Raw Normalizer] Test row keys:', Object.keys(testRow).join(', '));
+            throw new Error('Transform failed: ' + testErr.message + '. Check browser console for details.');
         }
 
         // Apply transform to ALL rows
