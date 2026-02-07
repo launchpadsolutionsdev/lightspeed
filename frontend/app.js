@@ -7482,20 +7482,27 @@ IMPORTANT: Return ONLY a valid JSON array of objects. Each object is one row wit
 
         if (!response.ok) {
             const err = await response.json().catch(() => ({}));
+            console.error('[Raw Normalizer] API error:', response.status, err);
             throw new Error(err.error || `Server error (${response.status})`);
         }
 
         const result = await response.json();
+        console.log('[Raw Normalizer] API response:', result);
         const aiText = (result.content && result.content[0] && result.content[0].text) || '';
+
+        if (!aiText) {
+            throw new Error('AI returned an empty response. Please try again.');
+        }
 
         // Parse JSON from AI response
         let processedRows;
         try {
             // Try to extract JSON array from the response
             const jsonMatch = aiText.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) throw new Error('No JSON array found in response');
+            if (!jsonMatch) throw new Error('No JSON array found');
             processedRows = JSON.parse(jsonMatch[0]);
         } catch (parseErr) {
+            console.error('[Raw Normalizer] Parse error. AI text:', aiText.substring(0, 500));
             throw new Error('AI returned invalid data. Try simpler instructions.');
         }
 
@@ -7517,8 +7524,11 @@ IMPORTANT: Return ONLY a valid JSON array of objects. Each object is one row wit
         showRawNormalizerPreview(processedRows);
 
     } catch (error) {
+        console.error('[Raw Normalizer] Error:', error);
         showToast("Error: " + error.message, "error");
-        resetRawNormalizer();
+        // Go back to the form (not full reset) so user can retry
+        document.getElementById("rawNormalizerProcessing").style.display = "none";
+        document.getElementById("rawNormalizerUploadSection").style.display = "block";
     }
 }
 
