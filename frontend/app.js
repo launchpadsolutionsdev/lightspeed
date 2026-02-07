@@ -399,9 +399,16 @@ function init() {
         }
     }
 
-    // Always show landing page first for non-logged-in users
-    // The landing page is now a marketing page, not just a splash screen
-    document.getElementById("landingPage").classList.remove("hidden");
+    // Not logged in — route to the right view
+    const path = window._initialPath || window.location.pathname;
+    const route = ROUTES[path];
+    if (route && (route.view === 'login')) {
+        document.getElementById("landingPage").classList.add("hidden");
+        showLoginPage();
+    } else {
+        // Show landing page for non-logged-in users
+        document.getElementById("landingPage").classList.remove("hidden");
+    }
 
     // If there's a pending invite, show a message prompting login
     if (localStorage.getItem('pendingInviteToken')) {
@@ -1373,8 +1380,22 @@ function loginUser(user, showMessage = true) {
 
     // Check if user was trying to reach a specific page before login
     if (!handlePostLoginRedirect()) {
-        // No pending redirect — show tool menu
-        showToolMenu();
+        // Check if there's an initial path from page load (e.g. browser refresh on /list-normalizer)
+        const initialPath = window._initialPath;
+        const route = initialPath ? ROUTES[initialPath] : null;
+        if (route && route.view === 'tool') {
+            _routerNavigating = true;
+            openTool(route.tool);
+            if (route.page) switchPage(route.page);
+            if (route.subTool) openNormalizerSubTool(route.subTool);
+            _routerNavigating = false;
+            history.replaceState({ path: initialPath }, '', initialPath);
+        } else if (route && route.view === 'dashboard') {
+            showToolMenu();
+        } else {
+            // Default — show tool menu (dashboard)
+            showToolMenu();
+        }
     }
 
     // Setup main app event listeners if not already done
@@ -8543,22 +8564,13 @@ function handlePostLoginRedirect() {
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", () => {
     // Capture the URL BEFORE init() runs (init may change it via showToolMenu → pushRoute)
-    const initialPath = window.location.pathname;
+    // Store globally so loginUser() can use it for direct navigation
+    window._initialPath = window.location.pathname;
 
     init();
     initParallaxAndAnimations();
 
-    // After init, check if the URL points somewhere specific
-    if (initialPath && initialPath !== '/' && ROUTES[initialPath]) {
-        // Small delay to let init() finish auth check
-        setTimeout(() => {
-            _routerNavigating = true;
-            navigateToRoute(initialPath);
-            _routerNavigating = false;
-            // Restore the original URL (init may have changed it to /dashboard)
-            if (window.location.pathname !== initialPath) {
-                history.replaceState({ path: initialPath }, '', initialPath);
-            }
-        }, 100);
-    }
+    // Clear the initial path flag after init completes
+    // (loginUser already handled routing if user was logged in)
+    delete window._initialPath;
 });
