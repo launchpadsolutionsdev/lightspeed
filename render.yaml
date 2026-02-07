@@ -39,6 +39,10 @@ services:
       - path: /*
         name: Cache-Control
         value: public, max-age=3600
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
 
 databases:
   - name: lightspeed-db
