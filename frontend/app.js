@@ -6960,6 +6960,9 @@ function showNormalizerHub() {
     document.getElementById('normalizerHub').style.display = 'block';
     document.getElementById('normalizerMarketingView').style.display = 'none';
     document.getElementById('normalizerRawView').style.display = 'none';
+    document.getElementById('normalizerDuplicatesView').style.display = 'none';
+    document.getElementById('normalizerCompareView').style.display = 'none';
+    document.getElementById('normalizerEmailCleanerView').style.display = 'none';
     pushRoute('/list-normalizer');
 }
 
@@ -6967,6 +6970,9 @@ function openNormalizerSubTool(subTool) {
     document.getElementById('normalizerHub').style.display = 'none';
     document.getElementById('normalizerMarketingView').style.display = 'none';
     document.getElementById('normalizerRawView').style.display = 'none';
+    document.getElementById('normalizerDuplicatesView').style.display = 'none';
+    document.getElementById('normalizerCompareView').style.display = 'none';
+    document.getElementById('normalizerEmailCleanerView').style.display = 'none';
 
     if (subTool === 'marketing') {
         document.getElementById('normalizerMarketingView').style.display = 'block';
@@ -6976,6 +6982,18 @@ function openNormalizerSubTool(subTool) {
         document.getElementById('normalizerRawView').style.display = 'block';
         setupRawNormalizerListeners();
         pushRoute('/list-normalizer/raw');
+    } else if (subTool === 'duplicates') {
+        document.getElementById('normalizerDuplicatesView').style.display = 'block';
+        setupDupFinderListeners();
+        pushRoute('/list-normalizer/duplicates');
+    } else if (subTool === 'compare') {
+        document.getElementById('normalizerCompareView').style.display = 'block';
+        setupCompareListeners();
+        pushRoute('/list-normalizer/compare');
+    } else if (subTool === 'email-cleaner') {
+        document.getElementById('normalizerEmailCleanerView').style.display = 'block';
+        setupEmailCleanerListeners();
+        pushRoute('/list-normalizer/email-cleaner');
     }
 }
 
@@ -7649,6 +7667,615 @@ function resetRawNormalizer() {
     document.getElementById("rawNormalizerInstructions").value = '';
 }
 
+// ==================== DUPLICATE FINDER ====================
+let dupFinderData = null;
+let dupFinderDuplicateGroups = {};
+let dupFinderSelectedCol = null;
+let dupFinderKeepMode = 'first';
+let dupFinderListenersSetup = false;
+
+function setupDupFinderListeners() {
+    if (dupFinderListenersSetup) return;
+    dupFinderListenersSetup = true;
+
+    const dropzone = document.getElementById("dupFinderDropzone");
+    const fileInput = document.getElementById("dupFinderFileInput");
+    if (!dropzone || !fileInput) return;
+
+    dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("dragover"); });
+    dropzone.addEventListener("dragleave", () => { dropzone.classList.remove("dragover"); });
+    dropzone.addEventListener("drop", (e) => {
+        e.preventDefault(); dropzone.classList.remove("dragover");
+        if (e.dataTransfer.files[0]) loadDupFinderFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener("change", (e) => { if (e.target.files[0]) loadDupFinderFile(e.target.files[0]); });
+}
+
+function loadDupFinderFile(file) {
+    if (!file.name.match(/\.xlsx?$/i) && !file.name.match(/\.csv$/i)) {
+        showToast("Please upload a spreadsheet file (.xlsx, .xls, or .csv)", "error"); return;
+    }
+    if (file.size > NORMALIZER_MAX_FILE_SIZE) {
+        showToast("File is too large. Maximum size is 10 MB.", "error"); return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            dupFinderData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            if (!dupFinderData.length) { showToast("File is empty", "error"); return; }
+            showDupFinderColumnPicker();
+        } catch (err) { showToast("Error reading file: " + err.message, "error"); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function showDupFinderColumnPicker() {
+    const columns = Object.keys(dupFinderData[0]);
+    const container = document.getElementById("dupFinderColumnPills");
+
+    const emailCol = columns.find(c => /email/i.test(c));
+    dupFinderSelectedCol = emailCol || null;
+
+    container.innerHTML = columns.map(col => {
+        const escaped = col.replace(/'/g, "\\'");
+        return `<button class="dup-finder-col-pill ${col === dupFinderSelectedCol ? 'selected' : ''}"
+                onclick="selectDupFinderCol(this, '${escaped}')">${escapeHtml(col)}</button>`;
+    }).join('');
+
+    document.getElementById("dupFinderUploadSection").style.display = "none";
+    document.getElementById("dupFinderConfig").style.display = "block";
+}
+
+function selectDupFinderCol(btn, col) {
+    document.querySelectorAll('#dupFinderColumnPills .dup-finder-col-pill').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    dupFinderSelectedCol = col;
+}
+
+function setDupKeepMode(mode) {
+    dupFinderKeepMode = mode;
+    document.querySelectorAll('.dup-finder-keep-pill').forEach(b => {
+        b.classList.toggle('active', b.dataset.keep === mode);
+    });
+}
+
+function runDuplicateFinder() {
+    if (!dupFinderSelectedCol) { showToast("Select a column to check for duplicates", "error"); return; }
+
+    document.getElementById("dupFinderConfig").style.display = "none";
+    document.getElementById("dupFinderProcessing").style.display = "block";
+
+    setTimeout(() => {
+        dupFinderDuplicateGroups = {};
+        const col = dupFinderSelectedCol;
+
+        dupFinderData.forEach((row, idx) => {
+            const val = String(row[col] || '').trim().toLowerCase();
+            if (!val) return;
+            if (!dupFinderDuplicateGroups[val]) dupFinderDuplicateGroups[val] = [];
+            dupFinderDuplicateGroups[val].push({ index: idx, row });
+        });
+
+        const dupeGroups = Object.entries(dupFinderDuplicateGroups).filter(([, arr]) => arr.length > 1);
+        const totalDupes = dupeGroups.reduce((sum, [, arr]) => sum + (arr.length - 1), 0);
+        const uniqueCount = dupFinderData.length - totalDupes;
+
+        document.getElementById("dupFinderProcessing").style.display = "none";
+        document.getElementById("dupFinderResults").style.display = "block";
+
+        animateValue(document.getElementById("dupFinderTotalCount"), 0, dupFinderData.length, 1000);
+        animateValue(document.getElementById("dupFinderUniqueCount"), 0, uniqueCount, 1000);
+        animateValue(document.getElementById("dupFinderDupeCount"), 0, totalDupes, 1000);
+
+        showDupFinderPreview(dupeGroups);
+    }, 300);
+}
+
+function showDupFinderPreview(dupeGroups) {
+    const container = document.getElementById("dupFinderPreviewTable");
+    if (dupeGroups.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No duplicates found! Your list is clean.</p>';
+        return;
+    }
+    const columns = Object.keys(dupFinderData[0]);
+    const previewGroups = dupeGroups.slice(0, 10);
+
+    let html = '<table><thead><tr>' + columns.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+    previewGroups.forEach(([key, entries]) => {
+        html += `<tr><td colspan="${columns.length}" style="background:var(--bg-input);font-weight:600;font-size:12px;color:var(--primary);">Duplicate group: "${escapeHtml(key)}" (${entries.length} entries)</td></tr>`;
+        entries.forEach(({ row }) => {
+            html += '<tr>' + columns.map(c => `<td>${escapeHtml(String(row[c] ?? ''))}</td>`).join('') + '</tr>';
+        });
+    });
+    if (dupeGroups.length > 10) {
+        html += `<tr><td colspan="${columns.length}" style="text-align:center;color:var(--text-muted);font-style:italic;">... and ${dupeGroups.length - 10} more duplicate groups</td></tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function downloadDeduplicated() {
+    if (!dupFinderData) return;
+    const col = dupFinderSelectedCol;
+    const seen = new Set();
+    let result;
+
+    if (dupFinderKeepMode === 'first') {
+        result = dupFinderData.filter(row => {
+            const val = String(row[col] || '').trim().toLowerCase();
+            if (!val || seen.has(val)) return false;
+            seen.add(val); return true;
+        });
+    } else {
+        const reversed = [...dupFinderData].reverse();
+        result = reversed.filter(row => {
+            const val = String(row[col] || '').trim().toLowerCase();
+            if (!val || seen.has(val)) return false;
+            seen.add(val); return true;
+        }).reverse();
+    }
+
+    const ws = XLSX.utils.json_to_sheet(result);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Deduplicated");
+    const filename = `Deduplicated_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    showToast(`Downloaded ${filename} (${result.length} records)`, "success");
+}
+
+function resetDuplicateFinder() {
+    dupFinderData = null;
+    dupFinderDuplicateGroups = {};
+    dupFinderSelectedCol = null;
+    document.getElementById("dupFinderUploadSection").style.display = "block";
+    document.getElementById("dupFinderConfig").style.display = "none";
+    document.getElementById("dupFinderProcessing").style.display = "none";
+    document.getElementById("dupFinderResults").style.display = "none";
+    document.getElementById("dupFinderFileInput").value = '';
+}
+
+// ==================== LIST COMPARATOR ====================
+let compareDataA = null, compareDataB = null;
+let compareSelectedCol = null;
+let compareResultData = { onlyA: [], both: [], onlyB: [] };
+let compareActiveTab = 'onlyA';
+let compareListenersSetup = false;
+
+function setupCompareListeners() {
+    if (compareListenersSetup) return;
+    compareListenersSetup = true;
+
+    ['A', 'B'].forEach(side => {
+        const dropzone = document.getElementById(`compareDropzone${side}`);
+        const fileInput = document.getElementById(`compareFileInput${side}`);
+        if (!dropzone || !fileInput) return;
+
+        dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("dragover"); });
+        dropzone.addEventListener("dragleave", () => { dropzone.classList.remove("dragover"); });
+        dropzone.addEventListener("drop", (e) => {
+            e.preventDefault(); dropzone.classList.remove("dragover");
+            if (e.dataTransfer.files[0]) loadCompareFile(side, e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener("change", (e) => { if (e.target.files[0]) loadCompareFile(side, e.target.files[0]); });
+    });
+}
+
+function loadCompareFile(side, file) {
+    if (!file.name.match(/\.xlsx?$/i) && !file.name.match(/\.csv$/i)) {
+        showToast("Please upload a spreadsheet file (.xlsx, .xls, or .csv)", "error"); return;
+    }
+    if (file.size > NORMALIZER_MAX_FILE_SIZE) {
+        showToast("File is too large. Maximum size is 10 MB.", "error"); return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const parsed = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            if (!parsed.length) { showToast("File is empty", "error"); return; }
+
+            if (side === 'A') { compareDataA = parsed; }
+            else { compareDataB = parsed; }
+
+            document.getElementById(`compareDropzone${side}`).style.display = 'none';
+            const loaded = document.getElementById(`compareFileLoaded${side}`);
+            loaded.style.display = 'flex';
+            document.getElementById(`compareFileName${side}`).textContent = file.name;
+            document.getElementById(`compareFileRows${side}`).textContent = `${parsed.length} rows`;
+
+            if (compareDataA && compareDataB) showCompareColumnPicker();
+        } catch (err) { showToast("Error reading file: " + err.message, "error"); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function showCompareColumnPicker() {
+    const colsA = new Set(Object.keys(compareDataA[0]));
+    const colsB = new Set(Object.keys(compareDataB[0]));
+    const common = [...colsA].filter(c => colsB.has(c));
+
+    if (common.length === 0) {
+        showToast("No matching column names found between the two files", "error");
+        return;
+    }
+
+    const emailCol = common.find(c => /email/i.test(c));
+    compareSelectedCol = emailCol || null;
+
+    const container = document.getElementById("compareColumnPills");
+    container.innerHTML = common.map(col => {
+        const escaped = col.replace(/'/g, "\\'");
+        return `<button class="dup-finder-col-pill ${col === compareSelectedCol ? 'selected' : ''}"
+                onclick="selectCompareCol(this, '${escaped}')">${escapeHtml(col)}</button>`;
+    }).join('');
+
+    document.getElementById("compareColumnConfig").style.display = "block";
+}
+
+function selectCompareCol(btn, col) {
+    document.querySelectorAll('#compareColumnPills .dup-finder-col-pill').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    compareSelectedCol = col;
+}
+
+function runListComparator() {
+    if (!compareSelectedCol) { showToast("Select a column to compare by", "error"); return; }
+
+    document.getElementById("compareUploadSection").style.display = "none";
+    document.getElementById("compareProcessing").style.display = "block";
+
+    setTimeout(() => {
+        const col = compareSelectedCol;
+        const setA = new Map();
+        const setB = new Map();
+
+        compareDataA.forEach(row => {
+            const val = String(row[col] || '').trim().toLowerCase();
+            if (val && !setA.has(val)) setA.set(val, row);
+        });
+        compareDataB.forEach(row => {
+            const val = String(row[col] || '').trim().toLowerCase();
+            if (val && !setB.has(val)) setB.set(val, row);
+        });
+
+        compareResultData = { onlyA: [], both: [], onlyB: [] };
+        setA.forEach((row, val) => {
+            if (setB.has(val)) compareResultData.both.push(row);
+            else compareResultData.onlyA.push(row);
+        });
+        setB.forEach((row, val) => {
+            if (!setA.has(val)) compareResultData.onlyB.push(row);
+        });
+
+        document.getElementById("compareProcessing").style.display = "none";
+        document.getElementById("compareResults").style.display = "block";
+
+        animateValue(document.getElementById("compareOnlyACount"), 0, compareResultData.onlyA.length, 1000);
+        animateValue(document.getElementById("compareBothCount"), 0, compareResultData.both.length, 1000);
+        animateValue(document.getElementById("compareOnlyBCount"), 0, compareResultData.onlyB.length, 1000);
+
+        compareActiveTab = 'onlyA';
+        showComparePreview();
+    }, 300);
+}
+
+function switchCompareTab(tab) {
+    compareActiveTab = tab;
+    document.querySelectorAll('.compare-results-tabs .compare-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    showComparePreview();
+}
+
+function showComparePreview() {
+    const data = compareResultData[compareActiveTab];
+    const container = document.getElementById("comparePreviewTable");
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No records in this category.</p>';
+        return;
+    }
+    const columns = Object.keys(data[0]);
+    const preview = data.slice(0, 20);
+    let html = '<table><thead><tr>' + columns.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+    preview.forEach(row => {
+        html += '<tr>' + columns.map(c => `<td>${escapeHtml(String(row[c] ?? ''))}</td>`).join('') + '</tr>';
+    });
+    if (data.length > 20) {
+        html += `<tr><td colspan="${columns.length}" style="text-align:center;color:var(--text-muted);font-style:italic;">... and ${(data.length - 20).toLocaleString()} more rows</td></tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function downloadCompareResult(tab) {
+    const data = compareResultData[tab];
+    if (!data || data.length === 0) { showToast("No records to download", "error"); return; }
+    const labels = { onlyA: 'Only_in_A', both: 'In_Both', onlyB: 'Only_in_B' };
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, labels[tab]);
+    const filename = `${labels[tab]}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    showToast(`Downloaded ${filename} (${data.length} records)`, "success");
+}
+
+function resetListComparator() {
+    compareDataA = null; compareDataB = null;
+    compareSelectedCol = null;
+    compareResultData = { onlyA: [], both: [], onlyB: [] };
+    document.getElementById("compareUploadSection").style.display = "block";
+    document.getElementById("compareColumnConfig").style.display = "none";
+    document.getElementById("compareProcessing").style.display = "none";
+    document.getElementById("compareResults").style.display = "none";
+    ['A', 'B'].forEach(side => {
+        document.getElementById(`compareDropzone${side}`).style.display = 'flex';
+        document.getElementById(`compareFileLoaded${side}`).style.display = 'none';
+        document.getElementById(`compareFileInput${side}`).value = '';
+    });
+}
+
+// ==================== EMAIL CLEANER ====================
+let emailCleanerData = null;
+let emailCleanerSelectedCol = null;
+let emailCleanerResults = { valid: [], fixed: [], invalid: [], role: [] };
+let emailCleanerActiveTab = 'valid';
+let emailCleanerListenersSetup = false;
+
+const EMAIL_DOMAIN_TYPOS = {
+    'gmial.com': 'gmail.com', 'gmal.com': 'gmail.com', 'gmai.com': 'gmail.com',
+    'gamil.com': 'gmail.com', 'gnail.com': 'gmail.com', 'gmil.com': 'gmail.com',
+    'gmail.co': 'gmail.com', 'gmail.cm': 'gmail.com', 'gmail.con': 'gmail.com',
+    'gmail.om': 'gmail.com', 'gmail.cmo': 'gmail.com', 'gmaill.com': 'gmail.com',
+    'hotmal.com': 'hotmail.com', 'hotmial.com': 'hotmail.com', 'hotmai.com': 'hotmail.com',
+    'hotmail.co': 'hotmail.com', 'hotmail.con': 'hotmail.com', 'hotamil.com': 'hotmail.com',
+    'outloo.com': 'outlook.com', 'outlok.com': 'outlook.com', 'outlook.co': 'outlook.com',
+    'outlook.con': 'outlook.com', 'outllok.com': 'outlook.com',
+    'yahooo.com': 'yahoo.com', 'yaho.com': 'yahoo.com', 'yahoo.co': 'yahoo.com',
+    'yahoo.con': 'yahoo.com', 'yaoo.com': 'yahoo.com', 'yhoo.com': 'yahoo.com',
+    'iclod.com': 'icloud.com', 'icloud.co': 'icloud.com', 'icoud.com': 'icloud.com',
+    'live.co': 'live.com', 'live.con': 'live.com'
+};
+
+const ROLE_BASED_PREFIXES = [
+    'info', 'admin', 'support', 'sales', 'contact', 'help', 'office',
+    'noreply', 'no-reply', 'postmaster', 'webmaster', 'abuse', 'marketing',
+    'billing', 'enquiries', 'hello', 'team', 'general', 'reception'
+];
+
+function setupEmailCleanerListeners() {
+    if (emailCleanerListenersSetup) return;
+    emailCleanerListenersSetup = true;
+
+    const dropzone = document.getElementById("emailCleanerDropzone");
+    const fileInput = document.getElementById("emailCleanerFileInput");
+    if (!dropzone || !fileInput) return;
+
+    dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("dragover"); });
+    dropzone.addEventListener("dragleave", () => { dropzone.classList.remove("dragover"); });
+    dropzone.addEventListener("drop", (e) => {
+        e.preventDefault(); dropzone.classList.remove("dragover");
+        if (e.dataTransfer.files[0]) loadEmailCleanerFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener("change", (e) => { if (e.target.files[0]) loadEmailCleanerFile(e.target.files[0]); });
+}
+
+function loadEmailCleanerFile(file) {
+    if (!file.name.match(/\.xlsx?$/i) && !file.name.match(/\.csv$/i)) {
+        showToast("Please upload a spreadsheet file (.xlsx, .xls, or .csv)", "error"); return;
+    }
+    if (file.size > NORMALIZER_MAX_FILE_SIZE) {
+        showToast("File is too large. Maximum size is 10 MB.", "error"); return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            emailCleanerData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            if (!emailCleanerData.length) { showToast("File is empty", "error"); return; }
+            showEmailCleanerColumnPicker();
+        } catch (err) { showToast("Error reading file: " + err.message, "error"); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function showEmailCleanerColumnPicker() {
+    const columns = Object.keys(emailCleanerData[0]);
+    const emailCol = columns.find(c => /email/i.test(c));
+    emailCleanerSelectedCol = emailCol || null;
+
+    const container = document.getElementById("emailCleanerColumnPills");
+    container.innerHTML = columns.map(col => {
+        const escaped = col.replace(/'/g, "\\'");
+        return `<button class="dup-finder-col-pill ${col === emailCleanerSelectedCol ? 'selected' : ''}"
+                onclick="selectEmailCleanerCol(this, '${escaped}')">${escapeHtml(col)}</button>`;
+    }).join('');
+
+    document.getElementById("emailCleanerUploadSection").style.display = "none";
+    document.getElementById("emailCleanerConfig").style.display = "block";
+}
+
+function selectEmailCleanerCol(btn, col) {
+    document.querySelectorAll('#emailCleanerColumnPills .dup-finder-col-pill').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    emailCleanerSelectedCol = col;
+}
+
+function isValidEmailFormat(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
+
+function fixEmailTypo(email) {
+    const lower = email.toLowerCase().trim();
+    const atIdx = lower.indexOf('@');
+    if (atIdx === -1) return { fixed: false, email: lower };
+
+    const local = lower.substring(0, atIdx);
+    let domain = lower.substring(atIdx + 1);
+
+    if (EMAIL_DOMAIN_TYPOS[domain]) {
+        return { fixed: true, email: local + '@' + EMAIL_DOMAIN_TYPOS[domain], original: lower };
+    }
+
+    // Check suffix typos (.con → .com)
+    for (const [typo, correction] of Object.entries(EMAIL_DOMAIN_TYPOS)) {
+        if (typo.startsWith('.') && domain.endsWith(typo)) {
+            const corrected = domain.slice(0, -typo.length) + correction;
+            return { fixed: true, email: local + '@' + corrected, original: lower };
+        }
+    }
+
+    return { fixed: false, email: lower };
+}
+
+function isRoleBasedEmail(email) {
+    const local = email.split('@')[0];
+    return ROLE_BASED_PREFIXES.some(prefix => local === prefix);
+}
+
+function runEmailCleaner() {
+    if (!emailCleanerSelectedCol) { showToast("Select the email column", "error"); return; }
+
+    document.getElementById("emailCleanerConfig").style.display = "none";
+    document.getElementById("emailCleanerProcessing").style.display = "block";
+
+    setTimeout(() => {
+        emailCleanerResults = { valid: [], fixed: [], invalid: [], role: [] };
+        const col = emailCleanerSelectedCol;
+        const seen = new Set();
+
+        emailCleanerData.forEach(row => {
+            const rawEmail = String(row[col] || '').trim();
+            if (!rawEmail) {
+                emailCleanerResults.invalid.push({ ...row, _reason: 'Empty email' });
+                return;
+            }
+
+            const { fixed, email, original } = fixEmailTypo(rawEmail);
+
+            if (seen.has(email)) return; // dedup
+            seen.add(email);
+
+            if (!isValidEmailFormat(email)) {
+                emailCleanerResults.invalid.push({ ...row, [col]: rawEmail, _reason: 'Invalid format' });
+            } else if (fixed) {
+                emailCleanerResults.fixed.push({ ...row, [col]: email, _originalEmail: original });
+                if (isRoleBasedEmail(email)) emailCleanerResults.role.push({ ...row, [col]: email });
+            } else if (isRoleBasedEmail(email)) {
+                emailCleanerResults.role.push({ ...row, [col]: email });
+                emailCleanerResults.valid.push({ ...row, [col]: email });
+            } else {
+                emailCleanerResults.valid.push({ ...row, [col]: email });
+            }
+        });
+
+        document.getElementById("emailCleanerProcessing").style.display = "none";
+        document.getElementById("emailCleanerResults").style.display = "block";
+
+        animateValue(document.getElementById("emailCleanerTotalCount"), 0, emailCleanerData.length, 1000);
+        animateValue(document.getElementById("emailCleanerValidCount"), 0, emailCleanerResults.valid.length, 1000);
+        animateValue(document.getElementById("emailCleanerFixedCount"), 0, emailCleanerResults.fixed.length, 1000);
+        animateValue(document.getElementById("emailCleanerInvalidCount"), 0, emailCleanerResults.invalid.length, 1000);
+
+        emailCleanerActiveTab = 'valid';
+        showEmailCleanerPreview();
+    }, 300);
+}
+
+function switchEmailCleanerTab(tab) {
+    emailCleanerActiveTab = tab;
+    document.querySelectorAll('.email-cleaner-tabs .compare-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    showEmailCleanerPreview();
+}
+
+function showEmailCleanerPreview() {
+    const data = emailCleanerResults[emailCleanerActiveTab];
+    const container = document.getElementById("emailCleanerPreviewTable");
+
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No records in this category.</p>';
+        return;
+    }
+
+    const allKeys = Object.keys(data[0]).filter(k => !k.startsWith('_'));
+    const extraCols = [];
+    if (emailCleanerActiveTab === 'fixed') extraCols.push('_originalEmail');
+    if (emailCleanerActiveTab === 'invalid') extraCols.push('_reason');
+
+    const displayCols = [...allKeys, ...extraCols];
+    const headers = displayCols.map(c => c === '_originalEmail' ? 'Original Email' : c === '_reason' ? 'Reason' : c);
+
+    const preview = data.slice(0, 20);
+    let html = '<table><thead><tr>' + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>';
+    preview.forEach(row => {
+        html += '<tr>' + displayCols.map(c => `<td>${escapeHtml(String(row[c] ?? ''))}</td>`).join('') + '</tr>';
+    });
+    if (data.length > 20) {
+        html += `<tr><td colspan="${displayCols.length}" style="text-align:center;color:var(--text-muted);font-style:italic;">... and ${(data.length - 20).toLocaleString()} more rows</td></tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function downloadCleanedEmails() {
+    const cleanData = [...emailCleanerResults.valid, ...emailCleanerResults.fixed];
+    const exportData = cleanData.map(row => {
+        const clean = {};
+        Object.keys(row).forEach(k => { if (!k.startsWith('_')) clean[k] = row[k]; });
+        return clean;
+    });
+    if (exportData.length === 0) { showToast("No clean emails to download", "error"); return; }
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Clean Emails");
+    const filename = `Clean_Emails_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    showToast(`Downloaded ${filename} (${exportData.length} records)`, "success");
+}
+
+function downloadEmailCleanerReport() {
+    const wb = XLSX.utils.book_new();
+    const addSheet = (name, data) => {
+        const clean = data.map(row => {
+            const obj = {};
+            Object.keys(row).forEach(k => {
+                const label = k === '_originalEmail' ? 'Original Email' : k === '_reason' ? 'Reason' : k;
+                obj[label] = row[k];
+            });
+            return obj;
+        });
+        if (clean.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clean), name);
+    };
+    addSheet('Valid', emailCleanerResults.valid);
+    addSheet('Typos Fixed', emailCleanerResults.fixed);
+    addSheet('Invalid', emailCleanerResults.invalid);
+    addSheet('Role-Based', emailCleanerResults.role);
+
+    const filename = `Email_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    showToast(`Downloaded ${filename}`, "success");
+}
+
+function resetEmailCleaner() {
+    emailCleanerData = null;
+    emailCleanerSelectedCol = null;
+    emailCleanerResults = { valid: [], fixed: [], invalid: [], role: [] };
+    document.getElementById("emailCleanerUploadSection").style.display = "block";
+    document.getElementById("emailCleanerConfig").style.display = "none";
+    document.getElementById("emailCleanerProcessing").style.display = "none";
+    document.getElementById("emailCleanerResults").style.display = "none";
+    document.getElementById("emailCleanerFileInput").value = '';
+}
+
 // ==================== PARALLAX & SCROLL ANIMATIONS ====================
 
 function initParallaxAndAnimations() {
@@ -7805,6 +8432,9 @@ const ROUTES = {
     '/list-normalizer':              { view: 'tool', tool: 'list-normalizer' },
     '/list-normalizer/marketing':    { view: 'tool', tool: 'list-normalizer', subTool: 'marketing' },
     '/list-normalizer/raw':          { view: 'tool', tool: 'list-normalizer', subTool: 'raw' },
+    '/list-normalizer/duplicates':   { view: 'tool', tool: 'list-normalizer', subTool: 'duplicates' },
+    '/list-normalizer/compare':      { view: 'tool', tool: 'list-normalizer', subTool: 'compare' },
+    '/list-normalizer/email-cleaner': { view: 'tool', tool: 'list-normalizer', subTool: 'email-cleaner' },
 };
 
 // Map tools/pages to URL paths (reverse lookup)

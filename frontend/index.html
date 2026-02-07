@@ -5479,9 +5479,9 @@
 
         .normalizer-hub-cards {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            max-width: 700px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 940px;
             margin: 0 auto;
         }
 
@@ -5713,6 +5713,192 @@
         .raw-normalizer-process-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+        }
+
+        /* Duplicate Finder & shared config styles */
+        .dup-finder-config {
+            max-width: 900px;
+            margin: 24px auto 0;
+            text-align: left;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .dup-finder-config h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0 0 16px 0;
+        }
+
+        .dup-finder-column-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .dup-finder-col-pill {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg-card);
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .dup-finder-col-pill:hover {
+            border-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .dup-finder-col-pill.selected {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border-color: transparent;
+        }
+
+        .dup-finder-keep-options {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .dup-finder-keep-label {
+            font-size: 14px;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .dup-finder-keep-pills {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .dup-finder-keep-pill {
+            padding: 8px 20px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg-card);
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .dup-finder-keep-pill.active {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border-color: transparent;
+        }
+
+        /* List Comparator */
+        .compare-upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 600px) {
+            .compare-upload-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .compare-upload-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .compare-dropzone {
+            padding: 30px 20px;
+            min-height: auto;
+        }
+
+        .compare-file-loaded {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 12px;
+            margin-top: 8px;
+        }
+
+        .compare-file-check {
+            color: #10b981;
+            font-weight: 700;
+        }
+
+        .compare-file-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .compare-file-rows {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .compare-column-config {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: left;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .compare-column-config h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0 0 16px 0;
+        }
+
+        .compare-results-tabs, .email-cleaner-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 20px 0;
+        }
+
+        .compare-tab {
+            padding: 8px 20px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg-card);
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .compare-tab:hover {
+            border-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .compare-tab.active {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border-color: transparent;
         }
 
         .normalizer-container {
@@ -11939,15 +12125,36 @@
                     <button class="normalizer-hub-card" onclick="openNormalizerSubTool('marketing')">
                         <div class="normalizer-hub-card-icon">📧</div>
                         <h3>Marketing Contact List</h3>
-                        <p>Transform BUMP Customer reports into clean, Mailchimp-ready contact lists with NAME and EMAIL columns.</p>
+                        <p>Transform BUMP Customer reports into clean, Mailchimp-ready contact lists. Automatically combines first and last names, removes entries without emails, deduplicates, and exports a sorted NAME + EMAIL file ready to import into Mailchimp.</p>
                         <span class="normalizer-hub-card-tag">BUMP → Mailchimp</span>
                     </button>
 
                     <button class="normalizer-hub-card" onclick="openNormalizerSubTool('raw')">
                         <div class="normalizer-hub-card-icon">🔧</div>
                         <h3>Raw Data Normalizer</h3>
-                        <p>Upload any spreadsheet and use AI to clean, deduplicate, reformat, and standardize your data.</p>
-                        <span class="normalizer-hub-card-tag">Any Format</span>
+                        <p>Upload any spreadsheet and describe what you want in plain English. AI generates a transformation that runs across your entire file — rename columns, merge fields, filter rows, reformat values, and more. Works with any file structure.</p>
+                        <span class="normalizer-hub-card-tag">AI-Powered</span>
+                    </button>
+
+                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('duplicates')">
+                        <div class="normalizer-hub-card-icon">🔍</div>
+                        <h3>Duplicate Finder</h3>
+                        <p>Upload a list and instantly find duplicate entries by email, name, phone, or any column. Preview duplicate groups side-by-side, then choose to keep the first, last, or remove all duplicates. Download a clean, deduplicated file.</p>
+                        <span class="normalizer-hub-card-tag">Deduplication</span>
+                    </button>
+
+                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('compare')">
+                        <div class="normalizer-hub-card-icon">⚖️</div>
+                        <h3>List Comparator</h3>
+                        <p>Upload two lists and compare them side-by-side. See which entries are only in List A, only in List B, or in both. Perfect for finding new subscribers, identifying who dropped off, or merging lists without duplicates.</p>
+                        <span class="normalizer-hub-card-tag">Compare &amp; Merge</span>
+                    </button>
+
+                    <button class="normalizer-hub-card" onclick="openNormalizerSubTool('email-cleaner')">
+                        <div class="normalizer-hub-card-icon">✉️</div>
+                        <h3>Email Cleaner</h3>
+                        <p>Validate and clean an email list in seconds. Catches typos (gmial.com → gmail.com), removes invalid formats, flags role-based addresses (info@, admin@) that hurt deliverability, and strips duplicates. Export a clean, verified list.</p>
+                        <span class="normalizer-hub-card-tag">Validation</span>
                     </button>
                 </div>
             </div>
@@ -12152,6 +12359,294 @@
                             </button>
                             <button class="normalizer-reset-btn" id="rawNormalizerResetBtn">
                                 ↻ Process Another File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== DUPLICATE FINDER ===== -->
+            <div class="normalizer-sub-tool" id="normalizerDuplicatesView" style="display: none;">
+                <button class="normalizer-back-btn" onclick="showNormalizerHub()">
+                    <span>←</span> Back to List Normalizer
+                </button>
+
+                <div class="normalizer-container">
+                    <div class="normalizer-upload-section" id="dupFinderUploadSection">
+                        <input type="file" id="dupFinderFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+
+                        <div class="normalizer-hero">
+                            <div class="normalizer-icon">🔍</div>
+                            <h1>Duplicate Finder</h1>
+                            <p>Upload a list and instantly find duplicate entries. Preview them side-by-side and export a clean file.</p>
+                        </div>
+
+                        <div class="normalizer-dropzone" id="dupFinderDropzone">
+                            <div class="normalizer-dropzone-icon">📤</div>
+                            <p class="normalizer-dropzone-text">Drag and drop your spreadsheet here</p>
+                            <span class="normalizer-dropzone-divider">or</span>
+                            <button class="normalizer-upload-btn" onclick="document.getElementById('dupFinderFileInput').click()">
+                                Browse Files
+                            </button>
+                            <p class="normalizer-dropzone-hint">Accepts .xlsx, .xls, and .csv files</p>
+                        </div>
+                    </div>
+
+                    <!-- Column Selection -->
+                    <div class="dup-finder-config" id="dupFinderConfig" style="display: none;">
+                        <h3>Check for duplicates based on:</h3>
+                        <div class="dup-finder-column-pills" id="dupFinderColumnPills"></div>
+                        <button class="normalizer-upload-btn raw-normalizer-process-btn" onclick="runDuplicateFinder()">
+                            🔍 Find Duplicates
+                        </button>
+                    </div>
+
+                    <!-- Processing -->
+                    <div class="normalizer-processing" id="dupFinderProcessing" style="display: none;">
+                        <div class="normalizer-spinner"></div>
+                        <p>Scanning for duplicates...</p>
+                    </div>
+
+                    <!-- Results -->
+                    <div class="normalizer-results" id="dupFinderResults" style="display: none;">
+                        <div class="normalizer-success-icon">✅</div>
+                        <h2>Scan Complete</h2>
+
+                        <div class="normalizer-stats">
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="dupFinderTotalCount">0</span>
+                                <span class="normalizer-stat-label">Total Records</span>
+                            </div>
+                            <div class="normalizer-stat-arrow">→</div>
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="dupFinderUniqueCount">0</span>
+                                <span class="normalizer-stat-label">Unique Records</span>
+                            </div>
+                            <div class="normalizer-stat removed">
+                                <span class="normalizer-stat-value" id="dupFinderDupeCount">0</span>
+                                <span class="normalizer-stat-label">Duplicates Found</span>
+                            </div>
+                        </div>
+
+                        <div class="dup-finder-keep-options">
+                            <label class="dup-finder-keep-label">When duplicates are found, keep:</label>
+                            <div class="dup-finder-keep-pills">
+                                <button class="dup-finder-keep-pill active" data-keep="first" onclick="setDupKeepMode('first')">First Occurrence</button>
+                                <button class="dup-finder-keep-pill" data-keep="last" onclick="setDupKeepMode('last')">Last Occurrence</button>
+                            </div>
+                        </div>
+
+                        <div class="normalizer-preview">
+                            <h3>Duplicate Groups</h3>
+                            <div class="normalizer-preview-table" id="dupFinderPreviewTable"></div>
+                        </div>
+
+                        <div class="normalizer-actions">
+                            <button class="normalizer-download-btn" onclick="downloadDeduplicated()">
+                                <span>📥</span> Download Deduplicated List
+                            </button>
+                            <button class="normalizer-reset-btn" onclick="resetDuplicateFinder()">
+                                ↻ Scan Another File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== LIST COMPARATOR ===== -->
+            <div class="normalizer-sub-tool" id="normalizerCompareView" style="display: none;">
+                <button class="normalizer-back-btn" onclick="showNormalizerHub()">
+                    <span>←</span> Back to List Normalizer
+                </button>
+
+                <div class="normalizer-container">
+                    <div class="normalizer-upload-section" id="compareUploadSection">
+                        <div class="normalizer-hero">
+                            <div class="normalizer-icon">⚖️</div>
+                            <h1>List Comparator</h1>
+                            <p>Upload two lists and see what's unique to each or shared between both.</p>
+                        </div>
+
+                        <div class="compare-upload-grid">
+                            <div class="compare-upload-box">
+                                <input type="file" id="compareFileInputA" accept=".xlsx,.xls,.csv" style="display: none;">
+                                <div class="compare-upload-label">List A</div>
+                                <div class="normalizer-dropzone compare-dropzone" id="compareDropzoneA">
+                                    <div class="normalizer-dropzone-icon">📤</div>
+                                    <p class="normalizer-dropzone-text">Drop List A here</p>
+                                    <button class="normalizer-upload-btn" onclick="document.getElementById('compareFileInputA').click()">Browse</button>
+                                </div>
+                                <div class="compare-file-loaded" id="compareFileLoadedA" style="display: none;">
+                                    <span class="compare-file-check">✓</span>
+                                    <span class="compare-file-name" id="compareFileNameA"></span>
+                                    <span class="compare-file-rows" id="compareFileRowsA"></span>
+                                </div>
+                            </div>
+                            <div class="compare-upload-box">
+                                <input type="file" id="compareFileInputB" accept=".xlsx,.xls,.csv" style="display: none;">
+                                <div class="compare-upload-label">List B</div>
+                                <div class="normalizer-dropzone compare-dropzone" id="compareDropzoneB">
+                                    <div class="normalizer-dropzone-icon">📤</div>
+                                    <p class="normalizer-dropzone-text">Drop List B here</p>
+                                    <button class="normalizer-upload-btn" onclick="document.getElementById('compareFileInputB').click()">Browse</button>
+                                </div>
+                                <div class="compare-file-loaded" id="compareFileLoadedB" style="display: none;">
+                                    <span class="compare-file-check">✓</span>
+                                    <span class="compare-file-name" id="compareFileNameB"></span>
+                                    <span class="compare-file-rows" id="compareFileRowsB"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="compare-column-config" id="compareColumnConfig" style="display: none;">
+                            <h3>Compare by column:</h3>
+                            <div class="dup-finder-column-pills" id="compareColumnPills"></div>
+                            <button class="normalizer-upload-btn raw-normalizer-process-btn" onclick="runListComparator()">
+                                ⚖️ Compare Lists
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Processing -->
+                    <div class="normalizer-processing" id="compareProcessing" style="display: none;">
+                        <div class="normalizer-spinner"></div>
+                        <p>Comparing lists...</p>
+                    </div>
+
+                    <!-- Results -->
+                    <div class="normalizer-results" id="compareResults" style="display: none;">
+                        <div class="normalizer-success-icon">✅</div>
+                        <h2>Comparison Complete</h2>
+
+                        <div class="normalizer-stats">
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="compareOnlyACount">0</span>
+                                <span class="normalizer-stat-label">Only in List A</span>
+                            </div>
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="compareBothCount">0</span>
+                                <span class="normalizer-stat-label">In Both Lists</span>
+                            </div>
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="compareOnlyBCount">0</span>
+                                <span class="normalizer-stat-label">Only in List B</span>
+                            </div>
+                        </div>
+
+                        <div class="compare-results-tabs">
+                            <button class="compare-tab active" data-tab="onlyA" onclick="switchCompareTab('onlyA')">Only in A</button>
+                            <button class="compare-tab" data-tab="both" onclick="switchCompareTab('both')">In Both</button>
+                            <button class="compare-tab" data-tab="onlyB" onclick="switchCompareTab('onlyB')">Only in B</button>
+                        </div>
+
+                        <div class="normalizer-preview">
+                            <div class="normalizer-preview-table" id="comparePreviewTable"></div>
+                        </div>
+
+                        <div class="normalizer-actions">
+                            <button class="normalizer-download-btn" onclick="downloadCompareResult('onlyA')">
+                                <span>📥</span> Download "Only in A"
+                            </button>
+                            <button class="normalizer-download-btn" onclick="downloadCompareResult('both')">
+                                <span>📥</span> Download "In Both"
+                            </button>
+                            <button class="normalizer-download-btn" onclick="downloadCompareResult('onlyB')">
+                                <span>📥</span> Download "Only in B"
+                            </button>
+                            <button class="normalizer-reset-btn" onclick="resetListComparator()">
+                                ↻ Compare Different Lists
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== EMAIL CLEANER ===== -->
+            <div class="normalizer-sub-tool" id="normalizerEmailCleanerView" style="display: none;">
+                <button class="normalizer-back-btn" onclick="showNormalizerHub()">
+                    <span>←</span> Back to List Normalizer
+                </button>
+
+                <div class="normalizer-container">
+                    <div class="normalizer-upload-section" id="emailCleanerUploadSection">
+                        <input type="file" id="emailCleanerFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+
+                        <div class="normalizer-hero">
+                            <div class="normalizer-icon">✉️</div>
+                            <h1>Email Cleaner</h1>
+                            <p>Validate, fix typos, and clean your email list to improve deliverability.</p>
+                        </div>
+
+                        <div class="normalizer-dropzone" id="emailCleanerDropzone">
+                            <div class="normalizer-dropzone-icon">📤</div>
+                            <p class="normalizer-dropzone-text">Drag and drop your email list here</p>
+                            <span class="normalizer-dropzone-divider">or</span>
+                            <button class="normalizer-upload-btn" onclick="document.getElementById('emailCleanerFileInput').click()">
+                                Browse Files
+                            </button>
+                            <p class="normalizer-dropzone-hint">Accepts .xlsx, .xls, and .csv files</p>
+                        </div>
+                    </div>
+
+                    <!-- Column picker -->
+                    <div class="dup-finder-config" id="emailCleanerConfig" style="display: none;">
+                        <h3>Which column contains emails?</h3>
+                        <div class="dup-finder-column-pills" id="emailCleanerColumnPills"></div>
+                        <button class="normalizer-upload-btn raw-normalizer-process-btn" onclick="runEmailCleaner()">
+                            ✉️ Clean Emails
+                        </button>
+                    </div>
+
+                    <!-- Processing -->
+                    <div class="normalizer-processing" id="emailCleanerProcessing" style="display: none;">
+                        <div class="normalizer-spinner"></div>
+                        <p>Validating emails...</p>
+                    </div>
+
+                    <!-- Results -->
+                    <div class="normalizer-results" id="emailCleanerResults" style="display: none;">
+                        <div class="normalizer-success-icon">✅</div>
+                        <h2>Email Cleaning Complete</h2>
+
+                        <div class="normalizer-stats">
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="emailCleanerTotalCount">0</span>
+                                <span class="normalizer-stat-label">Total Emails</span>
+                            </div>
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="emailCleanerValidCount">0</span>
+                                <span class="normalizer-stat-label" style="color: #10b981;">Valid</span>
+                            </div>
+                            <div class="normalizer-stat">
+                                <span class="normalizer-stat-value" id="emailCleanerFixedCount">0</span>
+                                <span class="normalizer-stat-label" style="color: var(--primary);">Typos Fixed</span>
+                            </div>
+                            <div class="normalizer-stat removed">
+                                <span class="normalizer-stat-value" id="emailCleanerInvalidCount">0</span>
+                                <span class="normalizer-stat-label">Invalid</span>
+                            </div>
+                        </div>
+
+                        <div class="email-cleaner-tabs">
+                            <button class="compare-tab active" data-tab="valid" onclick="switchEmailCleanerTab('valid')">Valid</button>
+                            <button class="compare-tab" data-tab="fixed" onclick="switchEmailCleanerTab('fixed')">Typos Fixed</button>
+                            <button class="compare-tab" data-tab="invalid" onclick="switchEmailCleanerTab('invalid')">Invalid</button>
+                            <button class="compare-tab" data-tab="role" onclick="switchEmailCleanerTab('role')">Role-Based</button>
+                        </div>
+
+                        <div class="normalizer-preview">
+                            <div class="normalizer-preview-table" id="emailCleanerPreviewTable"></div>
+                        </div>
+
+                        <div class="normalizer-actions">
+                            <button class="normalizer-download-btn" onclick="downloadCleanedEmails()">
+                                <span>📥</span> Download Clean List
+                            </button>
+                            <button class="normalizer-download-btn" style="background: linear-gradient(135deg, #ef4444, #f87171);" onclick="downloadEmailCleanerReport()">
+                                <span>📋</span> Download Full Report
+                            </button>
+                            <button class="normalizer-reset-btn" onclick="resetEmailCleaner()">
+                                ↻ Clean Another List
                             </button>
                         </div>
                     </div>
