@@ -8563,9 +8563,17 @@ function handlePostLoginRedirect() {
 
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", () => {
+    // Check if we were redirected from 404.html (SPA catch-all)
+    const spaRedirect = sessionStorage.getItem('spa_redirect');
+    if (spaRedirect) {
+        sessionStorage.removeItem('spa_redirect');
+        // Restore the original URL in the address bar
+        history.replaceState(null, '', spaRedirect);
+    }
+
     // Capture the URL BEFORE init() runs (init may change it via showToolMenu → pushRoute)
     // Store globally so loginUser() can use it for direct navigation
-    window._initialPath = window.location.pathname;
+    window._initialPath = spaRedirect || window.location.pathname;
 
     init();
     initParallaxAndAnimations();
