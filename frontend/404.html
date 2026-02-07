@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Lightspeed</title>
+    <script>
+        // SPA redirect: save the path and redirect to index.html
+        // Render serves this 404.html when no file matches the route
+        sessionStorage.setItem('spa_redirect', window.location.pathname + window.location.search);
+        window.location.replace('/');
+    </script>
+</head>
+<body>
+</body>
+</html>
