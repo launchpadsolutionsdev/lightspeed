@@ -167,26 +167,32 @@ router.post('/normalize', authenticate, async (req, res) => {
             return res.status(400).json({ error: 'Data required for normalization' });
         }
 
-        let systemPrompt = `You are a data formatting expert. Clean and normalize the provided data according to the specified format.
-Return ONLY the normalized data, no explanations or additional text.`;
+        const isJsonOutput = outputFormat === 'json';
 
-        let userPrompt = `Normalize and clean this data`;
+        let systemPrompt = isJsonOutput
+            ? `You are a data transformation expert. You receive spreadsheet data as a JSON array of objects and user instructions describing how to transform it. Apply the transformations and return ONLY a valid JSON array of objects — no markdown fences, no explanation, no extra text. Just the raw JSON array starting with [ and ending with ].`
+            : `You are a data formatting expert. Clean and normalize the provided data according to the specified format. Return ONLY the normalized data, no explanations or additional text.`;
 
-        if (outputFormat) {
-            userPrompt += ` into ${outputFormat} format`;
-        }
+        let userPrompt = '';
 
-        userPrompt += `:\n\n${data}`;
-
-        if (instructions) {
-            userPrompt += `\n\nAdditional instructions: ${instructions}`;
+        if (isJsonOutput) {
+            userPrompt = `Here is the data:\n${data}\n\n${instructions || 'Clean and normalize this data.'}`;
+        } else {
+            userPrompt = `Normalize and clean this data`;
+            if (outputFormat) {
+                userPrompt += ` into ${outputFormat} format`;
+            }
+            userPrompt += `:\n\n${data}`;
+            if (instructions) {
+                userPrompt += `\n\nAdditional instructions: ${instructions}`;
+            }
         }
 
         // Call Claude API
         const response = await claudeService.generateResponse({
             messages: [{ role: 'user', content: userPrompt }],
             system: systemPrompt,
-            max_tokens: 4096
+            max_tokens: 8192
         });
 
         // Get organization for logging
