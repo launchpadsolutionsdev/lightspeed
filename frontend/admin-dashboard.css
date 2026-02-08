@@ -7,9 +7,9 @@
 }
 
 #adminNavBtn.active {
-    background: linear-gradient(135deg, rgba(233, 30, 140, 0.25), rgba(245, 166, 35, 0.15));
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.25), rgba(245, 166, 35, 0.15));
     color: #fff;
-    border-left: 3px solid #F5A623;
+    border-left: 3px solid #3B82F6;
 }
 
 /* Admin Page Container */
@@ -60,7 +60,7 @@
 }
 
 .admin-auto-refresh input {
-    accent-color: #E91E8C;
+    accent-color: #1F2937;
 }
 
 /* ==================== TABS ==================== */
@@ -92,8 +92,8 @@
 }
 
 .admin-tab.active {
-    color: #E91E8C;
-    border-bottom-color: #E91E8C;
+    color: #1F2937;
+    border-bottom-color: #1F2937;
     font-weight: 600;
 }
 
@@ -117,24 +117,24 @@
 }
 
 .admin-btn-primary {
-    background: linear-gradient(135deg, #E91E8C, #F5A623);
+    background: linear-gradient(135deg, #1F2937, #3B82F6);
     color: white;
-    box-shadow: 0 4px 12px rgba(233, 30, 140, 0.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .admin-btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(233, 30, 140, 0.4);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .admin-btn-secondary {
-    background: #FFF5F7;
+    background: #ffffff;
     color: #1e1b4b;
     border: 1px solid #e5e7eb;
 }
 
 .admin-btn-secondary:hover {
-    background: #FEE2E2;
+    background: #F3F4F6;
     border-color: #FBD38D;
 }
 
@@ -171,11 +171,11 @@
 
 .admin-stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.06), 0 0 40px rgba(233, 30, 140, 0.08);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.06), 0 0 40px rgba(0, 0, 0, 0.08);
 }
 
 .admin-stat-card.highlight {
-    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
+    background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%);
     color: white;
 }
 
@@ -191,7 +191,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #FFF5F7;
+    background: #ffffff;
     border-radius: 12px;
     flex-shrink: 0;
 }
@@ -239,7 +239,7 @@
 }
 
 .admin-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 0 30px rgba(233, 30, 140, 0.06);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 0 30px rgba(0, 0, 0, 0.06);
 }
 
 .admin-card-header {
@@ -258,10 +258,10 @@
 
 .admin-card-badge {
     font-size: 0.68rem;
-    background: #FFF5F7;
+    background: #ffffff;
     padding: 0.2rem 0.65rem;
     border-radius: 100px;
-    color: #E91E8C;
+    color: #1F2937;
     font-weight: 500;
 }
 
@@ -307,7 +307,7 @@
 .admin-table td {
     padding: 0.65rem 0.85rem;
     text-align: left;
-    border-bottom: 1px solid #FEE2E2;
+    border-bottom: 1px solid #F3F4F6;
     font-size: 0.84rem;
 }
 
@@ -328,7 +328,7 @@
 }
 
 .admin-table tbody tr:hover {
-    background: #FFF5F7;
+    background: #ffffff;
 }
 
 .admin-table td.name {
@@ -354,12 +354,12 @@
 
 .admin-table td.cost {
     font-weight: 600;
-    color: #E91E8C;
+    color: #1F2937;
 }
 
 .admin-table-total {
-    border-top: 2px solid #FEE2E2;
-    background: #FFF5F7;
+    border-top: 2px solid #F3F4F6;
+    background: #ffffff;
 }
 
 .admin-table-full {
@@ -379,7 +379,7 @@
     width: 30px;
     height: 30px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #E91E8C, #F5A623);
+    background: linear-gradient(135deg, #1F2937, #3B82F6);
     color: white;
     display: inline-flex;
     align-items: center;
@@ -392,7 +392,7 @@
 /* Badges */
 .admin-badge-super {
     font-size: 0.58rem;
-    background: linear-gradient(135deg, #E91E8C, #F5A623);
+    background: linear-gradient(135deg, #1F2937, #3B82F6);
     color: white;
     padding: 0.12rem 0.45rem;
     border-radius: 6px;
@@ -410,9 +410,9 @@
     text-transform: capitalize;
 }
 
-.admin-role-owner { background: #FEE2E2; color: #E91E8C; }
+.admin-role-owner { background: #F3F4F6; color: #1F2937; }
 .admin-role-admin { background: #fce7f3; color: #be185d; }
-.admin-role-member { background: #FFF5F7; color: #6b7280; }
+.admin-role-member { background: #ffffff; color: #6b7280; }
 
 /* Status pills */
 .admin-status-pill {
@@ -423,7 +423,7 @@
     letter-spacing: 0.02em;
 }
 
-.admin-status-trial { background: #FEE2E2; color: #E91E8C; }
+.admin-status-trial { background: #F3F4F6; color: #1F2937; }
 .admin-status-active { background: #dcfce7; color: #15803d; }
 .admin-status-cancelled, .admin-status-canceled { background: #fee2e2; color: #dc2626; }
 .admin-status-past_due { background: #fef3c7; color: #d97706; }
@@ -445,17 +445,17 @@
 }
 
 .admin-toggle-btn:hover {
-    border-color: #F5A623;
-    color: #E91E8C;
-    background: #FFF5F7;
-    box-shadow: 0 0 0 4px rgba(233, 30, 140, 0.1);
+    border-color: #3B82F6;
+    color: #1F2937;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
 .admin-toggle-btn.active {
-    background: linear-gradient(135deg, #E91E8C, #F5A623);
+    background: linear-gradient(135deg, #1F2937, #3B82F6);
     border-color: transparent;
     color: white;
-    box-shadow: 0 4px 8px rgba(233, 30, 140, 0.3);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* ==================== TOOLBAR ==================== */
@@ -494,7 +494,7 @@
     font-size: 0.85rem;
     width: 280px;
     outline: none;
-    background: #FFF5F7;
+    background: #ffffff;
     color: #1e1b4b;
     transition: all 0.2s;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -505,9 +505,9 @@
 }
 
 .admin-search-input:focus {
-    border-color: #E91E8C;
+    border-color: #1F2937;
     background: white;
-    box-shadow: 0 0 0 4px rgba(233, 30, 140, 0.1);
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
 .admin-select {
@@ -516,7 +516,7 @@
     border-radius: 12px;
     font-size: 0.85rem;
     outline: none;
-    background: #FFF5F7;
+    background: #ffffff;
     color: #1e1b4b;
     cursor: pointer;
     transition: all 0.2s;
@@ -524,8 +524,8 @@
 }
 
 .admin-select:focus {
-    border-color: #E91E8C;
-    box-shadow: 0 0 0 4px rgba(233, 30, 140, 0.1);
+    border-color: #1F2937;
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
 .admin-count {
@@ -541,7 +541,7 @@
     justify-content: center;
     gap: 1rem;
     padding-top: 1.25rem;
-    border-top: 1px solid #FEE2E2;
+    border-top: 1px solid #F3F4F6;
     margin-top: 0.5rem;
 }
 
@@ -553,12 +553,12 @@
 
 /* ==================== ORG DETAIL EXPANSION ==================== */
 .admin-org-row:hover {
-    background: #FFF5F7;
+    background: #ffffff;
 }
 
 .admin-org-detail {
     padding: 1.25rem;
-    background: linear-gradient(135deg, #FFF5F7, #FFF5F7);
+    background: linear-gradient(135deg, #ffffff, #ffffff);
     border-radius: 12px;
 }
 
@@ -580,7 +580,7 @@
     font-size: 0.84rem;
     color: #1e1b4b;
     padding-top: 0.75rem;
-    border-top: 1px solid #FEE2E2;
+    border-top: 1px solid #F3F4F6;
 }
 
 /* ==================== TOOL USAGE BARS ==================== */
@@ -607,14 +607,14 @@
 .admin-tool-bar-track {
     flex: 1;
     height: 8px;
-    background: #FFF5F7;
+    background: #ffffff;
     border-radius: 100px;
     overflow: hidden;
 }
 
 .admin-tool-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #E91E8C, #F5A623);
+    background: linear-gradient(90deg, #1F2937, #3B82F6);
     border-radius: 100px;
     transition: width 0.6s ease;
 }
@@ -624,7 +624,7 @@
     text-align: right;
     font-size: 0.8rem;
     font-weight: 700;
-    color: #E91E8C;
+    color: #1F2937;
 }
 
 /* ==================== RETENTION DISPLAY ==================== */
@@ -638,7 +638,7 @@
 .admin-big-number {
     font-size: 3.25rem;
     font-weight: 800;
-    background: linear-gradient(135deg, #E91E8C, #F5A623);
+    background: linear-gradient(135deg, #1F2937, #3B82F6);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -682,14 +682,14 @@
 .feature-bar-container {
     flex: 1;
     height: 8px;
-    background: #FFF5F7;
+    background: #ffffff;
     border-radius: 100px;
     overflow: hidden;
 }
 
 .feature-bar {
     height: 100%;
-    background: linear-gradient(90deg, #E91E8C, #F5A623);
+    background: linear-gradient(90deg, #1F2937, #3B82F6);
     border-radius: 100px;
     transition: width 0.6s ease;
 }
@@ -699,7 +699,7 @@
     text-align: right;
     font-size: 0.8rem;
     font-weight: 700;
-    color: #E91E8C;
+    color: #1F2937;
 }
 
 /* ==================== SUBSCRIPTIONS ==================== */
@@ -715,7 +715,7 @@
     align-items: center;
     padding: 1rem 1.5rem;
     border-radius: 12px;
-    background: #FFF5F7;
+    background: #ffffff;
     min-width: 75px;
     transition: transform 0.2s;
 }
@@ -725,7 +725,7 @@
 }
 
 .subscription-status-item.active { background: #dcfce7; }
-.subscription-status-item.trialing, .subscription-status-item.trial { background: #FEE2E2; }
+.subscription-status-item.trialing, .subscription-status-item.trial { background: #F3F4F6; }
 .subscription-status-item.past_due { background: #fef3c7; }
 .subscription-status-item.canceled, .subscription-status-item.cancelled { background: #fee2e2; }
 
@@ -765,15 +765,15 @@
 
 .admin-filter-pill:hover {
     border-color: #FBD38D;
-    color: #E91E8C;
-    background: #FFF5F7;
+    color: #1F2937;
+    background: #ffffff;
 }
 
 .admin-filter-pill.active {
-    background: linear-gradient(135deg, #E91E8C, #F5A623);
+    background: linear-gradient(135deg, #1F2937, #3B82F6);
     border-color: transparent;
     color: white;
-    box-shadow: 0 4px 10px rgba(233, 30, 140, 0.25);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
 .admin-activity-feed {
@@ -786,7 +786,7 @@
 }
 
 .admin-activity-feed::-webkit-scrollbar-track {
-    background: #FFF5F7;
+    background: #ffffff;
     border-radius: 3px;
 }
 
@@ -800,12 +800,12 @@
     align-items: flex-start;
     gap: 0.75rem;
     padding: 0.85rem 0;
-    border-bottom: 1px solid #FEE2E2;
+    border-bottom: 1px solid #F3F4F6;
     transition: background 0.15s;
 }
 
 .admin-activity-item:hover {
-    background: #FFF5F7;
+    background: #ffffff;
     margin: 0 -1.5rem;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
@@ -822,7 +822,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #FFF5F7;
+    background: #ffffff;
     border-radius: 10px;
     flex-shrink: 0;
 }
@@ -853,8 +853,8 @@
 
 /* ==================== COST NOTE ==================== */
 .admin-cost-note {
-    background: #FFF5F7;
-    border: 1px solid #FEE2E2;
+    background: #ffffff;
+    border: 1px solid #F3F4F6;
     border-radius: 12px;
     padding: 0.85rem 1.25rem;
     font-size: 0.8rem;
@@ -863,7 +863,7 @@
 }
 
 .admin-cost-note strong {
-    color: #E91E8C;
+    color: #1F2937;
 }
 
 /* ==================== UTILITIES ==================== */
@@ -890,8 +890,8 @@
 .loading-spinner {
     width: 36px;
     height: 36px;
-    border: 3px solid #FEE2E2;
-    border-top-color: #E91E8C;
+    border: 3px solid #F3F4F6;
+    border-top-color: #1F2937;
     border-radius: 50%;
     animation: adminSpin 0.8s linear infinite;
     margin-bottom: 1rem;

@@ -280,8 +280,8 @@ function initOverviewCharts(engagement) {
                 datasets: [{
                     label: 'Active Users',
                     data: sorted.map(d => d.active_users),
-                    borderColor: '#E91E8C',
-                    backgroundColor: 'rgba(233, 30, 140, 0.1)',
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     fill: true, tension: 0.4, pointRadius: 3
                 }]
             },
@@ -298,8 +298,8 @@ function initOverviewCharts(engagement) {
                 datasets: [{
                     label: 'Requests',
                     data: engagement.peakUsageHours.map(h => parseInt(h.request_count)),
-                    backgroundColor: 'rgba(233, 30, 140, 0.6)',
-                    borderColor: '#E91E8C', borderWidth: 1
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    borderColor: '#3B82F6', borderWidth: 1
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
@@ -574,8 +574,8 @@ function initCostCharts(costData) {
                 datasets: [{
                     label: 'Est. Cost ($)',
                     data: costData.dailyTrend.map(d => parseFloat(d.cost)),
-                    backgroundColor: 'rgba(233, 30, 140, 0.5)',
-                    borderColor: '#E91E8C', borderWidth: 1
+                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                    borderColor: '#3B82F6', borderWidth: 1
                 }]
             },
             options: {
@@ -588,7 +588,7 @@ function initCostCharts(costData) {
 
     const toolCtx = document.getElementById('costByToolChart');
     if (toolCtx && costData.byTool.length) {
-        const colors = ['#E91E8C', '#F47B5B', '#F5A623', '#FBD38D', '#FDE68A'];
+        const colors = ['#3B82F6', '#6366F1', '#8B5CF6', '#06B6D4', '#10B981'];
         adminCharts.costByTool = new Chart(toolCtx, {
             type: 'doughnut',
             data: {

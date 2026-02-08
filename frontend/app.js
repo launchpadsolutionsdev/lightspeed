@@ -195,13 +195,13 @@ function showUpgradeModal(reason, usageCount, limit) {
             .upgrade-price {
                 font-size: 36px;
                 font-weight: 700;
-                color: #E91E8C;
+                color: #1F2937;
             }
             .upgrade-price span { font-size: 16px; font-weight: 400; color: #718096; }
             .upgrade-pricing p { margin: 8px 0 0; color: #718096; font-size: 14px; }
             .upgrade-actions { display: flex; flex-direction: column; gap: 12px; }
             .btn-upgrade {
-                background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
+                background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%);
                 color: white;
                 border: none;
                 padding: 16px 24px;
@@ -211,7 +211,7 @@ function showUpgradeModal(reason, usageCount, limit) {
                 cursor: pointer;
                 transition: all 0.2s;
             }
-            .btn-upgrade:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(233, 30, 140, 0.3); }
+            .btn-upgrade:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); }
             .btn-secondary {
                 background: transparent;
                 color: #718096;
@@ -871,7 +871,7 @@ function showOrganizationSetup(user) {
             styles.id = "orgSetupStyles";
             styles.textContent = `
                 #orgSetupModal {
-                    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
+                    background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%);
                 }
                 .org-setup-modal {
                     max-width: 480px;
@@ -888,7 +888,7 @@ function showOrganizationSetup(user) {
                     font-size: 48px;
                     margin-bottom: 16px;
                     display: inline-block;
-                    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
+                    background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%);
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
                     background-clip: text;
@@ -906,7 +906,7 @@ function showOrganizationSetup(user) {
                     line-height: 1.5;
                 }
                 .org-setup-header p strong {
-                    color: #E91E8C;
+                    color: #1F2937;
                 }
                 .org-setup-form .form-group {
                     text-align: left;
@@ -935,9 +935,9 @@ function showOrganizationSetup(user) {
                 }
                 .org-setup-form input:focus {
                     outline: none;
-                    border-color: #E91E8C;
+                    border-color: #1F2937;
                     background: #ffffff;
-                    box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.1);
+                    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
                 }
                 .form-hint {
                     display: block;
@@ -950,7 +950,7 @@ function showOrganizationSetup(user) {
                     padding: 16px 24px;
                     font-size: 18px;
                     font-weight: 600;
-                    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
+                    background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%);
                     color: white;
                     border: none;
                     border-radius: 10px;
@@ -963,7 +963,7 @@ function showOrganizationSetup(user) {
                 }
                 .org-setup-form .btn-lg:hover {
                     transform: translateY(-2px);
-                    box-shadow: 0 10px 20px rgba(233, 30, 140, 0.3);
+                    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
                 }
                 .org-setup-form .btn-lg:disabled {
                     opacity: 0.7;
@@ -1144,7 +1144,7 @@ function showToolMenu() {
             adminBtn.id = 'menuAdminBtn';
             adminBtn.className = 'tool-menu-admin-btn';
             adminBtn.innerHTML = '🛡️ Admin Dashboard';
-            adminBtn.style.cssText = 'background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 12px; font-size: 14px;';
+            adminBtn.style.cssText = 'background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 12px; font-size: 14px;';
             adminBtn.onclick = function() {
                 openTool('customer-response');
                 switchPage('admin');
@@ -2530,7 +2530,7 @@ function renderDataChartsFull(tierData, packageCounts, northernRevenue, southern
         }
     };
 
-    const chartColors = ['#F47B5B', '#E91E8C', '#F5A623', '#FBD38D', '#FDE68A'];
+    const chartColors = ['#3B82F6', '#6366F1', '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B'];
 
     // Revenue by Purchase Amount
     const topTiersByRevenue = Object.entries(tierData).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 8);
@@ -2617,7 +2617,7 @@ function renderDataChartsFull(tierData, packageCounts, northernRevenue, southern
             labels: ['Northern Ontario', 'Southern Ontario'],
             datasets: [{
                 data: [northernRevenue, southernRevenue],
-                backgroundColor: ['#059669', '#F47B5B']
+                backgroundColor: ['#059669', '#6B7280']
             }]
         },
         options: {
@@ -2909,7 +2909,7 @@ function renderCustomersCharts(cityData, postalData, areaCodeData, northernCount
     dataCharts.forEach(chart => chart.destroy());
     dataCharts = [];
 
-    const chartColors = ['#F47B5B', '#E91E8C', '#F5A623', '#FBD38D', '#FDE68A', '#D41678', '#F7D94E', '#FFB347', '#FDE68A', '#FECACA'];
+    const chartColors = ['#3B82F6', '#6366F1', '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B'];
 
     // Top 10 Cities Chart
     const topCities = Object.entries(cityData).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
@@ -2963,7 +2963,7 @@ function renderCustomersCharts(cityData, postalData, areaCodeData, northernCount
             labels: ['Northern Ontario', 'Southern Ontario'],
             datasets: [{
                 data: [northernCount, southernCount],
-                backgroundColor: ['#059669', '#F47B5B']
+                backgroundColor: ['#059669', '#6B7280']
             }]
         },
         options: {
@@ -3433,7 +3433,7 @@ function renderSellersCharts(sellerData, totalNetSales, ipNetSales, ipCash, ipCC
                 label: 'Net Sales',
                 data: sortedSellers.map(s => s.netSales),
                 backgroundColor: sortedSellers.map(s =>
-                    s.seller.toLowerCase().includes('shopify') ? 'rgba(233, 30, 140, 0.8)' : 'rgba(5, 150, 105, 0.8)'
+                    s.seller.toLowerCase().includes('shopify') ? 'rgba(0, 0, 0, 0.8)' : 'rgba(5, 150, 105, 0.8)'
                 ),
                 borderRadius: 6
             }]
@@ -3481,7 +3481,7 @@ function renderSellersCharts(sellerData, totalNetSales, ipNetSales, ipCash, ipCC
                 {
                     label: 'Debit',
                     data: sortedSellers.map(s => s.debit),
-                    backgroundColor: 'rgba(233, 30, 140, 0.8)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
                     borderRadius: 4
                 }
             ]
@@ -3519,7 +3519,7 @@ function renderSellersCharts(sellerData, totalNetSales, ipNetSales, ipCash, ipCC
                 backgroundColor: [
                     'rgba(16, 185, 129, 0.8)',
                     'rgba(59, 130, 246, 0.8)',
-                    'rgba(233, 30, 140, 0.8)'
+                    'rgba(0, 0, 0, 0.8)'
                 ],
                 borderWidth: 0
             }]
