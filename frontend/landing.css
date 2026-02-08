@@ -747,10 +747,18 @@
 /* Card mockup area - bleeds to bottom */
 .bento-card-visual {
     flex: 1;
-    min-height: 180px;
-    padding: 16px 20px 0;
+    min-height: 140px;
+    padding: 0 20px 20px;
     overflow: hidden;
     position: relative;
+}
+
+/* Dashboard-style UI card inside bento visual */
+.bento-ui-card {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
 }
 
 /* Mockup window inside bento cards */
