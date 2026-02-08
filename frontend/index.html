@@ -7323,115 +7323,163 @@
                         </div>
                     </div>
 
-                    <!-- Card 2: Draft Assistant -->
-                    <div class="bento-card bento-card-top">
-                        <span class="bento-card-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L12 4M12 4H6M12 4v6"/></svg></span>
-                        <div class="bento-card-text">
-                            <div class="bento-card-title">Draft Assistant</div>
-                            <p class="bento-card-desc">Your AI copywriter, trained on your organization. Draft Assistant taps into a specialized knowledge base to craft marketing emails, media releases, social posts, and Facebook/Instagram ads that sound like you. Use the free-form writing studio to create any content you need &mdash; always on-brand, always ready.</p>
+                    <!-- TABBED SHOWCASE: 4 remaining tools -->
+                    <div class="tool-tabs">
+                        <div class="tool-tabs-bar">
+                            <button class="tool-tab active" data-tool="draft">
+                                <span class="tool-tab-icon orange"><svg viewBox="0 0 16 16" fill="#F47B3A" width="14" height="14"><path d="M12.1 1.3a1 1 0 0 1 1.4 0l1.2 1.2a1 1 0 0 1 0 1.4L6 12.6 2.5 13l.4-3.5L12.1 1.3z"/></svg></span>
+                                Draft Assistant
+                            </button>
+                            <button class="tool-tab" data-tool="insights">
+                                <span class="tool-tab-icon green"><svg viewBox="0 0 16 16" fill="#28C840" width="14" height="14"><rect x="1" y="9" width="3" height="6" rx="0.5"/><rect x="6" y="5" width="3" height="10" rx="0.5"/><rect x="11" y="2" width="3" height="13" rx="0.5"/></svg></span>
+                                Insights Engine
+                            </button>
+                            <button class="tool-tab" data-tool="normalizer">
+                                <span class="tool-tab-icon yellow"><svg viewBox="0 0 16 16" fill="none" stroke="#D97706" stroke-width="1.5" stroke-linecap="round" width="14" height="14"><path d="M4 6l4-4 4 4M4 10l4 4 4-4"/></svg></span>
+                                List Normalizer
+                            </button>
+                            <button class="tool-tab" data-tool="ask">
+                                <span class="tool-tab-icon blue"><svg viewBox="0 0 16 16" fill="none" width="14" height="14"><circle cx="8" cy="8" r="6.5" stroke="#1B6BF5" stroke-width="1.2"/><path d="M6.5 6.5a1.5 1.5 0 0 1 3 0c0 .8-.7 1-1.5 1.3V9" stroke="#1B6BF5" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11" r="0.6" fill="#1B6BF5"/></svg></span>
+                                Ask Lightspeed
+                            </button>
                         </div>
-                        <div class="bento-card-visual">
-                            <div class="bento-ui-card">
-                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                                    <span style="width:28px;height:28px;border-radius:8px;background:#F47B3A;display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="#fff" width="14" height="14"><path d="M12.1 1.3a1 1 0 0 1 1.4 0l1.2 1.2a1 1 0 0 1 0 1.4L6 12.6 2.5 13l.4-3.5L12.1 1.3z"/></svg></span>
-                                    <span style="padding:2px 8px;background:linear-gradient(135deg,#E91E8C,#F47B3A);color:#fff;border-radius:10px;font-size:10px;font-weight:600">AI-Powered</span>
-                                    <div style="display:flex;gap:3px;margin-left:auto">
-                                        <span style="padding:2px 6px;background:linear-gradient(135deg,#E91E8C,#F47B3A);color:#fff;border-radius:8px;font-size:8px;font-weight:500">Professional</span>
-                                        <span style="padding:2px 6px;border:1px solid #E3E8EE;border-radius:8px;font-size:8px;color:#6B7C93">Friendly</span>
+
+                        <div class="tool-tabs-content">
+                            <!-- Draft Assistant Panel -->
+                            <div class="tool-panel active" data-tool="draft">
+                                <div class="tool-panel-text">
+                                    <span class="tool-panel-badge">AI-Powered</span>
+                                    <div class="tool-panel-title">Draft Assistant</div>
+                                    <p class="tool-panel-desc">Your AI copywriter, trained on your organization. Draft Assistant taps into a specialized knowledge base to craft marketing emails, media releases, social posts, and Facebook/Instagram ads that sound like you. Use the free-form writing studio to create any content you need &mdash; always on-brand, always ready.</p>
+                                </div>
+                                <div class="tool-panel-visual">
+                                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                                        <span style="width:32px;height:32px;border-radius:8px;background:#F47B3A;display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="#fff" width="16" height="16"><path d="M12.1 1.3a1 1 0 0 1 1.4 0l1.2 1.2a1 1 0 0 1 0 1.4L6 12.6 2.5 13l.4-3.5L12.1 1.3z"/></svg></span>
+                                        <div style="display:flex;gap:4px;margin-left:auto">
+                                            <span style="padding:4px 10px;background:linear-gradient(135deg,#E91E8C,#F47B3A);color:#fff;border-radius:10px;font-size:11px;font-weight:600">Professional</span>
+                                            <span style="padding:4px 10px;border:1px solid #E3E8EE;border-radius:10px;font-size:11px;color:#6B7C93">Friendly</span>
+                                        </div>
+                                    </div>
+                                    <div style="background:#fff;border:1px solid #E3E8EE;border-radius:10px;padding:16px;margin-bottom:12px">
+                                        <div style="font-size:11px;font-weight:600;color:#0A2540;margin-bottom:6px">Generated Email Draft</div>
+                                        <div style="font-size:12px;color:#425466;line-height:1.5"><strong>Subject:</strong> Join Us for Our Biggest 50/50 Jackpot Yet!</div>
+                                        <div style="font-size:12px;color:#6B7C93;line-height:1.5;margin-top:6px">Dear supporter, We're thrilled to announce our largest jackpot to date. Your ticket purchase directly funds programs that make a real difference in our community. Don't miss your chance to win big while supporting a great cause...</div>
+                                    </div>
+                                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                        <span style="padding:5px 12px;border:1px solid #E3E8EE;border-radius:8px;font-size:12px;color:#425466">Social Post</span>
+                                        <span style="padding:5px 12px;border:1px solid #E3E8EE;border-radius:8px;font-size:12px;color:#425466">Email</span>
+                                        <span style="padding:5px 12px;border:1px solid #E3E8EE;border-radius:8px;font-size:12px;color:#425466">Media Release</span>
+                                        <span style="padding:5px 12px;border:1px solid #E3E8EE;border-radius:8px;font-size:12px;color:#425466">Facebook Ad</span>
                                     </div>
                                 </div>
-                                <div style="background:#fff;border:1px solid #E3E8EE;border-radius:8px;padding:10px;margin-bottom:6px">
-                                    <div style="font-size:9px;font-weight:600;color:#0A2540;margin-bottom:4px">Generated Email Draft</div>
-                                    <div style="font-size:9px;color:#425466;line-height:1.4"><strong>Subject:</strong> Join Us for Our Biggest 50/50 Jackpot Yet!</div>
-                                    <div style="font-size:9px;color:#6B7C93;line-height:1.4;margin-top:3px">Dear supporter, We're thrilled to announce our largest jackpot to date. Your ticket purchase directly funds...</div>
+                            </div>
+
+                            <!-- Insights Engine Panel -->
+                            <div class="tool-panel" data-tool="insights">
+                                <div class="tool-panel-text">
+                                    <span class="tool-panel-badge">AI-Powered</span>
+                                    <div class="tool-panel-title">Insights Engine</div>
+                                    <p class="tool-panel-desc">Turn raw raffle data into actionable intelligence. Insights Engine connects to platforms like BUMP to instantly visualize sales analytics, geographic breakdowns, and performance trends &mdash; no spreadsheets required. Make faster, better-informed decisions with the data you already have at your fingertips.</p>
                                 </div>
-                                <div style="display:flex;gap:4px">
-                                    <span style="padding:3px 7px;border:1px solid #E3E8EE;border-radius:6px;font-size:9px;color:#425466">Social</span>
-                                    <span style="padding:3px 7px;border:1px solid #E3E8EE;border-radius:6px;font-size:9px;color:#425466">Email</span>
-                                    <span style="padding:3px 7px;border:1px solid #E3E8EE;border-radius:6px;font-size:9px;color:#425466">Media</span>
-                                    <span style="padding:3px 7px;border:1px solid #E3E8EE;border-radius:6px;font-size:9px;color:#425466">Ads</span>
+                                <div class="tool-panel-visual">
+                                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                                        <span style="width:32px;height:32px;border-radius:8px;background:#28C840;display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="#fff" width="16" height="16"><rect x="1" y="9" width="3" height="6" rx="0.5"/><rect x="6" y="5" width="3" height="10" rx="0.5"/><rect x="11" y="2" width="3" height="13" rx="0.5"/></svg></span>
+                                        <span style="font-size:12px;font-weight:600;color:#0A2540">Weekly Ticket Sales</span>
+                                        <span style="margin-left:auto;padding:3px 8px;background:#E8F9EB;border-radius:6px;font-size:10px;color:#28C840;font-weight:500">BUMP Connected</span>
+                                    </div>
+                                    <div style="display:flex;align-items:flex-end;gap:6px;height:100px;margin-bottom:12px;padding:0 8px">
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                                            <div style="width:100%;background:#E3E8EE;border-radius:3px 3px 0 0;height:30px"></div>
+                                            <span style="font-size:9px;color:#6B7C93">Mon</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                                            <div style="width:100%;background:#635BFF;border-radius:3px 3px 0 0;height:52px;opacity:0.7"></div>
+                                            <span style="font-size:9px;color:#6B7C93">Tue</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                                            <div style="width:100%;background:#E3E8EE;border-radius:3px 3px 0 0;height:38px"></div>
+                                            <span style="font-size:9px;color:#6B7C93">Wed</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                                            <div style="width:100%;background:#635BFF;border-radius:3px 3px 0 0;height:68px;opacity:0.7"></div>
+                                            <span style="font-size:9px;color:#6B7C93">Thu</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                                            <div style="width:100%;background:#E3E8EE;border-radius:3px 3px 0 0;height:48px"></div>
+                                            <span style="font-size:9px;color:#6B7C93">Fri</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                                            <div style="width:100%;background:#635BFF;border-radius:3px 3px 0 0;height:82px;opacity:0.7"></div>
+                                            <span style="font-size:9px;color:#6B7C93">Sat</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                                            <div style="width:100%;background:#28C840;border-radius:3px 3px 0 0;height:100px;opacity:0.85"></div>
+                                            <span style="font-size:9px;color:#6B7C93">Sun</span>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;gap:16px;font-size:11px;color:#425466">
+                                        <span><strong style="color:#28C840">+23%</strong> vs last week</span>
+                                        <span><strong>$12,450</strong> total revenue</span>
+                                        <span><strong>847</strong> tickets sold</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- ROW 2: 2 cards (50/50) -->
-
-                    <!-- Card 3: Insights Engine -->
-                    <div class="bento-card bento-card-top">
-                        <span class="bento-card-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L12 4M12 4H6M12 4v6"/></svg></span>
-                        <div class="bento-card-text">
-                            <div class="bento-card-title">Insights Engine</div>
-                            <p class="bento-card-desc">Turn raw raffle data into actionable intelligence. Insights Engine connects to platforms like BUMP to instantly visualize sales analytics, geographic breakdowns, and performance trends &mdash; no spreadsheets required. Make faster, better-informed decisions with the data you already have at your fingertips.</p>
-                        </div>
-                        <div class="bento-card-visual">
-                            <div class="bento-ui-card">
-                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-                                    <span style="width:28px;height:28px;border-radius:8px;background:#28C840;display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="#fff" width="14" height="14"><rect x="1" y="9" width="3" height="6" rx="0.5"/><rect x="6" y="5" width="3" height="10" rx="0.5"/><rect x="11" y="2" width="3" height="13" rx="0.5"/></svg></span>
-                                    <span style="padding:2px 8px;background:linear-gradient(135deg,#E91E8C,#F47B3A);color:#fff;border-radius:10px;font-size:10px;font-weight:600">AI-Powered</span>
+                            <!-- List Normalizer Panel -->
+                            <div class="tool-panel" data-tool="normalizer">
+                                <div class="tool-panel-text">
+                                    <span class="tool-panel-badge">AI-Powered</span>
+                                    <div class="tool-panel-title">List Normalizer</div>
+                                    <p class="tool-panel-desc">Transform messy data into clean, upload-ready contact lists for Mailchimp, Constant Contact, and more. List Normalizer handles duplicate removal, column merging, and case standardization. Compare lists, find duplicates across files, and clean emails by fixing typos and removing invalid entries.</p>
                                 </div>
-                                <div style="display:flex;align-items:flex-end;gap:3px;height:48px;margin-bottom:6px;padding:0 4px">
-                                    <div style="flex:1;background:#E3E8EE;border-radius:2px 2px 0 0;height:30%"></div>
-                                    <div style="flex:1;background:#635BFF;border-radius:2px 2px 0 0;height:55%;opacity:0.7"></div>
-                                    <div style="flex:1;background:#E3E8EE;border-radius:2px 2px 0 0;height:40%"></div>
-                                    <div style="flex:1;background:#635BFF;border-radius:2px 2px 0 0;height:70%;opacity:0.7"></div>
-                                    <div style="flex:1;background:#E3E8EE;border-radius:2px 2px 0 0;height:50%"></div>
-                                    <div style="flex:1;background:#635BFF;border-radius:2px 2px 0 0;height:85%;opacity:0.7"></div>
-                                    <div style="flex:1;background:#28C840;border-radius:2px 2px 0 0;height:100%;opacity:0.8"></div>
-                                </div>
-                                <div style="font-size:8px;color:#6B7C93;text-align:center">Weekly ticket sales &mdash; BUMP integration</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Card 4: List Normalizer -->
-                    <div class="bento-card bento-card-top">
-                        <span class="bento-card-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L12 4M12 4H6M12 4v6"/></svg></span>
-                        <div class="bento-card-text">
-                            <div class="bento-card-title">List Normalizer</div>
-                            <p class="bento-card-desc">Transform messy data into clean, upload-ready contact lists for Mailchimp, Constant Contact, and more. List Normalizer handles duplicate removal, column merging, and case standardization. Compare lists, find duplicates across files, and clean emails by fixing typos and removing invalid entries.</p>
-                        </div>
-                        <div class="bento-card-visual">
-                            <div class="bento-ui-card">
-                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-                                    <span style="width:28px;height:28px;border-radius:8px;background:#F5C623;display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" width="14" height="14"><path d="M4 6l4-4 4 4M4 10l4 4 4-4"/></svg></span>
-                                    <span style="padding:2px 8px;background:linear-gradient(135deg,#E91E8C,#F47B3A);color:#fff;border-radius:10px;font-size:10px;font-weight:600">AI-Powered</span>
-                                </div>
-                                <div style="font-size:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px">
-                                    <div style="background:#635BFF;opacity:0.15;padding:3px 4px;border-radius:3px;font-weight:600;color:#425466">Name</div>
-                                    <div style="background:#635BFF;opacity:0.15;padding:3px 4px;border-radius:3px;font-weight:600;color:#425466">Email</div>
-                                    <div style="background:#635BFF;opacity:0.15;padding:3px 4px;border-radius:3px;font-weight:600;color:#425466">Status</div>
-                                    <div style="background:#fff;padding:3px 4px;border-radius:3px;color:#425466">J. Smith</div>
-                                    <div style="background:#fff;padding:3px 4px;border-radius:3px;color:#425466">j.smith@mail.ca</div>
-                                    <div style="background:#DCFCE7;padding:3px 4px;border-radius:3px;color:#28C840">Clean</div>
-                                    <div style="background:#fff;padding:3px 4px;border-radius:3px;color:#425466">M. Lee</div>
-                                    <div style="background:#FEE2E2;padding:3px 4px;border-radius:3px;color:#DF1B41;text-decoration:line-through">m.lee@gmial.com</div>
-                                    <div style="background:#FEF3C7;padding:3px 4px;border-radius:3px;color:#D97706">Fixed</div>
+                                <div class="tool-panel-visual">
+                                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                                        <span style="width:32px;height:32px;border-radius:8px;background:#F5C623;display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" width="16" height="16"><path d="M4 6l4-4 4 4M4 10l4 4 4-4"/></svg></span>
+                                        <span style="font-size:12px;font-weight:600;color:#0A2540">Data Cleaning Preview</span>
+                                        <span style="margin-left:auto;padding:3px 8px;background:#DCFCE7;border-radius:6px;font-size:10px;color:#28C840;font-weight:500">3 issues fixed</span>
+                                    </div>
+                                    <div style="font-size:12px;display:grid;grid-template-columns:1.2fr 1.5fr 0.8fr;gap:3px">
+                                        <div style="background:#635BFF;opacity:0.12;padding:8px 10px;border-radius:4px;font-weight:600;color:#425466">Name</div>
+                                        <div style="background:#635BFF;opacity:0.12;padding:8px 10px;border-radius:4px;font-weight:600;color:#425466">Email</div>
+                                        <div style="background:#635BFF;opacity:0.12;padding:8px 10px;border-radius:4px;font-weight:600;color:#425466">Status</div>
+                                        <div style="background:#fff;padding:8px 10px;border-radius:4px;color:#425466">J. Smith</div>
+                                        <div style="background:#fff;padding:8px 10px;border-radius:4px;color:#425466">j.smith@mail.ca</div>
+                                        <div style="background:#DCFCE7;padding:8px 10px;border-radius:4px;color:#28C840;font-weight:500">Clean</div>
+                                        <div style="background:#fff;padding:8px 10px;border-radius:4px;color:#425466">M. Lee</div>
+                                        <div style="background:#FEE2E2;padding:8px 10px;border-radius:4px;color:#DF1B41;text-decoration:line-through">m.lee@gmial.com</div>
+                                        <div style="background:#FEF3C7;padding:8px 10px;border-radius:4px;color:#D97706;font-weight:500">Fixed</div>
+                                        <div style="background:#fff;padding:8px 10px;border-radius:4px;color:#425466">S. Chen</div>
+                                        <div style="background:#fff;padding:8px 10px;border-radius:4px;color:#425466">s.chen@outlook.com</div>
+                                        <div style="background:#DCFCE7;padding:8px 10px;border-radius:4px;color:#28C840;font-weight:500">Clean</div>
+                                        <div style="background:#fff;padding:8px 10px;border-radius:4px;color:#6B7C93;text-decoration:line-through">J. Smith</div>
+                                        <div style="background:#FEE2E2;padding:8px 10px;border-radius:4px;color:#6B7C93;text-decoration:line-through">j.smith@mail.ca</div>
+                                        <div style="background:#FEF3C7;padding:8px 10px;border-radius:4px;color:#D97706;font-weight:500">Duplicate</div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Card 5: Ask Lightspeed -->
-                    <div class="bento-card bento-card-top">
-                        <span class="bento-card-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L12 4M12 4H6M12 4v6"/></svg></span>
-                        <div class="bento-card-text">
-                            <div class="bento-card-title">Ask Lightspeed</div>
-                            <p class="bento-card-desc">Your all-in-one AI assistant for nonprofit operations. Ask Lightspeed handles it all &mdash; respond to donor emails, craft sponsorship pitches, summarize meeting notes into minutes, and draft solicitation strategies. Whatever your team needs done, just ask and get polished results in seconds, not hours.</p>
-                        </div>
-                        <div class="bento-card-visual">
-                            <div class="bento-ui-card">
-                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                                    <span style="width:28px;height:28px;border-radius:50%;background:#E0E7FF;display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="none" width="14" height="14"><circle cx="8" cy="8" r="6.5" stroke="#1B6BF5" stroke-width="1.2"/><path d="M6.5 6.5a1.5 1.5 0 0 1 3 0c0 .8-.7 1-1.5 1.3V9" stroke="#1B6BF5" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11" r="0.6" fill="#1B6BF5"/></svg></span>
-                                    <span style="padding:2px 8px;background:linear-gradient(135deg,#E91E8C,#F47B3A);color:#fff;border-radius:10px;font-size:10px;font-weight:600">AI Assistant</span>
+                            <!-- Ask Lightspeed Panel -->
+                            <div class="tool-panel" data-tool="ask">
+                                <div class="tool-panel-text">
+                                    <span class="tool-panel-badge">AI Assistant</span>
+                                    <div class="tool-panel-title">Ask Lightspeed</div>
+                                    <p class="tool-panel-desc">Your all-in-one AI assistant for nonprofit operations. Ask Lightspeed handles it all &mdash; respond to donor emails, craft sponsorship pitches, summarize meeting notes into minutes, and draft solicitation strategies. Whatever your team needs done, just ask and get polished results in seconds, not hours.</p>
                                 </div>
-                                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
-                                    <span style="padding:3px 7px;background:#FFF9EE;border-radius:6px;font-size:8px;color:#425466">Draft a sponsor pitch</span>
-                                    <span style="padding:3px 7px;background:#FFF9EE;border-radius:6px;font-size:8px;color:#425466">Summarize meeting notes</span>
-                                </div>
-                                <div style="display:flex;align-items:center;background:#fff;border:1px solid #E3E8EE;border-radius:14px;padding:5px 5px 5px 10px">
-                                    <span style="flex:1;font-size:9px;color:#A3ACB9">Ask anything...</span>
-                                    <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#E91E8C,#F47B3A);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="#fff" width="9" height="9"><path d="M2.5 2.2L14 8 2.5 13.8V9.3L9.5 8 2.5 6.7V2.2z"/></svg></span>
+                                <div class="tool-panel-visual">
+                                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                                        <span style="width:32px;height:32px;border-radius:50%;background:#E0E7FF;display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="none" width="16" height="16"><circle cx="8" cy="8" r="6.5" stroke="#1B6BF5" stroke-width="1.2"/><path d="M6.5 6.5a1.5 1.5 0 0 1 3 0c0 .8-.7 1-1.5 1.3V9" stroke="#1B6BF5" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11" r="0.6" fill="#1B6BF5"/></svg></span>
+                                        <span style="font-size:12px;font-weight:600;color:#0A2540">Ask anything about your organization</span>
+                                    </div>
+                                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+                                        <span style="padding:6px 12px;background:#FFF9EE;border:1px solid #FFE9C7;border-radius:8px;font-size:12px;color:#425466">Draft a sponsor pitch</span>
+                                        <span style="padding:6px 12px;background:#FFF9EE;border:1px solid #FFE9C7;border-radius:8px;font-size:12px;color:#425466">Summarize meeting notes</span>
+                                        <span style="padding:6px 12px;background:#FFF9EE;border:1px solid #FFE9C7;border-radius:8px;font-size:12px;color:#425466">Write a thank-you letter</span>
+                                        <span style="padding:6px 12px;background:#FFF9EE;border:1px solid #FFE9C7;border-radius:8px;font-size:12px;color:#425466">Plan a fundraiser</span>
+                                    </div>
+                                    <div style="display:flex;align-items:center;background:#fff;border:1px solid #E3E8EE;border-radius:14px;padding:8px 8px 8px 16px">
+                                        <span style="flex:1;font-size:13px;color:#A3ACB9">Ask anything...</span>
+                                        <span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#E91E8C,#F47B3A);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="#fff" width="12" height="12"><path d="M2.5 2.2L14 8 2.5 13.8V9.3L9.5 8 2.5 6.7V2.2z"/></svg></span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

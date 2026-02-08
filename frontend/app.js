@@ -8479,6 +8479,23 @@ function initParallaxAndAnimations() {
 
         animatedElements.forEach(el => observer.observe(el));
     }
+
+    // Tool tabs switching
+    const toolTabs = document.querySelectorAll('.tool-tab');
+    const toolPanels = document.querySelectorAll('.tool-panel');
+
+    if (toolTabs.length > 0) {
+        toolTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.tool;
+                toolTabs.forEach(t => t.classList.remove('active'));
+                toolPanels.forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                const panel = document.querySelector(`.tool-panel[data-tool="${target}"]`);
+                if (panel) panel.classList.add('active');
+            });
+        });
+    }
 }
 
 function animateCounters() {
