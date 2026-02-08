@@ -7298,22 +7298,24 @@
 
         <!-- Navigation -->
         <nav class="landing-nav" id="landingNav">
-            <div class="landing-nav-logo">
-                <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
-                <span>Lightspeed</span>
-            </div>
-            <div class="landing-nav-center">
-                <button class="landing-nav-link" onclick="document.querySelector('#features').scrollIntoView({behavior: 'smooth'})">Features</button>
-                <button class="landing-nav-link" onclick="document.querySelector('#pricing').scrollIntoView({behavior: 'smooth'})">Pricing</button>
-                <button class="landing-nav-link" onclick="document.querySelector('#faq').scrollIntoView({behavior: 'smooth'})">FAQ</button>
-                <button class="landing-nav-link" onclick="document.querySelector('#contact').scrollIntoView({behavior: 'smooth'})">Contact</button>
-            </div>
-            <div class="landing-nav-actions">
-                <button class="landing-nav-signin" id="navSignInBtn">Sign in</button>
-                <button class="landing-nav-cta" id="navLaunchAppBtn">Get Started</button>
-                <button class="landing-nav-mobile-toggle" id="mobileMenuToggle" aria-label="Menu">
-                    <span></span><span></span><span></span>
-                </button>
+            <div class="landing-nav-inner">
+                <div class="landing-nav-logo">
+                    <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                    <span>Lightspeed</span>
+                </div>
+                <div class="landing-nav-center">
+                    <button class="landing-nav-link" onclick="document.querySelector('#features').scrollIntoView({behavior: 'smooth'})">Features</button>
+                    <button class="landing-nav-link" onclick="document.querySelector('#pricing').scrollIntoView({behavior: 'smooth'})">Pricing</button>
+                    <button class="landing-nav-link" onclick="document.querySelector('#faq').scrollIntoView({behavior: 'smooth'})">FAQ</button>
+                    <button class="landing-nav-link" onclick="document.querySelector('#contact').scrollIntoView({behavior: 'smooth'})">Contact</button>
+                </div>
+                <div class="landing-nav-actions">
+                    <button class="landing-nav-signin" id="navSignInBtn">Sign in</button>
+                    <button class="landing-nav-cta" id="navLaunchAppBtn">Get Started</button>
+                    <button class="landing-nav-mobile-toggle" id="mobileMenuToggle" aria-label="Menu">
+                        <span></span><span></span><span></span>
+                    </button>
+                </div>
             </div>
         </nav>
 
@@ -7331,16 +7333,15 @@
                         Sign up with Google
                     </button>
                 </div>
-            </div>
-        </section>
-
-        <!-- Logo Bar -->
-        <section class="landing-logos">
-            <div class="landing-logos-row">
-                <img src="logos/catch-the-ace.png" alt="Catch the Ace">
-                <img src="logos/thunderbay-5050.png" alt="Thunder Bay 50/50">
-                <img src="logos/rotary-house.png" alt="Rotary House">
-                <img src="logos/cruisin-cure.png" alt="Cruisin for a Cure">
+                <!-- Logo Bar (inside hero, above divider) -->
+                <div class="landing-logos">
+                    <div class="landing-logos-row">
+                        <img src="logos/catch-the-ace.png" alt="Catch the Ace">
+                        <img src="logos/thunderbay-5050.png" alt="Thunder Bay 50/50">
+                        <img src="logos/rotary-house.png" alt="Rotary House">
+                        <img src="logos/cruisin-cure.png" alt="Cruisin for a Cure">
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -7542,7 +7543,7 @@
                     <div class="landing-pricing-badge">Most Popular</div>
                     <div class="landing-pricing-name">Monthly</div>
                     <div class="landing-pricing-price">
-                        <span class="landing-pricing-amount">$99</span>
+                        <span class="landing-pricing-amount">$199</span>
                         <span class="landing-pricing-period">/ month</span>
                     </div>
                     <p class="landing-pricing-desc">Full access for your entire organization. Cancel anytime.</p>
@@ -7557,13 +7558,13 @@
                 <div class="landing-pricing-card">
                     <div class="landing-pricing-name">Annual</div>
                     <div class="landing-pricing-price">
-                        <span class="landing-pricing-amount">$79</span>
+                        <span class="landing-pricing-amount">$179</span>
                         <span class="landing-pricing-period">/ month</span>
                     </div>
-                    <p class="landing-pricing-desc">Save 20% with annual billing. Best value for established teams.</p>
+                    <p class="landing-pricing-desc">Save with annual billing. Best value for established teams.</p>
                     <ul class="landing-pricing-features">
                         <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Everything in Monthly</li>
-                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 20% savings ($240/year)</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Save $240/year vs monthly</li>
                         <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Dedicated onboarding</li>
                     </ul>
                     <button class="landing-pricing-btn" onclick="document.getElementById('heroGetStartedBtn').click()">Start with annual</button>
@@ -7624,15 +7625,6 @@
                         <div class="landing-faq-answer-inner">Lightspeed was built from experience in charitable gaming, but the tools work for any nonprofit operation. If your team handles customer communications, creates marketing content, manages donor data, or generates reports, Lightspeed can help regardless of your specific program type.</div>
                     </div>
                 </div>
-            </div>
-        </section>
-
-        <!-- CTA Banner -->
-        <section class="landing-cta-banner">
-            <div class="landing-cta-banner-inner animate-on-scroll">
-                <h2 class="landing-cta-banner-title">Ready to work at the speed of light?</h2>
-                <p class="landing-cta-banner-subtitle">Join the charitable gaming organizations already saving hours every week with Lightspeed.</p>
-                <button class="ls-btn ls-btn-primary" onclick="document.getElementById('heroGetStartedBtn').click()">Get started free</button>
             </div>
         </section>
 
