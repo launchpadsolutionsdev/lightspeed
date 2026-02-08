@@ -832,7 +832,7 @@ function showOrganizationSetup(user) {
     // Hide other pages
     document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
-    document.getElementById("toolMenuPage").classList.remove("visible");
+    document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
 
     // Create and show organization setup modal
     let modal = document.getElementById("orgSetupModal");
@@ -1090,19 +1090,34 @@ function showLoginPage() {
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
-    document.getElementById("toolMenuPage").classList.remove("visible");
+    document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
 }
 
 function showToolMenu() {
     pushRoute('/dashboard');
     document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
-    document.getElementById("appWrapper").classList.remove("visible");
+
+    // Show appWrapper (sidebar) alongside dashboard
+    document.getElementById("appWrapper").classList.add("visible");
+
+    // Hide all tool apps
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
     document.getElementById("listNormalizerApp").classList.remove("visible");
-    document.getElementById("toolMenuPage").classList.add("visible");
+
+    // Show dashboard with sidebar offset
+    const toolMenuPage = document.getElementById("toolMenuPage");
+    toolMenuPage.classList.add("visible", "with-sidebar");
+
+    // Update sidebar: Dashboard active, no tool active
+    document.querySelectorAll(".sidebar-btn[data-tool]").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tool === "dashboard");
+    });
+    const responsePages = document.getElementById("sidebarResponsePages");
+    if (responsePages) responsePages.style.display = 'none';
+    closeSidebar();
 
     // Update greeting based on time of day
     const hour = new Date().getHours();
@@ -1165,7 +1180,7 @@ function showToolMenu() {
 
 function openTool(toolId) {
     currentTool = toolId;
-    document.getElementById("toolMenuPage").classList.remove("visible");
+    document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
 
     // Update URL
     pushRoute(TOOL_ROUTES[toolId] || '/dashboard');
@@ -1221,7 +1236,7 @@ function updateSidebarForTool(toolId) {
 
 function goBackToMenu() {
     currentTool = null;
-    document.getElementById("appWrapper").classList.remove("visible");
+    // Don't hide appWrapper - sidebar stays visible
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
@@ -1695,7 +1710,7 @@ function handleLogout() {
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
     document.getElementById("listNormalizerApp").classList.remove("visible");
-    document.getElementById("toolMenuPage").classList.remove("visible");
+    document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
 
     // Show landing page (marketing page)
     document.getElementById("landingPage").classList.remove("hidden");
@@ -1739,8 +1754,9 @@ function setupEventListeners() {
     if (eventListenersSetup) return;
     eventListenersSetup = true;
 
-    // Navigation - tool switching buttons in sidebar
+    // Navigation - tool switching buttons in sidebar (skip dashboard, handled separately)
     document.querySelectorAll(".sidebar-btn[data-tool]").forEach(btn => {
+        if (btn.dataset.tool === 'dashboard') return;
         btn.addEventListener("click", () => {
             openTool(btn.dataset.tool);
             closeSidebar(); // Close mobile sidebar after tool switch
@@ -1758,11 +1774,19 @@ function setupEventListeners() {
         });
     });
 
-    // Sidebar toggle for mobile - all toggle buttons
-    ["sidebarToggle", "dataSidebarToggle", "draftSidebarToggle", "listNormalizerSidebarToggle"].forEach(id => {
+    // Sidebar toggle for mobile - all toggle buttons (including dashboard)
+    ["sidebarToggle", "dataSidebarToggle", "draftSidebarToggle", "listNormalizerSidebarToggle", "dashboardSidebarToggle"].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.addEventListener("click", toggleSidebar);
     });
+
+    // Dashboard button in sidebar
+    const dashboardBtn = document.getElementById("sidebarDashboardBtn");
+    if (dashboardBtn) {
+        dashboardBtn.addEventListener("click", () => {
+            goBackToMenu();
+        });
+    }
 
     // Create overlay for mobile sidebar
     if (!document.getElementById("sidebarOverlay")) {

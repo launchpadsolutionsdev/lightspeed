@@ -2504,6 +2504,20 @@
             visibility: visible;
         }
 
+        /* Dashboard with sidebar - offset to leave room for sidebar on desktop */
+        .tool-menu-page.with-sidebar {
+            z-index: 50;
+            left: 220px;
+            width: calc(100% - 220px);
+        }
+
+        @media (max-width: 900px) {
+            .tool-menu-page.with-sidebar {
+                left: 0;
+                width: 100%;
+            }
+        }
+
         .tool-menu-bg {
             position: absolute;
             top: 0; left: 0;
@@ -10251,6 +10265,9 @@
         <div class="tool-menu-bg"></div>
         <header class="tool-menu-header">
             <div class="tool-menu-logo">
+                <button class="sidebar-toggle" id="dashboardSidebarToggle" title="Toggle menu">
+                    <span>&#9776;</span>
+                </button>
                 <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
                 <span class="tool-menu-brand">Lightspeed</span>
             </div>
@@ -10415,6 +10432,16 @@
 
             <nav class="sidebar-nav">
                 <div class="sidebar-group">
+                    <div class="sidebar-group-label">Navigate</div>
+                    <button class="sidebar-btn" id="sidebarDashboardBtn" data-tool="dashboard">
+                        <span class="sidebar-btn-icon">&#9776;</span>
+                        <span class="sidebar-btn-label">Dashboard</span>
+                    </button>
+                </div>
+
+                <div class="sidebar-divider"></div>
+
+                <div class="sidebar-group">
                     <div class="sidebar-group-label">Tools</div>
                     <button class="sidebar-btn active" data-tool="customer-response">
                         <span class="sidebar-btn-icon">&#9889;</span>
@@ -10476,7 +10503,7 @@
                 </button>
                 <button class="sidebar-btn sidebar-btn-back" id="backToMenuBtn">
                     <span class="sidebar-btn-icon">&#8592;</span>
-                    <span class="sidebar-btn-label">Back to Menu</span>
+                    <span class="sidebar-btn-label">Back to Dashboard</span>
                 </button>
             </div>
         </aside>
