@@ -2676,7 +2676,7 @@ function renderDataHeatmap(cityData) {
         const r = Math.round(139 + (1 - intensity) * 100);
         const g = Math.round(92 - intensity * 50);
         const b = Math.round(246 - intensity * 50);
-        const textColor = intensity > 0.5 ? 'white' : '#1e1b4b';
+        const textColor = intensity > 0.5 ? 'white' : '#111827';
         return `
             <div class="data-heatmap-cell" style="background: rgb(${r}, ${g}, ${b}); color: ${textColor};" title="${data.displayName}: ${formatDataCurrency(data.revenue)}">
                 <div class="data-heatmap-city">${data.displayName}</div>
