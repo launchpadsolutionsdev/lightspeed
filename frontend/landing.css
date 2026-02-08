@@ -1471,6 +1471,110 @@
 }
 
 /* ============================================================
+   CASE STUDY STRIP
+   ============================================================ */
+.landing-case-study {
+    padding: 100px 40px;
+    background: var(--bg-alt);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.landing-case-study-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 56px;
+    align-items: start;
+}
+
+.case-study-logo-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding-top: 6px;
+}
+
+.case-study-logo {
+    width: 140px;
+    height: auto;
+    flex-shrink: 0;
+}
+
+.case-study-stat {
+    text-align: center;
+}
+
+.case-study-stat-value {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.case-study-stat-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.case-study-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.case-study-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cta);
+}
+
+.case-study-headline {
+    font-size: 30px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+}
+
+.case-study-body {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.75;
+    max-width: 680px;
+}
+
+.case-study-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--cta);
+    text-decoration: none;
+    margin-top: 4px;
+    transition: gap 0.2s ease;
+}
+
+.case-study-link:hover {
+    gap: 10px;
+}
+
+.case-study-link span {
+    transition: transform 0.2s ease;
+}
+
+.case-study-link:hover span {
+    transform: translateX(2px);
+}
+
+/* ============================================================
    SOCIAL PROOF / LOGOS BAR
    Clean row, no heading, grayscale
    ============================================================ */
@@ -1997,6 +2101,14 @@
         gap: 24px;
         padding: 28px;
     }
+
+    .landing-case-study-inner {
+        gap: 40px;
+    }
+
+    .case-study-headline {
+        font-size: 26px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -2083,6 +2195,33 @@
 
     .landing-section-title {
         font-size: 32px;
+    }
+
+    .landing-case-study {
+        padding: 64px 24px;
+    }
+
+    .landing-case-study-inner {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .case-study-logo-col {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 24px;
+    }
+
+    .case-study-logo {
+        width: 100px;
+    }
+
+    .case-study-headline {
+        font-size: 24px;
+    }
+
+    .case-study-body {
+        font-size: 15px;
     }
 
     .landing-pricing-grid {
