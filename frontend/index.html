@@ -302,30 +302,7 @@
         }
 
         .tool-menu-bg {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            overflow: hidden;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        .tool-menu-bg::before {
-            content: '';
-            position: absolute;
-            top: 15%; left: 5%;
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(0, 0, 0, 0.15) 0%, transparent 70%);
-            animation: pulse 6s ease-in-out infinite;
-        }
-
-        .tool-menu-bg::after {
-            content: '';
-            position: absolute;
-            bottom: 10%; right: 5%;
-            width: 400px; height: 400px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
-            animation: pulse 6s ease-in-out infinite 3s;
+            display: none;
         }
 
         .tool-menu-header {
