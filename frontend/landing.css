@@ -162,10 +162,11 @@
 .landing-hero {
     position: relative;
     min-height: 100vh;
-    padding: 160px 40px 32px;
+    padding: 100px 40px 32px;
     overflow: hidden;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
 }
 
 /* Animated gradient background */
@@ -368,7 +369,8 @@
 
 /* Grid layout */
 .bento-grid {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 16px;
 }
 
@@ -376,6 +378,7 @@
     display: grid;
     grid-template-columns: 3fr 2fr;
     gap: 16px;
+    min-height: 420px;
 }
 
 .bento-row-bottom {
@@ -591,7 +594,7 @@
 
 .landing-logos-row {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     gap: 56px;
 }
@@ -1082,7 +1085,7 @@
     }
 
     .landing-hero {
-        padding: 120px 24px 60px;
+        padding: 80px 24px 24px;
         min-height: auto;
     }
 
