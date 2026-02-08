@@ -1921,9 +1921,69 @@
 /* ============================================================
    CONTACT SECTION
    ============================================================ */
-.landing-contact-box {
-    max-width: 640px;
+/* ============================================================
+   CONTACT SECTION — Stripe-inspired two-column layout
+   ============================================================ */
+.landing-contact-section {
+    padding: 100px 40px;
+    background: var(--bg-alt);
+}
+
+.landing-contact-inner {
+    max-width: var(--max-width);
     margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 64px;
+    align-items: start;
+}
+
+.landing-contact-header {
+    position: sticky;
+    top: 100px;
+}
+
+.landing-contact-tag {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cta);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.landing-contact-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+}
+
+.landing-contact-subtitle {
+    font-size: 17px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.landing-contact-email-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--cta);
+    text-decoration: none;
+    transition: gap 0.2s ease;
+}
+
+.landing-contact-email-link:hover {
+    gap: 10px;
+}
+
+.landing-contact-box {
     background: var(--bg-primary);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -2353,12 +2413,14 @@
     }
 
     .landing-pricing-section,
-    .landing-faq-section {
+    .landing-faq-section,
+    .landing-contact-section {
         padding: 72px 24px;
     }
 
     .landing-pricing-title,
-    .landing-faq-title {
+    .landing-faq-title,
+    .landing-contact-title {
         font-size: 28px;
     }
 
@@ -2367,12 +2429,14 @@
         max-width: 400px;
     }
 
-    .landing-faq-inner {
+    .landing-faq-inner,
+    .landing-contact-inner {
         grid-template-columns: 1fr;
         gap: 32px;
     }
 
-    .landing-faq-header {
+    .landing-faq-header,
+    .landing-contact-header {
         position: static;
     }
 
@@ -2405,10 +2469,6 @@
 
     .landing-contact-box {
         padding: 32px 24px;
-    }
-
-    .landing-section {
-        padding: var(--section-padding) 24px;
     }
 
 }
