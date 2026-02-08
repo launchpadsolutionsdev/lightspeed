@@ -466,34 +466,16 @@
             position: relative;
             overflow: hidden;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            transition: border-color 0.2s ease;
         }
 
         .bento-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
             border-color: #C5CCD6;
         }
 
         .bento-card-glow {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            border-radius: 16px 16px 0 0;
-            opacity: 0;
-            transition: opacity 0.2s ease;
+            display: none;
         }
-
-        .bento-card:hover .bento-card-glow {
-            opacity: 1;
-        }
-
-        .response-glow { background: linear-gradient(90deg, #635BFF, #8B85FF); }
-        .draft-glow { background: linear-gradient(90deg, #F47B3A, #F5A623); }
-        .data-glow { background: linear-gradient(90deg, #28C840, #5ED47A); }
-        .normalizer-glow { background: linear-gradient(90deg, #D97706, #FBBF24); }
 
         .bento-hero {
             grid-row: 1 / 3;
