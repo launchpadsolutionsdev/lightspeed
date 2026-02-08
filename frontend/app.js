@@ -211,7 +211,7 @@ function showUpgradeModal(reason, usageCount, limit) {
                 cursor: pointer;
                 transition: all 0.2s;
             }
-            .btn-upgrade:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); }
+            .btn-upgrade:hover { transform: translateY(-2px); }
             .btn-secondary {
                 background: transparent;
                 color: #718096;
@@ -879,7 +879,6 @@ function showOrganizationSetup(user) {
                     text-align: center;
                     background: #ffffff;
                     border-radius: 16px;
-                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
                 }
                 .org-setup-header {
                     margin-bottom: 32px;
@@ -937,7 +936,6 @@ function showOrganizationSetup(user) {
                     outline: none;
                     border-color: #0A2540;
                     background: #ffffff;
-                    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
                 }
                 .form-hint {
                     display: block;
@@ -963,7 +961,6 @@ function showOrganizationSetup(user) {
                 }
                 .org-setup-form .btn-lg:hover {
                     transform: translateY(-2px);
-                    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
                 }
                 .org-setup-form .btn-lg:disabled {
                     opacity: 0.7;

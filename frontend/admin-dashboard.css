@@ -1,5 +1,5 @@
 /* ==================== ADMIN DASHBOARD STYLES ==================== */
-/* Matches Lightspeed app design language: pink/orange gradients, soft shadows, warm tints */
+/* Matches Lightspeed app design language: pink/orange gradients, warm tints */
 
 /* Admin Nav Button (sidebar) */
 #adminNavBtn {
@@ -119,12 +119,10 @@
 .admin-btn-primary {
     background: linear-gradient(135deg, #E91E8C, #F5A623);
     color: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .admin-btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .admin-btn-secondary {
@@ -162,16 +160,14 @@
     background: white;
     border-radius: 16px;
     padding: 1.25rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02);
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
-    transition: transform 0.2s, box-shadow 0.3s;
+    transition: transform 0.2s;
 }
 
 .admin-stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.06), 0 0 40px rgba(0, 0, 0, 0.08);
 }
 
 .admin-stat-card.highlight {
@@ -233,13 +229,10 @@
     background: white;
     border-radius: 16px;
     padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02);
     margin-bottom: 1.5rem;
-    transition: box-shadow 0.3s;
 }
 
 .admin-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 0 30px rgba(0, 0, 0, 0.06);
 }
 
 .admin-card-header {
@@ -448,14 +441,12 @@
     border-color: #3B82F6;
     color: #0A2540;
     background: #ffffff;
-    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
 .admin-toggle-btn.active {
     background: linear-gradient(135deg, #E91E8C, #F5A623);
     border-color: transparent;
     color: white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* ==================== TOOLBAR ==================== */
@@ -507,7 +498,6 @@
 .admin-search-input:focus {
     border-color: #0A2540;
     background: white;
-    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
 .admin-select {
@@ -525,7 +515,6 @@
 
 .admin-select:focus {
     border-color: #0A2540;
-    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
 .admin-count {
@@ -773,7 +762,6 @@
     background: linear-gradient(135deg, #E91E8C, #F5A623);
     border-color: transparent;
     color: white;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
 .admin-activity-feed {
