@@ -7174,28 +7174,150 @@
                 </h2>
 
                 <div class="bento-grid animate-on-scroll">
-                    <!-- TOP ROW: 2 cards (50/50) -->
+                    <!-- HERO ROW: Response Assistant (full width) -->
 
-                    <!-- Card 1: Response Assistant -->
-                    <div class="bento-card bento-card-top">
+                    <!-- Card 1: Response Assistant (Full-Width Hero) -->
+                    <div class="bento-card bento-card-hero">
                         <span class="bento-card-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L12 4M12 4H6M12 4v6"/></svg></span>
                         <div class="bento-card-text">
                             <div class="bento-card-title">Response Assistant</div>
                             <p class="bento-card-desc">AI-powered customer service that gets smarter with every interaction. Response Assistant uses your knowledge base to instantly generate accurate replies to customer inquiries &mdash; then lets you edit, refine, and copy with one click. Proven by the Thunder Bay 50/50 team to make customer service 7.6x more efficient than manual responses.</p>
                         </div>
                         <div class="bento-card-visual">
-                            <div class="bento-ui-card">
-                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                                    <span style="width:28px;height:28px;border-radius:8px;background:#1B6BF5;display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" fill="#fff" width="14" height="14"><path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-3 3V3z"/></svg></span>
-                                    <span style="padding:2px 8px;background:linear-gradient(135deg,#E91E8C,#F47B3A);color:#fff;border-radius:10px;font-size:10px;font-weight:600">AI-Powered</span>
+                            <div class="ra-mockup">
+                                <!-- Left Panel: Customer Inquiry -->
+                                <div class="ra-panel">
+                                    <div class="ra-panel-header">
+                                        <div class="ra-panel-icon blue">
+                                            <svg viewBox="0 0 20 20" fill="none" width="18" height="18"><rect x="3" y="2" width="14" height="16" rx="2" stroke="#1B6BF5" stroke-width="1.5"/><path d="M7 6h6M7 9h6M7 12h4" stroke="#1B6BF5" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                        </div>
+                                        <div>
+                                            <div class="ra-panel-title">Customer Inquiry</div>
+                                            <div class="ra-panel-subtitle">Paste the email or message below</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="ra-inquiry-type">
+                                        <span>Inquiry Type:</span>
+                                        <span class="ra-type-btn active">📧 Email</span>
+                                        <span class="ra-type-btn">💬 Facebook</span>
+                                    </div>
+
+                                    <div class="ra-quick-fill">
+                                        <span>Quick fill:</span>
+                                        <span class="ra-tag">Can't find tickets</span>
+                                        <span class="ra-tag">Subscription issue</span>
+                                        <span class="ra-tag">Location blocked</span>
+                                        <span class="ra-tag">Refund request</span>
+                                        <span class="ra-tag">Winner question</span>
+                                    </div>
+
+                                    <div class="ra-textarea">Hi there, I can't find my tickets in my email, am I still included in the draw and can you send them to me again?</div>
+                                    <div class="ra-char-count">113 characters &bull; 25 words</div>
+
+                                    <div class="ra-dropdown">
+                                        <span>⚙️ Response Options</span>
+                                        <span>▾</span>
+                                    </div>
+
+                                    <div class="ra-field-label">Your Name</div>
+                                    <div class="ra-input">Torin</div>
+
+                                    <div class="ra-sliders">
+                                        <div>
+                                            <div class="ra-slider-label">Tone</div>
+                                            <div class="ra-slider-track">
+                                                <div class="ra-slider-fill" style="width:60%"></div>
+                                                <div class="ra-slider-thumb" style="left:60%"></div>
+                                            </div>
+                                            <div class="ra-slider-labels"><span>Formal</span><span>Friendly</span></div>
+                                        </div>
+                                        <div>
+                                            <div class="ra-slider-label">Length</div>
+                                            <div class="ra-slider-track">
+                                                <div class="ra-slider-fill" style="width:65%"></div>
+                                                <div class="ra-slider-thumb" style="left:65%"></div>
+                                            </div>
+                                            <div class="ra-slider-labels"><span>Brief</span><span>Detailed</span></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="ra-checkboxes">
+                                        <div class="ra-checkbox">
+                                            <div class="ra-checkbox-box checked"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                                            <span>Include helpful links</span>
+                                        </div>
+                                        <div class="ra-checkbox">
+                                            <div class="ra-checkbox-box"></div>
+                                            <span>Include step-by-step instructions</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="ra-generate-btn">⚡ Generate Response</div>
                                 </div>
-                                <div style="background:#fff;border:1px solid #E3E8EE;border-radius:8px;padding:10px;margin-bottom:8px">
-                                    <div style="font-size:9px;font-weight:600;color:#0A2540;margin-bottom:4px">Customer Question</div>
-                                    <div style="font-size:9px;color:#6B7C93;line-height:1.4">"How do I purchase a 50/50 ticket online for the Thunder Bay draw?"</div>
-                                </div>
-                                <div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;padding:10px">
-                                    <div style="font-size:9px;font-weight:600;color:#1B6BF5;margin-bottom:4px">AI Response Generated</div>
-                                    <div style="font-size:9px;color:#425466;line-height:1.4">"Thank you for your interest! You can purchase tickets at thunderbay5050.ca. Select your draw, choose your ticket package, and complete checkout..."</div>
+
+                                <!-- Right Panel: Generated Response -->
+                                <div class="ra-panel">
+                                    <div class="ra-panel-header">
+                                        <div class="ra-panel-icon amber">
+                                            <svg viewBox="0 0 20 20" fill="none" width="18" height="18"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.5L10 14.7l-4.9 2.5.9-5.5-4-3.9 5.5-.8L10 2z" fill="#F5C623" stroke="#F5C623" stroke-width="1"/></svg>
+                                        </div>
+                                        <div>
+                                            <div class="ra-panel-title">Generated Response</div>
+                                            <div class="ra-panel-subtitle">AI-powered customer response</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="ra-emotion-badge">😤 Frustrated</div>
+
+                                    <div class="ra-status-bar">
+                                        <span class="ra-ready-badge">✨ Ready to Send</span>
+                                        <span class="ra-action-btn">✏️ Editing...</span>
+                                        <span class="ra-action-btn">📋 Copy</span>
+                                        <span class="ra-action-btn">⭐ Save</span>
+                                    </div>
+
+                                    <div class="ra-edit-banner">✏️ Edit Mode &ndash; Click in the response to make changes</div>
+
+                                    <div class="ra-response-text">
+                                        <p>Hi there,</p>
+                                        <p>Thank you for reaching out and for supporting the Thunder Bay 50/50!</p>
+                                        <p>I'm sorry that your tickets haven't arrived. These emails can sometimes end up in spam or junk folders, so please check there first. If you still can't find them, I can resend your ticket confirmation right away. Just confirm the email address you used when purchasing. If you need the tickets sent to a different email address, let me know that too.</p>
+                                        <p>Rest assured, your tickets are safely in our system even if the email went astray.</p>
+                                    </div>
+
+                                    <div class="ra-response-actions">
+                                        <span class="ra-save-btn">💾 Save Changes</span>
+                                        <span class="ra-cancel-btn">Cancel</span>
+                                    </div>
+
+                                    <div class="ra-feedback">
+                                        <span>Did this response work?</span>
+                                        <span class="ra-feedback-btn">👍</span>
+                                        <span class="ra-feedback-btn">👎</span>
+                                    </div>
+
+                                    <div class="ra-checks">
+                                        <span class="ra-check good">✓ Response length is appropriate</span>
+                                        <span class="ra-check good">✓ Includes greeting</span>
+                                        <span class="ra-check good">✓ Includes thank you</span>
+                                        <span class="ra-check warn">⚠ No links included</span>
+                                    </div>
+
+                                    <div class="ra-refine">
+                                        <div class="ra-refine-header">🔄 Refine Response</div>
+                                        <div class="ra-refine-pills">
+                                            <span class="ra-refine-pill">More apologetic</span>
+                                            <span class="ra-refine-pill">Shorter</span>
+                                            <span class="ra-refine-pill">More detailed</span>
+                                            <span class="ra-refine-pill">Friendlier</span>
+                                            <span class="ra-refine-pill">More formal</span>
+                                        </div>
+                                        <div class="ra-refine-input">
+                                            <span class="ra-refine-input-text">Or type your own instruction... (e.g., 'add informa</span>
+                                            <span class="ra-refine-btn">✨ Refine</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -7233,10 +7355,10 @@
                         </div>
                     </div>
 
-                    <!-- BOTTOM ROW: 3 cards (33/33/33) -->
+                    <!-- ROW 2: 2 cards (50/50) -->
 
                     <!-- Card 3: Insights Engine -->
-                    <div class="bento-card bento-card-bottom">
+                    <div class="bento-card bento-card-top">
                         <span class="bento-card-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L12 4M12 4H6M12 4v6"/></svg></span>
                         <div class="bento-card-text">
                             <div class="bento-card-title">Insights Engine</div>
@@ -7263,7 +7385,7 @@
                     </div>
 
                     <!-- Card 4: List Normalizer -->
-                    <div class="bento-card bento-card-bottom">
+                    <div class="bento-card bento-card-top">
                         <span class="bento-card-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L12 4M12 4H6M12 4v6"/></svg></span>
                         <div class="bento-card-text">
                             <div class="bento-card-title">List Normalizer</div>
@@ -7291,7 +7413,7 @@
                     </div>
 
                     <!-- Card 5: Ask Lightspeed -->
-                    <div class="bento-card bento-card-bottom">
+                    <div class="bento-card bento-card-top">
                         <span class="bento-card-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L12 4M12 4H6M12 4v6"/></svg></span>
                         <div class="bento-card-text">
                             <div class="bento-card-title">Ask Lightspeed</div>
