@@ -1628,19 +1628,56 @@
 /* ============================================================
    PRICING SECTION
    ============================================================ */
-.landing-pricing-grid {
-    max-width: 1000px;
+.landing-pricing-section {
+    padding: 100px 40px;
+    background: var(--bg-alt);
+}
+
+.landing-pricing-inner {
+    max-width: var(--max-width);
     margin: 0 auto;
+}
+
+.landing-pricing-header {
+    margin-bottom: 48px;
+}
+
+.landing-pricing-tag {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cta);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.landing-pricing-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+}
+
+.landing-pricing-subtitle {
+    font-size: 17px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 480px;
+}
+
+.landing-pricing-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: 20px;
     align-items: start;
 }
 
 .landing-pricing-card {
     background: var(--bg-primary);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    border-radius: 12px;
     padding: 32px;
     transition: var(--transition);
     position: relative;
@@ -1653,7 +1690,7 @@
 
 .landing-pricing-card.featured {
     border-color: var(--cta);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 8px 30px rgba(99, 91, 255, 0.12);
 }
 
 .landing-pricing-badge {
@@ -1752,9 +1789,66 @@
 /* ============================================================
    FAQ SECTION
    ============================================================ */
-.landing-faq-list {
-    max-width: 720px;
+.landing-faq-section {
+    padding: 100px 40px;
+    background: var(--bg-primary);
+}
+
+.landing-faq-inner {
+    max-width: var(--max-width);
     margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 64px;
+    align-items: start;
+}
+
+.landing-faq-header {
+    position: sticky;
+    top: 100px;
+}
+
+.landing-faq-tag {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cta);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.landing-faq-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+}
+
+.landing-faq-subtitle {
+    font-size: 17px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.landing-faq-contact-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--cta);
+    text-decoration: none;
+    transition: gap 0.2s ease;
+}
+
+.landing-faq-contact-link:hover {
+    gap: 10px;
+}
+
+.landing-faq-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -2258,10 +2352,28 @@
         border-radius: 10px;
     }
 
+    .landing-pricing-section,
+    .landing-faq-section {
+        padding: 72px 24px;
+    }
+
+    .landing-pricing-title,
+    .landing-faq-title {
+        font-size: 28px;
+    }
+
     .landing-pricing-grid {
         grid-template-columns: 1fr;
         max-width: 400px;
-        margin: 0 auto;
+    }
+
+    .landing-faq-inner {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .landing-faq-header {
+        position: static;
     }
 
     .landing-logos {
