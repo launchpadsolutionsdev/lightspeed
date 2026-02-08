@@ -8432,20 +8432,32 @@ function resetEmailCleaner() {
 
 function initParallaxAndAnimations() {
     const landingPage = document.getElementById('landingPage');
-    const parallaxOrbs = document.querySelectorAll('.parallax-orb');
 
-    // Parallax effect on scroll
-    if (landingPage && parallaxOrbs.length > 0) {
+    // Navbar scroll effect - add border on scroll
+    const landingNav = document.getElementById('landingNav');
+    if (landingPage && landingNav) {
         landingPage.addEventListener('scroll', () => {
-            const scrollY = landingPage.scrollTop;
-
-            parallaxOrbs.forEach(orb => {
-                const speed = parseFloat(orb.dataset.speed) || 0.03;
-                const yPos = scrollY * speed;
-                orb.style.transform = `translateY(${yPos}px)`;
-            });
+            if (landingPage.scrollTop > 10) {
+                landingNav.classList.add('scrolled');
+            } else {
+                landingNav.classList.remove('scrolled');
+            }
         });
     }
+
+    // Sign-in buttons - navigate to login
+    const signInBtns = [
+        document.getElementById('navSignInBtn'),
+        document.getElementById('navSignInBtn2')
+    ];
+    signInBtns.forEach(btn => {
+        if (btn) {
+            btn.addEventListener('click', () => {
+                document.getElementById('landingPage').classList.add('hidden');
+                showLoginPage();
+            });
+        }
+    });
 
     // Scroll-triggered fade-in animations
     const animatedElements = document.querySelectorAll('.animate-on-scroll');
@@ -8453,7 +8465,7 @@ function initParallaxAndAnimations() {
     if (animatedElements.length > 0 && landingPage) {
         const observerOptions = {
             root: landingPage,
-            rootMargin: '0px 0px -100px 0px',
+            rootMargin: '0px 0px -80px 0px',
             threshold: 0.1
         };
 
@@ -8466,38 +8478,6 @@ function initParallaxAndAnimations() {
         }, observerOptions);
 
         animatedElements.forEach(el => observer.observe(el));
-    }
-
-    // Animated counter for stats bar
-    const statValues = document.querySelectorAll('.landing-stat-value[data-count]');
-    if (statValues.length > 0 && landingPage) {
-        let statsAnimated = false;
-        const statsObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting && !statsAnimated) {
-                    statsAnimated = true;
-                    animateCounters();
-                }
-            });
-        }, { root: landingPage, threshold: 0.3 });
-
-        const statsBar = document.querySelector('.landing-stats');
-        if (statsBar) statsObserver.observe(statsBar);
-    }
-
-    // Demo typing reveal on tab switch
-    const demoSection = document.querySelector('.landing-demo');
-    if (demoSection && landingPage) {
-        let demoRevealed = false;
-        const demoObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting && !demoRevealed) {
-                    demoRevealed = true;
-                    revealDemoPanel(document.querySelector('.landing-demo-panel.active'));
-                }
-            });
-        }, { root: landingPage, threshold: 0.2 });
-        demoObserver.observe(demoSection);
     }
 }
 
