@@ -1338,6 +1338,139 @@
 }
 
 /* ============================================================
+   TOOL TABS — TABBED SHOWCASE FOR 4 TOOLS
+   ============================================================ */
+.tool-tabs {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+}
+
+.tool-tabs-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+}
+
+.tool-tab {
+    flex: 1;
+    padding: 16px 20px;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+    transition: color 0.2s ease;
+}
+
+.tool-tab:hover {
+    color: var(--text-primary);
+}
+
+.tool-tab.active {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.tool-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(135deg, #E91E8C, #F47B3A);
+    border-radius: 2px 2px 0 0;
+}
+
+.tool-tab-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tool-tab-icon.orange { background: #FFF0E6; }
+.tool-tab-icon.green { background: #E8F9EB; }
+.tool-tab-icon.yellow { background: #FFF8E1; }
+.tool-tab-icon.blue { background: #EBF4FF; }
+
+.tool-tabs-content {
+    position: relative;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    overflow: hidden;
+}
+
+.tool-panel {
+    display: none;
+    grid-template-columns: 2fr 3fr;
+    gap: 40px;
+    padding: 36px;
+    align-items: center;
+    animation: toolFadeIn 0.3s ease;
+}
+
+.tool-panel.active {
+    display: grid;
+}
+
+@keyframes toolFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tool-panel-text {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.tool-panel-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.tool-panel-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: linear-gradient(135deg, #E91E8C, #F47B3A);
+    color: #fff;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.tool-panel-desc {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.tool-panel-visual {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+/* ============================================================
    SOCIAL PROOF / LOGOS BAR
    Clean row, no heading, grayscale
    ============================================================ */
@@ -1847,6 +1980,23 @@
     .landing-footer-top {
         grid-template-columns: 1fr 1fr;
     }
+
+    .tool-tab {
+        font-size: 13px;
+        padding: 14px 12px;
+        gap: 6px;
+    }
+
+    .tool-tab-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .tool-panel {
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        padding: 28px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1908,6 +2058,27 @@
 
     .bento-card-hero .bento-card-visual {
         min-height: auto;
+    }
+
+    .tool-tabs-bar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tool-tab {
+        font-size: 12px;
+        padding: 12px 10px;
+        white-space: nowrap;
+    }
+
+    .tool-tab-icon {
+        display: none;
+    }
+
+    .tool-panel {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 24px;
     }
 
     .landing-section-title {
