@@ -195,13 +195,13 @@ function showUpgradeModal(reason, usageCount, limit) {
             .upgrade-price {
                 font-size: 36px;
                 font-weight: 700;
-                color: #1F2937;
+                color: #0A2540;
             }
             .upgrade-price span { font-size: 16px; font-weight: 400; color: #718096; }
             .upgrade-pricing p { margin: 8px 0 0; color: #718096; font-size: 14px; }
             .upgrade-actions { display: flex; flex-direction: column; gap: 12px; }
             .btn-upgrade {
-                background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%);
+                background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
                 color: white;
                 border: none;
                 padding: 16px 24px;
@@ -871,7 +871,7 @@ function showOrganizationSetup(user) {
             styles.id = "orgSetupStyles";
             styles.textContent = `
                 #orgSetupModal {
-                    background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%);
+                    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
                 }
                 .org-setup-modal {
                     max-width: 480px;
@@ -888,7 +888,7 @@ function showOrganizationSetup(user) {
                     font-size: 48px;
                     margin-bottom: 16px;
                     display: inline-block;
-                    background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%);
+                    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
                     background-clip: text;
@@ -906,7 +906,7 @@ function showOrganizationSetup(user) {
                     line-height: 1.5;
                 }
                 .org-setup-header p strong {
-                    color: #1F2937;
+                    color: #0A2540;
                 }
                 .org-setup-form .form-group {
                     text-align: left;
@@ -935,7 +935,7 @@ function showOrganizationSetup(user) {
                 }
                 .org-setup-form input:focus {
                     outline: none;
-                    border-color: #1F2937;
+                    border-color: #0A2540;
                     background: #ffffff;
                     box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
                 }
@@ -950,7 +950,7 @@ function showOrganizationSetup(user) {
                     padding: 16px 24px;
                     font-size: 18px;
                     font-weight: 600;
-                    background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%);
+                    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
                     color: white;
                     border: none;
                     border-radius: 10px;
@@ -1144,7 +1144,7 @@ function showToolMenu() {
             adminBtn.id = 'menuAdminBtn';
             adminBtn.className = 'tool-menu-admin-btn';
             adminBtn.innerHTML = '🛡️ Admin Dashboard';
-            adminBtn.style.cssText = 'background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 12px; font-size: 14px;';
+            adminBtn.style.cssText = 'background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 12px; font-size: 14px;';
             adminBtn.onclick = function() {
                 openTool('customer-response');
                 switchPage('admin');
@@ -2676,7 +2676,7 @@ function renderDataHeatmap(cityData) {
         const r = Math.round(139 + (1 - intensity) * 100);
         const g = Math.round(92 - intensity * 50);
         const b = Math.round(246 - intensity * 50);
-        const textColor = intensity > 0.5 ? 'white' : '#111827';
+        const textColor = intensity > 0.5 ? 'white' : '#0A2540';
         return `
             <div class="data-heatmap-cell" style="background: rgb(${r}, ${g}, ${b}); color: ${textColor};" title="${data.displayName}: ${formatDataCurrency(data.revenue)}">
                 <div class="data-heatmap-city">${data.displayName}</div>
