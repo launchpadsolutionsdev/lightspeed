@@ -27,16 +27,22 @@
     position: fixed;
     top: 0; left: 0; right: 0;
     z-index: 100;
-    padding: 0 40px;
     height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid transparent;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.landing-nav-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 40px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .landing-nav.scrolled {
@@ -333,7 +339,7 @@
    Stripe-style asymmetric feature cards
    ============================================================ */
 .landing-bento {
-    padding: 100px 40px 80px;
+    padding: 100px 40px 40px;
     background: var(--bg-primary);
 }
 
@@ -347,7 +353,7 @@
     font-size: 36px;
     font-weight: 600;
     line-height: 1.35;
-    max-width: 700px;
+    max-width: 900px;
     margin-bottom: 48px;
     letter-spacing: -0.01em;
 }
@@ -575,10 +581,12 @@
    Clean row, no heading, grayscale
    ============================================================ */
 .landing-logos {
-    padding: 28px 40px;
-    background: var(--bg-primary);
+    padding: 28px 0 0;
     border-top: 1px solid var(--border);
     overflow: hidden;
+    max-width: var(--max-width);
+    margin: 0 auto;
+    width: 100%;
 }
 
 .landing-logos-row {
@@ -586,8 +594,6 @@
     justify-content: center;
     align-items: center;
     gap: 56px;
-    max-width: var(--max-width);
-    margin: 0 auto;
 }
 
 .landing-logos-row img {
@@ -803,49 +809,6 @@
     color: var(--text-secondary);
 }
 
-/* ============================================================
-   CTA BANNER
-   ============================================================ */
-.landing-cta-banner {
-    background: var(--text-primary);
-    padding: 100px 40px;
-    text-align: center;
-}
-
-.landing-cta-banner-inner {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-.landing-cta-banner-title {
-    font-size: 40px;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 16px;
-    line-height: 1.15;
-    letter-spacing: -0.01em;
-}
-
-.landing-cta-banner-subtitle {
-    font-size: 18px;
-    color: rgba(255, 255, 255, 0.65);
-    line-height: 1.7;
-    margin-bottom: 36px;
-}
-
-.landing-cta-banner .ls-btn-primary {
-    font-size: 16px;
-    padding: 14px 32px;
-}
-
-/* Gradient accent line at top of CTA banner */
-.landing-cta-banner::before {
-    content: '';
-    display: block;
-    height: 3px;
-    background: var(--brand-gradient);
-    margin: -100px -40px 100px;
-}
 
 /* ============================================================
    CONTACT SECTION
@@ -1106,7 +1069,7 @@
         --section-padding: 72px;
     }
 
-    .landing-nav {
+    .landing-nav-inner {
         padding: 0 24px;
     }
 
@@ -1186,10 +1149,6 @@
         text-align: center;
     }
 
-    .landing-cta-banner-title {
-        font-size: 32px;
-    }
-
     .contact-form-row {
         grid-template-columns: 1fr;
     }
@@ -1202,16 +1161,6 @@
         padding: var(--section-padding) 24px;
     }
 
-    .landing-cta-banner {
-        padding: 72px 24px;
-    }
-
-    .landing-cta-banner::before {
-        margin-left: -24px;
-        margin-right: -24px;
-        margin-top: -72px;
-        margin-bottom: 72px;
-    }
 }
 
 @media (max-width: 480px) {
@@ -1234,10 +1183,6 @@
     }
 
     .landing-section-title {
-        font-size: 28px;
-    }
-
-    .landing-cta-banner-title {
         font-size: 28px;
     }
 
