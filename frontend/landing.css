@@ -162,7 +162,7 @@
 .landing-hero {
     position: relative;
     min-height: 100vh;
-    padding: 160px 40px 80px;
+    padding: 160px 40px 32px;
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -252,7 +252,7 @@
 
 .landing-hero-ctas {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     flex-wrap: wrap;
     align-items: center;
 }
@@ -585,7 +585,7 @@
     border-top: 1px solid var(--border);
     overflow: hidden;
     max-width: var(--max-width);
-    margin: 0 auto;
+    margin: 56px auto 0;
     width: 100%;
 }
 
