@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="admin-dashboard.css?v=20260207">
+    <link rel="stylesheet" href="design-system.css?v=20260208">
+    <link rel="stylesheet" href="landing.css?v=20260208">
     <!-- SheetJS for Excel parsing (Data Analysis Tool) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js for visualizations -->
@@ -18,2233 +20,14 @@
     <!-- Google Identity Services for OAuth -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
-        :root {
-            --primary-dark: #0A2540;
-            --primary: #0A2540;
-            --primary-light: #425466;
-            --accent: #635BFF;
-            --gradient-start: #E91E8C;
-            --gradient-end: #F5A623;
-            --bg-dark: #ffffff;
-            --bg-card: #ffffff;
-            --bg-light: #F6F9FC;
-            --bg-input: #F6F9FC;
-            --text-primary: #0A2540;
-            --text-secondary: #425466;
-            --text-muted: #8898AA;
-            --border: #e3e8ee;
-            --success: #22c55e;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --shadow-sm: none;
-            --shadow-md: none;
-            --shadow-lg: none;
-            --shadow-xl: none;
-            --shadow-glow: none;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --radius-xl: 24px;
-            --max-width: 1200px;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; box-shadow: none !important; text-shadow: none !important; }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-light);
-            min-height: 100vh;
-            color: var(--text-primary);
-            line-height: 1.6;
-        }
-
-        /* ==================== MARKETING LANDING PAGE ==================== */
-        .landing-page {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: #ffffff;
-            z-index: 2000;
-            overflow-y: auto;
-            transition: opacity 0.5s ease, visibility 0.5s ease;
-        }
-
-        /* Parallax Background Container */
-        .landing-parallax-bg {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
-
-        .parallax-orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.35;
-            will-change: transform;
-        }
-
-        .parallax-orb-1 {
-            width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(0, 0, 0, 0.3) 0%, transparent 70%);
-            top: -10%; left: -5%;
-        }
-
-        .parallax-orb-2 {
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(0, 0, 0, 0.25) 0%, transparent 70%);
-            top: 30%; right: -10%;
-        }
-
-        .parallax-orb-3 {
-            width: 400px; height: 400px;
-            background: radial-gradient(circle, rgba(196, 181, 253, 0.2) 0%, transparent 70%);
-            bottom: 20%; left: 10%;
-        }
-
-        .parallax-orb-4 {
-            width: 350px; height: 350px;
-            background: radial-gradient(circle, rgba(0, 0, 0, 0.2) 0%, transparent 70%);
-            top: 60%; right: 20%;
-        }
-
-        /* Scroll-triggered animations */
-        .animate-on-scroll {
-            opacity: 0;
-            transform: translateY(40px);
-            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
-        }
-
-        .animate-on-scroll.animated {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .animate-on-scroll.delay-1 { transition-delay: 0.1s; }
-        .animate-on-scroll.delay-2 { transition-delay: 0.2s; }
-        .animate-on-scroll.delay-3 { transition-delay: 0.3s; }
-        .animate-on-scroll.delay-4 { transition-delay: 0.4s; }
-
-        /* Light section styles */
-        .section-light {
-            background: linear-gradient(180deg, #ffffff 0%, #ffffff 50%, #ffffff 100%) !important;
-            position: relative;
-        }
-
-        .section-light .landing-section-tag {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-        }
-
-        .section-light .landing-section-title {
-            color: var(--text-primary);
-        }
-
-        .section-light .landing-section-subtitle {
-            color: var(--text-secondary);
-        }
-
-        .landing-page.hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-        /* Sticky Top Banner */
-        .landing-top-banner {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 101;
-            background: linear-gradient(90deg, #E91E8C 0%, #F47B5B 50%, #F5A623 100%);
-            padding: 10px 20px;
-            text-align: center;
-        }
-
-        .landing-top-banner p {
-            color: white;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin: 0;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        }
-
-        /* Landing Navigation */
-        .landing-nav {
-            position: fixed;
-            top: 40px;
-            left: 0;
-            right: 0;
-            padding: 20px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 100;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(0,0,0,0.08);
-        }
-
-        .landing-nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .landing-nav-logo img {
-            width: 40px;
-            height: 40px;
-        }
-
-        .landing-nav-logo span {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #0A2540;
-        }
-
-        .landing-nav-links {
-            display: flex;
-            align-items: center;
-            gap: 32px;
-        }
-
-        .landing-nav-link {
-            color: rgba(0,0,0,0.6);
-            text-decoration: none;
-            font-size: 0.95rem;
-            font-weight: 500;
-            transition: color 0.2s ease;
-            cursor: pointer;
-        }
-
-        .landing-nav-link:hover {
-            color: #0A2540;
-        }
-
-        .landing-nav-cta {
-            padding: 10px 24px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            border: none;
-            border-radius: 100px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-
-        .landing-nav-cta:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-        }
-
-        /* Hero Section - Dark Theme */
-        .landing-hero {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 160px 40px 80px;
-            position: relative;
-            overflow: hidden;
-            background: #ffffff;
-        }
-
-        .landing-hero-bg {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            overflow: hidden;
-            z-index: 0;
-        }
-
-        .landing-hero-bg::before {
-            content: '';
-            position: absolute;
-            top: 5%; left: 10%;
-            width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(0, 0, 0, 0.15) 0%, transparent 70%);
-            animation: pulse 8s ease-in-out infinite;
-        }
-
-        .landing-hero-bg::after {
-            content: '';
-            position: absolute;
-            bottom: 5%; right: 10%;
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
-            animation: pulse 8s ease-in-out infinite 4s;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.7; }
-        }
-
-        .landing-hero-content {
-            max-width: 700px;
-            text-align: center;
-            position: relative;
-            z-index: 2;
-        }
-
-        .landing-hero-badge {
-            display: inline-block;
-            padding: 8px 20px;
-            background: var(--primary);
-            border: none;
-            border-radius: 100px;
-            color: white;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 24px;
-            animation: fadeInUp 0.8s ease-out;
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .landing-hero-title {
-            font-size: 4rem;
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 24px;
-            animation: fadeInUp 0.8s ease-out 0.1s both;
-            color: #0A2540;
-        }
-
-        .landing-hero-title .gradient-text {
-            background: linear-gradient(135deg, #E91E8C, #F5A623);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .landing-hero-subtitle {
-            font-size: 1.2rem;
-            color: rgba(0,0,0,0.55);
-            max-width: 580px;
-            margin: 0 auto 40px;
-            line-height: 1.7;
-            animation: fadeInUp 0.8s ease-out 0.2s both;
-        }
-
-        /* Floating UI Mockups */
-        .hero-floating-ui {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 1;
-            pointer-events: none;
-        }
-
-        .hero-float-card {
-            position: absolute;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 25px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
-            padding: 16px;
-            opacity: 0;
-            transform: translateY(40px) scale(0.95);
-            animation: fadeInFloat 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards, floatCard 6s ease-in-out infinite;
-        }
-
-        /* Card 1 - Draft Assistant - Top left, closer to center */
-        .hero-float-card.card-1 {
-            top: 15%; left: 8%;
-            width: 340px;
-            padding: 22px;
-            z-index: 4;
-            animation-delay: 0.2s, 1.1s;
-            --rotate: -6deg;
-            --float-distance: -10px;
-        }
-
-        /* Card 2 - Response Assistant - Top right, closer to center */
-        .hero-float-card.card-2 {
-            top: 12%; right: 8%;
-            width: 320px;
-            padding: 20px;
-            z-index: 3;
-            animation-delay: 0.4s, 1.3s;
-            --rotate: 5deg;
-            --float-distance: -8px;
-        }
-
-        /* Card 3 - Insights Engine - Bottom left, tucked in */
-        .hero-float-card.card-3 {
-            bottom: 18%; left: 10%;
-            width: 300px;
-            padding: 18px;
-            z-index: 2;
-            animation-delay: 0.6s, 1.5s;
-            --rotate: 4deg;
-            --float-distance: -12px;
-        }
-
-        /* Card 4 - List Normalizer - Bottom right, tucked in */
-        .hero-float-card.card-4 {
-            bottom: 15%; right: 10%;
-            width: 310px;
-            padding: 18px;
-            z-index: 5;
-            animation-delay: 0.8s, 1.7s;
-            --rotate: -5deg;
-            --float-distance: -10px;
-        }
-
-        @keyframes fadeInFloat {
-            from {
-                opacity: 0;
-                transform: translateY(40px) scale(0.95) rotate(0deg);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1) rotate(var(--rotate, 0deg));
-            }
-        }
-
-        @keyframes floatCard {
-            0%, 100% { transform: translateY(0) rotate(var(--rotate, 0deg)); }
-            50% { transform: translateY(var(--float-distance, -10px)) rotate(var(--rotate, 0deg)); }
-        }
-
-        .hero-card-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .hero-card-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-        }
-
-        .hero-card-icon.draft { background: linear-gradient(135deg, #fce7f3, #fbcfe8); }
-        .hero-card-icon.response { background: linear-gradient(135deg, #e0f2fe, #bae6fd); }
-        .hero-card-icon.insights { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
-        .hero-card-icon.normalizer { background: linear-gradient(135deg, #fef3c7, #fde68a); }
-
-        .hero-card-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .hero-card-content {
-            font-size: 1rem;
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        .hero-card-content strong {
-            color: var(--text-primary);
-        }
-
-        .hero-card-highlight {
-            background: rgba(0, 0, 0, 0.08);
-            border-radius: 10px;
-            padding: 16px 20px;
-            margin-top: 16px;
-            font-size: 0.95rem;
-            color: var(--primary);
-            border-left: 4px solid var(--primary);
-        }
-
-        .hero-card-chart {
-            display: flex;
-            align-items: flex-end;
-            gap: 8px;
-            height: 100px;
-            margin-top: 16px;
-        }
-
-        .hero-chart-bar {
-            flex: 1;
-            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-light) 100%);
-            border-radius: 6px 6px 0 0;
-            min-width: 32px;
-        }
-
-        .hero-card-table {
-            margin-top: 16px;
-            width: 100%;
-        }
-
-        .hero-table-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 2px solid #f5f5f5;
-            font-size: 0.95rem;
-        }
-
-        .hero-table-row:last-child {
-            border-bottom: none;
-        }
-
-        .hero-table-name {
-            color: var(--text-primary);
-        }
-
-        .hero-table-email {
-            color: var(--text-muted);
-        }
-
-        @media (max-width: 1600px) {
-            .hero-float-card.card-1 { width: 300px; left: 6%; padding: 18px; }
-            .hero-float-card.card-2 { width: 280px; right: 6%; padding: 16px; }
-            .hero-float-card.card-3 { width: 260px; left: 8%; padding: 16px; }
-            .hero-float-card.card-4 { width: 270px; right: 8%; padding: 16px; }
-            .hero-card-icon { width: 44px; height: 44px; font-size: 22px; }
-            .hero-card-title { font-size: 0.95rem; }
-            .hero-card-content { font-size: 0.85rem; }
-            .hero-card-highlight { font-size: 0.8rem; padding: 12px 14px; }
-            .hero-table-row { font-size: 0.8rem; }
-            .hero-card-chart { height: 70px; }
-        }
-
-        @media (max-width: 1400px) {
-            .hero-float-card.card-1 { width: 260px; left: 4%; top: 18%; padding: 16px; }
-            .hero-float-card.card-2 { width: 240px; right: 4%; top: 15%; padding: 14px; }
-            .hero-float-card.card-3 { width: 220px; left: 5%; padding: 14px; }
-            .hero-float-card.card-4 { width: 230px; right: 5%; padding: 14px; }
-            .hero-card-icon { width: 36px; height: 36px; font-size: 18px; }
-            .hero-card-title { font-size: 0.85rem; }
-            .hero-card-content { font-size: 0.75rem; }
-            .hero-card-highlight { font-size: 0.7rem; padding: 10px 12px; }
-            .hero-table-row { font-size: 0.7rem; padding: 6px 0; }
-            .hero-card-chart { height: 55px; }
-        }
-
-        @media (max-width: 1200px) {
-            .hero-float-card.card-1 { width: 220px; left: 2%; top: 20%; }
-            .hero-float-card.card-2 { width: 200px; right: 2%; top: 18%; }
-            .hero-float-card.card-3 { width: 190px; left: 3%; }
-            .hero-float-card.card-4 { width: 195px; right: 3%; }
-            .hero-card-icon { width: 28px; height: 28px; font-size: 14px; }
-            .hero-card-title { font-size: 0.75rem; }
-            .hero-card-content { font-size: 0.68rem; }
-            .hero-card-highlight { font-size: 0.62rem; padding: 8px 10px; }
-            .hero-table-row { font-size: 0.62rem; }
-            .hero-card-chart { height: 45px; }
-        }
-
-        @media (max-width: 1000px) {
-            .hero-floating-ui {
-                display: none;
-            }
-        }
-
-        .landing-hero-ctas {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-            animation: fadeInUp 0.8s ease-out 0.3s both;
-        }
-
-        .landing-cta-primary {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 18px 36px;
-            background: linear-gradient(135deg, #E91E8C 0%, #F47B5B 50%, #F5A623 100%);
-            color: white;
-            border: none;
-            border-radius: 100px;
-            font-size: 1.05rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            box-shadow: 0 8px 32px rgba(91, 33, 182, 0.4);
-        }
-
-        .landing-cta-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 40px rgba(91, 33, 182, 0.5);
-            background: linear-gradient(135deg, #E91E8C 0%, #E91E8C 50%, #F5A623 100%);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-        }
-
-        .landing-cta-secondary {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 18px 36px;
-            background: white;
-            color: var(--primary);
-            border: 2px solid var(--border);
-            border-radius: 100px;
-            font-size: 1.05rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-
-        .landing-cta-secondary:hover {
-            border-color: var(--primary-light);
-            background: white;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Stats Bar */
-        .landing-stats {
-            display: flex;
-            justify-content: center;
-            gap: 60px;
-            margin-top: 80px;
-            animation: fadeInUp 0.8s ease-out 0.4s both;
-        }
-
-        .landing-stat {
-            text-align: center;
-        }
-
-        .landing-stat-value {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--primary);
-            line-height: 1;
-        }
-
-        .landing-stat-label {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-top: 8px;
-        }
-
-        /* Dark-to-Light Transition Zone */
-        .landing-hero::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 200px;
-            background: linear-gradient(180deg, transparent 0%, #ffffff 100%);
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* Value Prop + Trusted By Combined Section */
-        .landing-trusted-value-wrapper {
-            background: #ffffff;
-        }
-
-        .landing-trusted {
-            padding: 50px 40px 60px;
-            text-align: center;
-            border-top: 1px solid var(--border);
-        }
-
-        .landing-trusted-label {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            margin-bottom: 32px;
-        }
-
-        .landing-trusted-logos {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 50px;
-            flex-wrap: wrap;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .landing-trusted-logo {
-            height: 60px;
-            width: auto;
-            max-width: 180px;
-            object-fit: contain;
-            transition: transform 0.3s ease;
-        }
-
-        .landing-trusted-logo:hover {
-            transform: scale(1.05);
-        }
-
-        @media (max-width: 768px) {
-            .landing-trusted-logos {
-                gap: 30px;
-            }
-            .landing-trusted-logo {
-                height: 45px;
-                max-width: 130px;
-            }
-        }
-
-        /* Features Section */
-        .landing-features {
-            padding: 120px 40px;
-            background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.03) 100%);
-        }
-
-        .landing-section-header {
-            text-align: center;
-            max-width: 600px;
-            margin: 0 auto 60px;
-        }
-
-        .landing-section-tag {
-            display: inline-block;
-            padding: 6px 16px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            border-radius: 100px;
-            color: white;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 16px;
-        }
-
-        .landing-section-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #0A2540;
-            margin-bottom: 16px;
-        }
-
-        .landing-section-subtitle {
-            font-size: 1.1rem;
-            color: rgba(0,0,0,0.55);
-            line-height: 1.6;
-        }
-
-        .landing-features-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 30px;
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        .landing-feature-card {
-            background: rgba(255,255,255,0.8);
-            border: 1px solid rgba(0,0,0,0.08);
-            border-radius: 20px;
-            padding: 40px;
-            transition: all 0.3s ease;
-        }
-
-        .landing-feature-card:hover {
-            background: rgba(255,255,255,0.95);
-            border-color: rgba(0, 0, 0, 0.3);
-            transform: translateY(-4px);
-        }
-
-        .landing-feature-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            margin-bottom: 20px;
-        }
-
-        .landing-feature-icon.draft { background: linear-gradient(135deg, rgba(252, 231, 243, 0.2), rgba(251, 207, 232, 0.2)); }
-        .landing-feature-icon.response { background: linear-gradient(135deg, rgba(224, 242, 254, 0.2), rgba(186, 230, 253, 0.2)); }
-        .landing-feature-icon.insights { background: linear-gradient(135deg, rgba(220, 252, 231, 0.2), rgba(187, 247, 208, 0.2)); }
-        .landing-feature-icon.normalizer { background: linear-gradient(135deg, rgba(254, 243, 199, 0.2), rgba(253, 230, 138, 0.2)); }
-
-        /* Feature Icon Glow Effect */
-        .landing-feature-icon {
-            position: relative;
-        }
-
-        .landing-feature-icon::after {
-            content: '';
-            position: absolute;
-            inset: -4px;
-            border-radius: 20px;
-            opacity: 0;
-            filter: blur(12px);
-            animation: iconGlow 4s ease-in-out infinite;
-            z-index: -1;
-        }
-
-        .landing-feature-icon.draft::after {
-            background: rgba(251, 207, 232, 0.4);
-            animation-delay: 0s;
-        }
-
-        .landing-feature-icon.response::after {
-            background: rgba(186, 230, 253, 0.4);
-            animation-delay: 1s;
-        }
-
-        .landing-feature-icon.insights::after {
-            background: rgba(187, 247, 208, 0.4);
-            animation-delay: 2s;
-        }
-
-        .landing-feature-icon.normalizer::after {
-            background: rgba(253, 230, 138, 0.4);
-            animation-delay: 3s;
-        }
-
-        @keyframes iconGlow {
-            0%, 100% { opacity: 0; transform: scale(0.9); }
-            50% { opacity: 0.7; transform: scale(1.1); }
-        }
-
-        .landing-feature-title {
-            font-size: 1.35rem;
-            font-weight: 700;
-            color: #0A2540;
-            margin-bottom: 12px;
-        }
-
-        .landing-feature-desc {
-            font-size: 1rem;
-            color: rgba(0,0,0,0.55);
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-
-        .landing-feature-list {
-            list-style: none;
-        }
-
-        .landing-feature-list li {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.9rem;
-            color: rgba(0,0,0,0.5);
-            margin-bottom: 8px;
-        }
-
-        .landing-feature-list li::before {
-            content: '✓';
-            color: var(--accent);
-            font-weight: 600;
-        }
-
-        /* Testimonials/Social Proof */
-        /* Contact Section */
-        .landing-cta-section {
-            padding: 100px 40px;
-            text-align: center;
-            background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.08) 100%);
-        }
-
-        .landing-cta-box {
-            max-width: 640px;
-            margin: 0 auto;
-            padding: 48px;
-            background: rgba(255,255,255,0.8);
-            border: 1px solid rgba(0,0,0,0.08);
-            border-radius: 24px;
-        }
-
-        .landing-cta-title {
-            font-size: 2.25rem;
-            font-weight: 800;
-            color: #0A2540;
-            margin-bottom: 12px;
-        }
-
-        .landing-cta-subtitle {
-            font-size: 1.05rem;
-            color: rgba(0,0,0,0.55);
-            margin-bottom: 32px;
-        }
-
-        .landing-contact-form {
-            text-align: left;
-        }
-
-        .contact-form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .contact-form-group {
-            margin-bottom: 16px;
-        }
-
-        .contact-label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: rgba(0,0,0,0.6);
-            margin-bottom: 6px;
-        }
-
-        .contact-required {
-            color: #3B82F6;
-        }
-
-        .contact-input,
-        .contact-textarea {
-            width: 100%;
-            padding: 12px 16px;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            color: #0A2540;
-            font-family: inherit;
-            font-size: 0.95rem;
-            transition: border-color 0.2s ease;
-            box-sizing: border-box;
-        }
-
-        .contact-input::placeholder,
-        .contact-textarea::placeholder {
-            color: #9ca3af;
-        }
-
-        .contact-input:focus,
-        .contact-textarea:focus {
-            outline: none;
-            border-color: rgba(0, 0, 0, 0.5);
-        }
-
-        .contact-textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-
-        .contact-submit-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 14px 32px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            border: none;
-            border-radius: 100px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            margin-top: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .contact-submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-        }
-
-        .contact-submit-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .contact-form-status {
-            margin-top: 16px;
-            font-size: 0.9rem;
-            min-height: 24px;
-        }
-
-        .contact-form-status.success {
-            color: #86efac;
-        }
-
-        .contact-form-status.error {
-            color: #fca5a5;
-        }
-
-        @media (max-width: 600px) {
-            .contact-form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .landing-cta-box {
-                padding: 32px 24px;
-            }
-        }
-
-        /* Footer */
-        .landing-footer {
-            padding: 40px;
-            border-top: 1px solid rgba(0,0,0,0.08);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .landing-footer-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: rgba(0,0,0,0.5);
-            font-size: 0.9rem;
-        }
-
-        .landing-footer-brand img {
-            width: 28px;
-            height: 28px;
-            opacity: 0.5;
-        }
-
-        .landing-footer-links {
-            display: flex;
-            gap: 24px;
-        }
-
-        .landing-footer-link {
-            color: rgba(0,0,0,0.5);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s ease;
-        }
-
-        .landing-footer-link:hover {
-            color: #0A2540;
-        }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-            .landing-features-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .landing-hero-title {
-                font-size: 2.75rem;
-            }
-
-            .landing-stats {
-                gap: 30px;
-            }
-
-            .landing-nav {
-                padding: 16px 24px;
-            }
-
-            .landing-nav-links {
-                display: none;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .landing-top-banner {
-                padding: 8px 16px;
-            }
-
-            .landing-top-banner p {
-                font-size: 0.75rem;
-                line-height: 1.4;
-            }
-
-            .landing-nav {
-                top: 36px;
-                padding: 12px 16px;
-            }
-
-            .landing-hero {
-                padding: 140px 24px 60px;
-            }
-        }
-
-        @media (max-width: 600px) {
-            .landing-top-banner p {
-                font-size: 0.7rem;
-            }
-
-            .landing-nav {
-                top: 32px;
-            }
-
-            .landing-hero {
-                padding: 130px 20px 50px;
-            }
-
-            .landing-hero-title {
-                font-size: 2.25rem;
-            }
-
-            .landing-hero-subtitle {
-                font-size: 1.05rem;
-            }
-
-            .landing-stats {
-                flex-direction: column;
-                gap: 24px;
-            }
-
-            .landing-cta-box {
-                padding: 40px 24px;
-            }
-        }
-
-        @media (max-width: 400px) {
-            .landing-top-banner p {
-                font-size: 0.65rem;
-            }
-
-            .landing-nav {
-                top: 28px;
-            }
-
-            .landing-hero {
-                padding: 120px 16px 40px;
-            }
-
-            .landing-hero-title {
-                font-size: 1.85rem;
-            }
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        /* ==================== VALUE PROPOSITION SECTION ==================== */
-        .landing-value-prop {
-            padding: 80px 40px 100px;
-            background: #ffffff;
-            position: relative;
-        }
-
-        .landing-value-prop .landing-section-tag {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-        }
-
-        .landing-value-prop .landing-section-title {
-            color: var(--text-primary);
-        }
-
-        .landing-value-prop .landing-section-subtitle {
-            color: var(--text-secondary);
-        }
-
-        .landing-value-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        .landing-value-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 36px;
-            text-align: center;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow-md);
-        }
-
-        .landing-value-card:hover {
-            border-color: var(--primary-light);
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .landing-value-icon {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-        }
-
-        .landing-value-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-        }
-
-        .landing-value-desc {
-            font-size: 0.95rem;
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        @media (max-width: 900px) {
-            .landing-value-grid {
-                grid-template-columns: 1fr;
-                max-width: 500px;
-            }
-        }
-
-        /* ==================== HOW IT WORKS SECTION ==================== */
-        .landing-how-it-works {
-            padding: 100px 40px;
-            background: linear-gradient(180deg, #ffffff 0%, #ffffff 50%, #ffffff 100%);
-            position: relative;
-        }
-
-        .landing-how-it-works .landing-section-tag {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-        }
-
-        .landing-how-it-works .landing-section-title {
-            color: var(--text-primary);
-        }
-
-        .landing-how-it-works .landing-section-subtitle {
-            color: var(--text-secondary);
-        }
-
-        .landing-how-it-works .landing-step-title {
-            color: var(--text-primary);
-        }
-
-        .landing-how-it-works .landing-step-desc {
-            color: var(--text-secondary);
-        }
-
-        .landing-how-it-works .landing-step-connector {
-            background: linear-gradient(90deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.1));
-        }
-
-        .landing-steps {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 0;
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        .landing-step {
-            flex: 1;
-            max-width: 320px;
-            text-align: center;
-            padding: 0 20px;
-        }
-
-        .landing-step-number {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            font-size: 1.5rem;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        .landing-step-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #0A2540;
-            margin-bottom: 12px;
-        }
-
-        .landing-step-desc {
-            font-size: 0.95rem;
-            color: rgba(0,0,0,0.55);
-            line-height: 1.6;
-        }
-
-        .landing-step-connector {
-            width: 80px;
-            height: 2px;
-            background: linear-gradient(90deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.2));
-            margin-top: 30px;
-            flex-shrink: 0;
-        }
-
-        @media (max-width: 900px) {
-            .landing-steps {
-                flex-direction: column;
-                align-items: center;
-                gap: 40px;
-            }
-
-            .landing-step-connector {
-                width: 2px;
-                height: 40px;
-                background: linear-gradient(180deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.2));
-                margin-top: 0;
-            }
-        }
-
-        /* ==================== PRICING SECTION ==================== */
-        .landing-pricing {
-            padding: 100px 40px;
-            background: linear-gradient(180deg, #ffffff 0%, #ffffff 50%, #ffffff 100%);
-            position: relative;
-        }
-
-        .landing-pricing .landing-section-tag {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-        }
-
-        .landing-pricing .landing-section-title {
-            color: var(--text-primary);
-        }
-
-        .landing-pricing .landing-section-subtitle {
-            color: var(--text-secondary);
-        }
-
-        .landing-pricing-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .landing-pricing-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 32px;
-            text-align: center;
-            transition: all 0.3s ease;
-            position: relative;
-            box-shadow: var(--shadow-md);
-        }
-
-        .landing-pricing-card:hover {
-            border-color: var(--primary-light);
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .landing-pricing-card.featured {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            border: 2px solid rgba(0, 0, 0, 0.5);
-            transform: scale(1.05);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            animation: edgeGlow 3s ease-in-out infinite;
-        }
-
-        @keyframes edgeGlow {
-            0%, 100% {
-                border-color: rgba(0, 0, 0, 0.3);
-                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3),
-                            inset 0 0 20px rgba(0, 0, 0, 0.05),
-                            0 0 15px rgba(0, 0, 0, 0.15);
-            }
-            50% {
-                border-color: rgba(196, 181, 253, 0.7);
-                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35),
-                            inset 0 0 30px rgba(0, 0, 0, 0.1),
-                            0 0 30px rgba(0, 0, 0, 0.3),
-                            0 0 60px rgba(0, 0, 0, 0.1);
-            }
-        }
-
-        .landing-pricing-card.featured:hover {
-            transform: scale(1.05) translateY(-4px);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4),
-                        0 0 40px rgba(0, 0, 0, 0.25);
-        }
-
-        .landing-pricing-card.featured .landing-pricing-name,
-        .landing-pricing-card.featured .landing-pricing-amount,
-        .landing-pricing-card.featured .landing-pricing-period,
-        .landing-pricing-card.featured .landing-pricing-desc,
-        .landing-pricing-card.featured .landing-pricing-features li {
-            color: rgba(255,255,255,0.9);
-        }
-
-        .landing-pricing-card.featured .landing-pricing-features li::before {
-            color: rgba(255,255,255,0.9);
-        }
-
-        .landing-pricing-badge {
-            display: inline-block;
-            padding: 6px 14px;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 100px;
-            color: #0A2540;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 16px;
-        }
-
-        .landing-pricing-card.featured .landing-pricing-badge {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-        }
-
-        .landing-pricing-name {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 16px;
-        }
-
-        .landing-pricing-price {
-            margin-bottom: 16px;
-        }
-
-        .landing-pricing-amount {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--text-primary);
-            line-height: 1;
-        }
-
-        .landing-pricing-period {
-            font-size: 1rem;
-            color: var(--text-secondary);
-            margin-left: 4px;
-        }
-
-        .landing-pricing-desc {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 24px;
-            line-height: 1.5;
-        }
-
-        .landing-pricing-features {
-            list-style: none;
-            text-align: left;
-            margin-bottom: 28px;
-        }
-
-        .landing-pricing-features li {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-        }
-
-        .landing-pricing-features li::before {
-            content: '✓';
-            color: var(--accent);
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-
-        .landing-pricing-btn {
-            width: 100%;
-            padding: 14px 24px;
-            border-radius: 100px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            border: none;
-        }
-
-        .landing-pricing-btn.trial-btn {
-            background: transparent;
-            border: 2px solid var(--border);
-            color: var(--text-primary);
-        }
-
-        .landing-pricing-btn.trial-btn:hover {
-            border-color: var(--primary);
-            background: rgba(0, 0, 0, 0.05);
-            color: var(--primary);
-        }
-
-        .landing-pricing-btn.monthly-btn {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-        }
-
-        .landing-pricing-btn.monthly-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-        }
-
-        .landing-pricing-btn.annual-btn {
-            background: rgba(0, 0, 0, 0.1);
-            color: var(--primary);
-            border: 2px solid transparent;
-        }
-
-        .landing-pricing-btn.annual-btn:hover {
-            background: rgba(0, 0, 0, 0.15);
-        }
-
-        .landing-pricing-setup {
-            text-align: center;
-            margin-top: 40px;
-            padding: 24px;
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 12px;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .landing-pricing-setup p {
-            font-size: 0.95rem;
-            color: var(--text-secondary);
-        }
-
-        .landing-pricing-setup a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        .landing-pricing-setup a:hover {
-            text-decoration: underline;
-        }
-
-        @media (max-width: 900px) {
-            .landing-pricing-container {
-                grid-template-columns: 1fr;
-                max-width: 400px;
-            }
-
-            .landing-pricing-card.featured {
-                transform: none;
-                order: -1;
-            }
-
-            .landing-pricing-card.featured:hover {
-                transform: translateY(-4px);
-            }
-        }
-
-        /* ==================== FAQ SECTION ==================== */
-        .landing-faq {
-            padding: 100px 40px;
-            background: linear-gradient(180deg, #ffffff 0%, #ffffff 50%, #ffffff 100%);
-            position: relative;
-        }
-
-        .landing-faq .landing-section-tag {
-            background: rgba(0, 0, 0, 0.1);
-            color: var(--primary);
-        }
-
-        .landing-faq .landing-section-title {
-            color: var(--text-primary);
-        }
-
-        .landing-faq .landing-section-subtitle {
-            color: var(--text-secondary);
-        }
-
-        .landing-faq-list {
-            max-width: 720px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .landing-faq-item {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            overflow: hidden;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .landing-faq-item:hover {
-            border-color: rgba(0, 0, 0, 0.3);
-        }
-
-        .landing-faq-item.open {
-            border-color: rgba(0, 0, 0, 0.4);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        }
-
-        .landing-faq-question {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 24px;
-            cursor: pointer;
-            background: none;
-            border: none;
-            width: 100%;
-            text-align: left;
-            font-family: inherit;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            transition: color 0.2s ease;
-        }
-
-        .landing-faq-question:hover {
-            color: var(--primary);
-        }
-
-        .landing-faq-icon {
-            font-size: 1.25rem;
-            color: var(--text-secondary);
-            transition: transform 0.3s ease;
-            flex-shrink: 0;
-            margin-left: 16px;
-        }
-
-        .landing-faq-item.open .landing-faq-icon {
-            transform: rotate(45deg);
-            color: var(--primary);
-        }
-
-        .landing-faq-answer {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease, padding 0.3s ease;
-        }
-
-        .landing-faq-item.open .landing-faq-answer {
-            max-height: 300px;
-        }
-
-        .landing-faq-answer-inner {
-            padding: 0 24px 20px;
-            font-size: 0.95rem;
-            line-height: 1.7;
-            color: var(--text-secondary);
-        }
-
-        /* ==================== LIVE DEMO SECTION ==================== */
-        .landing-demo {
-            padding: 100px 40px;
-            background: linear-gradient(180deg, #ffffff 0%, #ffffff 50%, #ffffff 100%);
-            position: relative;
-        }
-
-        .landing-demo .landing-section-tag {
-            background: rgba(0, 0, 0, 0.1);
-            color: var(--primary);
-        }
-
-        .landing-demo .landing-section-title {
-            color: var(--text-primary);
-        }
-
-        .landing-demo .landing-section-subtitle {
-            color: var(--text-secondary);
-        }
-
-        .landing-demo-container {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        .landing-demo-tabs {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 40px;
-            flex-wrap: wrap;
-            padding: 0 16px;
-        }
-
-        .landing-demo-tab {
-            padding: 12px 24px;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 100px;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            box-shadow: var(--shadow-sm);
-            white-space: nowrap;
-        }
-
-        @media (max-width: 768px) {
-            .landing-demo-tabs {
-                gap: 8px;
-            }
-
-            .landing-demo-tab {
-                padding: 10px 16px;
-                font-size: 0.85rem;
-            }
-        }
-
-        @media (max-width: 500px) {
-            .landing-demo-tabs {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-                padding: 0 20px;
-            }
-
-            .landing-demo-tab {
-                padding: 12px 10px;
-                font-size: 0.8rem;
-                text-align: center;
-                border-radius: 12px;
-            }
-        }
-
-        .landing-demo-tab:hover {
-            background: var(--bg-light);
-            color: var(--text-primary);
-            border-color: var(--primary-light);
-        }
-
-        .landing-demo-tab.active {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            border-color: transparent;
-            color: white;
-        }
-
-        .landing-tool-description {
-            max-width: 800px;
-            margin: 0 auto 40px;
-            text-align: center;
-            min-height: 100px;
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 24px 32px;
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--border);
-        }
-
-        .landing-tool-description .tool-description-panel {
-            display: none;
-            color: var(--text-secondary);
-            font-size: 1.05rem;
-            line-height: 1.7;
-        }
-
-        .landing-tool-description .tool-description-panel.active {
-            display: block !important;
-        }
-
-        .landing-tool-description .tool-description-panel strong {
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-
-        .landing-demo-window {
-            background: #f8f9fa;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 25px 80px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);
-            border: none;
-        }
-
-        .landing-demo-titlebar {
-            background: #ffffff;
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border-bottom: 1px solid rgba(0,0,0,0.08);
-        }
-
-        .landing-demo-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .landing-demo-dot.red { background: #ff5f57; }
-        .landing-demo-dot.yellow { background: #febc2e; }
-        .landing-demo-dot.green { background: #28c840; }
-
-        .landing-demo-titlebar span {
-            margin-left: auto;
-            margin-right: auto;
-            color: rgba(0,0,0,0.4);
-            font-size: 0.85rem;
-        }
-
-        .landing-demo-content {
-            padding: 30px;
-            min-height: 450px;
-        }
-
-        .landing-demo-panel {
-            display: none;
-        }
-
-        .landing-demo-panel.active {
-            display: block;
-            animation: fadeInUp 0.4s ease-out;
-        }
-
-        /* Draft Assistant Demo */
-        .demo-draft-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }
-
-        .demo-draft-form {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .demo-draft-field {
-            background: rgba(0,0,0,0.03);
-            border-radius: 12px;
-            padding: 16px;
-            border: 1px solid rgba(0,0,0,0.08);
-        }
-
-        .demo-draft-field label {
-            display: block;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: rgba(0,0,0,0.4);
-            margin-bottom: 8px;
-        }
-
-        .demo-draft-select,
-        .demo-draft-input {
-            color: rgba(0,0,0,0.8);
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
-
-        .demo-draft-tags {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .demo-draft-tag {
-            padding: 6px 14px;
-            background: rgba(0,0,0,0.04);
-            border: 1px solid rgba(0,0,0,0.08);
-            border-radius: 100px;
-            font-size: 0.85rem;
-            color: rgba(0,0,0,0.55);
-        }
-
-        .demo-draft-tag.active {
-            background: rgba(0, 0, 0, 0.2);
-            border-color: rgba(0, 0, 0, 0.4);
-            color: var(--accent);
-        }
-
-        .demo-draft-output {
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.05));
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid rgba(0, 0, 0, 0.2);
-        }
-
-        .demo-draft-result {
-            color: rgba(0,0,0,0.8);
-            font-size: 0.95rem;
-            line-height: 1.6;
-        }
-
-        .demo-draft-result p {
-            margin-bottom: 12px;
-        }
-
-        .demo-draft-result p:last-child {
-            margin-bottom: 0;
-        }
-
-        .demo-draft-hashtags {
-            color: var(--accent);
-            font-size: 0.9rem;
-        }
-
-        .demo-draft-row {
-            display: flex;
-            gap: 12px;
-        }
-
-        .demo-draft-half {
-            flex: 1;
-        }
-
-        .demo-draft-release {
-            font-size: 0.9rem;
-        }
-
-        .demo-draft-release-header {
-            text-align: center;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-            color: rgba(0,0,0,0.5);
-            margin-bottom: 16px !important;
-        }
-
-        .demo-draft-release-title {
-            font-size: 1.05rem;
-            margin-bottom: 4px !important;
-        }
-
-        .demo-draft-release-subtitle {
-            font-style: italic;
-            color: rgba(0,0,0,0.6);
-            margin-bottom: 16px !important;
-        }
-
-        .demo-draft-release-footer {
-            text-align: center;
-            margin-top: 16px !important;
-            color: rgba(0,0,0,0.5);
-        }
-
-        @media (max-width: 900px) {
-            .demo-draft-container {
-                grid-template-columns: 1fr;
-            }
-
-            .demo-draft-row {
-                flex-direction: column;
-                gap: 16px;
-            }
-        }
-
-        /* Response Assistant Demo */
-        .demo-response-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }
-
-        .demo-response-panel {
-            background: rgba(0,0,0,0.02);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid rgba(0,0,0,0.08);
-        }
-
-        .demo-response-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: rgba(0,0,0,0.4);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .demo-response-label::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--primary);
-        }
-
-        .demo-response-input {
-            background: rgba(0,0,0,0.03);
-            border-radius: 8px;
-            padding: 16px;
-            color: rgba(0,0,0,0.7);
-            font-size: 0.95rem;
-            line-height: 1.6;
-            border: 1px solid rgba(0,0,0,0.08);
-        }
-
-        .demo-response-output {
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.08), rgba(59, 130, 246, 0.05));
-            border-radius: 8px;
-            padding: 16px;
-            color: rgba(0,0,0,0.8);
-            font-size: 0.95rem;
-            line-height: 1.6;
-            border: 1px solid rgba(0, 0, 0, 0.2);
-        }
-
-        .demo-response-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            border-radius: 4px;
-            font-size: 0.7rem;
-            color: white;
-            margin-bottom: 12px;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-
-        .demo-response-badge.visible {
-            opacity: 1;
-        }
-
-        /* Demo typing reveal */
-        .demo-typing-reveal {
-            overflow: hidden;
-            opacity: 0;
-            transform: translateY(8px);
-            transition: opacity 0.5s ease, transform 0.5s ease;
-        }
-
-        .demo-typing-reveal.revealed {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .demo-typing-cursor {
-            display: inline-block;
-            width: 2px;
-            height: 1em;
-            background: var(--accent);
-            margin-left: 2px;
-            animation: demoBlink 0.8s step-end infinite;
-            vertical-align: text-bottom;
-        }
-
-        @keyframes demoBlink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        /* Insights Engine Demo */
-        .demo-insights-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .demo-insights-metrics {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-        }
-
-        .demo-insights-metric {
-            background: rgba(0,0,0,0.02);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
-        }
-
-        .demo-insights-metric:hover {
-            background: rgba(0,0,0,0.04);
-            transform: translateY(-2px);
-        }
-
-        .demo-insights-metric-icon {
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-
-        .demo-insights-metric-value {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: #0A2540;
-            margin-bottom: 4px;
-        }
-
-        .demo-insights-metric-label {
-            font-size: 0.8rem;
-            color: rgba(0,0,0,0.5);
-        }
-
-        .demo-insights-charts {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 16px;
-        }
-
-        .demo-insights-chart {
-            background: rgba(0,0,0,0.02);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid rgba(0,0,0,0.08);
-        }
-
-        .demo-insights-chart-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: rgba(0,0,0,0.7);
-            margin-bottom: 16px;
-        }
-
-        .demo-bar-chart {
-            display: flex;
-            align-items: flex-end;
-            gap: 12px;
-            height: 150px;
-            padding-top: 20px;
-        }
-
-        .demo-bar {
-            flex: 1;
-            background: linear-gradient(180deg, var(--primary), var(--primary-dark));
-            border-radius: 6px 6px 0 0;
-            position: relative;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .demo-bar:hover {
-            filter: brightness(1.2);
-        }
-
-        .demo-bar::after {
-            content: attr(data-label);
-            position: absolute;
-            bottom: -24px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.7rem;
-            color: rgba(0,0,0,0.4);
-            white-space: nowrap;
-        }
-
-        .demo-donut-chart {
-            width: 140px;
-            height: 140px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .demo-donut-chart svg {
-            transform: rotate(-90deg);
-        }
-
-        .demo-donut-chart circle {
-            fill: none;
-            stroke-width: 20;
-        }
-
-        .demo-donut-bg {
-            stroke: rgba(0,0,0,0.1);
-        }
-
-        .demo-donut-fill {
-            stroke: var(--primary);
-            stroke-dasharray: 0 100;
-            transition: stroke-dasharray 1s ease;
-        }
-
-        .demo-donut-center {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-        }
-
-        .demo-donut-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #0A2540;
-        }
-
-        .demo-donut-label {
-            font-size: 0.7rem;
-            color: rgba(0,0,0,0.5);
-        }
-
-        /* List Normalizer Demo */
-        .demo-normalizer-container {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: 24px;
-            align-items: center;
-        }
-
-        .demo-normalizer-panel {
-            background: rgba(0,0,0,0.02);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid rgba(0,0,0,0.08);
-        }
-
-        .demo-normalizer-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: rgba(0,0,0,0.4);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .demo-normalizer-table {
-            width: 100%;
-            font-size: 0.8rem;
-        }
-
-        .demo-normalizer-table th {
-            text-align: left;
-            padding: 8px 12px;
-            color: rgba(0,0,0,0.5);
-            font-weight: 500;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-        }
-
-        .demo-normalizer-table td {
-            padding: 10px 12px;
-            color: rgba(0,0,0,0.7);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-        }
-
-        .demo-normalizer-table tr.removed td {
-            color: rgba(0,0,0,0.3);
-            text-decoration: line-through;
-        }
-
-        .demo-normalizer-arrow {
-            font-size: 2rem;
-            color: var(--primary);
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        .demo-normalizer-clean .demo-normalizer-table td {
-            color: #22c55e;
-        }
-
-        @media (max-width: 900px) {
-            .demo-response-container {
-                grid-template-columns: 1fr;
-            }
-
-            .demo-insights-metrics {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .demo-insights-charts {
-                grid-template-columns: 1fr;
-            }
-
-            .demo-normalizer-container {
-                grid-template-columns: 1fr;
-            }
-
-            .demo-normalizer-arrow {
-                transform: rotate(90deg);
-            }
+        /* App-scoped overrides: keep no-shadow behavior for app sections */
+        .auth-page *,
+        #toolMenuPage *,
+        #mainApp *,
+        #dataAnalysisApp *,
+        #draftAssistantApp *,
+        #listNormalizerApp * {
+            text-shadow: none !important;
         }
 
         /* ==================== AUTH PAGES ==================== */
@@ -9513,375 +7296,301 @@
     <!-- ==================== MARKETING LANDING PAGE ==================== -->
     <div class="landing-page" id="landingPage">
 
-        <!-- Top Banner -->
-        <div class="landing-top-banner">
-            <p>Embrace the power of next-generation AI Tools and Machine Learning</p>
-        </div>
-
-        <!-- Parallax Background -->
-        <div class="landing-parallax-bg" id="parallaxBg">
-            <div class="parallax-orb parallax-orb-1" data-speed="0.03"></div>
-            <div class="parallax-orb parallax-orb-2" data-speed="0.05"></div>
-            <div class="parallax-orb parallax-orb-3" data-speed="0.02"></div>
-            <div class="parallax-orb parallax-orb-4" data-speed="0.04"></div>
-        </div>
-
         <!-- Navigation -->
-        <nav class="landing-nav">
+        <nav class="landing-nav" id="landingNav">
             <div class="landing-nav-logo">
                 <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
                 <span>Lightspeed</span>
             </div>
-            <div class="landing-nav-links">
-                <a class="landing-nav-link" onclick="document.querySelector('.landing-demo').scrollIntoView({behavior: 'smooth'})">Demo</a>
-                <a class="landing-nav-link" onclick="document.querySelector('.landing-features').scrollIntoView({behavior: 'smooth'})">Features</a>
-                <a class="landing-nav-link" onclick="document.querySelector('.landing-pricing').scrollIntoView({behavior: 'smooth'})">Pricing</a>
-                <a class="landing-nav-link" onclick="document.querySelector('.landing-faq').scrollIntoView({behavior: 'smooth'})">FAQ</a>
-                <a class="landing-nav-link" onclick="document.querySelector('.landing-cta-section').scrollIntoView({behavior: 'smooth'})">Contact</a>
-                <button class="landing-nav-cta" id="navLaunchAppBtn">Launch App →</button>
+            <div class="landing-nav-center">
+                <button class="landing-nav-link" onclick="document.querySelector('#features').scrollIntoView({behavior: 'smooth'})">Features</button>
+                <button class="landing-nav-link" onclick="document.querySelector('#pricing').scrollIntoView({behavior: 'smooth'})">Pricing</button>
+                <button class="landing-nav-link" onclick="document.querySelector('#faq').scrollIntoView({behavior: 'smooth'})">FAQ</button>
+                <button class="landing-nav-link" onclick="document.querySelector('#contact').scrollIntoView({behavior: 'smooth'})">Contact</button>
+            </div>
+            <div class="landing-nav-actions">
+                <button class="landing-nav-signin" id="navSignInBtn">Sign in</button>
+                <button class="landing-nav-cta" id="navLaunchAppBtn">Get Started</button>
+                <button class="landing-nav-mobile-toggle" id="mobileMenuToggle" aria-label="Menu">
+                    <span></span><span></span><span></span>
+                </button>
             </div>
         </nav>
 
         <!-- Hero Section -->
         <section class="landing-hero">
-            <div class="landing-hero-bg"></div>
-
-            <!-- Floating UI Mockups -->
-            <div class="hero-floating-ui">
-                <!-- Draft Assistant Card -->
-                <div class="hero-float-card card-1">
-                    <div class="hero-card-header">
-                        <div class="hero-card-icon draft">✍️</div>
-                        <div class="hero-card-title">Draft Assistant</div>
-                    </div>
-                    <div class="hero-card-content">
-                        <strong>Media Release</strong> generated
-                    </div>
-                    <div class="hero-card-highlight">
-                        "The Foundation is pleased to announce..."
+            <div class="landing-hero-inner">
+                <div class="landing-hero-content">
+                    <h1 class="landing-hero-title">
+                        <span class="gradient-text">Work at the speed</span><br>of light.
+                    </h1>
+                    <p class="landing-hero-subtitle">
+                        Lightspeed is an AI-powered productivity suite for nonprofit teams and charitable gaming operators. Purpose-built tools that automate the repetitive so you can focus on what matters.
+                    </p>
+                    <div class="landing-hero-ctas">
+                        <button class="ls-btn ls-btn-primary" id="heroGetStartedBtn">Get Started</button>
+                        <button class="ls-btn ls-btn-secondary" id="navSignInBtn2">Sign in <span style="margin-left:4px">&rarr;</span></button>
                     </div>
                 </div>
-
-                <!-- Response Assistant Card -->
-                <div class="hero-float-card card-2">
-                    <div class="hero-card-header">
-                        <div class="hero-card-icon response">📧</div>
-                        <div class="hero-card-title">Response Assistant</div>
-                    </div>
-                    <div class="hero-card-content">
-                        <strong>Customer reply</strong> ready
-                    </div>
-                    <div class="hero-card-highlight">
-                        "Thank you for your support! I've confirmed your tickets..."
-                    </div>
-                </div>
-
-                <!-- Insights Engine Card -->
-                <div class="hero-float-card card-3">
-                    <div class="hero-card-header">
-                        <div class="hero-card-icon insights">📊</div>
-                        <div class="hero-card-title">Insights Engine</div>
-                    </div>
-                    <div class="hero-card-content">
-                        <strong>$847K</strong> total revenue
-                    </div>
-                    <div class="hero-card-chart">
-                        <div class="hero-chart-bar" style="height: 40%;"></div>
-                        <div class="hero-chart-bar" style="height: 65%;"></div>
-                        <div class="hero-chart-bar" style="height: 85%;"></div>
-                        <div class="hero-chart-bar" style="height: 100%;"></div>
-                        <div class="hero-chart-bar" style="height: 75%;"></div>
-                    </div>
-                </div>
-
-                <!-- List Normalizer Card -->
-                <div class="hero-float-card card-4">
-                    <div class="hero-card-header">
-                        <div class="hero-card-icon normalizer">🔄</div>
-                        <div class="hero-card-title">List Normalizer</div>
-                    </div>
-                    <div class="hero-card-content">
-                        <strong>247 contacts</strong> cleaned
-                    </div>
-                    <div class="hero-card-table">
-                        <div class="hero-table-row">
-                            <span class="hero-table-name">Sarah Johnson</span>
-                            <span class="hero-table-email">sarah.j@email.com</span>
+                <div class="landing-hero-visual">
+                    <div class="hero-mockup">
+                        <div class="hero-mockup-titlebar">
+                            <div class="hero-mockup-dot red"></div>
+                            <div class="hero-mockup-dot yellow"></div>
+                            <div class="hero-mockup-dot green"></div>
+                            <span class="hero-mockup-url">lightspeedutility.ca</span>
                         </div>
-                        <div class="hero-table-row">
-                            <span class="hero-table-name">Mike Chen</span>
-                            <span class="hero-table-email">mchen@gmail.com</span>
+                        <div class="hero-mockup-body">
+                            <div class="mockup-header">
+                                <div class="mockup-logo-small">
+                                    <img src="launchpad-logo.svg" alt="" onerror="this.style.display='none'">
+                                    <span>Lightspeed</span>
+                                </div>
+                                <div class="mockup-nav-dots">
+                                    <span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <div class="mockup-metric-row">
+                                <div class="mockup-metric">
+                                    <div class="mockup-metric-value">$847K</div>
+                                    <div class="mockup-metric-label">Revenue</div>
+                                </div>
+                                <div class="mockup-metric">
+                                    <div class="mockup-metric-value">2,340</div>
+                                    <div class="mockup-metric-label">Responses</div>
+                                </div>
+                                <div class="mockup-metric">
+                                    <div class="mockup-metric-value">7.6x</div>
+                                    <div class="mockup-metric-label">Faster</div>
+                                </div>
+                            </div>
+                            <div class="mockup-card">
+                                <div class="mockup-card-label">Response Assistant</div>
+                                <div class="mockup-card-title">Customer reply ready</div>
+                                <div class="mockup-card-text">"Thank you for your support! I've confirmed your tickets for the upcoming draw..."</div>
+                            </div>
+                            <div class="mockup-bar-chart">
+                                <div class="mockup-bar mockup-bar-muted" style="height:35%"></div>
+                                <div class="mockup-bar mockup-bar-accent" style="height:55%"></div>
+                                <div class="mockup-bar mockup-bar-muted" style="height:45%"></div>
+                                <div class="mockup-bar mockup-bar-accent" style="height:75%"></div>
+                                <div class="mockup-bar mockup-bar-muted" style="height:60%"></div>
+                                <div class="mockup-bar mockup-bar-accent" style="height:90%"></div>
+                                <div class="mockup-bar mockup-bar-muted" style="height:50%"></div>
+                                <div class="mockup-bar mockup-bar-accent" style="height:100%"></div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="landing-hero-content">
-                <div class="landing-hero-badge">⚡ Built for Charitable Gaming</div>
-                <h1 class="landing-hero-title">
-                    <span class="gradient-text">Work at the speed</span><br>
-                    <span class="gradient-text">of light.</span>
-                </h1>
-                <p class="landing-hero-subtitle">
-                    Lightspeed is an AI-powered productivity suite built for nonprofit teams and charitable gaming operators. Trained on thousands of real-world examples — from customer service to copywriting to data management — Lightspeed isn't a generic chatbot. It's a purpose-built toolkit that automates the repetitive so you can focus on what matters.
-                </p>
-                <div class="landing-hero-ctas">
-                    <button class="landing-cta-primary" id="heroGetStartedBtn">
-                        Get Started Free
-                        <span>→</span>
-                    </button>
-                    <button class="landing-cta-secondary" onclick="document.querySelector('.landing-demo').scrollIntoView({behavior: 'smooth'})">
-                        See How It Works
-                        <span>↓</span>
-                    </button>
-                </div>
-                <div class="landing-stats">
-                    <div class="landing-stat">
-                        <div class="landing-stat-value" data-count="4" data-suffix="">0</div>
-                        <div class="landing-stat-label">Purpose-Built Tools</div>
-                    </div>
-                    <div class="landing-stat">
-                        <div class="landing-stat-value" data-count="7.6" data-suffix="x" data-decimals="1">0x</div>
-                        <div class="landing-stat-label">Faster Workflows</div>
-                    </div>
-                    <div class="landing-stat">
-                        <div class="landing-stat-value" data-count="10000" data-suffix="+" data-format="comma">0+</div>
-                        <div class="landing-stat-label">Real-World Training Examples</div>
+                    <div class="hero-floating-card">
+                        <div class="hero-floating-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        </div>
+                        <div>
+                            <div class="hero-floating-label">Workflow speed</div>
+                            <div class="hero-floating-value">7.6x faster</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Live Demo Section -->
-        <section class="landing-demo" id="demo">
-            <div class="landing-section-header">
-                <div class="landing-section-tag">See It In Action</div>
-                <h2 class="landing-section-title">Try it for free today.</h2>
-                <p class="landing-section-subtitle">See real-world examples of Lightspeed in use. Embracing the power of AI and machine learning has never been easier.</p>
+        <!-- Social Proof / Logos Bar -->
+        <section class="landing-logos">
+            <div class="landing-logos-label">Trusted by charitable gaming organizations</div>
+            <div class="landing-logos-row">
+                <img src="logos/catch-the-ace.png" alt="Catch the Ace">
+                <img src="logos/thunderbay-5050.png" alt="Thunder Bay 50/50">
+                <img src="logos/rotary-house.png" alt="Rotary House">
+                <img src="logos/cruisin-cure.png" alt="Cruisin for a Cure">
             </div>
+        </section>
 
-            <div class="landing-demo-container">
-                <div class="landing-demo-tabs">
-                    <button class="landing-demo-tab" data-demo="draft">✍️ Draft Assistant</button>
-                    <button class="landing-demo-tab active" data-demo="response">📧 Response Assistant</button>
-                    <button class="landing-demo-tab" data-demo="insights">📊 Insights Engine</button>
-                    <button class="landing-demo-tab" data-demo="normalizer">🔄 List Normalizer</button>
+        <!-- Feature Section 1: Response Assistant -->
+        <section class="landing-section landing-section-white" id="features">
+            <div class="landing-feature-row animate-on-scroll">
+                <div class="landing-feature-text">
+                    <div class="landing-feature-label">Response Assistant</div>
+                    <h2 class="landing-feature-heading">Reply to customers in seconds, not minutes</h2>
+                    <p class="landing-feature-desc">
+                        Paste any email or message and get a professional, on-brand response ready to send. Trained on thousands of real customer interactions.
+                    </p>
+                    <ul class="landing-feature-list">
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Context-aware replies for FAQs, support tickets, and donor comms
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Consistent voice aligned with your brand guidelines
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Handles edge cases with organizational knowledge base
+                        </li>
+                    </ul>
                 </div>
-
-                <div class="landing-tool-description">
-                    <div class="tool-description-panel" data-tool="draft">
-                        <strong>Draft Assistant</strong> generates polished first drafts of marketing content, media releases, social posts, and more — all aligned with your brand voice and organizational guidelines. Just provide the key details, and Lightspeed does the heavy lifting.
-                    </div>
-                    <div class="tool-description-panel active" data-tool="response">
-                        <strong>Response Assistant</strong> helps your team reply to customer inquiries in seconds. Paste any email or message, and get a professional, on-brand response ready to send. Perfect for handling FAQs, support tickets, and donor communications.
-                    </div>
-                    <div class="tool-description-panel" data-tool="insights">
-                        <strong>Insights Engine</strong> turns your raw data into actionable intelligence. Upload sales reports, donor lists, or campaign results, and get AI-powered analysis with clear recommendations — no spreadsheet expertise required.
-                    </div>
-                    <div class="tool-description-panel" data-tool="normalizer">
-                        <strong>List Normalizer</strong> cleans and reformats messy customer data for your email marketing platform. It fixes formatting issues, removes invalid entries, and exports lists ready for Mailchimp, Constant Contact, or any other service.
+                <div class="landing-feature-visual">
+                    <div class="feature-visual-window">
+                        <div class="feature-visual-titlebar">
+                            <div class="feature-visual-dot red"></div>
+                            <div class="feature-visual-dot yellow"></div>
+                            <div class="feature-visual-dot green"></div>
+                        </div>
+                        <div class="feature-visual-body">
+                            <div class="feature-visual-line short accent"></div>
+                            <div class="feature-visual-line long"></div>
+                            <div class="feature-visual-line long"></div>
+                            <div class="feature-visual-line medium"></div>
+                            <div style="height:12px"></div>
+                            <div class="feature-visual-line short accent"></div>
+                            <div class="feature-visual-line long"></div>
+                            <div class="feature-visual-line medium"></div>
+                            <div class="feature-visual-line long"></div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </section>
 
-                <div class="landing-demo-window">
-                    <div class="landing-demo-titlebar">
-                        <div class="landing-demo-dot red"></div>
-                        <div class="landing-demo-dot yellow"></div>
-                        <div class="landing-demo-dot green"></div>
-                        <span>Lightspeed</span>
+        <!-- Feature Section 2: Insights Engine -->
+        <section class="landing-section landing-section-alt">
+            <div class="landing-feature-row reverse animate-on-scroll">
+                <div class="landing-feature-text">
+                    <div class="landing-feature-label">Insights Engine</div>
+                    <h2 class="landing-feature-heading">Turn raw data into actionable intelligence</h2>
+                    <p class="landing-feature-desc">
+                        Upload sales reports, donor lists, or campaign results and get AI-powered analysis with clear recommendations. No spreadsheet expertise required.
+                    </p>
+                    <ul class="landing-feature-list">
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Revenue trends, player behavior, and campaign performance
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            AI-generated summaries with actionable next steps
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Beautiful charts and exportable reports
+                        </li>
+                    </ul>
+                </div>
+                <div class="landing-feature-visual">
+                    <div class="feature-visual-window">
+                        <div class="feature-visual-titlebar">
+                            <div class="feature-visual-dot red"></div>
+                            <div class="feature-visual-dot yellow"></div>
+                            <div class="feature-visual-dot green"></div>
+                        </div>
+                        <div class="feature-visual-body">
+                            <div class="feature-visual-line short accent"></div>
+                            <div style="display:flex;gap:8px;margin-bottom:10px">
+                                <div style="flex:1;height:40px;background:var(--cta);opacity:0.15;border-radius:4px"></div>
+                                <div style="flex:1;height:40px;background:var(--cta);opacity:0.25;border-radius:4px"></div>
+                                <div style="flex:1;height:40px;background:var(--cta);opacity:0.35;border-radius:4px"></div>
+                            </div>
+                            <div class="feature-visual-line long"></div>
+                            <div class="feature-visual-line medium"></div>
+                            <div class="feature-visual-line long"></div>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </section>
 
-                    <div class="landing-demo-content">
-                        <!-- Draft Assistant Demo -->
-                        <div class="landing-demo-panel" id="demoDraft">
-                            <div class="demo-draft-container">
-                                <div class="demo-draft-form">
-                                    <div class="demo-draft-field">
-                                        <label>Content Type</label>
-                                        <div class="demo-draft-select">Media Release</div>
-                                    </div>
-                                    <div class="demo-draft-field">
-                                        <label>Context / Announcement</label>
-                                        <div class="demo-draft-input">Spring 50/50 jackpot winner announced - $127,450 prize</div>
-                                    </div>
-                                    <div class="demo-draft-row">
-                                        <div class="demo-draft-field demo-draft-half">
-                                            <label>Quote Source Name</label>
-                                            <div class="demo-draft-input">Jane Smith</div>
-                                        </div>
-                                        <div class="demo-draft-field demo-draft-half">
-                                            <label>Role / Title</label>
-                                            <div class="demo-draft-input">Executive Director</div>
-                                        </div>
-                                    </div>
-                                    <div class="demo-draft-field">
-                                        <label>Quote Content</label>
-                                        <div class="demo-draft-input">We're thrilled to announce another life-changing win. Every ticket sold supports patient care.</div>
-                                    </div>
-                                </div>
-                                <div class="demo-draft-output">
-                                    <div class="demo-response-badge">✨ Generated in 2.4 seconds</div>
-                                    <div class="demo-draft-result demo-draft-release">
-                                        <p class="demo-draft-release-header"><strong>FOR IMMEDIATE RELEASE</strong></p>
-                                        <p class="demo-draft-release-title"><strong>Riverside Health Foundation Announces Spring 50/50 Winner</strong></p>
-                                        <p class="demo-draft-release-subtitle">Local Supporter Takes Home $127,450 Jackpot</p>
-                                        <p><strong>RIVERSIDE, ON</strong> — The Riverside Health Foundation is pleased to announce the winner of its Spring 50/50 Raffle. The grand prize of $127,450 has been awarded to a lucky ticket holder.</p>
-                                        <p>"We're thrilled to announce another life-changing win. Every ticket sold supports patient care in our community," said Jane Smith, Executive Director of the Riverside Health Foundation.</p>
-                                        <p class="demo-draft-release-footer">— 30 —</p>
-                                    </div>
-                                </div>
-                            </div>
+        <!-- Feature Section 3: Draft Assistant -->
+        <section class="landing-section landing-section-white">
+            <div class="landing-feature-row animate-on-scroll">
+                <div class="landing-feature-text">
+                    <div class="landing-feature-label">Draft Assistant</div>
+                    <h2 class="landing-feature-heading">Polished first drafts in seconds</h2>
+                    <p class="landing-feature-desc">
+                        Generate media releases, social posts, email campaigns, and more. Aligned with your brand voice and organizational guidelines from the start.
+                    </p>
+                    <ul class="landing-feature-list">
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Media releases, social posts, emails, and newsletters
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Brand-aligned tone and terminology
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            One-click export to all major formats
+                        </li>
+                    </ul>
+                </div>
+                <div class="landing-feature-visual">
+                    <div class="feature-visual-window">
+                        <div class="feature-visual-titlebar">
+                            <div class="feature-visual-dot red"></div>
+                            <div class="feature-visual-dot yellow"></div>
+                            <div class="feature-visual-dot green"></div>
                         </div>
-
-                        <!-- Response Assistant Demo -->
-                        <div class="landing-demo-panel active" id="demoResponse">
-                            <div class="demo-response-container">
-                                <div class="demo-response-panel">
-                                    <div class="demo-response-label">Customer Inquiry</div>
-                                    <div class="demo-response-input">
-                                        Hi, I bought tickets for the 50/50 draw last week but I never received a confirmation email. My name is Sarah Johnson and I spent $50. Can someone please help me? I'm worried my tickets weren't registered. Thanks.
-                                    </div>
-                                </div>
-                                <div class="demo-response-panel">
-                                    <div class="demo-response-label">AI-Generated Response</div>
-                                    <div class="demo-response-output">
-                                        <div class="demo-response-badge">✨ Generated in 2.3 seconds</div>
-                                        <div class="demo-response-text">Hi Sarah,<br><br>
-                                        Thank you for reaching out and for supporting our 50/50 draw!<br><br>
-                                        I completely understand your concern. I've looked into your purchase and can confirm that your $50 ticket purchase was successfully registered in our system. Your tickets are valid and entered into the draw.<br><br>
-                                        I've just resent your confirmation email to the address on file. Please check your spam folder if you don't see it in the next few minutes.<br><br>
-                                        Best of luck in the draw!<br><br>
-                                        Sincerely,<br>
-                                        <em>Your Name</em>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="feature-visual-body">
+                            <div class="feature-visual-line short accent"></div>
+                            <div class="feature-visual-line long"></div>
+                            <div class="feature-visual-line long"></div>
+                            <div class="feature-visual-line long"></div>
+                            <div class="feature-visual-line medium"></div>
+                            <div style="height:12px"></div>
+                            <div class="feature-visual-line long"></div>
+                            <div class="feature-visual-line long"></div>
+                            <div class="feature-visual-line short"></div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-                        <!-- Insights Engine Demo -->
-                        <div class="landing-demo-panel" id="demoInsights">
-                            <div class="demo-insights-container">
-                                <div class="demo-insights-metrics">
-                                    <div class="demo-insights-metric">
-                                        <div class="demo-insights-metric-icon">💰</div>
-                                        <div class="demo-insights-metric-value">$847,293</div>
-                                        <div class="demo-insights-metric-label">Total Revenue</div>
-                                    </div>
-                                    <div class="demo-insights-metric">
-                                        <div class="demo-insights-metric-icon">🎫</div>
-                                        <div class="demo-insights-metric-value">24,847</div>
-                                        <div class="demo-insights-metric-label">Tickets Sold</div>
-                                    </div>
-                                    <div class="demo-insights-metric">
-                                        <div class="demo-insights-metric-icon">👥</div>
-                                        <div class="demo-insights-metric-value">8,412</div>
-                                        <div class="demo-insights-metric-label">Unique Buyers</div>
-                                    </div>
-                                    <div class="demo-insights-metric">
-                                        <div class="demo-insights-metric-icon">📈</div>
-                                        <div class="demo-insights-metric-value">$34.09</div>
-                                        <div class="demo-insights-metric-label">Avg. Order Value</div>
-                                    </div>
-                                </div>
-                                <div class="demo-insights-charts">
-                                    <div class="demo-insights-chart">
-                                        <div class="demo-insights-chart-title">Sales by Price Point</div>
-                                        <div class="demo-bar-chart">
-                                            <div class="demo-bar" style="height: 45%;" data-label="$10"></div>
-                                            <div class="demo-bar" style="height: 75%;" data-label="$20"></div>
-                                            <div class="demo-bar" style="height: 100%;" data-label="$40"></div>
-                                            <div class="demo-bar" style="height: 60%;" data-label="$75"></div>
-                                            <div class="demo-bar" style="height: 35%;" data-label="$100"></div>
-                                        </div>
-                                    </div>
-                                    <div class="demo-insights-chart">
-                                        <div class="demo-insights-chart-title">Returning Buyers</div>
-                                        <div class="demo-donut-chart">
-                                            <svg viewBox="0 0 100 100" width="140" height="140">
-                                                <circle class="demo-donut-bg" cx="50" cy="50" r="40"></circle>
-                                                <circle class="demo-donut-fill" cx="50" cy="50" r="40" stroke-dasharray="68 100"></circle>
-                                            </svg>
-                                            <div class="demo-donut-center">
-                                                <div class="demo-donut-value">68%</div>
-                                                <div class="demo-donut-label">Repeat</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+        <!-- Feature Section 4: List Normalizer -->
+        <section class="landing-section landing-section-alt">
+            <div class="landing-feature-row reverse animate-on-scroll">
+                <div class="landing-feature-text">
+                    <div class="landing-feature-label">List Normalizer</div>
+                    <h2 class="landing-feature-heading">Clean, formatted data ready to use</h2>
+                    <p class="landing-feature-desc">
+                        Transform messy customer lists into clean, properly formatted data. Export directly to Mailchimp, Constant Contact, or any marketing platform.
+                    </p>
+                    <ul class="landing-feature-list">
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Automatic formatting, deduplication, and validation
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Fixes name casing, phone formats, and email errors
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Export-ready CSV files in seconds
+                        </li>
+                    </ul>
+                </div>
+                <div class="landing-feature-visual">
+                    <div class="feature-visual-window">
+                        <div class="feature-visual-titlebar">
+                            <div class="feature-visual-dot red"></div>
+                            <div class="feature-visual-dot yellow"></div>
+                            <div class="feature-visual-dot green"></div>
                         </div>
-
-                        <!-- List Normalizer Demo -->
-                        <div class="landing-demo-panel" id="demoNormalizer">
-                            <div class="demo-normalizer-container">
-                                <div class="demo-normalizer-panel">
-                                    <div class="demo-normalizer-label">📥 Raw Customer Export</div>
-                                    <table class="demo-normalizer-table">
-                                        <thead>
-                                            <tr>
-                                                <th>First Name</th>
-                                                <th>Last Name</th>
-                                                <th>E-mail</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>Sarah</td>
-                                                <td>Johnson</td>
-                                                <td>sarah.j@email.com</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Mike</td>
-                                                <td>Chen</td>
-                                                <td>mchen@gmail.com</td>
-                                            </tr>
-                                            <tr class="removed">
-                                                <td>John</td>
-                                                <td>Smith</td>
-                                                <td></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Emily</td>
-                                                <td>Davis</td>
-                                                <td>emily.d@work.com</td>
-                                            </tr>
-                                            <tr class="removed">
-                                                <td>Store</td>
-                                                <td>Purchase</td>
-                                                <td></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div class="demo-normalizer-arrow">→</div>
-
-                                <div class="demo-normalizer-panel demo-normalizer-clean">
-                                    <div class="demo-normalizer-label">✅ Mailchimp Ready</div>
-                                    <table class="demo-normalizer-table">
-                                        <thead>
-                                            <tr>
-                                                <th>NAME</th>
-                                                <th>EMAIL</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>Emily Davis</td>
-                                                <td>emily.d@work.com</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Mike Chen</td>
-                                                <td>mchen@gmail.com</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Sarah Johnson</td>
-                                                <td>sarah.j@email.com</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                        <div class="feature-visual-body">
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+                                <div class="feature-visual-line" style="width:100%;background:var(--cta);opacity:0.15"></div>
+                                <div class="feature-visual-line" style="width:100%;background:var(--cta);opacity:0.15"></div>
+                                <div class="feature-visual-line" style="width:100%;background:var(--cta);opacity:0.15"></div>
+                                <div class="feature-visual-line" style="width:100%"></div>
+                                <div class="feature-visual-line" style="width:100%"></div>
+                                <div class="feature-visual-line" style="width:100%"></div>
+                                <div class="feature-visual-line" style="width:100%"></div>
+                                <div class="feature-visual-line" style="width:100%"></div>
+                                <div class="feature-visual-line" style="width:100%"></div>
+                                <div class="feature-visual-line" style="width:100%"></div>
+                                <div class="feature-visual-line" style="width:100%"></div>
+                                <div class="feature-visual-line" style="width:100%"></div>
                             </div>
                         </div>
                     </div>
@@ -9889,293 +7598,187 @@
             </div>
         </section>
 
-        <!-- Trusted By + Value Prop Wrapper -->
-        <div class="landing-trusted-value-wrapper">
-            <!-- Value Proposition Section -->
-            <section class="landing-value-prop">
-                <div class="landing-section-header">
-                    <div class="landing-section-tag">Why Lightspeed</div>
-                    <h2 class="landing-section-title">Leverage the Power of AI.</h2>
-                    <p class="landing-section-subtitle">Lightspeed was developed by the team behind Canada's largest hospital 50/50 lottery. Every feature was born from real operational challenges. The result is a suite of tools trained on tens of thousands of real-world examples. Machine learning allows for continuous improvement — the more you use Lightspeed, the smarter it gets.</p>
-                </div>
-
-                <div class="landing-value-grid">
-                    <div class="landing-value-card animate-on-scroll delay-1">
-                        <div class="landing-value-icon">🧠</div>
-                        <h3 class="landing-value-title">Trained on Real Work</h3>
-                        <p class="landing-value-desc">Lightspeed is trained on thousands of real customer service interactions, marketing campaigns, and data tasks from active lottery operations.</p>
-                    </div>
-                    <div class="landing-value-card animate-on-scroll delay-2">
-                        <div class="landing-value-icon">📁</div>
-                        <h3 class="landing-value-title">Tailored to Your Organization</h3>
-                        <p class="landing-value-desc">Every Lightspeed instance comes with a dedicated knowledge base built around your organization — your brand voice, your draw schedule, your FAQ, your team's workflow.</p>
-                    </div>
-                    <div class="landing-value-card animate-on-scroll delay-3">
-                        <div class="landing-value-icon">🚀</div>
-                        <h3 class="landing-value-title">Gets Smarter Over Time</h3>
-                        <p class="landing-value-desc">Lightspeed learns in real time as you use it. The more your team works with it, the more it adapts to your style, your tone, and your needs.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Trusted By Section -->
-            <section class="landing-trusted">
-                <p class="landing-trusted-label">Trusted by the teams behind some of Canada's largest charitable gaming initiatives</p>
-                <div class="landing-trusted-logos">
-                    <img src="logos/thunderbay-5050.png" alt="Thunder Bay 50/50" class="landing-trusted-logo">
-                    <img src="logos/rotary-house.png" alt="Fort William Rotary House Lottery" class="landing-trusted-logo">
-                    <img src="logos/cruisin-cure.png" alt="Cruisin' for a Cure Jeep Raffle" class="landing-trusted-logo">
-                    <img src="logos/catch-the-ace.png" alt="Catch The Ace" class="landing-trusted-logo">
-                </div>
-            </section>
-        </div>
-
-        <!-- Features Section -->
-        <section class="landing-features" id="features">
-            <div class="landing-section-header">
-                <div class="landing-section-tag">Features</div>
-                <h2 class="landing-section-title">Work at Lightspeed.</h2>
-                <p class="landing-section-subtitle">Four purpose-built tools that tackle the most time-consuming tasks in charitable gaming and nonprofit operations. Your time is valuable — stop spending it on work AI can do better and faster.</p>
+        <!-- Card Grid Section -->
+        <section class="landing-section landing-section-white">
+            <div class="landing-section-header animate-on-scroll">
+                <div class="landing-section-tag">Why Lightspeed</div>
+                <h2 class="landing-section-title">Built for the way your team works</h2>
+                <p class="landing-section-subtitle">Purpose-built tools trained on thousands of real-world examples from charitable gaming organizations.</p>
             </div>
-
-            <div class="landing-features-grid">
-                <!-- Draft Assistant -->
-                <div class="landing-feature-card animate-on-scroll delay-1">
-                    <div class="landing-feature-icon draft">✍️</div>
-                    <h3 class="landing-feature-title">Draft Assistant</h3>
-                    <p class="landing-feature-desc">Generate on-brand social media posts, emails, press releases, and newsletters in seconds. Lightspeed knows your organization's voice because it's been trained on your actual content — so you can write faster.</p>
-                    <ul class="landing-feature-list">
-                        <li>Social media posts & captions</li>
-                        <li>Email campaigns & newsletters</li>
-                        <li>Press releases & media advisories</li>
-                        <li>Trained on your brand voice & past campaigns</li>
-                    </ul>
+            <div class="landing-cards-grid">
+                <div class="landing-card animate-on-scroll delay-1">
+                    <div class="landing-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </div>
+                    <h3 class="landing-card-title">7.6x faster workflows</h3>
+                    <p class="landing-card-desc">Tasks that took 15 minutes now take under 2. From customer responses to media releases, every tool is optimized for speed.</p>
                 </div>
-
-                <!-- Response Assistant -->
-                <div class="landing-feature-card animate-on-scroll delay-2">
-                    <div class="landing-feature-icon response">📧</div>
-                    <h3 class="landing-feature-title">Response Assistant</h3>
-                    <p class="landing-feature-desc">Turn customer inquiries into professional, empathetic responses instantly. Built on a knowledge base specific to your organization, Response Assistant handles winner questions, support tickets, and donor communications with consistency and care.</p>
-                    <ul class="landing-feature-list">
-                        <li>AI-powered reply generation</li>
-                        <li>Dedicated knowledge base (FAQ, draw schedules, AGCO rules)</li>
-                        <li>Consistent, on-brand tone across every reply</li>
-                        <li>Response history tracking</li>
-                    </ul>
+                <div class="landing-card animate-on-scroll delay-2">
+                    <div class="landing-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    </div>
+                    <h3 class="landing-card-title">Industry-trained AI</h3>
+                    <p class="landing-card-desc">Not a generic chatbot. Lightspeed is trained on 10,000+ real-world examples specific to charitable gaming and nonprofit operations.</p>
                 </div>
-
-                <!-- Insights Engine -->
-                <div class="landing-feature-card animate-on-scroll delay-3">
-                    <div class="landing-feature-icon insights">📊</div>
-                    <h3 class="landing-feature-title">Insights Engine</h3>
-                    <p class="landing-feature-desc">Upload your reports and instantly generate beautiful dashboards with charts, metrics, and actionable insights. Designed for seamless integration with BUMP Raffle and other charitable gaming service providers — just export your data and let Lightspeed do the rest. No spreadsheet skills required.</p>
-                    <ul class="landing-feature-list">
-                        <li>Seamless BUMP Raffle and other provider data integration</li>
-                        <li>Automated chart & dashboard generation</li>
-                        <li>Key metrics at a glance</li>
-                        <li>Export-ready visualizations for reports & presentations</li>
-                    </ul>
+                <div class="landing-card animate-on-scroll delay-3">
+                    <div class="landing-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                    <h3 class="landing-card-title">Team-ready from day one</h3>
+                    <p class="landing-card-desc">Multi-user access with shared knowledge bases, templates, and analytics. Everyone on the same page, every time.</p>
                 </div>
-
-                <!-- List Normalizer -->
-                <div class="landing-feature-card animate-on-scroll delay-4">
-                    <div class="landing-feature-icon normalizer">🔄</div>
-                    <h3 class="landing-feature-title">List Normalizer</h3>
-                    <p class="landing-feature-desc">Transform messy customer data into clean, formatted lists ready for Mailchimp and your email platform. What used to take hours now takes 30 seconds — trained on real-world data normalization tasks from active lottery operations.</p>
-                    <ul class="landing-feature-list">
-                        <li>Auto-format names & emails</li>
-                        <li>Remove invalid entries & deduplicate records</li>
-                        <li>One-click Mailchimp export</li>
-                        <li>Trained on thousands of real data cleanup tasks</li>
-                    </ul>
+                <div class="landing-card animate-on-scroll delay-1">
+                    <div class="landing-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                    </div>
+                    <h3 class="landing-card-title">Four tools, one platform</h3>
+                    <p class="landing-card-desc">Response Assistant, Insights Engine, Draft Assistant, and List Normalizer. Everything you need in a single, unified workspace.</p>
                 </div>
-            </div>
-        </section>
-
-        <!-- How It Works Section -->
-        <section class="landing-how-it-works">
-            <div class="landing-section-header">
-                <div class="landing-section-tag">How It Works</div>
-                <h2 class="landing-section-title">We set it up. You start working.</h2>
-                <p class="landing-section-subtitle">When you sign up for Lightspeed, our team handles the heavy lifting. From custom knowledge base creation to staff training, we make sure your AI tools are ready to deliver real value from day one.</p>
-            </div>
-
-            <div class="landing-steps">
-                <div class="landing-step">
-                    <div class="landing-step-number">1</div>
-                    <h3 class="landing-step-title">Discovery Call</h3>
-                    <p class="landing-step-desc">We learn about your organization, your workflow, and your biggest time-drains. You tell us what you need — we listen.</p>
+                <div class="landing-card animate-on-scroll delay-2">
+                    <div class="landing-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    </div>
+                    <h3 class="landing-card-title">Your knowledge, amplified</h3>
+                    <p class="landing-card-desc">Upload your FAQs, brand guides, and policies. Lightspeed learns your voice and applies it consistently across every output.</p>
                 </div>
-                <div class="landing-step-connector"></div>
-                <div class="landing-step">
-                    <div class="landing-step-number">2</div>
-                    <h3 class="landing-step-title">Custom Setup</h3>
-                    <p class="landing-step-desc">We build your tailored knowledge base — brand guidelines, draw rules, FAQs, past campaigns — and configure each tool to match your voice.</p>
-                </div>
-                <div class="landing-step-connector"></div>
-                <div class="landing-step">
-                    <div class="landing-step-number">3</div>
-                    <h3 class="landing-step-title">Launch & Learn</h3>
-                    <p class="landing-step-desc">We train your team, provide documentation, and offer hands-on support. Lightspeed continues learning as you use it.</p>
+                <div class="landing-card animate-on-scroll delay-3">
+                    <div class="landing-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    </div>
+                    <h3 class="landing-card-title">Simple, transparent pricing</h3>
+                    <p class="landing-card-desc">No per-seat fees or hidden costs. One price for your entire organization with unlimited team members and full tool access.</p>
                 </div>
             </div>
         </section>
 
         <!-- Pricing Section -->
-        <section class="landing-pricing" id="pricing">
-            <div class="landing-section-header">
+        <section class="landing-section landing-section-alt" id="pricing">
+            <div class="landing-section-header animate-on-scroll">
                 <div class="landing-section-tag">Pricing</div>
-                <h2 class="landing-section-title">Simple, transparent pricing.</h2>
-                <p class="landing-section-subtitle">No hidden fees. No surprises. Just powerful AI tools built for your team.</p>
+                <h2 class="landing-section-title">Simple pricing for every team</h2>
+                <p class="landing-section-subtitle">Start free. Scale when you're ready. No hidden fees or per-seat charges.</p>
             </div>
-
-            <div class="landing-pricing-container">
-                <!-- Free Trial -->
-                <div class="landing-pricing-card trial">
-                    <div class="landing-pricing-badge">Start Here</div>
-                    <h3 class="landing-pricing-name">Free Trial</h3>
+            <div class="landing-pricing-grid animate-on-scroll">
+                <div class="landing-pricing-card">
+                    <div class="landing-pricing-name">Free Trial</div>
                     <div class="landing-pricing-price">
                         <span class="landing-pricing-amount">$0</span>
-                        <span class="landing-pricing-period">for 7 days</span>
+                        <span class="landing-pricing-period">/ 14 days</span>
                     </div>
-                    <p class="landing-pricing-desc">Try Lightspeed risk-free. No credit card required.</p>
+                    <p class="landing-pricing-desc">Try every tool with full access. No credit card required.</p>
                     <ul class="landing-pricing-features">
-                        <li>Full access to all tools</li>
-                        <li>Up to 20 generations</li>
-                        <li>Sample knowledge base</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> All 4 tools included</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Up to 50 AI generations</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 1 team member</li>
                     </ul>
-                    <button class="landing-pricing-btn trial-btn" id="pricingTrialBtn">Start Free Trial</button>
+                    <button class="landing-pricing-btn" onclick="document.getElementById('heroGetStartedBtn').click()">Start free trial</button>
                 </div>
-
-                <!-- Monthly -->
-                <div class="landing-pricing-card monthly featured">
+                <div class="landing-pricing-card featured">
                     <div class="landing-pricing-badge">Most Popular</div>
-                    <h3 class="landing-pricing-name">Monthly</h3>
+                    <div class="landing-pricing-name">Monthly</div>
                     <div class="landing-pricing-price">
-                        <span class="landing-pricing-amount">$199</span>
-                        <span class="landing-pricing-period">/month</span>
+                        <span class="landing-pricing-amount">$99</span>
+                        <span class="landing-pricing-period">/ month</span>
                     </div>
-                    <p class="landing-pricing-desc">Everything you need to work at lightspeed.</p>
+                    <p class="landing-pricing-desc">Full access for your entire organization. Cancel anytime.</p>
                     <ul class="landing-pricing-features">
-                        <li>Unlimited generations</li>
-                        <li>Custom knowledge base</li>
-                        <li>All four tools included</li>
-                        <li>Ongoing support & training</li>
-                        <li>Continuous improvements</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited AI generations</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited team members</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Custom knowledge base</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Priority support</li>
                     </ul>
-                    <button class="landing-pricing-btn monthly-btn" id="pricingMonthlyBtn">Get Started</button>
+                    <button class="landing-pricing-btn primary" onclick="document.getElementById('heroGetStartedBtn').click()">Get started</button>
                 </div>
-
-                <!-- Annual -->
-                <div class="landing-pricing-card annual">
-                    <div class="landing-pricing-badge">Best Value</div>
-                    <h3 class="landing-pricing-name">Annual</h3>
+                <div class="landing-pricing-card">
+                    <div class="landing-pricing-name">Annual</div>
                     <div class="landing-pricing-price">
-                        <span class="landing-pricing-amount">$169</span>
-                        <span class="landing-pricing-period">/month</span>
+                        <span class="landing-pricing-amount">$79</span>
+                        <span class="landing-pricing-period">/ month</span>
                     </div>
-                    <p class="landing-pricing-desc">Save 15% with annual billing ($2,028/year).</p>
+                    <p class="landing-pricing-desc">Save 20% with annual billing. Best value for established teams.</p>
                     <ul class="landing-pricing-features">
-                        <li>Everything in Monthly</li>
-                        <li>Priority support</li>
-                        <li>Lock in your rate</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Everything in Monthly</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 20% savings ($240/year)</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Dedicated onboarding</li>
                     </ul>
-                    <button class="landing-pricing-btn annual-btn" id="pricingAnnualBtn">Get Started</button>
+                    <button class="landing-pricing-btn" onclick="document.getElementById('heroGetStartedBtn').click()">Start with annual</button>
                 </div>
-            </div>
-
-            <div class="landing-pricing-setup">
-                <p><strong>One-time setup fee:</strong> Custom quote based on organization size and knowledge base complexity. <a href="mailto:hello@launchpadsolutions.ca">Contact us</a> for details.</p>
             </div>
         </section>
 
         <!-- FAQ Section -->
-        <section class="landing-faq" id="faq">
-            <div class="landing-section-header">
+        <section class="landing-section landing-section-white" id="faq">
+            <div class="landing-section-header animate-on-scroll">
                 <div class="landing-section-tag">FAQ</div>
-                <h2 class="landing-section-title">Common questions, straight answers.</h2>
-                <p class="landing-section-subtitle">Everything you need to know before getting started.</p>
+                <h2 class="landing-section-title">Frequently asked questions</h2>
+                <p class="landing-section-subtitle">Everything you need to know about Lightspeed.</p>
             </div>
-
-            <div class="landing-faq-list">
+            <div class="landing-faq-list animate-on-scroll">
                 <div class="landing-faq-item">
                     <button class="landing-faq-question">
-                        Do I need any technical skills to use Lightspeed?
+                        What is Lightspeed?
                         <span class="landing-faq-icon">+</span>
                     </button>
                     <div class="landing-faq-answer">
-                        <div class="landing-faq-answer-inner">Not at all. Lightspeed was designed for nonprofit teams, not developers. If you can write an email, you can use Lightspeed. Every tool has a simple interface — type your input, click generate, and review the result. Our team handles all the technical setup for you.</div>
+                        <div class="landing-faq-answer-inner">Lightspeed is an AI-powered productivity suite built for nonprofit teams and charitable gaming operators. It includes four purpose-built tools: Response Assistant, Insights Engine, Draft Assistant, and List Normalizer. Each tool is trained on thousands of real-world examples to deliver fast, accurate results.</div>
                     </div>
                 </div>
-
                 <div class="landing-faq-item">
                     <button class="landing-faq-question">
-                        How long does it take to get set up?
+                        How is this different from ChatGPT?
                         <span class="landing-faq-icon">+</span>
                     </button>
                     <div class="landing-faq-answer">
-                        <div class="landing-faq-answer-inner">Most organizations are fully onboarded within one to two weeks. That includes a discovery call, building your custom knowledge base, configuring tools to your brand voice, and training your team. You can start using the free trial immediately while we prepare your full setup.</div>
+                        <div class="landing-faq-answer-inner">Unlike generic AI tools, Lightspeed is purpose-built for charitable gaming and nonprofit operations. It understands industry terminology, compliance requirements, and best practices out of the box. Plus, it integrates your organization's knowledge base so responses are always on-brand and accurate.</div>
                     </div>
                 </div>
-
-                <div class="landing-faq-item">
-                    <button class="landing-faq-question">
-                        Does Lightspeed get smarter the more I use it?
-                        <span class="landing-faq-icon">+</span>
-                    </button>
-                    <div class="landing-faq-answer">
-                        <div class="landing-faq-answer-inner">Yes. Lightspeed is built on machine learning that continuously improves over time. The more your team works with it, the better it understands your organization's voice, preferences, and common requests. Your knowledge base also grows as we add new examples, guidelines, and feedback from your team's real usage.</div>
-                    </div>
-                </div>
-
-                <div class="landing-faq-item">
-                    <button class="landing-faq-question">
-                        Can I use Lightspeed with my existing email and marketing tools?
-                        <span class="landing-faq-icon">+</span>
-                    </button>
-                    <div class="landing-faq-answer">
-                        <div class="landing-faq-answer-inner">Absolutely. Lightspeed generates content you can copy and paste into any platform — Mailchimp, Constant Contact, social media schedulers, your CRM, or email client. The List Normalizer exports clean CSV files ready for direct import into Mailchimp and other services. Insights Engine works with data exports from BUMP Raffle and other providers.</div>
-                    </div>
-                </div>
-
-                <div class="landing-faq-item">
-                    <button class="landing-faq-question">
-                        What happens after the free trial ends?
-                        <span class="landing-faq-icon">+</span>
-                    </button>
-                    <div class="landing-faq-answer">
-                        <div class="landing-faq-answer-inner">After your 7-day trial, you can choose a Monthly or Annual plan to continue using Lightspeed with unlimited generations and your custom knowledge base. If you decide it's not the right fit, no problem — there's no credit card required for the trial, so nothing to cancel.</div>
-                    </div>
-                </div>
-
                 <div class="landing-faq-item">
                     <button class="landing-faq-question">
                         Is my organization's data secure?
                         <span class="landing-faq-icon">+</span>
                     </button>
                     <div class="landing-faq-answer">
-                        <div class="landing-faq-answer-inner">Yes. Lightspeed uses encrypted connections for all data in transit, and your organization's knowledge base is isolated and private to your account. We don't share your data with other organizations or use it to train models for other customers. Your content stays yours.</div>
+                        <div class="landing-faq-answer-inner">Yes. Lightspeed uses encrypted connections for all data in transit, and your organization's knowledge base is isolated and private to your account. We don't share your data with other organizations or use it to train models for other customers.</div>
                     </div>
                 </div>
-
+                <div class="landing-faq-item">
+                    <button class="landing-faq-question">
+                        Can I try it before committing?
+                        <span class="landing-faq-icon">+</span>
+                    </button>
+                    <div class="landing-faq-answer">
+                        <div class="landing-faq-answer-inner">Absolutely. Our 14-day free trial gives you full access to all four tools with no credit card required. Use it with your actual data and workflows to see the impact before you decide.</div>
+                    </div>
+                </div>
                 <div class="landing-faq-item">
                     <button class="landing-faq-question">
                         Is Lightspeed only for 50/50 lottery organizations?
                         <span class="landing-faq-icon">+</span>
                     </button>
                     <div class="landing-faq-answer">
-                        <div class="landing-faq-answer-inner">Lightspeed was built from experience in charitable gaming, but the tools work for any nonprofit operation. If your team handles customer communications, creates marketing content, manages donor data, or generates reports, Lightspeed can help — regardless of your specific program type.</div>
+                        <div class="landing-faq-answer-inner">Lightspeed was built from experience in charitable gaming, but the tools work for any nonprofit operation. If your team handles customer communications, creates marketing content, manages donor data, or generates reports, Lightspeed can help regardless of your specific program type.</div>
                     </div>
                 </div>
             </div>
         </section>
 
+        <!-- CTA Banner -->
+        <section class="landing-cta-banner">
+            <div class="landing-cta-banner-inner animate-on-scroll">
+                <h2 class="landing-cta-banner-title">Ready to work at the speed of light?</h2>
+                <p class="landing-cta-banner-subtitle">Join the charitable gaming organizations already saving hours every week with Lightspeed.</p>
+                <button class="ls-btn ls-btn-primary" onclick="document.getElementById('heroGetStartedBtn').click()">Get started free</button>
+            </div>
+        </section>
+
         <!-- Contact Section -->
-        <section class="landing-cta-section" id="contact">
-            <div class="landing-cta-box">
-                <h2 class="landing-cta-title">Get in touch.</h2>
-                <p class="landing-cta-subtitle">Tell us about your organization and we'll show you how Lightspeed can help.</p>
+        <section class="landing-section landing-section-alt" id="contact">
+            <div class="landing-section-header animate-on-scroll">
+                <div class="landing-section-tag">Contact</div>
+                <h2 class="landing-section-title">Get in touch</h2>
+                <p class="landing-section-subtitle">Tell us about your organization and we'll show you how Lightspeed can help.</p>
+            </div>
+            <div class="landing-contact-box animate-on-scroll">
                 <form class="landing-contact-form" id="landingContactForm">
                     <div class="contact-form-row">
                         <div class="contact-form-group">
@@ -10207,7 +7810,7 @@
                     </div>
                     <button type="submit" class="contact-submit-btn" id="contactSubmitBtn">
                         Send Message
-                        <span>→</span>
+                        <span>&rarr;</span>
                     </button>
                     <div class="contact-form-status" id="contactFormStatus"></div>
                 </form>
@@ -10216,15 +7819,39 @@
 
         <!-- Footer -->
         <footer class="landing-footer">
-            <div class="landing-footer-brand">
-                <img src="launchpad-logo.svg" alt="Launchpad" onerror="this.style.display='none'">
-                <span>© 2026 Launchpad Solutions. Built in Thunder Bay.</span>
-            </div>
-            <div class="landing-footer-links">
-                <a href="https://launchpadsolutions.ca" target="_blank" class="landing-footer-link">launchpadsolutions.ca</a>
+            <div class="landing-footer-inner">
+                <div class="landing-footer-top">
+                    <div class="landing-footer-brand">
+                        <div class="landing-footer-brand-logo">
+                            <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                            <span>Lightspeed</span>
+                        </div>
+                        <p class="landing-footer-brand-desc">AI-powered productivity tools built for nonprofit teams and charitable gaming operators.</p>
+                    </div>
+                    <div class="landing-footer-col">
+                        <h4>Product</h4>
+                        <a href="#features" onclick="event.preventDefault();document.querySelector('#features').scrollIntoView({behavior:'smooth'})">Features</a>
+                        <a href="#pricing" onclick="event.preventDefault();document.querySelector('#pricing').scrollIntoView({behavior:'smooth'})">Pricing</a>
+                        <a href="#faq" onclick="event.preventDefault();document.querySelector('#faq').scrollIntoView({behavior:'smooth'})">FAQ</a>
+                    </div>
+                    <div class="landing-footer-col">
+                        <h4>Company</h4>
+                        <a href="https://launchpadsolutions.ca" target="_blank">Launchpad Solutions</a>
+                        <a href="#contact" onclick="event.preventDefault();document.querySelector('#contact').scrollIntoView({behavior:'smooth'})">Contact</a>
+                    </div>
+                    <div class="landing-footer-col">
+                        <h4>Legal</h4>
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                    </div>
+                </div>
+                <div class="landing-footer-bottom">
+                    <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Thunder Bay.</span>
+                </div>
             </div>
         </footer>
     </div>
+
 
     <!-- ==================== LOGIN PAGE ==================== -->
     <div class="auth-page" id="loginPage">
