@@ -7540,13 +7540,14 @@
         </section>
 
         <!-- Pricing Section -->
-        <section class="landing-section landing-section-alt" id="pricing">
-            <div class="landing-section-header animate-on-scroll">
-                <div class="landing-section-tag">Pricing</div>
-                <h2 class="landing-section-title">Simple pricing for every team</h2>
-                <p class="landing-section-subtitle">Start free. Scale when you're ready. No hidden fees or per-seat charges.</p>
-            </div>
-            <div class="landing-pricing-grid animate-on-scroll">
+        <section class="landing-pricing-section" id="pricing">
+            <div class="landing-pricing-inner">
+                <div class="landing-pricing-header animate-on-scroll">
+                    <div class="landing-pricing-tag">Pricing</div>
+                    <h2 class="landing-pricing-title">Simple pricing for every team</h2>
+                    <p class="landing-pricing-subtitle">Start free. Scale when you&rsquo;re ready. No hidden fees or per-seat charges.</p>
+                </div>
+                <div class="landing-pricing-grid animate-on-scroll">
                 <div class="landing-pricing-card">
                     <div class="landing-pricing-name">Free Trial</div>
                     <div class="landing-pricing-price">
@@ -7591,17 +7592,20 @@
                     </ul>
                     <button class="landing-pricing-btn" onclick="document.getElementById('heroGetStartedBtn').click()">Start with annual</button>
                 </div>
+                </div>
             </div>
         </section>
 
         <!-- FAQ Section -->
-        <section class="landing-section landing-section-white" id="faq">
-            <div class="landing-section-header animate-on-scroll">
-                <div class="landing-section-tag">FAQ</div>
-                <h2 class="landing-section-title">Frequently asked questions</h2>
-                <p class="landing-section-subtitle">Everything you need to know about Lightspeed.</p>
-            </div>
-            <div class="landing-faq-list animate-on-scroll">
+        <section class="landing-faq-section" id="faq">
+            <div class="landing-faq-inner">
+                <div class="landing-faq-header animate-on-scroll">
+                    <div class="landing-faq-tag">FAQ</div>
+                    <h2 class="landing-faq-title">Frequently asked questions</h2>
+                    <p class="landing-faq-subtitle">Everything you need to know about Lightspeed.</p>
+                    <a href="#contact" class="landing-faq-contact-link" onclick="event.preventDefault();document.querySelector('#contact').scrollIntoView({behavior:'smooth'})">Can&rsquo;t find what you&rsquo;re looking for? Contact us <span>&rarr;</span></a>
+                </div>
+                <div class="landing-faq-list animate-on-scroll">
                 <div class="landing-faq-item">
                     <button class="landing-faq-question">
                         What is Lightspeed?
@@ -7646,6 +7650,7 @@
                     <div class="landing-faq-answer">
                         <div class="landing-faq-answer-inner">Lightspeed was built from experience in charitable gaming, but the tools work for any nonprofit operation. If your team handles customer communications, creates marketing content, manages donor data, or generates reports, Lightspeed can help regardless of your specific program type.</div>
                     </div>
+                </div>
                 </div>
             </div>
         </section>
