@@ -2712,8 +2712,6 @@
             display: flex;
             align-items: stretch;
             padding: 0;
-            background: linear-gradient(145deg, rgba(59, 130, 246, 0.08) 0%, rgba(233, 30, 140, 0.05) 100%);
-            border-color: rgba(59, 130, 246, 0.15);
         }
 
         .bento-hero-content {
@@ -2739,8 +2737,6 @@
         }
 
         .bento-hero:hover {
-            border-color: rgba(59, 130, 246, 0.35);
-            background: linear-gradient(145deg, rgba(59, 130, 246, 0.12) 0%, rgba(233, 30, 140, 0.08) 100%);
         }
 
         .bento-hero .response-glow {
@@ -2753,13 +2749,9 @@
 
         /* Standard card - Draft Assistant */
         .bento-standard {
-            background: linear-gradient(145deg, rgba(236, 72, 153, 0.06) 0%, rgba(233, 30, 140, 0.03) 100%);
-            border-color: rgba(236, 72, 153, 0.1);
         }
 
         .bento-standard:hover {
-            border-color: rgba(236, 72, 153, 0.3);
-            background: linear-gradient(145deg, rgba(236, 72, 153, 0.1) 0%, rgba(233, 30, 140, 0.06) 100%);
         }
 
         /* Compact cards row - two cards side by side in one grid cell */
@@ -2992,9 +2984,9 @@
 
         .ask-sublabel {
             font-size: 0.72rem;
-            color: rgba(0, 0, 0, 0.35);
+            color: #fff;
             font-weight: 500;
-            background: rgba(0, 0, 0, 0.04);
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
             padding: 2px 8px;
             border-radius: 4px;
         }
@@ -3023,9 +3015,9 @@
         }
 
         .ask-tone.active {
-            background: linear-gradient(135deg, rgba(233, 30, 140, 0.2), rgba(59, 130, 246, 0.15));
-            border-color: rgba(233, 30, 140, 0.3);
-            color: #FBD38D;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-color: transparent;
+            color: #fff;
         }
 
         .ask-prompts {
