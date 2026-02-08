@@ -664,24 +664,21 @@
     color: var(--text-secondary);
 }
 
-/* Grid layout */
+/* Grid layout — flat 6-column grid, no nesting */
 .bento-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 20px;
 }
 
-.bento-row-top {
-    display: grid;
-    grid-template-columns: 3fr 2fr;
-    gap: 16px;
-    min-height: 420px;
+/* Top row: 2 cards, each span 3 columns = 50/50 */
+.bento-card-top {
+    grid-column: span 3;
 }
 
-.bento-row-bottom {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+/* Bottom row: 3 cards, each span 2 columns = 33/33/33 */
+.bento-card-bottom {
+    grid-column: span 2;
 }
 
 /* Individual bento card */
@@ -728,7 +725,7 @@
 
 /* Card text area */
 .bento-card-text {
-    padding: 28px 28px 0;
+    padding: 28px 28px 16px;
     flex-shrink: 0;
 }
 
@@ -737,21 +734,23 @@
     font-weight: 600;
     color: var(--text-primary);
     line-height: 1.35;
+    margin-bottom: 8px;
     padding-right: 36px;
+}
+
+.bento-card-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
 }
 
 /* Card mockup area - bleeds to bottom */
 .bento-card-visual {
     flex: 1;
-    min-height: 200px;
-    padding: 20px 20px 0;
+    min-height: 180px;
+    padding: 16px 20px 0;
     overflow: hidden;
     position: relative;
-}
-
-/* Large cards get taller mockup */
-.bento-row-top .bento-card-visual {
-    min-height: 280px;
 }
 
 /* Mockup window inside bento cards */
@@ -1358,16 +1357,20 @@
         font-size: 48px;
     }
 
-    .bento-row-top {
-        grid-template-columns: 1fr 1fr;
+    /* Bento: stack top cards, bottom cards 2+1 */
+    .bento-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 
-    .bento-row-bottom {
-        grid-template-columns: 1fr 1fr;
+    .bento-card-top {
+        grid-column: span 1;
     }
 
-    /* Let 3rd bottom card span full */
-    .bento-row-bottom .bento-card:last-child {
+    .bento-card-bottom {
+        grid-column: span 1;
+    }
+
+    .bento-card-bottom:last-child {
         grid-column: 1 / -1;
     }
 
@@ -1415,17 +1418,17 @@
         font-size: 28px;
     }
 
-    .bento-row-top,
-    .bento-row-bottom {
+    .bento-grid {
         grid-template-columns: 1fr;
     }
 
-    .bento-row-bottom .bento-card:last-child {
-        grid-column: auto;
+    .bento-card-top,
+    .bento-card-bottom {
+        grid-column: span 1;
     }
 
-    .bento-row-top .bento-card-visual {
-        min-height: 200px;
+    .bento-card-bottom:last-child {
+        grid-column: auto;
     }
 
     .landing-section-title {
