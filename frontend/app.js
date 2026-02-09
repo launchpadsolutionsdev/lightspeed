@@ -1269,8 +1269,58 @@ let askConversation = [];
 let askTone = 'professional';
 let askListenersSetup = false;
 
+function saveAskConversation() {
+    try {
+        localStorage.setItem('lightspeed_ask_conversation', JSON.stringify(askConversation));
+        localStorage.setItem('lightspeed_ask_tone', askTone);
+    } catch (e) {
+        // localStorage full or unavailable — silently fail
+    }
+}
+
+function loadAskConversation() {
+    try {
+        const saved = localStorage.getItem('lightspeed_ask_conversation');
+        const savedTone = localStorage.getItem('lightspeed_ask_tone');
+        if (saved) {
+            askConversation = JSON.parse(saved);
+        }
+        if (savedTone) {
+            askTone = savedTone;
+        }
+    } catch (e) {
+        askConversation = [];
+    }
+}
+
+function restoreAskChat() {
+    if (askConversation.length === 0) return;
+
+    // Show chat area, hide sample prompts
+    const chatArea = document.getElementById('askChat');
+    const prompts = document.getElementById('askPrompts');
+    if (chatArea) chatArea.style.display = 'block';
+    if (prompts) prompts.style.display = 'none';
+
+    // Restore tone pill
+    document.querySelectorAll('.ask-tone').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tone === askTone);
+    });
+
+    // Re-render all messages
+    askConversation.forEach(msg => {
+        appendAskMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.content);
+    });
+}
+
 function initAskLightspeed() {
-    renderSamplePrompts();
+    loadAskConversation();
+
+    if (askConversation.length > 0) {
+        restoreAskChat();
+    } else {
+        renderSamplePrompts();
+    }
 
     if (!askListenersSetup) {
         askListenersSetup = true;
@@ -1281,6 +1331,7 @@ function initAskLightspeed() {
                 document.querySelectorAll('.ask-tone').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 askTone = btn.dataset.tone;
+                saveAskConversation();
             });
         });
 
@@ -1342,6 +1393,7 @@ async function sendAskMessage() {
     // Add user message
     askConversation.push({ role: 'user', content: message });
     appendAskMessage('user', message);
+    saveAskConversation();
 
     // Clear input
     input.value = '';
@@ -1363,18 +1415,26 @@ async function sendAskMessage() {
 
         const orgName = currentUser?.organization?.name || 'your organization';
 
-        const systemPrompt = `You are Lightspeed AI, a helpful assistant for nonprofit and charitable gaming organizations. You work for ${orgName}.
+        const systemPrompt = `You are Lightspeed AI, a powerful, full-featured AI assistant built by Launchpad Solutions. You work for ${orgName}.
 
 TONE: Respond in a ${toneDesc} tone.
 
-You help with:
-- Drafting emails, social media posts, and communications
-- Answering questions about charitable gaming, lotteries, and AGCO rules
-- Customer service advice and response suggestions
-- Fundraising and marketing strategy
-- General nonprofit operations
+CORE BEHAVIOR — ALWAYS FOLLOW:
+Before generating any content (emails, posts, documents, strategies, analyses, code, or anything substantial), you MUST first ask 2-3 clarifying questions to understand exactly what the user needs. This includes understanding context, audience, goals, constraints, and preferences. Only after the user answers should you produce the final output. This makes your work dramatically more accurate and tailored.
 
-Keep responses concise but thorough. Use markdown formatting when helpful. If asked to write something, provide ready-to-use content.`;
+Exception: If the user's request is a simple factual question, a quick calculation, or a brief answer that doesn't require generation — answer directly without asking clarifying questions.
+
+You are a fully capable AI assistant. You can help with absolutely anything:
+- Drafting emails, social media posts, marketing content, and communications
+- Charitable gaming, lotteries, raffles, AGCO rules, and nonprofit operations
+- Customer service, donor relations, and response strategies
+- Data analysis, spreadsheets, reporting, and business intelligence
+- Writing, editing, proofreading, and content strategy
+- Coding, technical questions, and troubleshooting
+- Research, brainstorming, planning, and general knowledge
+- Anything else the user asks — you are not limited in scope
+
+Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
         const response = await fetch(`${API_BASE_URL}/api/generate`, {
             method: 'POST',
@@ -1382,7 +1442,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful. If as
             body: JSON.stringify({
                 system: systemPrompt,
                 messages: askConversation.map(m => ({ role: m.role, content: m.content })),
-                max_tokens: 1024
+                max_tokens: 4096
             })
         });
 
@@ -1399,6 +1459,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful. If as
 
         askConversation.push({ role: 'assistant', content: aiText });
         appendAskMessage('ai', aiText);
+        saveAskConversation();
 
     } catch (error) {
         const typing = document.getElementById('askTyping');
@@ -1456,6 +1517,7 @@ function copyAskMessage(btn) {
 
 function clearAskChat() {
     askConversation = [];
+    saveAskConversation();
     document.getElementById('askMessages').innerHTML = '';
     document.getElementById('askChat').style.display = 'none';
     document.getElementById('askPrompts').style.display = 'flex';
