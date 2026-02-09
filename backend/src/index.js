@@ -21,6 +21,7 @@ const feedbackRoutes = require('./routes/feedback');
 const adminRoutes = require('./routes/admin');
 const billingRoutes = require('./routes/billing');
 const contactRoutes = require('./routes/contact');
+const drawScheduleRoutes = require('./routes/drawSchedules');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -90,6 +91,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/draw-schedules', drawScheduleRoutes);
 
 // 404 handler
 app.use((req, res) => {
