@@ -456,14 +456,12 @@ function getOrgDrawScheduleAIContext(schedule) {
 }
 
 /**
- * Get draw schedule AI context — prefers org-specific from database, falls back to hardcoded.
+ * Get draw schedule AI context — uses org-specific schedule from database only.
+ * No hardcoded fallback — each org must configure their own draw schedule.
  */
 function getDrawScheduleContext() {
     if (orgDrawSchedule) {
         return getOrgDrawScheduleAIContext(orgDrawSchedule);
-    }
-    if (typeof DRAW_SCHEDULE !== 'undefined') {
-        return DRAW_SCHEDULE.getAIContext();
     }
     return '';
 }
@@ -497,12 +495,13 @@ function renderDrawSchedule() {
         }
         html += `</div></div>`;
         container.innerHTML = html;
-    } else if (typeof DRAW_SCHEDULE !== 'undefined') {
-        container.innerHTML = DRAW_SCHEDULE.getFormattedSchedule();
     } else {
         container.innerHTML = `<div class="response-placeholder">
             <div class="placeholder-icon">📅</div>
-            <div class="placeholder-text">Draw schedule not loaded</div>
+            <div class="placeholder-text">No draw schedule configured</div>
+            <div class="placeholder-subtext" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">
+                Upload your Rules of Play document or manually add your draw schedule in Organization Settings.
+            </div>
         </div>`;
     }
 }
@@ -5162,12 +5161,11 @@ function showError(message) {
 }
 
 function getAllKnowledge() {
-    let all = [];
-    if (typeof KNOWLEDGE_BASE !== 'undefined') {
-        all = [...(KNOWLEDGE_BASE["5050"] || []), ...(KNOWLEDGE_BASE["cta"] || []), ...(KNOWLEDGE_BASE["agco"] || [])];
-    }
-    // Custom (org-specific DB) entries first so they always get included in the AI prompt
-    return [...customKnowledge, ...all];
+    // Only return org-specific (database-backed) knowledge for AI prompts.
+    // The hardcoded KNOWLEDGE_BASE templates are shown in the UI as reference
+    // material but are NOT injected into AI prompts — this prevents one client's
+    // domain knowledge from leaking into another client's AI-generated responses.
+    return [...customKnowledge];
 }
 
 // Rank knowledge entries by relevance to the customer inquiry
@@ -5290,8 +5288,6 @@ ${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : 
     if (org?.store_location) orgInfoSection += `\n- In-Person Location: ${org.store_location}`;
     if (org?.licence_number) orgInfoSection += `\n- Licence Number: ${org.licence_number}`;
     if (org?.cta_website_url) orgInfoSection += `\n- Catch The Ace Website: ${org.cta_website_url}`;
-    orgInfoSection += `\n- All draws happen at 11:00 AM`;
-    orgInfoSection += `\n- Ticket purchase deadline: 11:59 PM the night before each draw`;
 
     if (orgWebsite) {
         orgInfoSection += `\n\nIMPORTANT: Only use the URLs listed above. Do NOT invent or guess other URLs - they may not exist.`;
@@ -5300,7 +5296,7 @@ ${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : 
         orgInfoSection += `\n\nORGANIZATION MISSION: ${org.mission}`;
     }
 
-    const systemPrompt = `You are a helpful customer support assistant for ${orgName}, an AGCO-licensed lottery organization.
+    const systemPrompt = `You are a helpful customer support assistant for ${orgName}, a charitable lottery organization.
 
 TONE: Write in a ${toneDesc} tone.
 LENGTH: Keep the response ${lengthDesc}.
@@ -5310,18 +5306,15 @@ ${orgInfoSection}
 
 ${drawScheduleContext}
 
-Key facts about AGCO-licensed lotteries:
-- 50/50 lotteries: Typically monthly, tickets valid for one draw period only
-- Catch the Ace: Weekly progressive jackpot lottery, tickets must be purchased each week
-- All AGCO-licensed lotteries require being physically in Ontario to purchase
-- Winners are contacted directly by phone
-- Tax receipts cannot be issued (lottery tickets aren't charitable donations under CRA rules)
-- EastLink internet users experiencing location issues should contact EastLink at 1-888-345-1111
-- Customers CANNOT log in to view their tickets - they can only log in to manage their subscription. Tickets are only available via the confirmation email.
+GENERAL LOTTERY KNOWLEDGE (use only when relevant and not contradicted by the organization's knowledge base):
+- Winners are typically contacted directly by phone
+- Tax receipts generally cannot be issued for lottery tickets (they are not charitable donations under CRA rules)
 
-DRAW DATE AWARENESS: If the customer asks about draw dates, Early Birds, or when the next draw is, use the draw schedule information above to give them accurate, specific dates. If there's an Early Bird draw happening today or tomorrow and it's relevant to mention, include that information naturally (e.g., "Don't forget there's a $10,000 Early Bird draw tomorrow!").
+DRAW DATE AWARENESS: If the customer asks about draw dates, Early Birds, or when the next draw is, use the draw schedule information above to give them accurate, specific dates. If no draw schedule is available, let the customer know they can check the organization's website for the latest schedule. If there's an Early Bird draw happening today or tomorrow and it's relevant to mention, include that information naturally.
 
 ESCALATION: If the inquiry is unclear, bizarre, nonsensical, confrontational, threatening, or simply cannot be answered with the knowledge available, write a polite response explaining that you will pass the email along to your manager who can look into it further. Do not attempt to answer questions you don't have information for.
+
+IMPORTANT: Only reference information from the organization knowledge base below and the draw schedule above. Do not assume details about websites, locations, game types, eligibility rules, or operational procedures that are not explicitly provided.
 
 Knowledge base:
 
@@ -6031,8 +6024,11 @@ function updateKnowledgeStats() {
         return;
     }
 
+    // Count org-specific entries (these power the AI)
+    let orgCount = customKnowledge.length;
     let total5050 = 0, totalCta = 0;
 
+    // Count templates (reference only, not used in AI prompts)
     if (typeof KNOWLEDGE_BASE !== 'undefined') {
         total5050 = KNOWLEDGE_BASE["5050"].length;
         totalCta = KNOWLEDGE_BASE["cta"].length;
@@ -6044,7 +6040,7 @@ function updateKnowledgeStats() {
         else { total5050++; totalCta++; }
     });
 
-    statTotal.textContent = total5050 + totalCta;
+    statTotal.textContent = orgCount;
     stat5050.textContent = total5050;
     statCta.textContent = totalCta;
 }
@@ -6096,13 +6092,15 @@ function renderKnowledgeList(searchQuery = "") {
     }
 
     container.innerHTML = items.slice(0, 50).map((k, i) => `
-        <div class="knowledge-item">
+        <div class="knowledge-item${k.isCustom ? '' : ' knowledge-item-template'}">
             <div class="knowledge-item-content">
                 <div class="knowledge-item-question">${escapeHtml(k.question)}</div>
                 <div class="knowledge-item-preview">${escapeHtml(k.response.substring(0, 120))}...</div>
                 <div class="knowledge-item-meta">
                     <span class="knowledge-tag">${k.lottery === "5050" ? "50/50" : k.lottery === "cta" ? "CTA" : "Both"}</span>
-                    ${k.isCustom ? '<span class="knowledge-tag" style="background: #dcfce7;">Custom</span>' : ''}
+                    ${k.isCustom
+                        ? '<span class="knowledge-tag" style="background: #dcfce7;">Your KB</span>'
+                        : '<span class="knowledge-tag" style="background: #fef3c7; color: #92400e;">Template</span>'}
                     ${k.category ? `<span>${k.category}</span>` : ''}
                 </div>
             </div>
@@ -7008,17 +7006,12 @@ async function buildEnhancedSystemPrompt(contentType, emailType = null) {
         knowledgeBaseType = typeMapping[contentType];
     }
 
-    // Add examples from knowledge base if available
-    if (typeof DRAFT_KNOWLEDGE_BASE !== 'undefined' && knowledgeBaseType) {
-        const examples = DRAFT_KNOWLEDGE_BASE.formatExamplesForPrompt(knowledgeBaseType, 2);
-        const brandGuidelines = DRAFT_KNOWLEDGE_BASE.getBrandGuidelinesPrompt();
-
-        if (examples) {
-            basePrompt += '\n\n' + brandGuidelines;
-            basePrompt += '\n\nHere are examples of this type of content. Match this style and format:';
-            basePrompt += examples;
-        }
-    }
+    // Only inject hardcoded draft examples/brand guidelines for the org that owns them.
+    // For all other orgs, rely on their org-specific knowledge base entries instead.
+    // The DRAFT_KNOWLEDGE_BASE contains client-specific brand voice, examples, and
+    // formatting rules that should not leak into other organizations' content.
+    // TODO: Move draft examples/brand guidelines to a per-org database table so each
+    //       org can configure their own content templates and brand voice.
 
     // Inject org-specific knowledge base entries (custom KB from database)
     if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
@@ -7316,9 +7309,9 @@ async function generateDraft() {
 
     // Add required line for social media posts
     if (currentDraftType === 'social') {
-        let requiredLine = typeof DRAFT_KNOWLEDGE_BASE !== 'undefined'
-            ? DRAFT_KNOWLEDGE_BASE.getSocialMediaRequiredLine()
-            : 'Purchase tickets online at [Organization Website] or at the [In-Person Ticket Location]!';
+        // Use the generic placeholder-based required line for all orgs.
+        // Org-specific values are substituted via replaceOrgPlaceholders() below.
+        let requiredLine = 'Purchase tickets online at [Organization Website] or at the [In-Person Ticket Location]!';
         requiredLine = replaceOrgPlaceholders(requiredLine);
         userPrompt += '\n\nIMPORTANT: You MUST include this exact line in the post: "' + requiredLine + '"';
     }
