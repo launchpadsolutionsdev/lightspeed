@@ -78,7 +78,12 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
     body('mediaContactName').optional(),
     body('mediaContactEmail').optional(),
     body('ctaWebsiteUrl').optional(),
-    body('mission').optional()
+    body('mission').optional(),
+    body('defaultDrawTime').optional(),
+    body('ticketDeadlineTime').optional(),
+    body('socialRequiredLine').optional(),
+    body('brandTerminology').optional(),
+    body('emailAddons').optional()
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -99,7 +104,12 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
             mediaContactName: 'media_contact_name',
             mediaContactEmail: 'media_contact_email',
             ctaWebsiteUrl: 'cta_website_url',
-            mission: 'mission'
+            mission: 'mission',
+            defaultDrawTime: 'default_draw_time',
+            ticketDeadlineTime: 'ticket_deadline_time',
+            socialRequiredLine: 'social_required_line',
+            brandTerminology: 'brand_terminology',
+            emailAddons: 'email_addons'
         };
 
         const updates = [];

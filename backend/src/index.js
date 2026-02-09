@@ -22,6 +22,7 @@ const adminRoutes = require('./routes/admin');
 const billingRoutes = require('./routes/billing');
 const contactRoutes = require('./routes/contact');
 const drawScheduleRoutes = require('./routes/drawSchedules');
+const contentTemplateRoutes = require('./routes/contentTemplates');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -92,6 +93,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/draw-schedules', drawScheduleRoutes);
+app.use('/api/content-templates', contentTemplateRoutes);
 
 // 404 handler
 app.use((req, res) => {

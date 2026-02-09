@@ -1079,3 +1079,28 @@
         padding-right: 0;
     }
 }
+
+/* ==================== SETUP PROGRESS PILLS ==================== */
+.admin-setup-pill {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 100px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: inline-block;
+}
+
+.admin-setup-pill.empty {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.admin-setup-pill.partial {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.admin-setup-pill.complete {
+    background: #dcfce7;
+    color: #15803d;
+}

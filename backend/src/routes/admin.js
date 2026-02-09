@@ -718,4 +718,268 @@ router.delete('/users/:userId/organization', authenticate, requireSuperAdmin, as
     }
 });
 
+// ==================== ORG ONBOARDING ENDPOINTS ====================
+
+/**
+ * POST /api/admin/organizations
+ * Create a new organization
+ */
+router.post('/organizations', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ error: 'Organization name is required' });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO organizations (name, subscription_status, trial_ends_at)
+             VALUES ($1, 'trial', NOW() + INTERVAL '14 days')
+             RETURNING *`,
+            [name.trim()]
+        );
+
+        res.status(201).json({ organization: result.rows[0] });
+    } catch (error) {
+        console.error('Create organization error:', error);
+        res.status(500).json({ error: 'Failed to create organization' });
+    }
+});
+
+/**
+ * GET /api/admin/organizations/:orgId/setup
+ * Get full org details + setup completeness status
+ */
+router.get('/organizations/:orgId/setup', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { orgId } = req.params;
+
+        const orgResult = await pool.query('SELECT * FROM organizations WHERE id = $1', [orgId]);
+        if (orgResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Organization not found' });
+        }
+        const org = orgResult.rows[0];
+
+        // Get KB entry count
+        const kbCount = await pool.query(
+            'SELECT COUNT(*) FROM knowledge_base WHERE organization_id = $1', [orgId]
+        );
+
+        // Get content template count
+        const templateCount = await pool.query(
+            'SELECT COUNT(*) FROM content_templates WHERE organization_id = $1 AND is_active = TRUE', [orgId]
+        );
+
+        // Get draw schedule status
+        const drawSchedule = await pool.query(
+            'SELECT id, draw_name, is_active FROM draw_schedules WHERE organization_id = $1 AND is_active = TRUE LIMIT 1', [orgId]
+        );
+
+        // Get member count
+        const memberCount = await pool.query(
+            'SELECT COUNT(*) FROM organization_memberships WHERE organization_id = $1', [orgId]
+        );
+
+        // Build setup checklist
+        const checklist = {
+            orgCreated: true,
+            websiteSet: !!org.website_url,
+            licenceSet: !!org.licence_number,
+            kbPopulated: parseInt(kbCount.rows[0].count) > 0,
+            templatesImported: parseInt(templateCount.rows[0].count) > 0,
+            drawScheduleUploaded: drawSchedule.rows.length > 0,
+            brandTerminologySet: !!org.brand_terminology,
+            emailAddonsSet: !!org.email_addons,
+            missionSet: !!org.mission,
+            membersAdded: parseInt(memberCount.rows[0].count) > 0
+        };
+        const completedCount = Object.values(checklist).filter(Boolean).length;
+        const totalCount = Object.keys(checklist).length;
+
+        res.json({
+            organization: org,
+            kbCount: parseInt(kbCount.rows[0].count),
+            templateCount: parseInt(templateCount.rows[0].count),
+            drawSchedule: drawSchedule.rows[0] || null,
+            memberCount: parseInt(memberCount.rows[0].count),
+            checklist,
+            setupProgress: { completed: completedCount, total: totalCount }
+        });
+    } catch (error) {
+        console.error('Get org setup error:', error);
+        res.status(500).json({ error: 'Failed to get organization setup' });
+    }
+});
+
+/**
+ * PATCH /api/admin/organizations/:orgId
+ * Update any organization's profile (super admin)
+ */
+router.patch('/organizations/:orgId', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { orgId } = req.params;
+
+        const fieldMap = {
+            name: 'name',
+            brandVoice: 'brand_voice',
+            timezone: 'timezone',
+            websiteUrl: 'website_url',
+            licenceNumber: 'licence_number',
+            storeLocation: 'store_location',
+            supportEmail: 'support_email',
+            ceoName: 'ceo_name',
+            ceoTitle: 'ceo_title',
+            mediaContactName: 'media_contact_name',
+            mediaContactEmail: 'media_contact_email',
+            ctaWebsiteUrl: 'cta_website_url',
+            mission: 'mission',
+            defaultDrawTime: 'default_draw_time',
+            ticketDeadlineTime: 'ticket_deadline_time',
+            socialRequiredLine: 'social_required_line',
+            brandTerminology: 'brand_terminology',
+            emailAddons: 'email_addons'
+        };
+
+        const updates = [];
+        const values = [];
+        let paramCount = 1;
+
+        for (const [bodyKey, dbColumn] of Object.entries(fieldMap)) {
+            if (req.body[bodyKey] !== undefined) {
+                updates.push(`${dbColumn} = $${paramCount++}`);
+                values.push(req.body[bodyKey]);
+            }
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No updates provided' });
+        }
+
+        values.push(orgId);
+        const result = await pool.query(
+            `UPDATE organizations SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+            values
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Organization not found' });
+        }
+
+        res.json({ organization: result.rows[0] });
+    } catch (error) {
+        console.error('Update organization error:', error);
+        res.status(500).json({ error: 'Failed to update organization' });
+    }
+});
+
+/**
+ * GET /api/admin/organizations/:orgId/knowledge-base
+ * Get all KB entries for an organization
+ */
+router.get('/organizations/:orgId/knowledge-base', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { orgId } = req.params;
+        const result = await pool.query(
+            `SELECT * FROM knowledge_base WHERE organization_id = $1 ORDER BY category, title`,
+            [orgId]
+        );
+        res.json({ entries: result.rows });
+    } catch (error) {
+        console.error('Get org KB error:', error);
+        res.status(500).json({ error: 'Failed to get knowledge base' });
+    }
+});
+
+/**
+ * POST /api/admin/organizations/:orgId/knowledge-base
+ * Add a KB entry to an organization
+ */
+router.post('/organizations/:orgId/knowledge-base', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { orgId } = req.params;
+        const { title, content, category, tags } = req.body;
+
+        if (!title || !content || !category) {
+            return res.status(400).json({ error: 'title, content, and category are required' });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO knowledge_base (organization_id, title, content, category, tags, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [orgId, title, content, category, tags || '{}', req.userId]
+        );
+
+        res.status(201).json({ entry: result.rows[0] });
+    } catch (error) {
+        console.error('Add KB entry error:', error);
+        res.status(500).json({ error: 'Failed to add knowledge base entry' });
+    }
+});
+
+/**
+ * DELETE /api/admin/organizations/:orgId/knowledge-base/:entryId
+ * Delete a KB entry
+ */
+router.delete('/organizations/:orgId/knowledge-base/:entryId', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { orgId, entryId } = req.params;
+        const result = await pool.query(
+            'DELETE FROM knowledge_base WHERE id = $1 AND organization_id = $2 RETURNING id',
+            [entryId, orgId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Entry not found' });
+        }
+        res.json({ message: 'Entry deleted' });
+    } catch (error) {
+        console.error('Delete KB entry error:', error);
+        res.status(500).json({ error: 'Failed to delete entry' });
+    }
+});
+
+/**
+ * GET /api/admin/organizations/:orgId/content-templates
+ * Get content templates for an organization
+ */
+router.get('/organizations/:orgId/content-templates', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { orgId } = req.params;
+        const result = await pool.query(
+            `SELECT * FROM content_templates WHERE organization_id = $1 AND is_active = TRUE
+             ORDER BY template_type, sort_order, name`,
+            [orgId]
+        );
+        res.json({ templates: result.rows });
+    } catch (error) {
+        console.error('Get org templates error:', error);
+        res.status(500).json({ error: 'Failed to get content templates' });
+    }
+});
+
+/**
+ * POST /api/admin/organizations/:orgId/content-templates/import-all
+ * Import all system templates into an organization
+ */
+router.post('/organizations/:orgId/content-templates/import-all', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { orgId } = req.params;
+
+        const result = await pool.query(
+            `INSERT INTO content_templates (organization_id, template_type, name, subject, headline, content, metadata, sort_order, created_by)
+             SELECT $1, template_type, name, subject, headline, content, metadata, sort_order, $2
+             FROM content_templates
+             WHERE organization_id IS NULL
+             RETURNING *`,
+            [orgId, req.userId]
+        );
+
+        res.status(201).json({
+            message: `${result.rows.length} templates imported`,
+            count: result.rows.length
+        });
+    } catch (error) {
+        console.error('Import templates error:', error);
+        res.status(500).json({ error: 'Failed to import templates' });
+    }
+});
+
 module.exports = router;

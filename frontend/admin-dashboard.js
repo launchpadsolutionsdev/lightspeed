@@ -393,6 +393,8 @@ async function renderUsersTab(container) {
 }
 
 // ==================== ORGANIZATIONS TAB ====================
+let adminOrgSetupData = null; // cached setup data for currently open org
+
 async function renderOrgsTab(container) {
     let url = `/api/admin/organizations?page=${adminOrgsPage}&limit=50`;
     if (adminOrgsSearch) url += `&search=${encodeURIComponent(adminOrgsSearch)}`;
@@ -419,6 +421,7 @@ async function renderOrgsTab(container) {
                 </select>
             </div>
             <div class="admin-toolbar-right">
+                <button onclick="showCreateOrgModal()" class="admin-btn admin-btn-primary admin-btn-sm">+ New Organization</button>
                 <span class="admin-count">${data.total} organizations</span>
             </div>
         </div>
@@ -429,46 +432,35 @@ async function renderOrgsTab(container) {
                     <thead>
                         <tr>
                             <th>Organization</th>
+                            <th>Setup</th>
                             <th>Status</th>
-                            <th>Plan</th>
                             <th>Members</th>
                             <th>Tokens Used</th>
-                            <th>Trial Ends</th>
                             <th>Created</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${data.organizations.length ? data.organizations.map(org => `
-                            <tr class="admin-org-row" onclick="toggleOrgDetail(this, '${org.id}')" style="cursor:pointer">
+                        ${data.organizations.length ? data.organizations.map(org => {
+                            const progress = getQuickSetupProgress(org);
+                            return `
+                            <tr class="admin-org-row">
                                 <td class="name">
                                     <strong>${org.name}</strong>
                                     ${org.slug ? `<span class="text-muted small-text">${org.slug}</span>` : ''}
                                 </td>
+                                <td>
+                                    <span class="admin-setup-pill ${progress.done === progress.total ? 'complete' : progress.done >= progress.total / 2 ? 'partial' : 'empty'}" title="${progress.label}">
+                                        ${progress.done}/${progress.total}
+                                    </span>
+                                </td>
                                 <td><span class="admin-status-pill admin-status-${org.subscription_status}">${formatSubscriptionStatus(org.subscription_status)}</span></td>
-                                <td>${org.subscription_plan || '<span class="text-muted">—</span>'}</td>
                                 <td>${parseInt(org.member_count).toLocaleString()}</td>
                                 <td>${org.total_tokens_used ? parseInt(org.total_tokens_used).toLocaleString() : '0'}</td>
-                                <td>${org.trial_ends_at ? formatDateShort(org.trial_ends_at) : '<span class="text-muted">—</span>'}</td>
                                 <td>${formatDateShort(org.created_at)}</td>
-                            </tr>
-                            <tr class="admin-org-detail-row" style="display:none">
-                                <td colspan="7">
-                                    <div class="admin-org-detail">
-                                        <div class="admin-org-detail-grid">
-                                            <div><strong>Website:</strong> ${org.website_url || 'Not set'}</div>
-                                            <div><strong>Support Email:</strong> ${org.support_email || 'Not set'}</div>
-                                            <div><strong>Licence #:</strong> ${org.licence_number || 'Not set'}</div>
-                                            <div><strong>CEO:</strong> ${org.ceo_name ? `${org.ceo_name}${org.ceo_title ? ', ' + org.ceo_title : ''}` : 'Not set'}</div>
-                                            <div><strong>Store Location:</strong> ${org.store_location || 'Not set'}</div>
-                                            <div><strong>Timezone:</strong> ${org.timezone || 'Not set'}</div>
-                                            <div><strong>Brand Voice:</strong> ${org.brand_voice ? org.brand_voice.substring(0, 100) + (org.brand_voice.length > 100 ? '...' : '') : 'Not set'}</div>
-                                            <div><strong>Stripe Customer:</strong> ${org.stripe_customer_id || 'Not connected'}</div>
-                                        </div>
-                                        ${org.mission ? `<div class="admin-org-mission"><strong>Mission:</strong> ${org.mission.substring(0, 200)}${org.mission.length > 200 ? '...' : ''}</div>` : ''}
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('') : '<tr><td colspan="7" class="text-center text-muted">No organizations found</td></tr>'}
+                                <td><button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openOrgSetup('${org.id}')">Setup</button></td>
+                            </tr>`;
+                        }).join('') : '<tr><td colspan="7" class="text-center text-muted">No organizations found</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -481,11 +473,478 @@ async function renderOrgsTab(container) {
                 </div>
             ` : ''}
         </div>
+
+        <!-- Org Setup Panel (injected when an org is opened) -->
+        <div id="adminOrgSetupPanel"></div>
     `;
 
     document.getElementById('adminOrgSearch')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') adminSearchOrgs();
     });
+}
+
+// Quick setup progress from the org list data (no extra API call)
+function getQuickSetupProgress(org) {
+    let done = 1; // org created
+    const total = 7;
+    if (org.website_url) done++;
+    if (org.licence_number) done++;
+    if (org.mission) done++;
+    if (org.brand_terminology) done++;
+    if (org.email_addons) done++;
+    if (org.support_email && org.ceo_name) done++;
+    const remaining = total - done;
+    const label = remaining === 0 ? 'Setup complete!' : `${remaining} item${remaining > 1 ? 's' : ''} remaining`;
+    return { done, total, label };
+}
+
+// ==================== CREATE ORG MODAL ====================
+function showCreateOrgModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'admin-modal-overlay';
+    overlay.id = 'createOrgModal';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    overlay.innerHTML = `
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <h3>Create New Organization</h3>
+                <button class="admin-modal-close" onclick="document.getElementById('createOrgModal').remove()">&times;</button>
+            </div>
+            <div class="admin-modal-body">
+                <div class="admin-modal-field">
+                    <label>Organization Name</label>
+                    <input type="text" id="newOrgNameInput" class="admin-search-input" placeholder="e.g., ABC Foundation" style="width:100%">
+                </div>
+            </div>
+            <div class="admin-modal-footer">
+                <div></div>
+                <div class="admin-modal-footer-right">
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="document.getElementById('createOrgModal').remove()">Cancel</button>
+                    <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="createOrganization()">Create</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => {
+        overlay.classList.add('visible');
+        document.getElementById('newOrgNameInput')?.focus();
+    });
+    document.getElementById('newOrgNameInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') createOrganization();
+    });
+}
+
+async function createOrganization() {
+    const name = document.getElementById('newOrgNameInput')?.value.trim();
+    if (!name) { showToast('Enter an organization name', 'error'); return; }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/organizations`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Failed'); }
+        const data = await response.json();
+        showToast(`"${name}" created!`, 'success');
+        document.getElementById('createOrgModal')?.remove();
+        adminAllOrgs = null; // invalidate cache
+        // Reload orgs tab then open setup for the new org
+        await loadAdminTab('organizations');
+        openOrgSetup(data.organization.id);
+    } catch (error) {
+        showToast('Failed to create organization: ' + error.message, 'error');
+    }
+}
+
+// ==================== ORG SETUP PANEL ====================
+async function openOrgSetup(orgId) {
+    const panel = document.getElementById('adminOrgSetupPanel');
+    if (!panel) return;
+
+    panel.innerHTML = '<div class="admin-loading" style="padding:2rem"><div class="loading-spinner"></div><p>Loading setup...</p></div>';
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth' });
+
+    try {
+        const setupData = await fetchAdminData(`/api/admin/organizations/${orgId}/setup`);
+        adminOrgSetupData = setupData;
+        renderOrgSetupPanel(panel, setupData);
+    } catch (error) {
+        panel.innerHTML = `<div class="admin-error"><p>Failed to load: ${error.message}</p><button onclick="openOrgSetup('${orgId}')" class="admin-btn admin-btn-primary admin-btn-sm">Retry</button></div>`;
+    }
+}
+
+function renderOrgSetupPanel(panel, data) {
+    const org = data.organization;
+    const cl = data.checklist;
+    const sp = data.setupProgress;
+
+    const checkIcon = (done) => done ? '<span style="color:#16a34a">✓</span>' : '<span style="color:#d1d5db">○</span>';
+
+    // Parse JSON fields safely
+    let brandTermNotes = '';
+    if (org.brand_terminology) {
+        try {
+            const bt = typeof org.brand_terminology === 'string' ? JSON.parse(org.brand_terminology) : org.brand_terminology;
+            brandTermNotes = (bt.notes || []).join('\n');
+        } catch (e) {}
+    }
+    let emailAddons = {};
+    if (org.email_addons) {
+        try { emailAddons = typeof org.email_addons === 'string' ? JSON.parse(org.email_addons) : org.email_addons; } catch (e) {}
+    }
+
+    panel.innerHTML = `
+        <div class="admin-card" style="margin-top: 1rem; border: 2px solid #3B82F6;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+                <div>
+                    <h3 style="margin:0; font-size: 1.1rem;">Setup: ${escapeHtmlAdmin(org.name)}</h3>
+                    <span class="text-muted" style="font-size: 0.8rem;">ID: ${org.id}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <span class="admin-setup-pill ${sp.completed === sp.total ? 'complete' : sp.completed >= sp.total / 2 ? 'partial' : 'empty'}" style="font-size:0.85rem; padding: 0.3rem 0.75rem;">
+                        ${sp.completed}/${sp.total} Complete
+                    </span>
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="document.getElementById('adminOrgSetupPanel').innerHTML=''; document.getElementById('adminOrgSetupPanel').style.display='none';">Close</button>
+                </div>
+            </div>
+
+            <!-- Onboarding Checklist -->
+            <div style="padding: 1rem 1.25rem; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.85rem;">
+                    <span>${checkIcon(cl.orgCreated)} Created</span>
+                    <span>${checkIcon(cl.websiteSet)} Website</span>
+                    <span>${checkIcon(cl.licenceSet)} Licence</span>
+                    <span>${checkIcon(cl.missionSet)} Mission</span>
+                    <span>${checkIcon(cl.kbPopulated)} KB (${data.kbCount})</span>
+                    <span>${checkIcon(cl.templatesImported)} Templates (${data.templateCount})</span>
+                    <span>${checkIcon(cl.drawScheduleUploaded)} Draw Schedule</span>
+                    <span>${checkIcon(cl.brandTerminologySet)} Brand Rules</span>
+                    <span>${checkIcon(cl.emailAddonsSet)} Email Add-Ons</span>
+                    <span>${checkIcon(cl.membersAdded)} Members (${data.memberCount})</span>
+                </div>
+            </div>
+
+            <!-- Profile Section -->
+            <div style="padding: 1.25rem;">
+                <h4 style="margin: 0 0 1rem 0; font-size: 0.95rem; color: #374151;">Organization Profile</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    ${orgField('adminOrgName', 'Name', org.name)}
+                    ${orgField('adminOrgWebsite', 'Website URL', org.website_url)}
+                    ${orgField('adminOrgLicence', 'Licence Number', org.licence_number)}
+                    ${orgField('adminOrgSupportEmail', 'Support Email', org.support_email)}
+                    ${orgField('adminOrgStoreLocation', 'In-Person Location', org.store_location)}
+                    ${orgField('adminOrgCtaWebsite', 'Catch The Ace Website', org.cta_website_url)}
+                    ${orgField('adminOrgCeoName', 'CEO/President Name', org.ceo_name)}
+                    ${orgField('adminOrgCeoTitle', 'CEO/President Title', org.ceo_title)}
+                    ${orgField('adminOrgMediaName', 'Media Contact Name', org.media_contact_name)}
+                    ${orgField('adminOrgMediaEmail', 'Media Contact Email', org.media_contact_email)}
+                    ${orgField('adminOrgDrawTime', 'Default Draw Time', org.default_draw_time, 'e.g., 11:00 AM')}
+                    ${orgField('adminOrgDeadlineTime', 'Ticket Deadline Time', org.ticket_deadline_time, 'e.g., 11:59 PM')}
+                </div>
+                <div style="margin-top: 0.75rem;">
+                    ${orgTextarea('adminOrgMission', 'Mission', org.mission, 2)}
+                    ${orgTextarea('adminOrgSocialLine', 'Social Media Required Line', org.social_required_line, 1, 'e.g., Purchase tickets online at www.yoursite.ca!')}
+                    ${orgTextarea('adminOrgBrandTerm', 'Brand Terminology Rules (one per line)', brandTermNotes, 2, "e.g., NEVER use 'jackpot' - always use 'Grand Prize'")}
+                </div>
+
+                <!-- Email Add-Ons -->
+                <div style="border-top: 1px solid #e5e7eb; margin-top: 1rem; padding-top: 1rem;">
+                    <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #374151;">Email Add-Ons</h4>
+                    ${orgTextarea('adminOrgAddonSub', 'Subscriptions', emailAddons.subscriptions, 2, 'Subscription promo copy...')}
+                    ${orgTextarea('adminOrgAddonRP', 'Rewards+', emailAddons.rewardsPlus, 2, 'Rewards+ promo copy...')}
+                    ${orgTextarea('adminOrgAddonCTA', 'Catch The Ace', emailAddons.catchTheAce, 2, 'Catch The Ace promo copy...')}
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <button class="admin-btn admin-btn-primary" onclick="saveAdminOrgProfile('${org.id}')">Save Profile</button>
+                </div>
+            </div>
+
+            <!-- Knowledge Base Section -->
+            <div style="padding: 1.25rem; border-top: 1px solid #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h4 style="margin: 0; font-size: 0.95rem; color: #374151;">Knowledge Base <span class="text-muted" style="font-weight:400;">(${data.kbCount} entries)</span></h4>
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="toggleAdminKBForm('${org.id}')">+ Add Entry</button>
+                </div>
+
+                <!-- Add KB Form (hidden) -->
+                <div id="adminKBForm" style="display:none; border: 1px solid #d1d5db; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <input type="text" id="adminKBTitle" class="admin-search-input" placeholder="Title / Question" style="width:100%">
+                        <select id="adminKBCategory" class="admin-select" style="width:100%">
+                            <option value="faqs">FAQ</option>
+                            <option value="policies">Policy</option>
+                            <option value="products">Product</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <textarea id="adminKBContent" class="admin-search-input" rows="3" placeholder="Content / Answer" style="width:100%; resize:vertical;"></textarea>
+                    <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+                        <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="addAdminKBEntry('${org.id}')">Add</button>
+                        <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="document.getElementById('adminKBForm').style.display='none'">Cancel</button>
+                    </div>
+                </div>
+
+                <div id="adminKBList" style="max-height: 300px; overflow-y: auto;">
+                    <div class="text-muted" style="padding: 0.5rem; font-size: 0.85rem;">Loading KB entries...</div>
+                </div>
+            </div>
+
+            <!-- Content Templates Section -->
+            <div style="padding: 1.25rem; border-top: 1px solid #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h4 style="margin: 0; font-size: 0.95rem; color: #374151;">Content Templates <span class="text-muted" style="font-weight:400;">(${data.templateCount} templates)</span></h4>
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="adminImportAllTemplates('${org.id}')">Import All from Library</button>
+                </div>
+                <div id="adminTemplateList" style="max-height: 200px; overflow-y: auto;">
+                    <div class="text-muted" style="padding: 0.5rem; font-size: 0.85rem;">Loading templates...</div>
+                </div>
+            </div>
+
+            <!-- Draw Schedule Section -->
+            <div style="padding: 1.25rem; border-top: 1px solid #e5e7eb;">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; color: #374151;">Draw Schedule</h4>
+                ${data.drawSchedule
+                    ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.75rem;">
+                        <span style="color: #16a34a; font-weight: 600;">${escapeHtmlAdmin(data.drawSchedule.draw_name)}</span>
+                        <span class="text-muted" style="margin-left: 0.5rem; font-size: 0.8rem;">Active</span>
+                       </div>`
+                    : `<div style="color: #9ca3af; font-size: 0.9rem;">No draw schedule uploaded. The org admin can upload one from their Settings tab.</div>`
+                }
+            </div>
+        </div>
+    `;
+
+    // Load KB entries and templates
+    loadAdminKBEntries(org.id);
+    loadAdminTemplateList(org.id);
+}
+
+function orgField(id, label, value, placeholder) {
+    return `
+        <div>
+            <label style="font-size: 0.8rem; color: #6b7280; display: block; margin-bottom: 0.2rem;">${label}</label>
+            <input type="text" id="${id}" class="admin-search-input" value="${escapeAttr(value || '')}" placeholder="${placeholder || ''}" style="width:100%">
+        </div>`;
+}
+
+function orgTextarea(id, label, value, rows, placeholder) {
+    return `
+        <div style="margin-bottom: 0.5rem;">
+            <label style="font-size: 0.8rem; color: #6b7280; display: block; margin-bottom: 0.2rem;">${label}</label>
+            <textarea id="${id}" class="admin-search-input" rows="${rows || 2}" placeholder="${placeholder || ''}" style="width:100%; resize:vertical;">${escapeHtmlAdmin(value || '')}</textarea>
+        </div>`;
+}
+
+function escapeAttr(str) {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function escapeHtmlAdmin(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ==================== SAVE ORG PROFILE (ADMIN) ====================
+async function saveAdminOrgProfile(orgId) {
+    const v = (id) => document.getElementById(id)?.value?.trim() || '';
+
+    // Build brand terminology JSON
+    const brandTermRaw = v('adminOrgBrandTerm');
+    let brandTerminology = null;
+    if (brandTermRaw) {
+        brandTerminology = JSON.stringify({ notes: brandTermRaw.split('\n').map(l => l.trim()).filter(Boolean) });
+    }
+
+    // Build email add-ons JSON
+    const subText = v('adminOrgAddonSub');
+    const rpText = v('adminOrgAddonRP');
+    const ctaText = v('adminOrgAddonCTA');
+    let emailAddons = null;
+    if (subText || rpText || ctaText) {
+        const obj = {};
+        if (subText) obj.subscriptions = subText;
+        if (rpText) obj.rewardsPlus = rpText;
+        if (ctaText) obj.catchTheAce = ctaText;
+        emailAddons = JSON.stringify(obj);
+    }
+
+    const payload = {
+        name: v('adminOrgName') || undefined,
+        websiteUrl: v('adminOrgWebsite') || null,
+        licenceNumber: v('adminOrgLicence') || null,
+        supportEmail: v('adminOrgSupportEmail') || null,
+        storeLocation: v('adminOrgStoreLocation') || null,
+        ctaWebsiteUrl: v('adminOrgCtaWebsite') || null,
+        ceoName: v('adminOrgCeoName') || null,
+        ceoTitle: v('adminOrgCeoTitle') || null,
+        mediaContactName: v('adminOrgMediaName') || null,
+        mediaContactEmail: v('adminOrgMediaEmail') || null,
+        defaultDrawTime: v('adminOrgDrawTime') || null,
+        ticketDeadlineTime: v('adminOrgDeadlineTime') || null,
+        mission: v('adminOrgMission') || null,
+        socialRequiredLine: v('adminOrgSocialLine') || null,
+        brandTerminology,
+        emailAddons
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/organizations/${orgId}`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Failed'); }
+        showToast('Profile saved!', 'success');
+        // Reload setup panel to refresh checklist
+        openOrgSetup(orgId);
+    } catch (error) {
+        showToast('Failed to save: ' + error.message, 'error');
+    }
+}
+
+// ==================== ADMIN KB MANAGEMENT ====================
+function toggleAdminKBForm(orgId) {
+    const form = document.getElementById('adminKBForm');
+    if (form) {
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        if (form.style.display === 'block') {
+            document.getElementById('adminKBTitle').value = '';
+            document.getElementById('adminKBContent').value = '';
+            document.getElementById('adminKBTitle')?.focus();
+        }
+    }
+}
+
+async function loadAdminKBEntries(orgId) {
+    const container = document.getElementById('adminKBList');
+    if (!container) return;
+
+    try {
+        const data = await fetchAdminData(`/api/admin/organizations/${orgId}/knowledge-base`);
+        const entries = data.entries || [];
+
+        if (entries.length === 0) {
+            container.innerHTML = '<div style="padding: 0.75rem; text-align: center; color: #9ca3af; font-size: 0.85rem;">No knowledge base entries yet.</div>';
+            return;
+        }
+
+        container.innerHTML = entries.map(e => `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem 0; border-bottom: 1px solid #f3f4f6;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                        <strong style="font-size: 0.85rem;">${escapeHtmlAdmin(e.title)}</strong>
+                        <span style="font-size: 0.65rem; background: #f3f4f6; padding: 0.1rem 0.3rem; border-radius: 3px; color: #6b7280;">${e.category}</span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtmlAdmin((e.content || '').substring(0, 120))}</div>
+                </div>
+                <button class="admin-btn admin-btn-secondary admin-btn-sm" style="color:#dc2626; border-color:#fecaca; flex-shrink:0; margin-left:0.5rem; font-size:0.7rem; padding:0.15rem 0.4rem;" onclick="deleteAdminKBEntry('${orgId}','${e.id}')">Delete</button>
+            </div>
+        `).join('');
+    } catch (error) {
+        container.innerHTML = '<div style="padding: 0.5rem; color: #ef4444; font-size: 0.85rem;">Failed to load KB entries</div>';
+    }
+}
+
+async function addAdminKBEntry(orgId) {
+    const title = document.getElementById('adminKBTitle')?.value.trim();
+    const content = document.getElementById('adminKBContent')?.value.trim();
+    const category = document.getElementById('adminKBCategory')?.value || 'faqs';
+
+    if (!title || !content) { showToast('Title and content are required', 'error'); return; }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/organizations/${orgId}/knowledge-base`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, content, category })
+        });
+        if (!response.ok) throw new Error('Failed');
+        showToast('KB entry added!', 'success');
+        document.getElementById('adminKBForm').style.display = 'none';
+        loadAdminKBEntries(orgId);
+        // Update count in the header
+        const countEl = document.querySelector('#adminOrgSetupPanel h4 .text-muted');
+        if (adminOrgSetupData) {
+            adminOrgSetupData.kbCount++;
+        }
+    } catch (error) {
+        showToast('Failed to add entry: ' + error.message, 'error');
+    }
+}
+
+async function deleteAdminKBEntry(orgId, entryId) {
+    if (!confirm('Delete this KB entry?')) return;
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/organizations/${orgId}/knowledge-base/${entryId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}`, 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed');
+        showToast('Entry deleted', 'success');
+        loadAdminKBEntries(orgId);
+    } catch (error) {
+        showToast('Failed to delete: ' + error.message, 'error');
+    }
+}
+
+// ==================== ADMIN TEMPLATE MANAGEMENT ====================
+async function loadAdminTemplateList(orgId) {
+    const container = document.getElementById('adminTemplateList');
+    if (!container) return;
+
+    try {
+        const data = await fetchAdminData(`/api/admin/organizations/${orgId}/content-templates`);
+        const templates = data.templates || [];
+
+        if (templates.length === 0) {
+            container.innerHTML = '<div style="padding: 0.75rem; text-align: center; color: #9ca3af; font-size: 0.85rem;">No content templates. Click "Import All from Library" to seed templates.</div>';
+            return;
+        }
+
+        // Group by type
+        const grouped = {};
+        templates.forEach(t => {
+            const type = t.template_type;
+            if (!grouped[type]) grouped[type] = [];
+            grouped[type].push(t);
+        });
+
+        const typeLabels = {
+            'social': 'Social Media', 'email-new-draw': 'Email: New Draw', 'email-reminder': 'Email: Reminder',
+            'email-winners': 'Email: Winners', 'email-impact': 'Email: Impact', 'email-last-chance': 'Email: Last Chance',
+            'media-release': 'Media Release', 'social-ads': 'Social Ads'
+        };
+
+        container.innerHTML = Object.entries(grouped).map(([type, items]) => `
+            <div style="margin-bottom: 0.5rem;">
+                <div style="font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; margin-bottom: 0.2rem;">${typeLabels[type] || type} (${items.length})</div>
+                ${items.map(t => `
+                    <div style="font-size: 0.8rem; color: #374151; padding: 0.15rem 0; padding-left: 0.75rem;">- ${escapeHtmlAdmin(t.name)}</div>
+                `).join('')}
+            </div>
+        `).join('');
+    } catch (error) {
+        container.innerHTML = '<div style="padding: 0.5rem; color: #ef4444; font-size: 0.85rem;">Failed to load templates</div>';
+    }
+}
+
+async function adminImportAllTemplates(orgId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/organizations/${orgId}/content-templates/import-all`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}`, 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed');
+        const data = await response.json();
+        showToast(`${data.count} templates imported!`, 'success');
+        loadAdminTemplateList(orgId);
+    } catch (error) {
+        showToast('Failed to import: ' + error.message, 'error');
+    }
 }
 
 // ==================== USAGE & COSTS TAB ====================
@@ -784,13 +1243,6 @@ function adminOrgsGoToPage(page) {
     loadAdminTab('organizations');
 }
 
-function toggleOrgDetail(row, orgId) {
-    const detailRow = row.nextElementSibling;
-    if (detailRow && detailRow.classList.contains('admin-org-detail-row')) {
-        detailRow.style.display = detailRow.style.display === 'none' ? 'table-row' : 'none';
-    }
-}
-
 async function toggleSuperAdmin(userId, makeAdmin) {
     if (!confirm(`Are you sure you want to ${makeAdmin ? 'grant' : 'revoke'} super admin access?`)) return;
 
@@ -995,13 +1447,21 @@ window.adminSearchOrgs = adminSearchOrgs;
 window.adminClearOrgSearch = adminClearOrgSearch;
 window.adminFilterOrgStatus = adminFilterOrgStatus;
 window.adminOrgsGoToPage = adminOrgsGoToPage;
-window.toggleOrgDetail = toggleOrgDetail;
 window.toggleSuperAdmin = toggleSuperAdmin;
 window.filterActivity = filterActivity;
 window.openUserOrgModal = openUserOrgModal;
 window.closeUserOrgModal = closeUserOrgModal;
 window.saveUserOrgAssignment = saveUserOrgAssignment;
 window.removeUserFromOrg = removeUserFromOrg;
+// Org setup exports
+window.showCreateOrgModal = showCreateOrgModal;
+window.createOrganization = createOrganization;
+window.openOrgSetup = openOrgSetup;
+window.saveAdminOrgProfile = saveAdminOrgProfile;
+window.toggleAdminKBForm = toggleAdminKBForm;
+window.addAdminKBEntry = addAdminKBEntry;
+window.deleteAdminKBEntry = deleteAdminKBEntry;
+window.adminImportAllTemplates = adminImportAllTemplates;
 
 // Auto-init on page load
 document.addEventListener('DOMContentLoaded', () => {
