@@ -5656,7 +5656,7 @@ function displayResults(response, historyId) {
                 <span>✏️</span>
                 <span>Edit Mode - Click in the response to make changes</span>
             </div>
-            <div class="response-box" id="responseText">${escapeHtml(response)}</div>
+            <div class="response-box" id="responseText">${escapeHtmlWithLinks(response)}</div>
             <div class="edit-actions" id="editActions" style="display: none;">
                 <button class="btn-edit-save" onclick="saveEdit()">💾 Save Changes</button>
                 <button class="btn-edit-cancel" onclick="cancelEdit()">Cancel</button>
@@ -5786,7 +5786,7 @@ Please provide the refined response:`;
         }
 
         // Update the display
-        responseBox.innerText = refinedResponse;
+        responseBox.innerHTML = escapeHtmlWithLinks(refinedResponse);
 
         // Clear the input
         if (refineInput) refineInput.value = "";
@@ -6680,6 +6680,18 @@ function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML.replace(/\n/g, "<br>");
+}
+
+// Escape HTML then convert URLs to clickable links (safe: escape first, linkify after)
+function escapeHtmlWithLinks(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    let escaped = div.innerHTML;
+    // Convert URLs to anchor tags (matches http/https URLs)
+    escaped = escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Convert www. URLs without protocol
+    escaped = escaped.replace(/(?<!\/\/)(www\.[^\s<]+)/g, '<a href="https://$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    return escaped.replace(/\n/g, "<br>");
 }
 
 function copyToClipboard(elementId, button) {
