@@ -308,6 +308,70 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 /**
+ * POST /api/knowledge-base/from-feedback
+ * Create a KB entry from user feedback on a bad response.
+ * Links the entry back to the response_history record.
+ */
+router.post('/from-feedback', authenticate, async (req, res) => {
+    try {
+        const { responseHistoryId, title, content, category } = req.body;
+
+        if (!title || !content) {
+            return res.status(400).json({ error: 'Title and content are required' });
+        }
+
+        // Get user's organization
+        const orgResult = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [req.userId]
+        );
+
+        if (orgResult.rows.length === 0) {
+            return res.status(400).json({ error: 'No organization found' });
+        }
+
+        const organizationId = orgResult.rows[0].organization_id;
+        const entryId = uuidv4();
+
+        // Auto-extract keywords from the title (words > 3 chars)
+        const autoKeywords = title.toLowerCase()
+            .replace(/[^a-z0-9\s]/g, '')
+            .split(/\s+/)
+            .filter(w => w.length > 3)
+            .slice(0, 8)
+            .map(k => `keyword:${k}`);
+
+        const tags = ['source:feedback', ...autoKeywords];
+
+        const result = await pool.query(
+            `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, created_by, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+             RETURNING *`,
+            [entryId, organizationId, title, content, category || 'faqs', tags, req.userId]
+        );
+
+        // If we have a response history ID, update it with a reference to the new KB entry
+        if (responseHistoryId) {
+            try {
+                await pool.query(
+                    `UPDATE response_history SET rating_feedback = COALESCE(rating_feedback, '') || $1
+                     WHERE id = $2 AND organization_id = $3`,
+                    [`\n[KB entry created: ${entryId}]`, responseHistoryId, organizationId]
+                );
+            } catch (linkErr) {
+                console.warn('Could not link KB entry to response history:', linkErr);
+            }
+        }
+
+        res.status(201).json({ entry: result.rows[0] });
+
+    } catch (error) {
+        console.error('Create KB from feedback error:', error);
+        res.status(500).json({ error: 'Failed to create knowledge base entry' });
+    }
+});
+
+/**
  * POST /api/knowledge-base/import
  * Import multiple knowledge entries
  */
