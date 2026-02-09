@@ -4179,7 +4179,7 @@
 
         /* ==================== DRAFT ASSISTANT TOOL STYLES ==================== */
         .draft-assistant-container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 40px 20px;
         }
@@ -4188,62 +4188,255 @@
             text-align: center;
         }
 
-        .draft-type-header h2 {
-            font-size: 1.75rem;
+        /* Draft Hub Hero Header */
+        .draft-hub-hero {
+            margin-bottom: 28px;
+        }
+
+        .draft-hub-hero h1 {
+            font-size: 28px;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 8px;
+            margin: 0 0 8px 0;
         }
 
-        .draft-type-header p {
+        .draft-hub-hero p {
+            font-size: 15px;
             color: var(--text-secondary);
-            margin-bottom: 32px;
+            margin: 0;
         }
 
-        .draft-type-grid {
+        /* Bento-style grid */
+        .draft-hub-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 16px;
+            width: 100%;
+        }
+
+        .draft-hub-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 20px;
+            padding: 28px;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            animation: fadeInUp 0.5s ease-out both;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0, 0, 0, 0.08);
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .draft-type-btn {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            gap: 14px;
-            padding: 18px 22px;
-            background: white;
-            border: 2px solid var(--border);
-            border-radius: var(--radius-lg);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
             text-align: left;
         }
 
-        .draft-type-btn:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        .draft-hub-card:nth-child(1) { animation-delay: 0ms; }
+        .draft-hub-card:nth-child(2) { animation-delay: 80ms; }
+        .draft-hub-compact-row .draft-hub-card:nth-child(1) { animation-delay: 160ms; }
+        .draft-hub-compact-row .draft-hub-card:nth-child(2) { animation-delay: 240ms; }
+        .draft-hub-compact-row .draft-hub-card:nth-child(3) { animation-delay: 320ms; }
+
+        .draft-hub-card:hover {
+            border-color: rgba(0, 0, 0, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1);
         }
 
-        .draft-type-btn.active {
-            border-color: var(--primary);
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.05));
+        /* Glow effects */
+        .draft-hub-glow {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            z-index: 0;
         }
 
-        .draft-type-icon {
-            font-size: 1.5rem;
+        .draft-hub-card:hover .draft-hub-glow { opacity: 1; }
+
+        .draft-hub-glow-pink   { background: radial-gradient(ellipse at 30% 50%, rgba(233, 30, 140, 0.08) 0%, transparent 70%); }
+        .draft-hub-glow-purple { background: radial-gradient(ellipse at 30% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 70%); }
+        .draft-hub-glow-blue   { background: radial-gradient(ellipse at 30% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 70%); }
+        .draft-hub-glow-green  { background: radial-gradient(ellipse at 30% 50%, rgba(34, 197, 94, 0.08) 0%, transparent 70%); }
+        .draft-hub-glow-amber  { background: radial-gradient(ellipse at 30% 50%, rgba(245, 166, 35, 0.08) 0%, transparent 70%); }
+
+        /* Hero card */
+        .draft-hub-hero-card {
+            grid-row: 1 / 2;
+            grid-column: 1;
+        }
+
+        /* Standard card */
+        .draft-hub-standard-card {
+            grid-row: 1 / 2;
+            grid-column: 2;
+        }
+
+        /* Compact row */
+        .draft-hub-compact-row {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 16px;
+        }
+
+        .draft-hub-compact {
+            flex: 1;
+            padding: 22px;
+        }
+
+        .draft-hub-compact .draft-hub-title { font-size: 0.95rem; }
+        .draft-hub-compact .draft-hub-desc { font-size: 0.8rem; }
+
+        /* Icon rows */
+        .draft-hub-icon-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .draft-hub-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            transition: transform 0.35s ease;
             flex-shrink: 0;
         }
 
-        .draft-type-label {
-            font-size: 0.95rem;
+        .draft-hub-compact .draft-hub-icon {
+            width: 38px;
+            height: 38px;
+            font-size: 19px;
+        }
+
+        .draft-hub-card:hover .draft-hub-icon { transform: scale(1.1); }
+
+        .draft-hub-icon-pink   { background: linear-gradient(135deg, rgba(233, 30, 140, 0.15), rgba(245, 166, 35, 0.15)); }
+        .draft-hub-icon-purple { background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(168, 85, 247, 0.15)); }
+        .draft-hub-icon-blue   { background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.15)); }
+        .draft-hub-icon-green  { background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(74, 222, 128, 0.15)); }
+        .draft-hub-icon-amber  { background: linear-gradient(135deg, rgba(245, 166, 35, 0.15), rgba(250, 204, 21, 0.15)); }
+
+        /* Badges */
+        .draft-hub-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            background: rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--text-primary);
-            text-align: left;
+            letter-spacing: 0.3px;
+        }
+
+        .draft-hub-badge-gradient {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-color: transparent;
+            color: white;
+        }
+
+        /* Text */
+        .draft-hub-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .draft-hub-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.55;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+
+        /* Feature tags */
+        .draft-hub-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .draft-hub-feature {
+            padding: 3px 10px;
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .draft-hub-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 12px;
+            align-self: flex-start;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* CTA arrow */
+        .draft-hub-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border: none;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+            position: relative;
+            z-index: 1;
+            transition: all 0.25s ease;
+            cursor: pointer;
+            align-self: flex-start;
+        }
+
+        .draft-hub-cta:hover {
+            transform: translateX(2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .draft-hub-cta svg { transition: transform 0.25s ease; }
+        .draft-hub-cta:hover svg { transform: translateX(3px); }
+
+        /* Responsive */
+        @media (max-width: 700px) {
+            .draft-hub-grid {
+                grid-template-columns: 1fr;
+            }
+            .draft-hub-hero-card, .draft-hub-standard-card {
+                grid-column: 1;
+                grid-row: auto;
+            }
+            .draft-hub-compact-row {
+                flex-direction: column;
+            }
         }
 
         /* Input Section */
@@ -4493,24 +4686,7 @@
             color: white;
         }
 
-        /* Write Anything Button Accent */
-        .draft-type-btn-write {
-            position: relative;
-            border-color: rgba(0, 0, 0, 0.3);
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.04));
-        }
-
-        .draft-type-btn-write:hover {
-            border-color: var(--primary);
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
-        }
-
-        .draft-type-subtitle {
-            font-size: 0.78rem;
-            font-weight: 400;
-            color: var(--text-secondary);
-            margin-left: auto;
-        }
+        /* (Draft bento grid styles are above in the draft-hub-* section) */
 
         /* Write Anything Toggle Pills */
         .wa-toggle-group {
@@ -9690,34 +9866,82 @@
 
         <div class="container">
             <div class="draft-assistant-container">
-                <!-- Content Type Selection -->
+                <!-- Content Type Selection (Bento Grid) -->
                 <div class="draft-type-section" id="draftTypeSection">
-                    <div class="draft-type-header">
-                        <h2>What would you like to create?</h2>
-                        <p>Select a content type to get started</p>
+                    <div class="draft-hub-hero">
+                        <h1>Draft Assistant</h1>
+                        <p>Create polished content in seconds. Choose a content type to get started.</p>
                     </div>
-                    <div class="draft-type-grid">
-                        <button class="draft-type-btn" data-type="email">
-                            <span class="draft-type-icon">📧</span>
-                            <span class="draft-type-label">Email Copy</span>
-                        </button>
-                        <button class="draft-type-btn" data-type="social">
-                            <span class="draft-type-icon">📱</span>
-                            <span class="draft-type-label">Social Media Copy</span>
-                        </button>
-                        <button class="draft-type-btn" data-type="media-release">
-                            <span class="draft-type-icon">📰</span>
-                            <span class="draft-type-label">Media Release</span>
-                        </button>
-                        <button class="draft-type-btn" data-type="ad">
-                            <span class="draft-type-icon">📣</span>
-                            <span class="draft-type-label">Facebook/Instagram Ad</span>
-                        </button>
-                        <button class="draft-type-btn draft-type-btn-write" data-type="write-anything">
-                            <span class="draft-type-icon">✨</span>
-                            <span class="draft-type-label">Write Anything</span>
-                            <span class="draft-type-subtitle">Freeform AI writing studio</span>
-                        </button>
+
+                    <div class="draft-hub-grid">
+                        <!-- Hero Card: Email Copy -->
+                        <div class="draft-hub-card draft-hub-hero-card draft-type-btn" data-type="email">
+                            <div class="draft-hub-glow draft-hub-glow-pink"></div>
+                            <div class="draft-hub-icon-row">
+                                <div class="draft-hub-icon draft-hub-icon-pink">📧</div>
+                                <span class="draft-hub-badge draft-hub-badge-gradient">Most Used</span>
+                            </div>
+                            <h3 class="draft-hub-title">Email Copy</h3>
+                            <p class="draft-hub-desc">Generate draw announcements, reminders, winner emails, Impact Sunday stories, and last chance campaigns.</p>
+                            <div class="draft-hub-features">
+                                <span class="draft-hub-feature">Templates</span>
+                                <span class="draft-hub-feature">Add-ons</span>
+                                <span class="draft-hub-feature">Brand Voice</span>
+                            </div>
+                            <div class="draft-hub-cta">
+                                Open Tool
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </div>
+                        </div>
+
+                        <!-- Standard Card: Write Anything -->
+                        <div class="draft-hub-card draft-hub-standard-card draft-type-btn" data-type="write-anything">
+                            <div class="draft-hub-glow draft-hub-glow-purple"></div>
+                            <div class="draft-hub-icon-row">
+                                <div class="draft-hub-icon draft-hub-icon-purple">✨</div>
+                                <span class="draft-hub-badge draft-hub-badge-gradient">AI-Powered</span>
+                            </div>
+                            <h3 class="draft-hub-title">Write Anything</h3>
+                            <p class="draft-hub-desc">Freeform AI writing studio. Describe what you need in plain English and get polished content instantly.</p>
+                            <div class="draft-hub-features">
+                                <span class="draft-hub-feature">Freeform</span>
+                                <span class="draft-hub-feature">Any Format</span>
+                                <span class="draft-hub-feature">Tone Control</span>
+                            </div>
+                        </div>
+
+                        <!-- Compact Row -->
+                        <div class="draft-hub-compact-row">
+                            <div class="draft-hub-card draft-hub-compact draft-type-btn" data-type="social">
+                                <div class="draft-hub-glow draft-hub-glow-blue"></div>
+                                <div class="draft-hub-icon-row">
+                                    <div class="draft-hub-icon draft-hub-icon-blue">📱</div>
+                                </div>
+                                <h3 class="draft-hub-title">Social Media</h3>
+                                <p class="draft-hub-desc">Posts for Facebook, Instagram, X, and more.</p>
+                                <span class="draft-hub-tag">Campaigns</span>
+                            </div>
+
+                            <div class="draft-hub-card draft-hub-compact draft-type-btn" data-type="media-release">
+                                <div class="draft-hub-glow draft-hub-glow-green"></div>
+                                <div class="draft-hub-icon-row">
+                                    <div class="draft-hub-icon draft-hub-icon-green">📰</div>
+                                </div>
+                                <h3 class="draft-hub-title">Media Release</h3>
+                                <p class="draft-hub-desc">Press releases with quotes and formatting.</p>
+                                <span class="draft-hub-tag">PR & Comms</span>
+                            </div>
+
+                            <div class="draft-hub-card draft-hub-compact draft-type-btn" data-type="ad">
+                                <div class="draft-hub-glow draft-hub-glow-amber"></div>
+                                <div class="draft-hub-icon-row">
+                                    <div class="draft-hub-icon draft-hub-icon-amber">📣</div>
+                                </div>
+                                <h3 class="draft-hub-title">Facebook/Instagram Ad</h3>
+                                <p class="draft-hub-desc">Ad copy optimized for conversions.</p>
+                                <span class="draft-hub-tag">Paid Media</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
