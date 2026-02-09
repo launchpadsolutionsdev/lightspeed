@@ -340,6 +340,7 @@ async function renderUsersTab(container) {
                             <th>Joined</th>
                             <th>Last Login</th>
                             <th>Admin</th>
+                            <th>Assign</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -362,8 +363,15 @@ async function renderUsersTab(container) {
                                         ${user.is_super_admin ? '✓' : '—'}
                                     </button>
                                 </td>
+                                <td>
+                                    <button class="admin-btn admin-btn-primary admin-btn-sm"
+                                            onclick="openAssignOrgModal('${user.id}', '${(user.first_name || '').replace(/'/g, "\\'")} ${(user.last_name || '').replace(/'/g, "\\'")}', '${user.email}')"
+                                            title="Assign to organization">
+                                        Assign
+                                    </button>
+                                </td>
                             </tr>
-                        `).join('') : '<tr><td colspan="7" class="text-center text-muted">No users found</td></tr>'}
+                        `).join('') : '<tr><td colspan="8" class="text-center text-muted">No users found</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -821,6 +829,110 @@ function filterActivity(btn, type) {
     });
 }
 
+// ==================== ASSIGN ORGANIZATION MODAL ====================
+let adminOrgsList = null;
+
+async function openAssignOrgModal(userId, userName, userEmail) {
+    // Fetch orgs list if not cached
+    if (!adminOrgsList) {
+        try {
+            const data = await fetchAdminData('/api/admin/organizations/list');
+            adminOrgsList = data.organizations;
+        } catch (error) {
+            showToast('Failed to load organizations', 'error');
+            return;
+        }
+    }
+
+    // Remove existing modal if any
+    const existing = document.getElementById('assignOrgModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'assignOrgModal';
+    modal.className = 'admin-modal-overlay';
+    modal.innerHTML = `
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <h3>Assign Organization</h3>
+                <button onclick="closeAssignOrgModal()" class="admin-modal-close">&times;</button>
+            </div>
+            <div class="admin-modal-body">
+                <p class="admin-modal-user-info">
+                    <strong>${userName}</strong><br>
+                    <span class="text-muted">${userEmail}</span>
+                </p>
+                <div class="admin-modal-field">
+                    <label>Organization</label>
+                    <select id="assignOrgSelect" class="admin-select admin-select-full">
+                        <option value="">-- No Organization (Remove) --</option>
+                        ${adminOrgsList.map(org => `<option value="${org.id}">${org.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="admin-modal-field">
+                    <label>Role</label>
+                    <select id="assignRoleSelect" class="admin-select admin-select-full">
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                        <option value="owner">Owner</option>
+                    </select>
+                </div>
+            </div>
+            <div class="admin-modal-footer">
+                <button onclick="closeAssignOrgModal()" class="admin-btn admin-btn-secondary">Cancel</button>
+                <button onclick="confirmAssignOrg('${userId}')" class="admin-btn admin-btn-primary">Assign</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeAssignOrgModal();
+    });
+}
+
+function closeAssignOrgModal() {
+    const modal = document.getElementById('assignOrgModal');
+    if (modal) modal.remove();
+}
+
+async function confirmAssignOrg(userId) {
+    const orgSelect = document.getElementById('assignOrgSelect');
+    const roleSelect = document.getElementById('assignRoleSelect');
+    const organizationId = orgSelect.value || null;
+    const role = roleSelect.value;
+
+    if (!organizationId) {
+        if (!confirm('This will remove the user from all organizations. Are you sure?')) return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/organization`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ organizationId, role })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showToast(result.message, 'success');
+            closeAssignOrgModal();
+            adminOrgsList = null; // Clear cache
+            loadAdminTab('users'); // Refresh the users tab
+        } else {
+            const err = await response.json();
+            showToast(err.error || 'Failed to assign', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to assign user to organization', 'error');
+    }
+}
+
 // Export admin report
 async function exportAdminReport() {
     if (!adminData) {
@@ -855,6 +967,9 @@ window.adminOrgsGoToPage = adminOrgsGoToPage;
 window.toggleOrgDetail = toggleOrgDetail;
 window.toggleSuperAdmin = toggleSuperAdmin;
 window.filterActivity = filterActivity;
+window.openAssignOrgModal = openAssignOrgModal;
+window.closeAssignOrgModal = closeAssignOrgModal;
+window.confirmAssignOrg = confirmAssignOrg;
 
 // Auto-init on page load
 document.addEventListener('DOMContentLoaded', () => {

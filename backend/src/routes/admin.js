@@ -466,6 +466,71 @@ router.patch('/users/:userId/super-admin', authenticate, requireSuperAdmin, asyn
 });
 
 /**
+ * PATCH /api/admin/users/:userId/organization
+ * Assign a user to an organization (or remove from current org)
+ */
+router.patch('/users/:userId/organization', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { organizationId, role = 'member' } = req.body;
+
+        // Verify user exists
+        const userCheck = await pool.query('SELECT id, email FROM users WHERE id = $1', [userId]);
+        if (userCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // If organizationId is null/empty, just remove from current org
+        if (!organizationId) {
+            await pool.query('DELETE FROM organization_memberships WHERE user_id = $1', [userId]);
+            return res.json({ message: 'User removed from all organizations' });
+        }
+
+        // Verify organization exists
+        const orgCheck = await pool.query('SELECT id, name FROM organizations WHERE id = $1', [organizationId]);
+        if (orgCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Organization not found' });
+        }
+
+        // Remove existing memberships
+        await pool.query('DELETE FROM organization_memberships WHERE user_id = $1', [userId]);
+
+        // Create new membership
+        await pool.query(
+            `INSERT INTO organization_memberships (user_id, organization_id, role, accepted_at, created_at)
+             VALUES ($1, $2, $3, NOW(), NOW())`,
+            [userId, organizationId, role]
+        );
+
+        res.json({
+            message: `User assigned to ${orgCheck.rows[0].name} as ${role}`,
+            organization: orgCheck.rows[0].name,
+            role: role
+        });
+
+    } catch (error) {
+        console.error('Assign user to organization error:', error);
+        res.status(500).json({ error: 'Failed to assign user to organization' });
+    }
+});
+
+/**
+ * GET /api/admin/organizations/list
+ * Simple list of all organizations (for dropdown selectors)
+ */
+router.get('/organizations/list', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT id, name FROM organizations ORDER BY name ASC'
+        );
+        res.json({ organizations: result.rows });
+    } catch (error) {
+        console.error('Get organizations list error:', error);
+        res.status(500).json({ error: 'Failed to get organizations list' });
+    }
+});
+
+/**
  * GET /api/admin/recent-activity
  * Recent signups, logins, and usage events
  */
