@@ -150,7 +150,7 @@ router.get('/stats', authenticate, async (req, res) => {
  */
 router.post('/', authenticate, async (req, res) => {
     try {
-        const { inquiry, response, format, tone } = req.body;
+        const { inquiry, response, format, tone, tool } = req.body;
 
         if (!inquiry || !response) {
             return res.status(400).json({ error: 'Inquiry and response required' });
@@ -168,10 +168,10 @@ router.post('/', authenticate, async (req, res) => {
         const organizationId = orgResult.rows[0].organization_id;
 
         const result = await pool.query(
-            `INSERT INTO response_history (organization_id, user_id, inquiry, response, format, tone, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            `INSERT INTO response_history (organization_id, user_id, inquiry, response, format, tone, tool, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
              RETURNING *`,
-            [organizationId, req.userId, inquiry, response, format || 'email', tone || 'balanced']
+            [organizationId, req.userId, inquiry, response, format || 'email', tone || 'balanced', tool || 'response_assistant']
         );
 
         res.status(201).json({ entry: result.rows[0] });
@@ -243,25 +243,26 @@ router.get('/rated-examples', authenticate, async (req, res) => {
         }
 
         const organizationId = orgResult.rows[0].organization_id;
+        const tool = req.query.tool || 'response_assistant';
 
         // Get most recent positive examples (good responses to emulate)
         const positiveResult = await pool.query(
             `SELECT inquiry, response, format, tone
              FROM response_history
-             WHERE organization_id = $1 AND rating = 'positive'
+             WHERE organization_id = $1 AND rating = 'positive' AND (tool = $2 OR tool IS NULL)
              ORDER BY rating_at DESC
              LIMIT 5`,
-            [organizationId]
+            [organizationId, tool]
         );
 
         // Get most recent negative examples with feedback (mistakes to avoid)
         const negativeResult = await pool.query(
             `SELECT inquiry, response, rating_feedback, format, tone
              FROM response_history
-             WHERE organization_id = $1 AND rating = 'negative'
+             WHERE organization_id = $1 AND rating = 'negative' AND (tool = $2 OR tool IS NULL)
              ORDER BY rating_at DESC
              LIMIT 3`,
-            [organizationId]
+            [organizationId, tool]
         );
 
         res.json({
