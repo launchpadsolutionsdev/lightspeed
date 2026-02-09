@@ -265,6 +265,7 @@ let defaultName = "Bella";
 let orgName = "";
 let customKnowledge = [];
 let orgDrawSchedule = null; // Active draw schedule from database
+let orgContentTemplates = []; // Per-org content templates from database
 let feedbackList = [];
 let responseHistory = [];
 let favorites = [];
@@ -2130,6 +2131,7 @@ function loadUserData(user) {
     // Load data from backend and merge with local
     loadKnowledgeFromBackend();
     loadDrawScheduleFromBackend();
+    loadContentTemplatesFromBackend();
     loadFavoritesFromBackend();
     loadResponseHistoryFromBackend();
 }
@@ -2192,6 +2194,21 @@ async function loadDrawScheduleFromBackend() {
         }
     } catch (error) {
         console.warn('Could not load draw schedule from backend:', error);
+    }
+}
+
+async function loadContentTemplatesFromBackend() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/content-templates`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            orgContentTemplates = data.templates || [];
+        }
+    } catch (error) {
+        console.warn('Could not load content templates from backend:', error);
     }
 }
 
@@ -4542,6 +4559,7 @@ async function loadTeamData() {
             document.getElementById('membersList').innerHTML = '<p class="no-invitations">You are not part of any organization yet.</p>';
             document.getElementById('inviteSection').style.display = 'none';
             document.getElementById('pendingInvitationsCard').style.display = 'none';
+            document.getElementById('contentTemplatesSection').style.display = 'none';
             return;
         }
 
@@ -4559,10 +4577,12 @@ async function loadTeamData() {
         document.getElementById('inviteSection').style.display = canManageOrg ? 'block' : 'none';
         document.getElementById('orgProfileSection').style.display = canManageOrg ? 'block' : 'none';
         document.getElementById('drawScheduleSection').style.display = canManageOrg ? 'block' : 'none';
+        document.getElementById('contentTemplatesSection').style.display = canManageOrg ? 'block' : 'none';
 
         // Populate org profile fields
         if (canManageOrg) {
             populateOrgProfile(org);
+            renderOrgTemplates();
         }
 
         // Load members
@@ -4586,11 +4606,38 @@ function populateOrgProfile(org) {
         orgProfileMediaContactName: org.media_contact_name || '',
         orgProfileMediaContactEmail: org.media_contact_email || '',
         orgProfileCtaWebsite: org.cta_website_url || '',
-        orgProfileMission: org.mission || ''
+        orgProfileMission: org.mission || '',
+        orgProfileDrawTime: org.default_draw_time || '',
+        orgProfileDeadlineTime: org.ticket_deadline_time || '',
+        orgProfileSocialLine: org.social_required_line || ''
     };
     for (const [id, value] of Object.entries(fields)) {
         const el = document.getElementById(id);
         if (el) el.value = value;
+    }
+
+    // Populate brand terminology (stored as JSON)
+    const bt = org.brand_terminology;
+    if (bt) {
+        try {
+            const parsed = typeof bt === 'string' ? JSON.parse(bt) : bt;
+            const el = document.getElementById('orgProfileBrandTerminology');
+            if (el && parsed.notes) el.value = parsed.notes.join('\n');
+        } catch (e) { /* ignore parse errors */ }
+    }
+
+    // Populate email add-ons (stored as JSON)
+    const ea = org.email_addons;
+    if (ea) {
+        try {
+            const parsed = typeof ea === 'string' ? JSON.parse(ea) : ea;
+            const subEl = document.getElementById('orgProfileAddonSubscriptions');
+            const rpEl = document.getElementById('orgProfileAddonRewardsPlus');
+            const ctaEl = document.getElementById('orgProfileAddonCatchTheAce');
+            if (subEl && parsed.subscriptions) subEl.value = parsed.subscriptions;
+            if (rpEl && parsed.rewardsPlus) rpEl.value = parsed.rewardsPlus;
+            if (ctaEl && parsed.catchTheAce) ctaEl.value = parsed.catchTheAce;
+        } catch (e) { /* ignore parse errors */ }
     }
 }
 
@@ -4602,6 +4649,22 @@ async function saveOrgProfile() {
     btn.textContent = 'Saving...';
 
     try {
+        // Build brand terminology JSON from textarea (one rule per line)
+        const brandTermRaw = (document.getElementById('orgProfileBrandTerminology')?.value || '').trim();
+        const brandTerminology = brandTermRaw ? JSON.stringify({
+            notes: brandTermRaw.split('\n').map(l => l.trim()).filter(Boolean)
+        }) : null;
+
+        // Build email add-ons JSON
+        const subText = (document.getElementById('orgProfileAddonSubscriptions')?.value || '').trim();
+        const rpText = (document.getElementById('orgProfileAddonRewardsPlus')?.value || '').trim();
+        const ctaText = (document.getElementById('orgProfileAddonCatchTheAce')?.value || '').trim();
+        const emailAddons = (subText || rpText || ctaText) ? JSON.stringify({
+            subscriptions: subText || undefined,
+            rewardsPlus: rpText || undefined,
+            catchTheAce: ctaText || undefined
+        }) : null;
+
         const payload = {
             websiteUrl: document.getElementById('orgProfileWebsite').value.trim(),
             licenceNumber: document.getElementById('orgProfileLicence').value.trim(),
@@ -4612,7 +4675,12 @@ async function saveOrgProfile() {
             mediaContactName: document.getElementById('orgProfileMediaContactName').value.trim(),
             mediaContactEmail: document.getElementById('orgProfileMediaContactEmail').value.trim(),
             ctaWebsiteUrl: document.getElementById('orgProfileCtaWebsite').value.trim(),
-            mission: document.getElementById('orgProfileMission').value.trim()
+            mission: document.getElementById('orgProfileMission').value.trim(),
+            defaultDrawTime: document.getElementById('orgProfileDrawTime')?.value.trim() || null,
+            ticketDeadlineTime: document.getElementById('orgProfileDeadlineTime')?.value.trim() || null,
+            socialRequiredLine: document.getElementById('orgProfileSocialLine')?.value.trim() || null,
+            brandTerminology,
+            emailAddons
         };
 
         const response = await fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}`, {
@@ -4642,6 +4710,214 @@ async function saveOrgProfile() {
         btn.textContent = 'Save Profile';
     }
 }
+
+// ==================== CONTENT TEMPLATE MANAGEMENT ====================
+
+const TEMPLATE_TYPE_LABELS = {
+    'social': 'Social Media',
+    'email-new-draw': 'Email: New Draw',
+    'email-reminder': 'Email: Reminder',
+    'email-winners': 'Email: Winners',
+    'email-impact': 'Email: Impact',
+    'email-last-chance': 'Email: Last Chance',
+    'media-release': 'Media Release',
+    'social-ads': 'Social Ads'
+};
+
+let contentTemplateFilter = 'all';
+
+function filterTemplates(filter) {
+    contentTemplateFilter = filter;
+    document.querySelectorAll('.template-type-filter').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+    });
+    renderOrgTemplates();
+}
+
+function renderOrgTemplates() {
+    const container = document.getElementById('orgTemplatesList');
+    if (!container) return;
+
+    let templates = orgContentTemplates;
+    if (contentTemplateFilter !== 'all') {
+        if (contentTemplateFilter === 'email') {
+            templates = templates.filter(t => t.template_type.startsWith('email-'));
+        } else {
+            templates = templates.filter(t => t.template_type === contentTemplateFilter);
+        }
+    }
+
+    if (templates.length === 0) {
+        container.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: #9ca3af; font-size: 0.9rem;">
+            No templates yet. Import from the library or create your own.
+        </div>`;
+        return;
+    }
+
+    container.innerHTML = templates.map(t => `
+        <div class="template-item" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <strong style="font-size: 0.9rem;">${escapeHtml(t.name)}</strong>
+                    <span style="font-size: 0.7rem; background: #f3f4f6; padding: 0.15rem 0.4rem; border-radius: 4px; color: #6b7280;">${TEMPLATE_TYPE_LABELS[t.template_type] || t.template_type}</span>
+                </div>
+                <div style="font-size: 0.8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml((t.content || '').substring(0, 100))}${t.content.length > 100 ? '...' : ''}</div>
+            </div>
+            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; color: #dc2626; border-color: #fecaca; flex-shrink: 0; margin-left: 0.5rem;" onclick="deleteTemplate('${t.id}')">Remove</button>
+        </div>
+    `).join('');
+}
+
+async function showTemplateLibrary() {
+    const modal = document.getElementById('templateLibraryModal');
+    modal.style.display = 'block';
+
+    const listEl = document.getElementById('templateLibraryList');
+    listEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #9ca3af;">Loading library...</div>';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/content-templates/library`, {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error('Failed to load library');
+
+        const data = await response.json();
+        const library = data.templates || [];
+
+        if (library.length === 0) {
+            listEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #9ca3af;">No system templates available.</div>';
+            return;
+        }
+
+        listEl.innerHTML = library.map(t => `
+            <label style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; border-bottom: 1px solid #f3f4f6; cursor: pointer;">
+                <input type="checkbox" class="library-template-cb" value="${t.id}" style="margin-top: 0.2rem;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                        <strong style="font-size: 0.85rem;">${escapeHtml(t.name)}</strong>
+                        <span style="font-size: 0.65rem; background: #f3f4f6; padding: 0.1rem 0.3rem; border-radius: 3px; color: #6b7280;">${TEMPLATE_TYPE_LABELS[t.template_type] || t.template_type}</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml((t.content || '').substring(0, 80))}</div>
+                </div>
+            </label>
+        `).join('');
+    } catch (error) {
+        console.error('Load template library error:', error);
+        listEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #ef4444;">Failed to load template library</div>';
+    }
+}
+
+async function importSelectedTemplates() {
+    const checkboxes = document.querySelectorAll('.library-template-cb:checked');
+    const templateIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (templateIds.length === 0) {
+        showToast('Select at least one template to import', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/content-templates/import`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ templateIds })
+        });
+
+        if (!response.ok) throw new Error('Failed to import');
+
+        const data = await response.json();
+        showToast(data.message, 'success');
+
+        document.getElementById('templateLibraryModal').style.display = 'none';
+        await loadContentTemplatesFromBackend();
+        renderOrgTemplates();
+    } catch (error) {
+        console.error('Import templates error:', error);
+        showToast('Failed to import templates: ' + error.message, 'error');
+    }
+}
+
+async function importAllTemplates() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/content-templates/import-all`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({})
+        });
+
+        if (!response.ok) throw new Error('Failed to import');
+
+        const data = await response.json();
+        showToast(data.message, 'success');
+
+        document.getElementById('templateLibraryModal').style.display = 'none';
+        await loadContentTemplatesFromBackend();
+        renderOrgTemplates();
+    } catch (error) {
+        console.error('Import all templates error:', error);
+        showToast('Failed to import templates: ' + error.message, 'error');
+    }
+}
+
+function showAddTemplateForm() {
+    document.getElementById('addTemplateForm').style.display = 'block';
+    document.getElementById('newTemplateName').value = '';
+    document.getElementById('newTemplateContent').value = '';
+    document.getElementById('newTemplateSubject').value = '';
+    document.getElementById('newTemplateHeadline').value = '';
+}
+
+async function saveNewTemplate() {
+    const name = document.getElementById('newTemplateName').value.trim();
+    const content = document.getElementById('newTemplateContent').value.trim();
+    const templateType = document.getElementById('newTemplateType').value;
+    const subject = document.getElementById('newTemplateSubject').value.trim();
+    const headline = document.getElementById('newTemplateHeadline').value.trim();
+
+    if (!name || !content) {
+        showToast('Name and content are required', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/content-templates`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ templateType, name, content, subject: subject || null, headline: headline || null })
+        });
+
+        if (!response.ok) throw new Error('Failed to create');
+
+        showToast('Template created!', 'success');
+        document.getElementById('addTemplateForm').style.display = 'none';
+        await loadContentTemplatesFromBackend();
+        renderOrgTemplates();
+    } catch (error) {
+        console.error('Create template error:', error);
+        showToast('Failed to create template: ' + error.message, 'error');
+    }
+}
+
+async function deleteTemplate(id) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/content-templates/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error('Failed to delete');
+
+        showToast('Template removed', 'success');
+        await loadContentTemplatesFromBackend();
+        renderOrgTemplates();
+    } catch (error) {
+        console.error('Delete template error:', error);
+        showToast('Failed to delete template: ' + error.message, 'error');
+    }
+}
+
+// ==================== END CONTENT TEMPLATE MANAGEMENT ====================
 
 async function loadMembers() {
     if (!currentOrgId) return;
@@ -6967,7 +7243,9 @@ function replaceOrgPlaceholders(text) {
         '[CEO/President Title]': org.ceo_title,
         '[Media Contact Name]': org.media_contact_name,
         '[Media Contact Email]': org.media_contact_email,
-        '[Support Email]': org.support_email
+        '[Support Email]': org.support_email,
+        '[Draw Time]': org.default_draw_time,
+        '[Sales Close Time]': org.ticket_deadline_time
     };
     for (const [placeholder, value] of Object.entries(replacements)) {
         if (value) {
@@ -7006,12 +7284,39 @@ async function buildEnhancedSystemPrompt(contentType, emailType = null) {
         knowledgeBaseType = typeMapping[contentType];
     }
 
-    // Only inject hardcoded draft examples/brand guidelines for the org that owns them.
-    // For all other orgs, rely on their org-specific knowledge base entries instead.
-    // The DRAFT_KNOWLEDGE_BASE contains client-specific brand voice, examples, and
-    // formatting rules that should not leak into other organizations' content.
-    // TODO: Move draft examples/brand guidelines to a per-org database table so each
-    //       org can configure their own content templates and brand voice.
+    // Inject org-specific brand guidelines from database (replaces former hardcoded DRAFT_KNOWLEDGE_BASE)
+    const org = currentUser?.organization;
+    if (org?.brand_terminology) {
+        try {
+            const bt = typeof org.brand_terminology === 'string' ? JSON.parse(org.brand_terminology) : org.brand_terminology;
+            let guidelinesPrompt = '\nBRAND GUIDELINES:\n';
+            if (bt.notes && bt.notes.length > 0) {
+                bt.notes.forEach(note => { guidelinesPrompt += `- ${note}\n`; });
+            }
+            if (org.website_url) guidelinesPrompt += `- Website: ${org.website_url}\n`;
+            if (org.store_location) guidelinesPrompt += `- Store: ${org.store_location}\n`;
+            guidelinesPrompt += '\nFORMATTING:\n- Maximum 2 emojis per social post (one at end of sentence)\n- Social posts: short paragraph form with line breaks\n- All social posts must include licence disclaimer at end\n- Emails are for copy content only (not full templates with headers)\n';
+            basePrompt += guidelinesPrompt;
+        } catch (e) {
+            console.warn('Could not parse brand_terminology:', e);
+        }
+    }
+
+    // Inject org-specific content templates as examples for the current content type
+    if (orgContentTemplates.length > 0 && knowledgeBaseType) {
+        const relevantTemplates = orgContentTemplates.filter(t => t.template_type === knowledgeBaseType);
+        if (relevantTemplates.length > 0) {
+            let examplesPrompt = '\n\nEXAMPLES (use these as style/format reference):\n';
+            relevantTemplates.slice(0, 3).forEach((tmpl, idx) => {
+                examplesPrompt += `\n--- Example ${idx + 1} ---\n`;
+                if (tmpl.subject) examplesPrompt += `Subject: ${tmpl.subject}\n`;
+                if (tmpl.headline) examplesPrompt += `Headline: ${tmpl.headline}\n`;
+                if (tmpl.name) examplesPrompt += `Type: ${tmpl.name}\n`;
+                examplesPrompt += `${tmpl.content}\n`;
+            });
+            basePrompt += examplesPrompt;
+        }
+    }
 
     // Inject org-specific knowledge base entries (custom KB from database)
     if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
@@ -7309,9 +7614,9 @@ async function generateDraft() {
 
     // Add required line for social media posts
     if (currentDraftType === 'social') {
-        // Use the generic placeholder-based required line for all orgs.
-        // Org-specific values are substituted via replaceOrgPlaceholders() below.
-        let requiredLine = 'Purchase tickets online at [Organization Website] or at the [In-Person Ticket Location]!';
+        const org = currentUser?.organization;
+        // Use org's custom social required line if set, otherwise fall back to generic placeholder
+        let requiredLine = org?.social_required_line || 'Purchase tickets online at [Organization Website] or at the [In-Person Ticket Location]!';
         requiredLine = replaceOrgPlaceholders(requiredLine);
         userPrompt += '\n\nIMPORTANT: You MUST include this exact line in the post: "' + requiredLine + '"';
     }
@@ -7511,16 +7816,23 @@ async function generateEmailDraft() {
     if (addSubscriptions || addRewardsPlus || addCatchTheAce) {
         userPrompt += "\n\nAt the end of the email, include the following additional sections:";
 
-        if (addSubscriptions && typeof DRAFT_KNOWLEDGE_BASE !== 'undefined') {
-            userPrompt += "\n\n--- SUBSCRIPTIONS SECTION ---\n" + replaceOrgPlaceholders(DRAFT_KNOWLEDGE_BASE.getEmailAddOn('subscriptions'));
+        // Pull email add-on content from org's DB-stored config, falling back to generic placeholders
+        const orgAddons = currentUser?.organization?.email_addons;
+        const addons = typeof orgAddons === 'string' ? JSON.parse(orgAddons || '{}') : (orgAddons || {});
+
+        if (addSubscriptions) {
+            const subContent = addons.subscriptions || 'Did you know you can subscribe to [Organization Name]? Never miss a draw! Set up a monthly subscription and your tickets are automatically purchased each month. Visit [Organization Website] to set up your subscription today!';
+            userPrompt += "\n\n--- SUBSCRIPTIONS SECTION ---\n" + replaceOrgPlaceholders(subContent);
         }
 
-        if (addRewardsPlus && typeof DRAFT_KNOWLEDGE_BASE !== 'undefined') {
-            userPrompt += "\n\n--- REWARDS+ SECTION ---\n" + replaceOrgPlaceholders(DRAFT_KNOWLEDGE_BASE.getEmailAddOn('rewards-plus'));
+        if (addRewardsPlus) {
+            const rpContent = addons.rewardsPlus || 'Join Rewards+ and earn points with every ticket purchase! Redeem your points for bonus entries, exclusive merchandise, and more. Sign up at [Organization Website]!';
+            userPrompt += "\n\n--- REWARDS+ SECTION ---\n" + replaceOrgPlaceholders(rpContent);
         }
 
-        if (addCatchTheAce && typeof DRAFT_KNOWLEDGE_BASE !== 'undefined') {
-            userPrompt += "\n\n--- CATCH THE ACE SECTION ---\n" + replaceOrgPlaceholders(DRAFT_KNOWLEDGE_BASE.getEmailAddOn('catch-the-ace'));
+        if (addCatchTheAce) {
+            const ctaContent = addons.catchTheAce || 'The [Organization Name] Catch The Ace is LIVE! Catch The Ace is a weekly progressive lottery. Come see what the fun is all about at [Catch The Ace Website]!';
+            userPrompt += "\n\n--- CATCH THE ACE SECTION ---\n" + replaceOrgPlaceholders(ctaContent);
         }
     }
 
