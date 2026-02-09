@@ -26,7 +26,8 @@
         #mainApp *,
         #dataAnalysisApp *,
         #draftAssistantApp *,
-        #listNormalizerApp * {
+        #listNormalizerApp *,
+        #askLightspeedApp * {
             text-shadow: none !important;
         }
 
@@ -484,6 +485,8 @@
         .bento-icon.draft { background: #FFF0E6; color: #F47B3A; }
         .bento-icon.data { background: #E8F9EB; color: #28C840; }
         .bento-icon.normalizer { background: #FEF3C7; color: #D97706; }
+        .bento-icon.ask { background: linear-gradient(135deg, rgba(233, 30, 140, 0.12), rgba(245, 166, 35, 0.12)); color: #E91E8C; }
+        .ask-glow { background: radial-gradient(ellipse at 30% 50%, rgba(233, 30, 140, 0.06) 0%, transparent 70%); }
 
         .bento-badge {
             font-size: 11px;
@@ -582,6 +585,34 @@
             margin-bottom: 10px;
         }
 
+        .bento-full-width {
+            grid-column: 1 / -1;
+        }
+
+        .bento-full-width-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+        }
+
+        .bento-full-width-left {
+            flex: 1;
+        }
+
+        .bento-full-width .bento-description {
+            max-width: 600px;
+        }
+
+        .bento-full-width .bento-cta {
+            background: linear-gradient(135deg, #E91E8C, #F5A623);
+            flex-shrink: 0;
+        }
+
+        .bento-full-width .bento-cta:hover {
+            background: linear-gradient(135deg, #d11a7d, #e09520);
+        }
+
         @media (max-width: 768px) {
             #toolMenuPage .bento-grid {
                 grid-template-columns: 1fr;
@@ -593,6 +624,11 @@
 
             .bento-compact-row {
                 grid-template-columns: 1fr;
+            }
+
+            .bento-full-width-content {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
 
@@ -897,6 +933,448 @@
 
             .ask-prompt-chip {
                 font-size: 0.75rem;
+            }
+        }
+
+        /* ==================== ASK LIGHTSPEED DEDICATED PAGE ==================== */
+        .als-page {
+            position: relative;
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Animated gradient background - mirrors landing hero */
+        .als-gradient-bg {
+            position: absolute;
+            top: -40%;
+            right: -20%;
+            width: 90%;
+            height: 140%;
+            background:
+                radial-gradient(ellipse at 60% 30%, rgba(233, 30, 140, 0.25) 0%, transparent 55%),
+                radial-gradient(ellipse at 80% 50%, rgba(244, 123, 58, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 70%, rgba(99, 91, 255, 0.18) 0%, transparent 55%),
+                radial-gradient(ellipse at 70% 20%, rgba(245, 198, 35, 0.15) 0%, transparent 50%);
+            animation: alsGradientShift 12s ease-in-out infinite alternate;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(40px);
+        }
+
+        @keyframes alsGradientShift {
+            0%   { transform: translate(0, 0) scale(1); }
+            33%  { transform: translate(20px, -30px) scale(1.03); }
+            66%  { transform: translate(-10px, 20px) scale(0.98); }
+            100% { transform: translate(15px, -15px) scale(1.02); }
+        }
+
+        /* White fade on left for readability */
+        .als-gradient-fade {
+            position: absolute;
+            top: 0; left: 0;
+            width: 55%;
+            height: 100%;
+            background: linear-gradient(90deg, #fff 40%, rgba(255,255,255,0.85) 70%, transparent 100%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .als-content {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 40px 40px;
+            width: 100%;
+        }
+
+        /* Hero header - two-tone Stripe style */
+        .als-hero {
+            margin-bottom: 40px;
+        }
+
+        .als-eyebrow {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+        }
+
+        .als-title {
+            font-size: 40px;
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -0.025em;
+            margin: 0;
+        }
+
+        .als-title-bold {
+            color: var(--text-primary);
+        }
+
+        .als-title-light {
+            color: #8898AA;
+        }
+
+        /* Chat container - frosted glass card */
+        .als-chat-container {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+            animation: fadeInUp 0.5s ease-out both;
+            margin-bottom: 32px;
+        }
+
+        .als-chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .als-chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .als-chat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+
+        .als-chat-label {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .als-chat-sublabel {
+            font-size: 0.72rem;
+            color: #fff;
+            font-weight: 500;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+
+        .als-chat-header-text {
+            display: flex;
+            align-items: center;
+        }
+
+        /* Tone pills */
+        .als-tone-pills {
+            display: flex;
+            gap: 6px;
+        }
+
+        .als-tone {
+            padding: 6px 16px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .als-tone:hover {
+            border-color: rgba(0, 0, 0, 0.2);
+            color: var(--text-primary);
+        }
+
+        .als-tone.active {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-color: transparent;
+            color: #fff;
+        }
+
+        /* Prompts */
+        .als-prompts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .als-prompt-chip {
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-alt);
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            line-height: 1.4;
+        }
+
+        .als-prompt-chip:hover {
+            border-color: var(--gradient-start);
+            color: var(--text-primary);
+            background: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Chat area */
+        .als-chat-area {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            scroll-behavior: smooth;
+        }
+
+        .als-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .als-msg {
+            padding: 16px 20px;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            line-height: 1.65;
+            max-width: 90%;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .als-msg-user {
+            background: linear-gradient(135deg, rgba(233, 30, 140, 0.08), rgba(245, 166, 35, 0.08));
+            border: 1px solid rgba(233, 30, 140, 0.15);
+            color: var(--text-primary);
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .als-msg-ai {
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .als-msg-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        .als-msg-actions button {
+            padding: 4px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-alt);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+
+        .als-msg-actions button:hover {
+            border-color: var(--gradient-start);
+            color: var(--text-primary);
+        }
+
+        .als-msg-actions .rating-btn {
+            font-size: 0.85rem;
+            padding: 4px 8px;
+        }
+
+        /* Typing indicator */
+        .als-typing {
+            display: flex;
+            gap: 4px;
+            padding: 16px 20px;
+            align-self: flex-start;
+        }
+
+        .als-typing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: askBounce 1.2s ease-in-out infinite;
+        }
+
+        .als-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+        .als-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+        /* Input row */
+        .als-input-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .als-input {
+            flex: 1;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text-primary);
+            font-size: 0.92rem;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            line-height: 1.5;
+            max-height: 120px;
+        }
+
+        .als-input:focus {
+            border-color: var(--gradient-start);
+            box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.08);
+        }
+
+        .als-send {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            border: none;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .als-send:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px rgba(233, 30, 140, 0.3);
+        }
+
+        .als-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .als-disclaimer {
+            margin-top: 12px;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* Capabilities cards */
+        .als-capabilities {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            animation: fadeInUp 0.5s ease-out 200ms both;
+        }
+
+        .als-cap-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.25s ease;
+        }
+
+        .als-cap-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 0, 0, 0.12);
+        }
+
+        .als-cap-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+
+        .als-cap-icon-pink { background: linear-gradient(135deg, rgba(233, 30, 140, 0.12), rgba(245, 166, 35, 0.12)); color: #E91E8C; }
+        .als-cap-icon-blue { background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(99, 91, 255, 0.12)); color: #3B82F6; }
+        .als-cap-icon-amber { background: linear-gradient(135deg, rgba(245, 166, 35, 0.12), rgba(250, 204, 21, 0.12)); color: #F5A623; }
+
+        .als-cap-card h3 {
+            font-size: 0.95rem;
+            font-weight: 650;
+            color: var(--text-primary);
+            margin: 0 0 6px 0;
+        }
+
+        .als-cap-card p {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+            margin: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .als-content {
+                padding: 30px 20px;
+            }
+
+            .als-title {
+                font-size: 28px;
+            }
+
+            .als-capabilities {
+                grid-template-columns: 1fr;
+            }
+
+            .als-chat-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .als-tone-pills {
+                width: 100%;
+            }
+
+            .als-tone {
+                flex: 1;
+                text-align: center;
+            }
+
+            .als-gradient-fade {
+                width: 100%;
+                background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 100%);
             }
         }
 
@@ -8247,42 +8725,38 @@
                         <p class="bento-description">Clean and format customer lists for Mailchimp export.</p>
                         <span class="bento-badge">Data Export</span>
                     </div>
+
+                </div>
+
+                <!-- Ask Lightspeed - Full width bottom card -->
+                <div class="bento-card bento-full-width" id="toolAskLightspeed">
+                    <div class="bento-card-glow ask-glow"></div>
+                    <div class="bento-full-width-content">
+                        <div class="bento-full-width-left">
+                            <div class="bento-icon-row">
+                                <div class="bento-icon ask">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5"/></svg>
+                                </div>
+                                <span class="bento-badge ai-badge">AI-Powered</span>
+                            </div>
+                            <h3 class="bento-title" style="font-size: 1.25rem;">Ask Lightspeed</h3>
+                            <p class="bento-description">Your all-in-one AI assistant. Draft content, answer questions, brainstorm ideas, and handle any task &mdash; just ask.</p>
+                            <div class="bento-features">
+                                <span class="bento-feature">Freeform Chat</span>
+                                <span class="bento-feature">Brand-Aware</span>
+                                <span class="bento-feature">Knowledge Base</span>
+                                <span class="bento-feature">Any Task</span>
+                            </div>
+                        </div>
+                        <button class="bento-cta">
+                            Open Ask Lightspeed
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div><!-- /.bento-grid -->
 
-            <!-- Ask Lightspeed -->
-            <div class="ask-lightspeed" id="askLightspeed">
-                <div class="ask-header">
-                    <div class="ask-header-left">
-                        <div class="ask-icon">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5"/></svg>
-                        </div>
-                        <span class="ask-label">Ask Lightspeed</span>
-                        <span class="ask-sublabel">AI Assistant</span>
-                    </div>
-                    <div class="ask-tone-pills" id="askTonePills">
-                        <button class="ask-tone active" data-tone="professional">Professional</button>
-                        <button class="ask-tone" data-tone="friendly">Friendly</button>
-                        <button class="ask-tone" data-tone="casual">Casual</button>
-                    </div>
-                </div>
-
-                <div class="ask-prompts" id="askPrompts">
-                    <!-- Filled dynamically with sample prompts -->
-                </div>
-
-                <div class="ask-chat" id="askChat" style="display: none;">
-                    <div class="ask-messages" id="askMessages"></div>
-                </div>
-
-                <div class="ask-input-row">
-                    <textarea class="ask-input" id="askInput" placeholder="Ask anything..." rows="1"></textarea>
-                    <button class="ask-send" id="askSendBtn" title="Send">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="m22 2-10 10"/></svg>
-                    </button>
-                </div>
-                <div class="ask-disclaimer">AI-generated responses. Always verify important information.</div>
-            </div>
+            <!-- Ask Lightspeed (moved to dedicated page — see sidebar) -->
         </div><!-- /.tool-menu-content -->
         <footer class="site-footer">
             <div class="footer-content">
@@ -8345,6 +8819,10 @@
                     <button class="sidebar-btn" data-tool="list-normalizer">
                         <span class="sidebar-btn-icon">&#128221;</span>
                         <span class="sidebar-btn-label">List Normalizer</span>
+                    </button>
+                    <button class="sidebar-btn" data-tool="ask-lightspeed">
+                        <span class="sidebar-btn-icon">&#10024;</span>
+                        <span class="sidebar-btn-label">Ask Lightspeed</span>
                     </button>
                 </div>
 
@@ -10848,6 +11326,87 @@
             </div>
         </footer>
     </div><!-- /#listNormalizerApp -->
+
+    <!-- ==================== ASK LIGHTSPEED TOOL ==================== -->
+    <div class="app" id="askLightspeedApp">
+        <div class="als-page">
+            <!-- Animated gradient background (matches landing hero) -->
+            <div class="als-gradient-bg"></div>
+            <div class="als-gradient-fade"></div>
+
+            <div class="als-content">
+                <!-- Hero header -->
+                <div class="als-hero">
+                    <div class="als-eyebrow">AI-Powered Assistant</div>
+                    <h1 class="als-title">
+                        <span class="als-title-bold">Ask Lightspeed anything.</span>
+                        <span class="als-title-light">Your always-on AI that knows your organization, drafts content, answers questions, and helps you work faster.</span>
+                    </h1>
+                </div>
+
+                <!-- Chat container -->
+                <div class="als-chat-container">
+                    <div class="als-chat-header">
+                        <div class="als-chat-header-left">
+                            <div class="als-chat-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5"/></svg>
+                            </div>
+                            <div class="als-chat-header-text">
+                                <span class="als-chat-label">Ask Lightspeed</span>
+                                <span class="als-chat-sublabel">AI Assistant</span>
+                            </div>
+                        </div>
+                        <div class="als-tone-pills" id="alsTonePills">
+                            <button class="als-tone active" data-tone="professional">Professional</button>
+                            <button class="als-tone" data-tone="friendly">Friendly</button>
+                            <button class="als-tone" data-tone="casual">Casual</button>
+                        </div>
+                    </div>
+
+                    <div class="als-prompts" id="alsPrompts">
+                        <!-- Filled dynamically -->
+                    </div>
+
+                    <div class="als-chat-area" id="alsChatArea" style="display: none;">
+                        <div class="als-messages" id="alsMessages"></div>
+                    </div>
+
+                    <div class="als-input-row">
+                        <textarea class="als-input" id="alsInput" placeholder="Ask anything..." rows="1"></textarea>
+                        <button class="als-send" id="alsSendBtn" title="Send">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="m22 2-10 10"/></svg>
+                        </button>
+                    </div>
+                    <div class="als-disclaimer">AI-generated responses. Always verify important information.</div>
+                </div>
+
+                <!-- Capabilities cards -->
+                <div class="als-capabilities">
+                    <div class="als-cap-card">
+                        <div class="als-cap-icon als-cap-icon-pink">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <h3>Draft Content</h3>
+                        <p>Emails, social posts, media releases, and ad copy tailored to your brand voice.</p>
+                    </div>
+                    <div class="als-cap-card">
+                        <div class="als-cap-icon als-cap-icon-blue">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        </div>
+                        <h3>Answer Questions</h3>
+                        <p>Get instant answers about processes, policies, and organizational knowledge.</p>
+                    </div>
+                    <div class="als-cap-card">
+                        <div class="als-cap-icon als-cap-icon-amber">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                        </div>
+                        <h3>Brainstorm Ideas</h3>
+                        <p>Campaign strategies, content calendars, and creative concepts on demand.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div><!-- /#askLightspeedApp -->
 
     </div><!-- /.app-tools-area -->
     </div><!-- /#appWrapper -->
