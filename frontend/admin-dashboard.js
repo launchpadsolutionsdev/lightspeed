@@ -655,8 +655,8 @@ function renderOrgSetupPanel(panel, data) {
                 <div style="border-top: 1px solid #e5e7eb; margin-top: 1rem; padding-top: 1rem;">
                     <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #374151;">Email Add-Ons</h4>
                     ${orgTextarea('adminOrgAddonSub', 'Subscriptions', emailAddons.subscriptions, 2, 'Subscription promo copy...')}
-                    ${orgTextarea('adminOrgAddonRP', 'Rewards+', emailAddons.rewardsPlus, 2, 'Rewards+ promo copy...')}
                     ${orgTextarea('adminOrgAddonCTA', 'Catch The Ace', emailAddons.catchTheAce, 2, 'Catch The Ace promo copy...')}
+                    ${orgTextarea('adminOrgAddonOther', 'Other Program(s)', emailAddons.other, 2, 'Any additional program or promotion to highlight in emails...')}
                 </div>
 
                 <div style="margin-top: 1rem;">
@@ -698,7 +698,6 @@ function renderOrgSetupPanel(panel, data) {
             <div style="padding: 1.25rem; border-top: 1px solid #e5e7eb;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <h4 style="margin: 0; font-size: 0.95rem; color: #374151;">Content Templates <span class="text-muted" style="font-weight:400;">(${data.templateCount} templates)</span></h4>
-                    <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="adminImportAllTemplates('${org.id}')">Import All from Library</button>
                 </div>
                 <div id="adminTemplateList" style="max-height: 200px; overflow-y: auto;">
                     <div class="text-muted" style="padding: 0.5rem; font-size: 0.85rem;">Loading templates...</div>
@@ -761,14 +760,14 @@ async function saveAdminOrgProfile(orgId) {
 
     // Build email add-ons JSON
     const subText = v('adminOrgAddonSub');
-    const rpText = v('adminOrgAddonRP');
     const ctaText = v('adminOrgAddonCTA');
+    const otherText = v('adminOrgAddonOther');
     let emailAddons = null;
-    if (subText || rpText || ctaText) {
+    if (subText || ctaText || otherText) {
         const obj = {};
         if (subText) obj.subscriptions = subText;
-        if (rpText) obj.rewardsPlus = rpText;
         if (ctaText) obj.catchTheAce = ctaText;
+        if (otherText) obj.other = otherText;
         emailAddons = JSON.stringify(obj);
     }
 

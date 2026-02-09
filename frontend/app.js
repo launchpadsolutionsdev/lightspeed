@@ -4632,11 +4632,11 @@ function populateOrgProfile(org) {
         try {
             const parsed = typeof ea === 'string' ? JSON.parse(ea) : ea;
             const subEl = document.getElementById('orgProfileAddonSubscriptions');
-            const rpEl = document.getElementById('orgProfileAddonRewardsPlus');
             const ctaEl = document.getElementById('orgProfileAddonCatchTheAce');
+            const otherEl = document.getElementById('orgProfileAddonOther');
             if (subEl && parsed.subscriptions) subEl.value = parsed.subscriptions;
-            if (rpEl && parsed.rewardsPlus) rpEl.value = parsed.rewardsPlus;
             if (ctaEl && parsed.catchTheAce) ctaEl.value = parsed.catchTheAce;
+            if (otherEl && parsed.other) otherEl.value = parsed.other;
         } catch (e) { /* ignore parse errors */ }
     }
 }
@@ -4657,12 +4657,12 @@ async function saveOrgProfile() {
 
         // Build email add-ons JSON
         const subText = (document.getElementById('orgProfileAddonSubscriptions')?.value || '').trim();
-        const rpText = (document.getElementById('orgProfileAddonRewardsPlus')?.value || '').trim();
         const ctaText = (document.getElementById('orgProfileAddonCatchTheAce')?.value || '').trim();
-        const emailAddons = (subText || rpText || ctaText) ? JSON.stringify({
+        const otherText = (document.getElementById('orgProfileAddonOther')?.value || '').trim();
+        const emailAddons = (subText || ctaText || otherText) ? JSON.stringify({
             subscriptions: subText || undefined,
-            rewardsPlus: rpText || undefined,
-            catchTheAce: ctaText || undefined
+            catchTheAce: ctaText || undefined,
+            other: otherText || undefined
         }) : null;
 
         const payload = {
@@ -7810,10 +7810,10 @@ async function generateEmailDraft() {
 
     // Check for email add-ons
     const addSubscriptions = document.getElementById('emailAddSubscriptions').checked;
-    const addRewardsPlus = document.getElementById('emailAddRewardsPlus').checked;
     const addCatchTheAce = document.getElementById('emailAddCatchTheAce').checked;
+    const addOther = document.getElementById('emailAddOther').checked;
 
-    if (addSubscriptions || addRewardsPlus || addCatchTheAce) {
+    if (addSubscriptions || addCatchTheAce || addOther) {
         userPrompt += "\n\nAt the end of the email, include the following additional sections:";
 
         // Pull email add-on content from org's DB-stored config, falling back to generic placeholders
@@ -7825,18 +7825,20 @@ async function generateEmailDraft() {
             userPrompt += "\n\n--- SUBSCRIPTIONS SECTION ---\n" + replaceOrgPlaceholders(subContent);
         }
 
-        if (addRewardsPlus) {
-            const rpContent = addons.rewardsPlus || 'Join Rewards+ and earn points with every ticket purchase! Redeem your points for bonus entries, exclusive merchandise, and more. Sign up at [Organization Website]!';
-            userPrompt += "\n\n--- REWARDS+ SECTION ---\n" + replaceOrgPlaceholders(rpContent);
-        }
-
         if (addCatchTheAce) {
             const ctaContent = addons.catchTheAce || 'The [Organization Name] Catch The Ace is LIVE! Catch The Ace is a weekly progressive lottery. Come see what the fun is all about at [Catch The Ace Website]!';
             userPrompt += "\n\n--- CATCH THE ACE SECTION ---\n" + replaceOrgPlaceholders(ctaContent);
         }
+
+        if (addOther) {
+            const otherContent = addons.other || '';
+            if (otherContent) {
+                userPrompt += "\n\n--- ADDITIONAL PROGRAM SECTION ---\n" + replaceOrgPlaceholders(otherContent);
+            }
+        }
     }
 
-    lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details, addSubscriptions, addRewardsPlus, addCatchTheAce };
+    lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details, addSubscriptions, addCatchTheAce, addOther };
 
     // Show loading
     document.getElementById('draftEmailTypeSection').style.display = 'none';
