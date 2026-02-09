@@ -9,6 +9,22 @@ const { v4: uuidv4 } = require('uuid');
 const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const multer = require('multer');
+const mammoth = require('mammoth');
+
+// Configure multer for in-memory file uploads (max 10MB)
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+            file.originalname.endsWith('.docx')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .docx files are supported'));
+        }
+    }
+});
 
 /**
  * GET /api/knowledge-base
@@ -381,6 +397,96 @@ router.get('/export/all', authenticate, async (req, res) => {
     } catch (error) {
         console.error('Export knowledge base error:', error);
         res.status(500).json({ error: 'Failed to export entries' });
+    }
+});
+
+/**
+ * POST /api/knowledge-base/upload-doc
+ * Upload a Word document (.docx) and parse it into knowledge base entries.
+ * Splits on headings (H1/H2/H3) — each heading becomes a KB entry title,
+ * and the text below it becomes the content.
+ */
+router.post('/upload-doc', authenticate, upload.single('document'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No .docx file uploaded' });
+        }
+
+        // Get user's organization
+        const orgResult = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [req.userId]
+        );
+
+        if (orgResult.rows.length === 0) {
+            return res.status(400).json({ error: 'No organization found' });
+        }
+
+        const organizationId = orgResult.rows[0].organization_id;
+
+        // Parse the Word document
+        const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
+        const html = result.value;
+
+        // Split on headings to create KB entries
+        // Each heading becomes a title, the content below becomes the entry
+        const entries = [];
+        const headingRegex = /<h([1-3])[^>]*>(.*?)<\/h[1-3]>/gi;
+        const parts = html.split(headingRegex);
+
+        // parts array: [pre-heading text, level, title, content, level, title, content, ...]
+        // If there's content before the first heading, capture it
+        if (parts[0] && parts[0].trim().replace(/<[^>]*>/g, '').trim()) {
+            entries.push({
+                title: req.file.originalname.replace('.docx', ''),
+                content: parts[0].replace(/<[^>]*>/g, '').trim()
+            });
+        }
+
+        // Process heading/content pairs
+        for (let i = 1; i < parts.length; i += 3) {
+            const title = parts[i + 1] ? parts[i + 1].replace(/<[^>]*>/g, '').trim() : '';
+            const content = parts[i + 2] ? parts[i + 2].replace(/<[^>]*>/g, '').trim() : '';
+            if (title && content) {
+                entries.push({ title, content });
+            }
+        }
+
+        // If no headings were found, treat the entire document as one entry
+        if (entries.length === 0) {
+            const plainText = html.replace(/<[^>]*>/g, '').trim();
+            if (plainText) {
+                entries.push({
+                    title: req.file.originalname.replace('.docx', ''),
+                    content: plainText
+                });
+            }
+        }
+
+        // Insert all entries into the knowledge base
+        const category = req.body.category || 'general';
+        const imported = [];
+
+        for (const entry of entries) {
+            const entryId = uuidv4();
+            const dbResult = await pool.query(
+                `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, created_by, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+                 RETURNING *`,
+                [entryId, organizationId, entry.title, entry.content, category, ['imported', 'docx'], req.userId]
+            );
+            imported.push(dbResult.rows[0]);
+        }
+
+        res.json({
+            message: `Successfully imported ${imported.length} entries from ${req.file.originalname}`,
+            imported: imported.length,
+            entries: imported
+        });
+
+    } catch (error) {
+        console.error('Upload document error:', error);
+        res.status(500).json({ error: error.message || 'Failed to process document' });
     }
 });
 

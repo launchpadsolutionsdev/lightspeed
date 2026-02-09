@@ -1436,11 +1436,26 @@ You are a fully capable AI assistant. You can help with absolutely anything:
 
 Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
+        // Inject org-specific knowledge base
+        let kbSection = '';
+        if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
+            const kbContext = customKnowledge.slice(0, 15).map(k =>
+                `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
+            ).join('\n\n---\n\n');
+            kbSection = '\n\nORGANIZATION KNOWLEDGE BASE (use this to answer org-specific questions accurately):\n' + kbContext;
+        }
+
+        // Inject rated examples from feedback loop
+        const ratedExamples = await getRatedExamples('ask_lightspeed');
+        const feedbackSection = buildRatedExamplesContext(ratedExamples);
+
+        const fullSystemPrompt = systemPrompt + kbSection + feedbackSection;
+
         const response = await fetch(`${API_BASE_URL}/api/generate`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({
-                system: systemPrompt,
+                system: fullSystemPrompt,
                 messages: askConversation.map(m => ({ role: m.role, content: m.content })),
                 max_tokens: 4096
             })
@@ -1458,8 +1473,32 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         const aiText = data.content[0].text;
 
         askConversation.push({ role: 'assistant', content: aiText });
-        appendAskMessage('ai', aiText);
         saveAskConversation();
+
+        // Save to response history for feedback loop
+        const lastUserMsg = askConversation.filter(m => m.role === 'user').slice(-1)[0];
+        let askHistoryId = null;
+        try {
+            const histRes = await fetch(`${API_BASE_URL}/api/response-history`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    inquiry: lastUserMsg ? lastUserMsg.content : '',
+                    response: aiText,
+                    format: 'chat',
+                    tone: askTone,
+                    tool: 'ask_lightspeed'
+                })
+            });
+            if (histRes.ok) {
+                const histData = await histRes.json();
+                askHistoryId = histData.entry.id;
+            }
+        } catch (e) {
+            console.warn('Could not save ask history:', e);
+        }
+
+        appendAskMessage('ai', aiText, askHistoryId);
 
     } catch (error) {
         const typing = document.getElementById('askTyping');
@@ -1472,7 +1511,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
     }
 }
 
-function appendAskMessage(role, text) {
+function appendAskMessage(role, text, historyId) {
     const messagesEl = document.getElementById('askMessages');
     const chatArea = document.getElementById('askChat');
     const msgDiv = document.createElement('div');
@@ -1488,11 +1527,17 @@ function appendAskMessage(role, text) {
         html = html.replace(/\n/g, '<br>');
         msgDiv.innerHTML = html;
 
-        // Add copy button
+        // Add copy button + rating buttons
         const actions = document.createElement('div');
         actions.className = 'ask-msg-actions';
-        actions.innerHTML = `<button class="ask-copy-btn" onclick="copyAskMessage(this)">Copy</button>
+        let actionsHtml = `<button class="ask-copy-btn" onclick="copyAskMessage(this)">Copy</button>
             <button class="ask-clear-btn" onclick="clearAskChat()">New chat</button>`;
+        if (historyId) {
+            actionsHtml += `
+                <button class="rating-btn thumbs-up" onclick="rateAskMessage('${historyId}', 'positive', this)" title="Good response">👍</button>
+                <button class="rating-btn thumbs-down" onclick="rateAskMessage('${historyId}', 'negative', this)" title="Needs improvement">👎</button>`;
+        }
+        actions.innerHTML = actionsHtml;
         msgDiv.appendChild(actions);
     } else {
         msgDiv.textContent = text;
@@ -1522,6 +1567,33 @@ function clearAskChat() {
     document.getElementById('askChat').style.display = 'none';
     document.getElementById('askPrompts').style.display = 'flex';
     renderSamplePrompts();
+}
+
+async function rateAskMessage(historyId, rating, button) {
+    let feedback = null;
+    if (rating === 'negative') {
+        feedback = prompt('What could have been better? (optional)');
+    }
+
+    try {
+        await fetch(`${API_BASE_URL}/api/response-history/${historyId}/rate`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ rating, feedback })
+        });
+
+        // Replace rating buttons with confirmation
+        const actions = button.closest('.ask-msg-actions');
+        const ratingBtns = actions.querySelectorAll('.rating-btn');
+        ratingBtns.forEach(btn => btn.remove());
+        const conf = document.createElement('span');
+        conf.className = 'rating-label';
+        conf.style.fontSize = '0.75rem';
+        conf.textContent = rating === 'positive' ? '👍 Thanks!' : '👎 Noted — will improve.';
+        actions.appendChild(conf);
+    } catch (e) {
+        console.warn('Could not rate message:', e);
+    }
 }
 
 // Email/password auth removed - Google OAuth only
@@ -4400,9 +4472,9 @@ function getRelevantKnowledge(inquiry) {
 }
 
 // Fetch rated examples from backend for AI learning
-async function getRatedExamples() {
+async function getRatedExamples(tool = 'response_assistant') {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/response-history/rated-examples`, {
+        const response = await fetch(`${API_BASE_URL}/api/response-history/rated-examples?tool=${tool}`, {
             headers: getAuthHeaders()
         });
         if (response.ok) {
@@ -5413,6 +5485,62 @@ async function deleteKnowledge(id) {
     }
 }
 
+async function uploadKnowledgeDoc(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const btn = document.getElementById('uploadDocBtn');
+    btn.innerHTML = '<span class="btn-icon">⏳</span> Uploading...';
+    btn.disabled = true;
+
+    try {
+        const formData = new FormData();
+        formData.append('document', file);
+        formData.append('category', document.getElementById('knowledgeCategory').value || 'general');
+
+        const response = await fetch(`${API_BASE_URL}/api/knowledge-base/upload-doc`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('lightspeed_token')}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || 'Upload failed');
+        }
+
+        const data = await response.json();
+
+        // Add imported entries to local customKnowledge array
+        if (data.entries) {
+            data.entries.forEach(entry => {
+                customKnowledge.push({
+                    id: entry.id,
+                    question: entry.title,
+                    keywords: entry.tags || [],
+                    response: entry.content,
+                    category: entry.category,
+                    isCustom: true
+                });
+            });
+            saveUserData();
+            updateKnowledgeStats();
+            renderKnowledgeList();
+        }
+
+        showToast(data.message || `Imported ${data.imported} entries`, 'success');
+    } catch (error) {
+        console.error('Doc upload error:', error);
+        showToast('Error uploading document: ' + error.message, 'error');
+    } finally {
+        btn.innerHTML = '<span class="btn-icon">📄</span> Upload Word Doc';
+        btn.disabled = false;
+        input.value = '';
+    }
+}
+
 function parseAndImportKnowledge() {
     const content = document.getElementById("importContent").value.trim();
     if (!content) {
@@ -5726,6 +5854,76 @@ let currentDraftType = null;
 let currentDraftTone = 'balanced';
 let lastDraftRequest = null;
 let currentEmailType = null;
+let currentDraftHistoryId = null;
+
+/**
+ * Save a draft to response history and show rating UI
+ */
+async function saveDraftToHistory(inquiry, response, format) {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/response-history`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                inquiry,
+                response,
+                format: format || 'draft',
+                tone: currentDraftTone,
+                tool: 'draft_assistant'
+            })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            currentDraftHistoryId = data.entry.id;
+            showDraftRatingUI();
+        }
+    } catch (e) {
+        console.warn('Could not save draft to history:', e);
+    }
+}
+
+function showDraftRatingUI() {
+    // Remove existing rating UI if present
+    const existing = document.getElementById('draftRatingSection');
+    if (existing) existing.remove();
+
+    const ratingDiv = document.createElement('div');
+    ratingDiv.id = 'draftRatingSection';
+    ratingDiv.className = 'rating-section';
+    ratingDiv.innerHTML = `
+        <span class="rating-label">Was this draft helpful?</span>
+        <button class="rating-btn thumbs-up" onclick="rateDraft('positive', this)">👍</button>
+        <button class="rating-btn thumbs-down" onclick="rateDraft('negative', this)">👎</button>
+    `;
+
+    const outputSection = document.getElementById('draftOutputSection');
+    if (outputSection) outputSection.appendChild(ratingDiv);
+}
+
+async function rateDraft(rating, button) {
+    if (!currentDraftHistoryId) return;
+
+    let feedback = null;
+    if (rating === 'negative') {
+        feedback = prompt('What could have been better about this draft? (optional)');
+    }
+
+    try {
+        await fetch(`${API_BASE_URL}/api/response-history/${currentDraftHistoryId}/rate`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ rating, feedback })
+        });
+
+        // Update UI to show rated
+        const section = document.getElementById('draftRatingSection');
+        if (section) {
+            section.innerHTML = `<span class="rating-label">${rating === 'positive' ? '👍 Thanks! This helps Lightspeed learn your preferences.' : '👎 Thanks for the feedback — Lightspeed will improve.'}</span>`;
+        }
+    } catch (e) {
+        console.warn('Could not rate draft:', e);
+    }
+}
 
 // Draft Assistant uses server-side API (no client-side key needed)
 
@@ -6064,7 +6262,7 @@ function replaceOrgPlaceholders(text) {
 }
 
 // Helper function to build enhanced system prompt with examples from knowledge base
-function buildEnhancedSystemPrompt(contentType, emailType = null) {
+async function buildEnhancedSystemPrompt(contentType, emailType = null) {
     let basePrompt = '';
     let knowledgeBaseType = '';
 
@@ -6103,6 +6301,18 @@ function buildEnhancedSystemPrompt(contentType, emailType = null) {
             basePrompt += examples;
         }
     }
+
+    // Inject org-specific knowledge base entries (custom KB from database)
+    if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
+        const kbContext = customKnowledge.slice(0, 15).map(k =>
+            `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
+        ).join('\n\n---\n\n');
+        basePrompt += '\n\nORGANIZATION KNOWLEDGE BASE (use this information to stay accurate and on-brand):\n' + kbContext;
+    }
+
+    // Inject rated examples from feedback loop
+    const ratedExamples = await getRatedExamples('draft_assistant');
+    basePrompt += buildRatedExamplesContext(ratedExamples);
 
     // Replace org profile placeholders with actual values
     basePrompt = replaceOrgPlaceholders(basePrompt);
@@ -6405,8 +6615,8 @@ async function generateDraft() {
     document.getElementById('draftHeaderActions').style.display = 'none';
 
     try {
-        // Build enhanced system prompt with examples from knowledge base
-        const enhancedSystemPrompt = buildEnhancedSystemPrompt(currentDraftType);
+        // Build enhanced system prompt with examples from knowledge base + feedback
+        const enhancedSystemPrompt = await buildEnhancedSystemPrompt(currentDraftType);
 
         const response = await fetch(API_BASE_URL + '/api/generate', {
             method: 'POST',
@@ -6431,6 +6641,9 @@ async function generateDraft() {
         document.getElementById('draftOutputBadge').textContent = DRAFT_TYPE_LABELS[currentDraftType];
         document.getElementById('draftOutputContent').textContent = generatedContent;
         document.getElementById('draftHeaderActions').style.display = 'flex';
+
+        // Save to history and show rating UI
+        saveDraftToHistory(userPrompt, generatedContent, currentDraftType);
 
         // Show disclaimer for ads
         const disclaimer = document.getElementById('draftDisclaimer');
@@ -6488,8 +6701,20 @@ async function generateWriteAnything() {
     document.getElementById('draftHeaderActions').style.display = 'none';
 
     try {
-        // Build system prompt from Write Anything guide with org placeholders
-        const systemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
+        // Build system prompt from Write Anything guide with org placeholders + KB + feedback
+        let systemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
+
+        // Inject org-specific knowledge base
+        if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
+            const kbContext = customKnowledge.slice(0, 15).map(k =>
+                `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
+            ).join('\n\n---\n\n');
+            systemPrompt += '\n\nORGANIZATION KNOWLEDGE BASE (use this information to stay accurate and on-brand):\n' + kbContext;
+        }
+
+        // Inject rated examples from feedback loop
+        const ratedExamples = await getRatedExamples('draft_assistant');
+        systemPrompt += buildRatedExamplesContext(ratedExamples);
 
         const response = await fetch(API_BASE_URL + '/api/generate', {
             method: 'POST',
@@ -6514,6 +6739,9 @@ async function generateWriteAnything() {
         document.getElementById('draftOutputBadge').textContent = '✨ Write Anything';
         document.getElementById('draftOutputContent').textContent = generatedContent;
         document.getElementById('draftHeaderActions').style.display = 'flex';
+
+        // Save to history and show rating UI
+        saveDraftToHistory(userPrompt, generatedContent, 'write-anything');
 
         // Show standard disclaimer
         const disclaimer = document.getElementById('draftDisclaimer');
@@ -6587,9 +6815,8 @@ async function generateEmailDraft() {
     document.getElementById('draftHeaderActions').style.display = 'none';
 
     try {
-        // Build enhanced system prompt with examples from knowledge base
-        const enhancedSystemPrompt = buildEnhancedSystemPrompt('email', currentEmailType);
-        console.log('Calling API at:', API_BASE_URL + '/api/generate');
+        // Build enhanced system prompt with examples from knowledge base + feedback
+        const enhancedSystemPrompt = await buildEnhancedSystemPrompt('email', currentEmailType);
 
         const response = await fetch(API_BASE_URL + '/api/generate', {
             method: 'POST',
@@ -6616,6 +6843,9 @@ async function generateEmailDraft() {
         document.getElementById('draftOutputBadge').textContent = '📧 ' + EMAIL_TYPE_LABELS[currentEmailType];
         document.getElementById('draftOutputContent').textContent = generatedContent;
         document.getElementById('draftHeaderActions').style.display = 'flex';
+
+        // Save to history and show rating UI
+        saveDraftToHistory(userPrompt, generatedContent, 'email-' + currentEmailType);
 
         // Show disclaimer
         const disclaimer = document.getElementById('draftDisclaimer');

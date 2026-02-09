@@ -8601,11 +8601,16 @@
                             Add to Knowledge Base
                         </button>
 
-                        <div style="margin-top: 16px;">
+                        <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="btn-secondary" id="importKnowledgeBtn">
                                 <span class="btn-icon">📥</span>
                                 Bulk Import
                             </button>
+                            <button class="btn-secondary" id="uploadDocBtn" onclick="document.getElementById('docUploadInput').click()">
+                                <span class="btn-icon">📄</span>
+                                Upload Word Doc
+                            </button>
+                            <input type="file" id="docUploadInput" accept=".docx" style="display:none" onchange="uploadKnowledgeDoc(this)">
                         </div>
                     </div>
                 </div>
