@@ -9514,14 +9514,14 @@
                                 </div>
                                 <div class="org-profile-row">
                                     <div class="form-group" style="flex: 1;">
-                                        <label for="orgProfileAddonRewardsPlus">Rewards+ Add-On</label>
-                                        <textarea id="orgProfileAddonRewardsPlus" name="email_addon_rewards_plus" placeholder="e.g., Join Rewards+ and earn points with every ticket purchase! Sign up at [Organization Website]!" class="invite-input" rows="2"></textarea>
+                                        <label for="orgProfileAddonCatchTheAce">Catch The Ace Add-On</label>
+                                        <textarea id="orgProfileAddonCatchTheAce" name="email_addon_cta" placeholder="e.g., Love the 50/50? Try our Catch The Ace at [Catch The Ace Website]!" class="invite-input" rows="2"></textarea>
                                     </div>
                                 </div>
                                 <div class="org-profile-row">
                                     <div class="form-group" style="flex: 1;">
-                                        <label for="orgProfileAddonCatchTheAce">Catch The Ace Add-On</label>
-                                        <textarea id="orgProfileAddonCatchTheAce" name="email_addon_cta" placeholder="e.g., Love the 50/50? Try our Catch The Ace at [Catch The Ace Website]!" class="invite-input" rows="2"></textarea>
+                                        <label for="orgProfileAddonOther">Other Program(s) Add-On</label>
+                                        <textarea id="orgProfileAddonOther" name="email_addon_other" placeholder="e.g., Any additional program or promotion your organization wants to highlight in emails." class="invite-input" rows="2"></textarea>
                                     </div>
                                 </div>
                                 <button type="button" class="btn-primary" id="saveOrgProfileBtn">Save Profile</button>
@@ -9658,7 +9658,6 @@
                                 </div>
                                 <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
                                     <button type="button" class="btn-primary" style="font-size: 0.85rem;" onclick="importSelectedTemplates()">Import Selected</button>
-                                    <button type="button" class="btn-secondary" style="font-size: 0.85rem;" onclick="importAllTemplates()">Import All</button>
                                 </div>
                             </div>
 
@@ -10729,15 +10728,14 @@
                                     <span>Add a section about Subscriptions</span>
                                 </label>
                                 <label class="draft-checkbox-label">
-                                    <input type="checkbox" id="emailAddRewardsPlus" class="draft-checkbox">
-                                    <span>Add a section about Rewards+</span>
+                                    <input type="checkbox" id="emailAddCatchTheAce" class="draft-checkbox">
+                                    <span>Add a section about Catch The Ace</span>
+                                </label>
+                                <label class="draft-checkbox-label">
+                                    <input type="checkbox" id="emailAddOther" class="draft-checkbox">
+                                    <span>Add other program section</span>
                                 </label>
                             </div>
-                            <div class="draft-checkbox-separator"></div>
-                            <label class="draft-checkbox-label">
-                                <input type="checkbox" id="emailAddCatchTheAce" class="draft-checkbox">
-                                <span>Mention Thunder Bay Catch The Ace</span>
-                            </label>
                         </div>
 
                         <button class="draft-generate-btn" id="draftEmailGenerateBtn" disabled>
