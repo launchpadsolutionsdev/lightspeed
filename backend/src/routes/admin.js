@@ -281,7 +281,7 @@ router.get('/users', authenticate, requireSuperAdmin, async (req, res) => {
         let query = `
             SELECT u.id, u.email, u.first_name, u.last_name, u.picture,
                    u.is_super_admin, u.created_at, u.last_login_at,
-                   o.name as organization_name, om.role
+                   o.name as organization_name, o.id as organization_id, om.role
             FROM users u
             LEFT JOIN organization_memberships om ON u.id = om.user_id
             LEFT JOIN organizations o ON om.organization_id = o.id
@@ -580,6 +580,141 @@ router.get('/cost-estimate', authenticate, requireSuperAdmin, async (req, res) =
     } catch (error) {
         console.error('Get cost estimate error:', error);
         res.status(500).json({ error: 'Failed to get cost estimates' });
+    }
+});
+
+/**
+ * GET /api/admin/organizations-list
+ * Lightweight list of all organizations (id + name) for dropdowns
+ */
+router.get('/organizations-list', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT id, name FROM organizations ORDER BY name ASC'
+        );
+        res.json({ organizations: result.rows });
+    } catch (error) {
+        console.error('Get organizations list error:', error);
+        res.status(500).json({ error: 'Failed to get organizations list' });
+    }
+});
+
+/**
+ * PUT /api/admin/users/:userId/organization
+ * Assign or reassign a user to an organization (bypasses invitation flow)
+ */
+router.put('/users/:userId/organization', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { organizationId, role } = req.body;
+
+        if (!organizationId || !role) {
+            return res.status(400).json({ error: 'organizationId and role are required' });
+        }
+
+        if (!['owner', 'admin', 'member'].includes(role)) {
+            return res.status(400).json({ error: 'Role must be owner, admin, or member' });
+        }
+
+        // Verify user exists
+        const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+        if (userCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Verify organization exists
+        const orgCheck = await pool.query('SELECT id FROM organizations WHERE id = $1', [organizationId]);
+        if (orgCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Organization not found' });
+        }
+
+        // Remove any existing memberships for this user (single-org model)
+        await pool.query('DELETE FROM organization_memberships WHERE user_id = $1', [userId]);
+
+        // Create the new membership
+        await pool.query(
+            `INSERT INTO organization_memberships (user_id, organization_id, role, created_at)
+             VALUES ($1, $2, $3, NOW())`,
+            [userId, organizationId, role]
+        );
+
+        // Get updated info for response
+        const updated = await pool.query(
+            `SELECT o.name as organization_name, o.id as organization_id, om.role
+             FROM organization_memberships om
+             JOIN organizations o ON om.organization_id = o.id
+             WHERE om.user_id = $1`,
+            [userId]
+        );
+
+        res.json({
+            message: 'User organization updated',
+            membership: updated.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Assign user organization error:', error);
+        res.status(500).json({ error: 'Failed to assign user to organization' });
+    }
+});
+
+/**
+ * PATCH /api/admin/users/:userId/role
+ * Change a user's role within their current organization
+ */
+router.patch('/users/:userId/role', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { role } = req.body;
+
+        if (!role || !['owner', 'admin', 'member'].includes(role)) {
+            return res.status(400).json({ error: 'Role must be owner, admin, or member' });
+        }
+
+        // Check user has a membership
+        const membership = await pool.query(
+            'SELECT user_id FROM organization_memberships WHERE user_id = $1',
+            [userId]
+        );
+        if (membership.rows.length === 0) {
+            return res.status(404).json({ error: 'User is not assigned to any organization' });
+        }
+
+        await pool.query(
+            'UPDATE organization_memberships SET role = $1 WHERE user_id = $2',
+            [role, userId]
+        );
+
+        res.json({ message: 'User role updated' });
+
+    } catch (error) {
+        console.error('Update user role error:', error);
+        res.status(500).json({ error: 'Failed to update user role' });
+    }
+});
+
+/**
+ * DELETE /api/admin/users/:userId/organization
+ * Remove a user from their organization
+ */
+router.delete('/users/:userId/organization', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const result = await pool.query(
+            'DELETE FROM organization_memberships WHERE user_id = $1',
+            [userId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'User is not assigned to any organization' });
+        }
+
+        res.json({ message: 'User removed from organization' });
+
+    } catch (error) {
+        console.error('Remove user from organization error:', error);
+        res.status(500).json({ error: 'Failed to remove user from organization' });
     }
 });
 

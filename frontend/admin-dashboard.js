@@ -11,6 +11,7 @@ let adminOrgsPage = 1;
 let adminUsersSearch = '';
 let adminOrgsSearch = '';
 let adminOrgsStatusFilter = '';
+let adminAllOrgs = null; // cached org list for dropdowns
 
 // Check if current user is super admin
 async function checkSuperAdmin() {
@@ -340,6 +341,7 @@ async function renderUsersTab(container) {
                             <th>Joined</th>
                             <th>Last Login</th>
                             <th>Admin</th>
+                            <th>Manage</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -362,8 +364,14 @@ async function renderUsersTab(container) {
                                         ${user.is_super_admin ? '✓' : '—'}
                                     </button>
                                 </td>
+                                <td>
+                                    <button class="admin-btn admin-btn-secondary admin-btn-sm"
+                                            onclick="openUserOrgModal('${user.id}', '${(user.first_name || '').replace(/'/g, "\\'")} ${(user.last_name || '').replace(/'/g, "\\'")}', '${user.organization_id || ''}', '${user.role || ''}')">
+                                        Edit
+                                    </button>
+                                </td>
                             </tr>
-                        `).join('') : '<tr><td colspan="7" class="text-center text-muted">No users found</td></tr>'}
+                        `).join('') : '<tr><td colspan="8" class="text-center text-muted">No users found</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -840,6 +848,141 @@ async function exportAdminReport() {
     showToast('Report exported!', 'success');
 }
 
+// ==================== USER-ORG ASSIGNMENT MODAL ====================
+
+async function fetchAllOrgs() {
+    if (adminAllOrgs) return adminAllOrgs;
+    const data = await fetchAdminData('/api/admin/organizations-list');
+    adminAllOrgs = data.organizations;
+    return adminAllOrgs;
+}
+
+async function openUserOrgModal(userId, userName, currentOrgId, currentRole) {
+    // Fetch orgs list for dropdown
+    let orgs;
+    try {
+        orgs = await fetchAllOrgs();
+    } catch (error) {
+        showToast('Failed to load organizations', 'error');
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'admin-modal-overlay';
+    overlay.id = 'userOrgModal';
+    overlay.onclick = (e) => { if (e.target === overlay) closeUserOrgModal(); };
+
+    overlay.innerHTML = `
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <h3>Manage User Assignment</h3>
+                <button class="admin-modal-close" onclick="closeUserOrgModal()">&times;</button>
+            </div>
+            <div class="admin-modal-body">
+                <div class="admin-modal-user-name">${userName.trim() || 'Unnamed User'}</div>
+
+                <div class="admin-modal-field">
+                    <label>Organization</label>
+                    <select id="modalOrgSelect" class="admin-select admin-select-full">
+                        <option value="">-- No Organization --</option>
+                        ${orgs.map(org => `
+                            <option value="${org.id}" ${org.id === currentOrgId ? 'selected' : ''}>${org.name}</option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="admin-modal-field">
+                    <label>Role</label>
+                    <select id="modalRoleSelect" class="admin-select admin-select-full">
+                        <option value="member" ${currentRole === 'member' ? 'selected' : ''}>Member</option>
+                        <option value="admin" ${currentRole === 'admin' ? 'selected' : ''}>Admin</option>
+                        <option value="owner" ${currentRole === 'owner' ? 'selected' : ''}>Owner</option>
+                    </select>
+                </div>
+            </div>
+            <div class="admin-modal-footer">
+                ${currentOrgId ? `<button class="admin-btn admin-btn-danger admin-btn-sm" onclick="removeUserFromOrg('${userId}')">Remove from Org</button>` : '<div></div>'}
+                <div class="admin-modal-footer-right">
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="closeUserOrgModal()">Cancel</button>
+                    <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="saveUserOrgAssignment('${userId}')">Save</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    // Trigger animation
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+}
+
+function closeUserOrgModal() {
+    const modal = document.getElementById('userOrgModal');
+    if (modal) {
+        modal.classList.remove('visible');
+        setTimeout(() => modal.remove(), 200);
+    }
+}
+
+async function saveUserOrgAssignment(userId) {
+    const orgId = document.getElementById('modalOrgSelect').value;
+    const role = document.getElementById('modalRoleSelect').value;
+
+    if (!orgId) {
+        // If no org selected, remove from org
+        await removeUserFromOrg(userId);
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/organization`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ organizationId: orgId, role: role })
+        });
+
+        if (response.ok) {
+            showToast('User organization updated', 'success');
+            closeUserOrgModal();
+            adminAllOrgs = null; // invalidate cache
+            loadAdminTab('users');
+        } else {
+            const err = await response.json();
+            showToast(err.error || 'Failed to update', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to update user organization', 'error');
+    }
+}
+
+async function removeUserFromOrg(userId) {
+    if (!confirm('Remove this user from their organization?')) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/organization`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            showToast('User removed from organization', 'success');
+            closeUserOrgModal();
+            adminAllOrgs = null;
+            loadAdminTab('users');
+        } else {
+            const err = await response.json();
+            showToast(err.error || 'Failed to remove', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to remove user from organization', 'error');
+    }
+}
+
 // ==================== GLOBAL EXPORTS ====================
 window.loadAdminDashboard = loadAdminDashboard;
 window.loadAdminTab = loadAdminTab;
@@ -855,6 +998,10 @@ window.adminOrgsGoToPage = adminOrgsGoToPage;
 window.toggleOrgDetail = toggleOrgDetail;
 window.toggleSuperAdmin = toggleSuperAdmin;
 window.filterActivity = filterActivity;
+window.openUserOrgModal = openUserOrgModal;
+window.closeUserOrgModal = closeUserOrgModal;
+window.saveUserOrgAssignment = saveUserOrgAssignment;
+window.removeUserFromOrg = removeUserFromOrg;
 
 // Auto-init on page load
 document.addEventListener('DOMContentLoaded', () => {

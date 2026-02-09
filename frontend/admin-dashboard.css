@@ -854,6 +854,131 @@
     color: #0A2540;
 }
 
+/* ==================== USER-ORG MODAL ==================== */
+.admin-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(10, 37, 64, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.admin-modal-overlay.visible {
+    opacity: 1;
+}
+
+.admin-modal {
+    background: white;
+    border-radius: 20px;
+    width: 440px;
+    max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    transform: translateY(10px);
+    transition: transform 0.2s ease;
+}
+
+.admin-modal-overlay.visible .admin-modal {
+    transform: translateY(0);
+}
+
+.admin-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.admin-modal-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0A2540;
+    margin: 0;
+}
+
+.admin-modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #F3F4F6;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.admin-modal-close:hover {
+    background: #e5e7eb;
+    color: #0A2540;
+}
+
+.admin-modal-body {
+    padding: 1.5rem;
+}
+
+.admin-modal-user-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0A2540;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.admin-modal-field {
+    margin-bottom: 1rem;
+}
+
+.admin-modal-field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+}
+
+.admin-select-full {
+    width: 100%;
+    padding: 10px 14px;
+}
+
+.admin-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #F3F4F6;
+}
+
+.admin-modal-footer-right {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.admin-btn-danger {
+    background: #fee2e2;
+    color: #dc2626;
+    border: none;
+}
+
+.admin-btn-danger:hover {
+    background: #fecaca;
+}
+
 /* ==================== UTILITIES ==================== */
 .text-muted { color: #9ca3af; }
 .text-center { text-align: center; }
