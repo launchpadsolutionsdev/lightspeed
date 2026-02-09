@@ -1711,29 +1711,38 @@ function clearAskChat() {
 }
 
 async function rateAskMessage(historyId, rating, button) {
-    let feedback = null;
-    if (rating === 'negative') {
-        feedback = prompt('What could have been better? (optional)');
-    }
+    // Update UI
+    const actions = button.closest('.ask-msg-actions');
+    actions.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('selected'));
+    button.classList.add('selected');
 
-    try {
-        await fetch(`${API_BASE_URL}/api/response-history/${historyId}/rate`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ rating, feedback })
-        });
-
-        // Replace rating buttons with confirmation
-        const actions = button.closest('.ask-msg-actions');
+    if (rating === 'positive') {
+        try {
+            await fetch(`${API_BASE_URL}/api/response-history/${historyId}/rate`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ rating, feedback: null })
+            });
+        } catch (e) {
+            console.warn('Could not rate message:', e);
+        }
         const ratingBtns = actions.querySelectorAll('.rating-btn');
         ratingBtns.forEach(btn => btn.remove());
         const conf = document.createElement('span');
         conf.className = 'rating-label';
         conf.style.fontSize = '0.75rem';
-        conf.textContent = rating === 'positive' ? '👍 Thanks!' : '👎 Noted — will improve.';
+        conf.textContent = '👍 Thanks!';
         actions.appendChild(conf);
-    } catch (e) {
-        console.warn('Could not rate message:', e);
+    } else {
+        // Get the message text for context
+        const msgDiv = button.closest('.ask-msg');
+        const clone = msgDiv.cloneNode(true);
+        const actionsClone = clone.querySelector('.ask-msg-actions');
+        if (actionsClone) actionsClone.remove();
+        const responseText = clone.textContent.trim();
+        const lastUserMsg = askConversation.filter(m => m.role === 'user').slice(-1)[0];
+        const inquiryText = lastUserMsg ? lastUserMsg.content : '';
+        showFeedbackModal(historyId, inquiryText, responseText);
     }
 }
 
@@ -2006,28 +2015,38 @@ function clearAlsChat() {
 }
 
 async function rateAlsMessage(historyId, rating, button) {
-    let feedback = null;
-    if (rating === 'negative') {
-        feedback = prompt('What could have been better? (optional)');
-    }
+    // Update UI
+    const actions = button.closest('.als-msg-actions');
+    actions.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('selected'));
+    button.classList.add('selected');
 
-    try {
-        await fetch(`${API_BASE_URL}/api/response-history/${historyId}/rate`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ rating, feedback })
-        });
-
-        const actions = button.closest('.als-msg-actions');
+    if (rating === 'positive') {
+        try {
+            await fetch(`${API_BASE_URL}/api/response-history/${historyId}/rate`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ rating, feedback: null })
+            });
+        } catch (e) {
+            console.warn('Could not rate message:', e);
+        }
         const ratingBtns = actions.querySelectorAll('.rating-btn');
         ratingBtns.forEach(btn => btn.remove());
         const conf = document.createElement('span');
         conf.className = 'rating-label';
         conf.style.fontSize = '0.75rem';
-        conf.textContent = rating === 'positive' ? '👍 Thanks!' : '👎 Noted — will improve.';
+        conf.textContent = '👍 Thanks!';
         actions.appendChild(conf);
-    } catch (e) {
-        console.warn('Could not rate message:', e);
+    } else {
+        // Get the message text for context
+        const msgDiv = button.closest('.als-msg');
+        const clone = msgDiv.cloneNode(true);
+        const actionsClone = clone.querySelector('.als-msg-actions');
+        if (actionsClone) actionsClone.remove();
+        const responseText = clone.textContent.trim();
+        const lastUserMsg = askConversation.filter(m => m.role === 'user').slice(-1)[0];
+        const inquiryText = lastUserMsg ? lastUserMsg.content : '';
+        showFeedbackModal(historyId, inquiryText, responseText);
     }
 }
 
@@ -5553,8 +5572,8 @@ FACEBOOK PRIVACY RULE - VERY IMPORTANT:
 - Instead, ALWAYS direct the customer to email us: ${fbEmailDirective}
 - You can acknowledge their concern briefly, but the solution must be to email us`;
     } else {
-        const linkInfo = orgWebsite ? `(${orgWebsite} for main site)` : '';
-        formatInstructions = `${includeLinks ? `LINKS: Include relevant website links when helpful ${linkInfo}.` : "LINKS: Minimize links unless essential."}
+        const linkInfo = orgWebsite ? `You MUST include ${orgWebsite} in the response. Reference it naturally (e.g., "Visit ${orgWebsite} for..." or "You can find more at ${orgWebsite}").` : 'Include relevant website links when helpful.';
+        formatInstructions = `${includeLinks ? `LINKS: ${linkInfo}` : "LINKS: Minimize links unless essential."}
 ${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : "FORMAT: Use flowing paragraphs, avoid numbered lists unless necessary."}`;
     }
 
@@ -7636,11 +7655,38 @@ function setupDraftAssistant() {
     // Generate button (for non-email types)
     document.getElementById('draftGenerateBtn').addEventListener('click', generateDraft);
 
-    // Copy button
+    // Copy button (plain text)
     document.getElementById('draftCopyBtn').addEventListener('click', () => {
         const content = document.getElementById('draftOutputContent').textContent;
         navigator.clipboard.writeText(content).then(() => {
             showToast('Copied to clipboard!', 'success');
+        });
+    });
+
+    // Copy as HTML button (for email drafts — preserves formatting for Mailchimp/email tools)
+    document.getElementById('draftCopyHtmlBtn').addEventListener('click', () => {
+        const outputEl = document.getElementById('draftOutputContent');
+        const plainText = outputEl.textContent;
+        // Convert the plain text to simple HTML with paragraphs and line breaks
+        const htmlContent = plainText
+            .split(/\n\n+/)
+            .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+            .join('\n');
+
+        // Use Clipboard API with both text and HTML formats
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const textBlob = new Blob([plainText], { type: 'text/plain' });
+        const clipboardItem = new ClipboardItem({
+            'text/html': blob,
+            'text/plain': textBlob
+        });
+        navigator.clipboard.write([clipboardItem]).then(() => {
+            showToast('Copied as HTML — paste into Mailchimp, Gmail, etc.', 'success');
+        }).catch(() => {
+            // Fallback: copy as plain text
+            navigator.clipboard.writeText(plainText).then(() => {
+                showToast('Copied to clipboard (HTML not supported in this browser)', 'info');
+            });
         });
     });
 
@@ -7839,8 +7885,9 @@ async function generateDraft() {
         document.getElementById('draftLoading').style.display = 'none';
         document.getElementById('draftOutputSection').style.display = 'block';
         document.getElementById('draftOutputBadge').textContent = DRAFT_TYPE_LABELS[currentDraftType];
-        document.getElementById('draftOutputContent').textContent = generatedContent;
+        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(generatedContent);
         document.getElementById('draftHeaderActions').style.display = 'flex';
+        document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
         // Save to history and show rating UI
         saveDraftToHistory(userPrompt, generatedContent, currentDraftType);
@@ -7937,8 +7984,9 @@ async function generateWriteAnything() {
         document.getElementById('draftLoading').style.display = 'none';
         document.getElementById('draftOutputSection').style.display = 'block';
         document.getElementById('draftOutputBadge').textContent = '✨ Write Anything';
-        document.getElementById('draftOutputContent').textContent = generatedContent;
+        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(generatedContent);
         document.getElementById('draftHeaderActions').style.display = 'flex';
+        document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
         // Save to history and show rating UI
         saveDraftToHistory(userPrompt, generatedContent, 'write-anything');
@@ -8050,8 +8098,9 @@ async function generateEmailDraft() {
         document.getElementById('draftLoading').style.display = 'none';
         document.getElementById('draftOutputSection').style.display = 'block';
         document.getElementById('draftOutputBadge').textContent = '📧 ' + EMAIL_TYPE_LABELS[currentEmailType];
-        document.getElementById('draftOutputContent').textContent = generatedContent;
+        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(generatedContent);
         document.getElementById('draftHeaderActions').style.display = 'flex';
+        document.getElementById('draftCopyHtmlBtn').style.display = 'inline-flex';
 
         // Save to history and show rating UI
         saveDraftToHistory(userPrompt, generatedContent, 'email-' + currentEmailType);
@@ -8183,14 +8232,14 @@ async function refineDraft(instruction) {
         const refinedContent = data.content[0].text;
 
         // Update the output
-        document.getElementById('draftOutputContent').textContent = refinedContent;
+        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(refinedContent);
 
         showToast('Draft refined!', 'success');
 
     } catch (error) {
         console.error('Draft refinement error:', error);
         // Restore original content
-        document.getElementById('draftOutputContent').textContent = currentContent;
+        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(currentContent);
         if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error refining draft: ' + error.message, 'error');
         }
