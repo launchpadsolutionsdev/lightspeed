@@ -2157,6 +2157,7 @@ async function loadKnowledgeFromBackend() {
                     question: entry.title,
                     keywords: keywordTags.length > 0 ? keywordTags : [],
                     response: entry.content,
+                    tags: tags,
                     dateAdded: entry.created_at
                 };
             });
@@ -5656,7 +5657,7 @@ function displayResults(response, historyId) {
                 <span>✏️</span>
                 <span>Edit Mode - Click in the response to make changes</span>
             </div>
-            <div class="response-box" id="responseText">${escapeHtml(response)}</div>
+            <div class="response-box" id="responseText">${escapeHtmlWithLinks(response)}</div>
             <div class="edit-actions" id="editActions" style="display: none;">
                 <button class="btn-edit-save" onclick="saveEdit()">💾 Save Changes</button>
                 <button class="btn-edit-cancel" onclick="cancelEdit()">Cancel</button>
@@ -5786,7 +5787,7 @@ Please provide the refined response:`;
         }
 
         // Update the display
-        responseBox.innerText = refinedResponse;
+        responseBox.innerHTML = escapeHtmlWithLinks(refinedResponse);
 
         // Clear the input
         if (refineInput) refineInput.value = "";
@@ -5855,30 +5856,177 @@ async function rateResponse(historyId, rating, button) {
     parent.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('selected'));
     button.classList.add('selected');
 
-    // For negative ratings, ask what went wrong
-    let feedback = null;
-    if (rating === 'negative') {
-        feedback = prompt("What could have been better about this response? (optional)");
+    if (rating === 'positive') {
+        // Positive: save immediately, no modal needed
+        const backendId = entry ? entry.backendId : null;
+        if (backendId) {
+            try {
+                await fetch(`${API_BASE_URL}/api/response-history/${backendId}/rate`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ rating, feedback: null })
+                });
+            } catch (error) {
+                console.warn('Failed to save rating to backend:', error);
+            }
+        }
+        showToast("Thanks! This helps Lightspeed learn your preferences.", "success");
+    } else {
+        // Negative: show feedback modal
+        showFeedbackModal(historyId, entry);
     }
+}
 
-    // Save to backend if we have a backend ID
+function showFeedbackModal(historyId, entry) {
+    // Remove any existing modal
+    document.getElementById('feedbackModal')?.remove();
+
+    const inquiry = entry ? escapeHtml(entry.inquiry || '').substring(0, 300) : '';
+    const response = entry ? escapeHtml(entry.response || '').substring(0, 300) : '';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'feedbackModal';
+    overlay.className = 'feedback-modal-overlay';
+    overlay.onclick = (e) => { if (e.target === overlay) closeFeedbackModal(); };
+
+    overlay.innerHTML = `
+        <div class="feedback-modal">
+            <div class="feedback-modal-header">
+                <h3>What went wrong?</h3>
+                <button class="feedback-modal-close" onclick="closeFeedbackModal()">&times;</button>
+            </div>
+            <div class="feedback-modal-body">
+                <div class="feedback-type-buttons">
+                    <button class="feedback-type-btn active" data-type="style" onclick="switchFeedbackType('style', this)">
+                        <span class="feedback-type-icon">🎨</span>
+                        <span class="feedback-type-label">Tone / Style</span>
+                        <span class="feedback-type-desc">Too formal, too long, wrong format, etc.</span>
+                    </button>
+                    <button class="feedback-type-btn" data-type="info" onclick="switchFeedbackType('info', this)">
+                        <span class="feedback-type-icon">📋</span>
+                        <span class="feedback-type-label">Wrong or Missing Info</span>
+                        <span class="feedback-type-desc">Incorrect facts, missing details, outdated info</span>
+                    </button>
+                </div>
+
+                <!-- Style feedback (default) -->
+                <div id="feedbackStyleSection" class="feedback-section">
+                    <label class="feedback-label">What should be different? (optional)</label>
+                    <textarea id="feedbackStyleText" class="feedback-textarea" rows="3" placeholder="e.g., Too formal — should be friendlier and shorter"></textarea>
+                </div>
+
+                <!-- Info correction (hidden by default) -->
+                <div id="feedbackInfoSection" class="feedback-section" style="display:none;">
+                    <div class="feedback-context">
+                        <div class="feedback-context-label">Customer asked:</div>
+                        <div class="feedback-context-text">${inquiry}...</div>
+                    </div>
+                    <div class="feedback-context" style="margin-top: 0.5rem;">
+                        <div class="feedback-context-label">AI responded:</div>
+                        <div class="feedback-context-text">${response}...</div>
+                    </div>
+                    <label class="feedback-label" style="margin-top: 0.75rem;">What is the correct answer?</label>
+                    <textarea id="feedbackCorrectAnswer" class="feedback-textarea" rows="4" placeholder="Type the correct information here. This will be saved to the knowledge base so Lightspeed gets it right next time."></textarea>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                        <div style="flex: 1;">
+                            <label class="feedback-label">Category</label>
+                            <select id="feedbackKBCategory" class="feedback-select">
+                                <option value="faqs">FAQ</option>
+                                <option value="policies">Policy</option>
+                                <option value="products">Product</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="feedback-modal-footer">
+                <button class="feedback-btn-cancel" onclick="closeFeedbackModal()">Skip</button>
+                <button class="feedback-btn-submit" id="feedbackSubmitBtn" onclick="submitFeedback('${historyId}')">Submit Feedback</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+}
+
+function switchFeedbackType(type, btn) {
+    document.querySelectorAll('.feedback-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('feedbackStyleSection').style.display = type === 'style' ? 'block' : 'none';
+    document.getElementById('feedbackInfoSection').style.display = type === 'info' ? 'block' : 'none';
+}
+
+function closeFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    if (modal) {
+        modal.classList.remove('visible');
+        setTimeout(() => modal.remove(), 200);
+    }
+}
+
+async function submitFeedback(historyId) {
+    const entry = responseHistory.find(h => h.id === historyId);
     const backendId = entry ? entry.backendId : null;
-    if (backendId) {
-        try {
+    const activeType = document.querySelector('.feedback-type-btn.active')?.dataset.type || 'style';
+
+    const submitBtn = document.getElementById('feedbackSubmitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    try {
+        let feedback = '';
+
+        if (activeType === 'style') {
+            feedback = (document.getElementById('feedbackStyleText')?.value || '').trim();
+        } else {
+            feedback = (document.getElementById('feedbackCorrectAnswer')?.value || '').trim();
+        }
+
+        // 1. Save the rating + feedback to response history (style learning channel)
+        if (backendId) {
             await fetch(`${API_BASE_URL}/api/response-history/${backendId}/rate`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ rating, feedback })
+                body: JSON.stringify({ rating: 'negative', feedback: feedback || null })
             });
-        } catch (error) {
-            console.warn('Failed to save rating to backend:', error);
         }
-    }
 
-    if (rating === 'positive') {
-        showToast("Thanks! This helps Lightspeed learn your preferences.", "success");
-    } else {
-        showToast("Got it — Lightspeed will learn from this feedback.", "info");
+        // 2. If "info" type with a correction, also create a KB entry
+        if (activeType === 'info' && feedback) {
+            const category = document.getElementById('feedbackKBCategory')?.value || 'faqs';
+            const title = entry ? (entry.inquiry || '').substring(0, 255) : 'Feedback correction';
+
+            const kbResponse = await fetch(`${API_BASE_URL}/api/knowledge-base/from-feedback`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    responseHistoryId: backendId,
+                    title: title,
+                    content: feedback,
+                    category: category
+                })
+            });
+
+            if (kbResponse.ok) {
+                // Reload KB so the new entry is available immediately
+                await loadKnowledgeFromBackend();
+                showToast("Knowledge base updated — Lightspeed will get this right next time!", "success");
+            } else {
+                showToast("Feedback saved, but could not update knowledge base.", "info");
+            }
+        } else {
+            showToast("Got it — Lightspeed will learn from this feedback.", "info");
+        }
+
+        closeFeedbackModal();
+
+    } catch (error) {
+        console.warn('Failed to save feedback:', error);
+        showToast("Failed to save feedback. Please try again.", "error");
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Feedback';
     }
 }
 
@@ -6377,6 +6525,7 @@ function renderKnowledgeList(searchQuery = "") {
                     ${k.isCustom
                         ? '<span class="knowledge-tag" style="background: #dcfce7;">Your KB</span>'
                         : '<span class="knowledge-tag" style="background: #fef3c7; color: #92400e;">Template</span>'}
+                    ${k.isCustom && k.tags && k.tags.includes('source:feedback') ? '<span class="knowledge-tag" style="background: #fef3c7; color: #92400e; font-weight: 600;">From feedback</span>' : ''}
                     ${k.category ? `<span>${k.category}</span>` : ''}
                 </div>
             </div>
@@ -6682,6 +6831,18 @@ function escapeHtml(text) {
     return div.innerHTML.replace(/\n/g, "<br>");
 }
 
+// Escape HTML then convert URLs to clickable links (safe: escape first, linkify after)
+function escapeHtmlWithLinks(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    let escaped = div.innerHTML;
+    // Convert URLs to anchor tags (matches http/https URLs)
+    escaped = escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Convert www. URLs without protocol
+    escaped = escaped.replace(/(?<!\/\/)(www\.[^\s<]+)/g, '<a href="https://$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    return escaped.replace(/\n/g, "<br>");
+}
+
 function copyToClipboard(elementId, button) {
     const element = document.getElementById(elementId);
     const text = element.innerText;
@@ -6833,6 +6994,10 @@ window.deleteKnowledge = deleteKnowledge;
 window.deleteFavorite = deleteFavorite;
 window.useFavorite = useFavorite;
 window.rateResponse = rateResponse;
+window.showFeedbackModal = showFeedbackModal;
+window.switchFeedbackType = switchFeedbackType;
+window.closeFeedbackModal = closeFeedbackModal;
+window.submitFeedback = submitFeedback;
 window.saveToFavorites = saveToFavorites;
 window.showHistoryDetail = showHistoryDetail;
 window.showPage = showPage;

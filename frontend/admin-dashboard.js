@@ -831,18 +831,21 @@ async function loadAdminKBEntries(orgId) {
             return;
         }
 
-        container.innerHTML = entries.map(e => `
+        container.innerHTML = entries.map(e => {
+            const isFromFeedback = (e.tags || []).includes('source:feedback');
+            return `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem 0; border-bottom: 1px solid #f3f4f6;">
                 <div style="flex: 1; min-width: 0;">
-                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
                         <strong style="font-size: 0.85rem;">${escapeHtmlAdmin(e.title)}</strong>
                         <span style="font-size: 0.65rem; background: #f3f4f6; padding: 0.1rem 0.3rem; border-radius: 3px; color: #6b7280;">${e.category}</span>
+                        ${isFromFeedback ? '<span style="font-size: 0.6rem; background: #fef3c7; color: #92400e; padding: 0.1rem 0.35rem; border-radius: 3px; font-weight: 600;">From feedback</span>' : ''}
                     </div>
                     <div style="font-size: 0.8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtmlAdmin((e.content || '').substring(0, 120))}</div>
                 </div>
                 <button class="admin-btn admin-btn-secondary admin-btn-sm" style="color:#dc2626; border-color:#fecaca; flex-shrink:0; margin-left:0.5rem; font-size:0.7rem; padding:0.15rem 0.4rem;" onclick="deleteAdminKBEntry('${orgId}','${e.id}')">Delete</button>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     } catch (error) {
         container.innerHTML = '<div style="padding: 0.5rem; color: #ef4444; font-size: 0.85rem;">Failed to load KB entries</div>';
     }
