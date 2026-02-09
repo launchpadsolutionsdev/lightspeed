@@ -5942,7 +5942,7 @@ function showFeedbackModal(historyId, entry) {
             </div>
             <div class="feedback-modal-footer">
                 <button class="feedback-btn-cancel" onclick="closeFeedbackModal()">Skip</button>
-                <button class="feedback-btn-submit" id="feedbackSubmitBtn" onclick="submitFeedback('${historyId}')">Submit Feedback</button>
+                <button class="feedback-btn-submit" id="feedbackSubmitBtn" onclick="submitRatingFeedback('${historyId}')">Submit Feedback</button>
             </div>
         </div>
     `;
@@ -5966,7 +5966,7 @@ function closeFeedbackModal() {
     }
 }
 
-async function submitFeedback(historyId) {
+async function submitRatingFeedback(historyId) {
     const entry = responseHistory.find(h => h.id === historyId);
     const backendId = entry ? entry.backendId : null;
     const activeType = document.querySelector('.feedback-type-btn.active')?.dataset.type || 'style';
@@ -6997,7 +6997,7 @@ window.rateResponse = rateResponse;
 window.showFeedbackModal = showFeedbackModal;
 window.switchFeedbackType = switchFeedbackType;
 window.closeFeedbackModal = closeFeedbackModal;
-window.submitFeedback = submitFeedback;
+window.submitRatingFeedback = submitRatingFeedback;
 window.saveToFavorites = saveToFavorites;
 window.showHistoryDetail = showHistoryDetail;
 window.showPage = showPage;
