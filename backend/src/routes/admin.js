@@ -5,6 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
+const { v4: uuidv4 } = require('uuid');
 const pool = require('../../config/database');
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 
@@ -731,11 +732,16 @@ router.post('/organizations', authenticate, requireSuperAdmin, async (req, res) 
             return res.status(400).json({ error: 'Organization name is required' });
         }
 
+        const orgId = uuidv4();
+        const trimmedName = name.trim();
+        const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
         const result = await pool.query(
-            `INSERT INTO organizations (name, subscription_status, trial_ends_at)
-             VALUES ($1, 'trial', NOW() + INTERVAL '14 days')
+            `INSERT INTO organizations (id, name, slug, subscription_status, trial_ends_at, created_at)
+             VALUES ($1, $2, $3, 'trial', $4, NOW())
              RETURNING *`,
-            [name.trim()]
+            [orgId, trimmedName, slug, trialEndsAt]
         );
 
         res.status(201).json({ organization: result.rows[0] });
