@@ -5873,16 +5873,17 @@ async function rateResponse(historyId, rating, button) {
         showToast("Thanks! This helps Lightspeed learn your preferences.", "success");
     } else {
         // Negative: show feedback modal
-        showFeedbackModal(historyId, entry);
+        const backendId = entry ? entry.backendId : null;
+        showFeedbackModal(backendId, entry?.inquiry, entry?.response);
     }
 }
 
-function showFeedbackModal(historyId, entry) {
+function showFeedbackModal(backendId, inquiryText, responseText) {
     // Remove any existing modal
     document.getElementById('feedbackModal')?.remove();
 
-    const inquiry = entry ? escapeHtml(entry.inquiry || '').substring(0, 300) : '';
-    const response = entry ? escapeHtml(entry.response || '').substring(0, 300) : '';
+    const inquiry = inquiryText ? escapeHtml(inquiryText).substring(0, 300) : '';
+    const response = responseText ? escapeHtml(responseText).substring(0, 300) : '';
 
     const overlay = document.createElement('div');
     overlay.id = 'feedbackModal';
@@ -5918,14 +5919,14 @@ function showFeedbackModal(historyId, entry) {
                 <!-- Info correction (hidden by default) -->
                 <div id="feedbackInfoSection" class="feedback-section" style="display:none;">
                     <div class="feedback-context">
-                        <div class="feedback-context-label">Customer asked:</div>
+                        <div class="feedback-context-label">You requested:</div>
                         <div class="feedback-context-text">${inquiry}...</div>
                     </div>
                     <div class="feedback-context" style="margin-top: 0.5rem;">
-                        <div class="feedback-context-label">AI responded:</div>
+                        <div class="feedback-context-label">AI generated:</div>
                         <div class="feedback-context-text">${response}...</div>
                     </div>
-                    <label class="feedback-label" style="margin-top: 0.75rem;">What is the correct answer?</label>
+                    <label class="feedback-label" style="margin-top: 0.75rem;">What is the correct information?</label>
                     <textarea id="feedbackCorrectAnswer" class="feedback-textarea" rows="4" placeholder="Type the correct information here. This will be saved to the knowledge base so Lightspeed gets it right next time."></textarea>
                     <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
                         <div style="flex: 1;">
@@ -5942,10 +5943,14 @@ function showFeedbackModal(historyId, entry) {
             </div>
             <div class="feedback-modal-footer">
                 <button class="feedback-btn-cancel" onclick="closeFeedbackModal()">Skip</button>
-                <button class="feedback-btn-submit" id="feedbackSubmitBtn" onclick="submitRatingFeedback('${historyId}')">Submit Feedback</button>
+                <button class="feedback-btn-submit" id="feedbackSubmitBtn" onclick="submitRatingFeedback()">Submit Feedback</button>
             </div>
         </div>
     `;
+
+    // Store the inquiry text on the modal for submitRatingFeedback to use
+    overlay.dataset.inquiryText = inquiryText || '';
+    overlay.dataset.backendId = backendId || '';
 
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('visible'));
@@ -5966,9 +5971,10 @@ function closeFeedbackModal() {
     }
 }
 
-async function submitRatingFeedback(historyId) {
-    const entry = responseHistory.find(h => h.id === historyId);
-    const backendId = entry ? entry.backendId : null;
+async function submitRatingFeedback() {
+    const modal = document.getElementById('feedbackModal');
+    const backendId = modal?.dataset.backendId || null;
+    const inquiryText = modal?.dataset.inquiryText || '';
     const activeType = document.querySelector('.feedback-type-btn.active')?.dataset.type || 'style';
 
     const submitBtn = document.getElementById('feedbackSubmitBtn');
@@ -5996,7 +6002,7 @@ async function submitRatingFeedback(historyId) {
         // 2. If "info" type with a correction, also create a KB entry
         if (activeType === 'info' && feedback) {
             const category = document.getElementById('feedbackKBCategory')?.value || 'faqs';
-            const title = entry ? (entry.inquiry || '').substring(0, 255) : 'Feedback correction';
+            const title = inquiryText ? inquiryText.substring(0, 255) : 'Feedback correction';
 
             const kbResponse = await fetch(`${API_BASE_URL}/api/knowledge-base/from-feedback`, {
                 method: 'POST',
@@ -7060,25 +7066,32 @@ function showDraftRatingUI() {
 async function rateDraft(rating, button) {
     if (!currentDraftHistoryId) return;
 
-    let feedback = null;
-    if (rating === 'negative') {
-        feedback = prompt('What could have been better about this draft? (optional)');
-    }
+    // Update UI
+    const parent = button.parentElement;
+    parent.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('selected'));
+    button.classList.add('selected');
 
-    try {
-        await fetch(`${API_BASE_URL}/api/response-history/${currentDraftHistoryId}/rate`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ rating, feedback })
-        });
+    if (rating === 'positive') {
+        // Positive: save immediately
+        try {
+            await fetch(`${API_BASE_URL}/api/response-history/${currentDraftHistoryId}/rate`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ rating, feedback: null })
+            });
+        } catch (e) {
+            console.warn('Could not rate draft:', e);
+        }
 
-        // Update UI to show rated
         const section = document.getElementById('draftRatingSection');
         if (section) {
-            section.innerHTML = `<span class="rating-label">${rating === 'positive' ? '👍 Thanks! This helps Lightspeed learn your preferences.' : '👎 Thanks for the feedback — Lightspeed will improve.'}</span>`;
+            section.innerHTML = '<span class="rating-label">Thanks! This helps Lightspeed learn your preferences.</span>';
         }
-    } catch (e) {
-        console.warn('Could not rate draft:', e);
+    } else {
+        // Negative: show the feedback modal with KB correction option
+        const draftContent = document.getElementById('draftOutputContent')?.textContent || '';
+        const draftPrompt = lastDraftRequest?.topic || lastDraftRequest?.details || 'Draft content';
+        showFeedbackModal(currentDraftHistoryId, draftPrompt, draftContent);
     }
 }
 
