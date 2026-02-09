@@ -625,6 +625,7 @@ function setupAuthEventListeners() {
     document.getElementById("toolCustomerResponse").addEventListener("click", () => openTool('customer-response'));
     document.getElementById("toolDataAnalysis").addEventListener("click", () => openTool('data-analysis'));
     document.getElementById("toolListNormalizer").addEventListener("click", () => openTool('list-normalizer'));
+    document.getElementById("toolAskLightspeed").addEventListener("click", () => openTool('ask-lightspeed'));
 
     // Back to menu button (in sidebar)
     document.getElementById("backToMenuBtn").addEventListener("click", goBackToMenu);
@@ -1169,10 +1170,6 @@ function showToolMenu() {
             .catch(() => {}); // Silently ignore — not critical
     }
 
-    // Initialize Ask Lightspeed (refresh sample prompts each time)
-    if (typeof initAskLightspeed === 'function') {
-        initAskLightspeed();
-    }
 }
 
 function openTool(toolId) {
@@ -1190,6 +1187,7 @@ function openTool(toolId) {
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
     document.getElementById("listNormalizerApp").classList.remove("visible");
+    document.getElementById("askLightspeedApp").classList.remove("visible");
 
     if (toolId === 'customer-response') {
         document.getElementById("mainApp").classList.add("visible");
@@ -1203,6 +1201,9 @@ function openTool(toolId) {
         document.getElementById("listNormalizerApp").classList.add("visible");
         setupListNormalizerListeners();
         showNormalizerHub();
+    } else if (toolId === 'ask-lightspeed') {
+        document.getElementById("askLightspeedApp").classList.add("visible");
+        initAskLightspeedPage();
     }
 
     // Update sidebar active states
@@ -1238,6 +1239,7 @@ function goBackToMenu() {
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
     document.getElementById("listNormalizerApp").classList.remove("visible");
+    document.getElementById("askLightspeedApp").classList.remove("visible");
     showToolMenu();
 }
 
@@ -1595,6 +1597,304 @@ async function rateAskMessage(historyId, rating, button) {
         console.warn('Could not rate message:', e);
     }
 }
+
+// ==================== ASK LIGHTSPEED DEDICATED PAGE ====================
+let alsListenersSetup = false;
+
+function initAskLightspeedPage() {
+    loadAskConversation();
+
+    if (askConversation.length > 0) {
+        restoreAlsChat();
+    } else {
+        renderAlsSamplePrompts();
+    }
+
+    if (!alsListenersSetup) {
+        alsListenersSetup = true;
+
+        // Tone pills
+        document.querySelectorAll('.als-tone').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.als-tone').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                askTone = btn.dataset.tone;
+                saveAskConversation();
+            });
+        });
+
+        // Send button
+        document.getElementById('alsSendBtn').addEventListener('click', sendAlsMessage);
+
+        // Input
+        const alsInput = document.getElementById('alsInput');
+        alsInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAlsMessage();
+            }
+        });
+        alsInput.addEventListener('input', () => {
+            alsInput.style.height = 'auto';
+            alsInput.style.height = Math.min(alsInput.scrollHeight, 120) + 'px';
+        });
+    }
+}
+
+function restoreAlsChat() {
+    if (askConversation.length === 0) return;
+
+    const chatArea = document.getElementById('alsChatArea');
+    const prompts = document.getElementById('alsPrompts');
+    if (chatArea) chatArea.style.display = 'block';
+    if (prompts) prompts.style.display = 'none';
+
+    // Restore tone pill
+    document.querySelectorAll('.als-tone').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tone === askTone);
+    });
+
+    // Clear and re-render
+    const messagesEl = document.getElementById('alsMessages');
+    if (messagesEl) messagesEl.innerHTML = '';
+    askConversation.forEach(msg => {
+        appendAlsMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.content);
+    });
+}
+
+function renderAlsSamplePrompts() {
+    const container = document.getElementById('alsPrompts');
+    if (!container) return;
+
+    const shuffled = [...ASK_SAMPLE_PROMPTS].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, 4);
+
+    container.innerHTML = selected.map(prompt =>
+        `<button class="als-prompt-chip" onclick="fillAlsPrompt(this)">${escapeHtml(prompt)}</button>`
+    ).join('');
+}
+
+function fillAlsPrompt(el) {
+    const input = document.getElementById('alsInput');
+    input.value = el.textContent;
+    input.focus();
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+}
+
+async function sendAlsMessage() {
+    const input = document.getElementById('alsInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    const sendBtn = document.getElementById('alsSendBtn');
+    sendBtn.disabled = true;
+
+    const chatArea = document.getElementById('alsChatArea');
+    chatArea.style.display = 'block';
+
+    const prompts = document.getElementById('alsPrompts');
+    if (prompts) prompts.style.display = 'none';
+
+    askConversation.push({ role: 'user', content: message });
+    appendAlsMessage('user', message);
+    saveAskConversation();
+
+    input.value = '';
+    input.style.height = 'auto';
+
+    const messagesEl = document.getElementById('alsMessages');
+    const typingEl = document.createElement('div');
+    typingEl.className = 'als-typing';
+    typingEl.id = 'alsTyping';
+    typingEl.innerHTML = '<div class="als-typing-dot"></div><div class="als-typing-dot"></div><div class="als-typing-dot"></div>';
+    messagesEl.appendChild(typingEl);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    try {
+        const toneDesc = askTone === 'professional' ? 'professional and helpful' :
+                         askTone === 'friendly' ? 'warm, friendly, and conversational' :
+                         'casual and relaxed';
+
+        const orgName = currentUser?.organization?.name || 'your organization';
+
+        const systemPrompt = `You are Lightspeed AI, a powerful, full-featured AI assistant built by Launchpad Solutions. You work for ${orgName}.
+
+TONE: Respond in a ${toneDesc} tone.
+
+CORE BEHAVIOR — ALWAYS FOLLOW:
+Before generating any content (emails, posts, documents, strategies, analyses, code, or anything substantial), you MUST first ask 2-3 clarifying questions to understand exactly what the user needs. This includes understanding context, audience, goals, constraints, and preferences. Only after the user answers should you produce the final output. This makes your work dramatically more accurate and tailored.
+
+Exception: If the user's request is a simple factual question, a quick calculation, or a brief answer that doesn't require generation — answer directly without asking clarifying questions.
+
+You are a fully capable AI assistant. You can help with absolutely anything:
+- Drafting emails, social media posts, marketing content, and communications
+- Charitable gaming, lotteries, raffles, AGCO rules, and nonprofit operations
+- Customer service, donor relations, and response strategies
+- Data analysis, spreadsheets, reporting, and business intelligence
+- Writing, editing, proofreading, and content strategy
+- Coding, technical questions, and troubleshooting
+- Research, brainstorming, planning, and general knowledge
+- Anything else the user asks — you are not limited in scope
+
+Keep responses concise but thorough. Use markdown formatting when helpful.`;
+
+        let kbSection = '';
+        if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
+            const kbContext = customKnowledge.slice(0, 15).map(k =>
+                `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
+            ).join('\n\n---\n\n');
+            kbSection = '\n\nORGANIZATION KNOWLEDGE BASE (use this to answer org-specific questions accurately):\n' + kbContext;
+        }
+
+        const ratedExamples = await getRatedExamples('ask_lightspeed');
+        const feedbackSection = buildRatedExamplesContext(ratedExamples);
+        const fullSystemPrompt = systemPrompt + kbSection + feedbackSection;
+
+        const response = await fetch(`${API_BASE_URL}/api/generate`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                system: fullSystemPrompt,
+                messages: askConversation.map(m => ({ role: m.role, content: m.content })),
+                max_tokens: 4096
+            })
+        });
+
+        const typing = document.getElementById('alsTyping');
+        if (typing) typing.remove();
+
+        if (!response.ok) {
+            throw new Error('Failed to get response');
+        }
+
+        const data = await response.json();
+        const aiText = data.content[0].text;
+
+        askConversation.push({ role: 'assistant', content: aiText });
+        saveAskConversation();
+
+        let askHistoryId = null;
+        try {
+            const lastUserMsg = askConversation.filter(m => m.role === 'user').slice(-1)[0];
+            const histRes = await fetch(`${API_BASE_URL}/api/response-history`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    inquiry: lastUserMsg ? lastUserMsg.content : '',
+                    response: aiText,
+                    format: 'chat',
+                    tone: askTone,
+                    tool: 'ask_lightspeed'
+                })
+            });
+            if (histRes.ok) {
+                const histData = await histRes.json();
+                askHistoryId = histData.entry.id;
+            }
+        } catch (e) {
+            console.warn('Could not save ask history:', e);
+        }
+
+        appendAlsMessage('ai', aiText, askHistoryId);
+
+    } catch (error) {
+        const typing = document.getElementById('alsTyping');
+        if (typing) typing.remove();
+        console.error('Ask Lightspeed error:', error);
+        appendAlsMessage('ai', 'Sorry, I ran into an issue. Please try again.');
+    } finally {
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
+
+function appendAlsMessage(role, text, historyId) {
+    const messagesEl = document.getElementById('alsMessages');
+    const chatArea = document.getElementById('alsChatArea');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `als-msg als-msg-${role}`;
+
+    if (role === 'ai') {
+        let html = escapeHtml(text);
+        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+        html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.04);padding:1px 5px;border-radius:4px;font-size:0.84em;">$1</code>');
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        html = html.replace(/\n/g, '<br>');
+        msgDiv.innerHTML = html;
+
+        const actions = document.createElement('div');
+        actions.className = 'als-msg-actions';
+        let actionsHtml = `<button onclick="copyAlsMessage(this)">Copy</button>
+            <button onclick="clearAlsChat()">New chat</button>`;
+        if (historyId) {
+            actionsHtml += `
+                <button class="rating-btn thumbs-up" onclick="rateAlsMessage('${historyId}', 'positive', this)" title="Good response">👍</button>
+                <button class="rating-btn thumbs-down" onclick="rateAlsMessage('${historyId}', 'negative', this)" title="Needs improvement">👎</button>`;
+        }
+        actions.innerHTML = actionsHtml;
+        msgDiv.appendChild(actions);
+    } else {
+        msgDiv.textContent = text;
+    }
+
+    messagesEl.appendChild(msgDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function copyAlsMessage(btn) {
+    const msgDiv = btn.closest('.als-msg');
+    const clone = msgDiv.cloneNode(true);
+    const actions = clone.querySelector('.als-msg-actions');
+    if (actions) actions.remove();
+    const text = clone.textContent.trim();
+    navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
+}
+
+function clearAlsChat() {
+    askConversation = [];
+    saveAskConversation();
+    document.getElementById('alsMessages').innerHTML = '';
+    document.getElementById('alsChatArea').style.display = 'none';
+    document.getElementById('alsPrompts').style.display = 'flex';
+    renderAlsSamplePrompts();
+}
+
+async function rateAlsMessage(historyId, rating, button) {
+    let feedback = null;
+    if (rating === 'negative') {
+        feedback = prompt('What could have been better? (optional)');
+    }
+
+    try {
+        await fetch(`${API_BASE_URL}/api/response-history/${historyId}/rate`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ rating, feedback })
+        });
+
+        const actions = button.closest('.als-msg-actions');
+        const ratingBtns = actions.querySelectorAll('.rating-btn');
+        ratingBtns.forEach(btn => btn.remove());
+        const conf = document.createElement('span');
+        conf.className = 'rating-label';
+        conf.style.fontSize = '0.75rem';
+        conf.textContent = rating === 'positive' ? '👍 Thanks!' : '👎 Noted — will improve.';
+        actions.appendChild(conf);
+    } catch (e) {
+        console.warn('Could not rate message:', e);
+    }
+}
+
+// Make new page functions globally accessible
+window.fillAlsPrompt = fillAlsPrompt;
+window.copyAlsMessage = copyAlsMessage;
+window.clearAlsChat = clearAlsChat;
+window.rateAlsMessage = rateAlsMessage;
 
 // Email/password auth removed - Google OAuth only
 
@@ -8876,6 +9176,7 @@ const ROUTES = {
     '/list-normalizer/duplicates':   { view: 'tool', tool: 'list-normalizer', subTool: 'duplicates' },
     '/list-normalizer/compare':      { view: 'tool', tool: 'list-normalizer', subTool: 'compare' },
     '/list-normalizer/email-cleaner': { view: 'tool', tool: 'list-normalizer', subTool: 'email-cleaner' },
+    '/ask-lightspeed':               { view: 'tool', tool: 'ask-lightspeed' },
 };
 
 // Map tools/pages to URL paths (reverse lookup)
@@ -8884,6 +9185,7 @@ const TOOL_ROUTES = {
     'data-analysis':     '/data-analysis',
     'draft-assistant':   '/draft-assistant',
     'list-normalizer':   '/list-normalizer',
+    'ask-lightspeed':    '/ask-lightspeed',
 };
 
 const PAGE_ROUTES = {
