@@ -240,6 +240,12 @@ function showUpgradeModal(reason, usageCount, limit) {
     modal.classList.add('show');
 }
 
+// ==================== EMPTY STATE HELPER ====================
+function emptyStateHtml(icon, title, text, btnLabel, btnAction) {
+    const btnHtml = btnLabel ? `<button class="empty-state-btn" onclick="${btnAction}">${btnLabel}</button>` : '';
+    return `<div class="empty-state"><div class="empty-state-icon">${icon}</div><p class="empty-state-title">${title}</p><p class="empty-state-text">${text}</p>${btnHtml}</div>`;
+}
+
 // ==================== GOOGLE OAUTH CONFIGURATION ====================
 const GOOGLE_CLIENT_ID = '538611064946-ij0geilde0q1tq0hlpjep886holcmro5.apps.googleusercontent.com';
 
@@ -6516,7 +6522,7 @@ async function updateAnalytics() {
         `).join('');
 
         document.getElementById("categoryChart").innerHTML = chartHtml ||
-            '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No data yet</div>';
+            emptyStateHtml('📊', 'No category data yet', 'Generate responses to see inquiry breakdowns.', 'Generate Response', "switchPage('response')");
 
         // Monthly breakdown from backend
         const monthlyData = stats.monthly || [];
@@ -6532,7 +6538,7 @@ async function updateAnalytics() {
                     <div class="monthly-stat-rating">${rated > 0 ? Math.round(positive / rated * 100) + '% positive' : 'No ratings'}</div>
                 </div>
             `;
-        }).join('') : '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No data yet</div>';
+        }).join('') : emptyStateHtml('📅', 'No monthly data yet', 'Your monthly response trends will appear here.');
 
         document.getElementById("monthlyBreakdown").innerHTML = monthlyHtml;
 
@@ -6556,7 +6562,7 @@ async function updateAnalytics() {
         }).join('');
 
         document.getElementById("historyList").innerHTML = historyHtml ||
-            '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No response history yet.</div>';
+            emptyStateHtml('📜', 'No response history yet', 'Responses from your team will appear here.', 'Generate Response', "switchPage('response')");
 
         // Render leaderboard from backend data
         renderLeaderboardFromData(stats.leaderboard || []);
@@ -6691,11 +6697,9 @@ function renderKnowledgeList(searchQuery = "") {
     }
 
     if (items.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-                ${searchQuery ? "No matching entries found." : "No knowledge entries yet."}
-            </div>
-        `;
+        container.innerHTML = searchQuery
+            ? `<div class="empty-state"><div class="empty-state-icon">🔍</div><p class="empty-state-title">No matching entries found</p><p class="empty-state-text">Try a different search term.</p></div>`
+            : emptyStateHtml('📚', 'No knowledge entries yet', 'Add entries to help Lightspeed generate more accurate responses.', 'Add Entry', "document.getElementById('addKnowledgeBtn')?.click()");
         return;
     }
 
@@ -8737,11 +8741,7 @@ function renderLeaderboardFromData(leaderboard) {
     if (!container) return;
 
     if (leaderboard.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-                No data yet. Generate some responses to see the leaderboard!
-            </div>
-        `;
+        container.innerHTML = emptyStateHtml('🏆', 'No leaderboard data yet', 'Generate responses to see your team rankings.', 'Generate Response', "switchPage('response')");
         return;
     }
 
@@ -8755,11 +8755,7 @@ function renderLeaderboard() {
     const leaderboard = getLeaderboard();
 
     if (leaderboard.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-                No data yet. Generate some responses to see the leaderboard!
-            </div>
-        `;
+        container.innerHTML = emptyStateHtml('🏆', 'No leaderboard data yet', 'Generate responses to see your team rankings.', 'Generate Response', "switchPage('response')");
         return;
     }
 

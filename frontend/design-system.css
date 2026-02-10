@@ -187,3 +187,43 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
 }
+
+/* --- Empty States --- */
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-muted);
+}
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.8;
+}
+.empty-state-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 6px;
+}
+.empty-state-text {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0 0 20px;
+}
+.empty-state-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    background: var(--cta);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.empty-state-btn:hover {
+    opacity: 0.9;
+}
