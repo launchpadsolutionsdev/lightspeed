@@ -251,22 +251,39 @@ const MICROSOFT_REDIRECT_URI = window.location.origin + '/';
 let msalInstance = null;
 let msalInitialized = false;
 async function getMsalInstance() {
+    console.log('[MSAL] getMsalInstance called, typeof msal:', typeof msal);
+    if (typeof msal !== 'undefined') {
+        console.log('[MSAL] msal object keys:', Object.keys(msal));
+        console.log('[MSAL] PublicClientApplication:', !!msal.PublicClientApplication);
+    }
     if (!msalInstance && typeof msal !== 'undefined' && msal.PublicClientApplication) {
-        msalInstance = new msal.PublicClientApplication({
-            auth: {
-                clientId: MICROSOFT_CLIENT_ID,
-                authority: 'https://login.microsoftonline.com/common',
-                redirectUri: MICROSOFT_REDIRECT_URI
-            },
-            cache: {
-                cacheLocation: 'sessionStorage',
-                storeAuthStateInCookie: false
-            }
-        });
+        try {
+            msalInstance = new msal.PublicClientApplication({
+                auth: {
+                    clientId: MICROSOFT_CLIENT_ID,
+                    authority: 'https://login.microsoftonline.com/common',
+                    redirectUri: MICROSOFT_REDIRECT_URI
+                },
+                cache: {
+                    cacheLocation: 'sessionStorage',
+                    storeAuthStateInCookie: false
+                }
+            });
+            console.log('[MSAL] Instance created successfully');
+        } catch (e) {
+            console.error('[MSAL] Error creating instance:', e);
+            return null;
+        }
     }
     if (msalInstance && !msalInitialized) {
-        await msalInstance.initialize();
-        msalInitialized = true;
+        try {
+            await msalInstance.initialize();
+            msalInitialized = true;
+            console.log('[MSAL] Initialized successfully');
+        } catch (e) {
+            console.error('[MSAL] Error during initialize():', e);
+            return null;
+        }
     }
     return msalInstance;
 }
