@@ -245,7 +245,7 @@ const GOOGLE_CLIENT_ID = '538611064946-ij0geilde0q1tq0hlpjep886holcmro5.apps.goo
 
 // ==================== MICROSOFT OAUTH CONFIGURATION ====================
 // Replace with your Azure AD app's client ID after registering at https://portal.azure.com
-const MICROSOFT_CLIENT_ID = 'YOUR_MICROSOFT_CLIENT_ID';
+const MICROSOFT_CLIENT_ID = 'a7e282d3-9f3a-4bca-a72f-f100e498f0d6';
 const MICROSOFT_REDIRECT_URI = window.location.origin + '/';
 
 let msalInstance = null;
