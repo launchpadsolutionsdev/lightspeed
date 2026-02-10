@@ -249,7 +249,8 @@ const MICROSOFT_CLIENT_ID = 'a7e282d3-9f3a-4bca-a72f-f100e498f0d6';
 const MICROSOFT_REDIRECT_URI = window.location.origin + '/';
 
 let msalInstance = null;
-function getMsalInstance() {
+let msalInitialized = false;
+async function getMsalInstance() {
     if (!msalInstance && typeof msal !== 'undefined' && msal.PublicClientApplication) {
         msalInstance = new msal.PublicClientApplication({
             auth: {
@@ -262,6 +263,10 @@ function getMsalInstance() {
                 storeAuthStateInCookie: false
             }
         });
+    }
+    if (msalInstance && !msalInitialized) {
+        await msalInstance.initialize();
+        msalInitialized = true;
     }
     return msalInstance;
 }
@@ -993,7 +998,7 @@ async function processGoogleUser(googleUser, credential) {
 
 // ==================== MICROSOFT OAUTH ====================
 async function handleMicrosoftSignIn() {
-    const instance = getMsalInstance();
+    const instance = await getMsalInstance();
     if (!instance) {
         showToast("Microsoft Sign-In is loading. Please try again.", "error");
         return;
