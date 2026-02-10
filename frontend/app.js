@@ -2863,9 +2863,20 @@ function setupEventListeners() {
     });
 
     // Smart suggestions
-    document.querySelectorAll(".suggestion-chip").forEach(chip => {
+    document.querySelectorAll(".suggestion-chip:not(.instruction-chip)").forEach(chip => {
         chip.addEventListener("click", () => {
             document.getElementById("customerEmail").value = SUGGESTION_TEMPLATES[chip.dataset.template];
+        });
+    });
+
+    // Instruction chips — append to agent instructions field
+    document.querySelectorAll(".instruction-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+            const field = document.getElementById("agentInstructions");
+            const current = field.value.trim();
+            const instruction = chip.dataset.instruction;
+            field.value = current ? current + ". " + instruction : instruction;
+            field.focus();
         });
     });
 

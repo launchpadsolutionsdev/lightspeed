@@ -9124,6 +9124,15 @@
 
                         <div class="form-group" style="margin-top: 12px;">
                             <label class="form-label" for="agentInstructions">Agent Instructions <span style="font-weight: 400; color: var(--text-muted);">(optional)</span></label>
+                            <div class="smart-suggestions" id="instructionChips" style="margin-bottom: 8px;">
+                                <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;">Quick add:</span>
+                                <button class="suggestion-chip instruction-chip" data-instruction="I've already resolved this">Resolved</button>
+                                <button class="suggestion-chip instruction-chip" data-instruction="I've already cancelled their subscription">Cancelled</button>
+                                <button class="suggestion-chip instruction-chip" data-instruction="Refund has been approved and processed">Refund approved</button>
+                                <button class="suggestion-chip instruction-chip" data-instruction="Don't offer to resend tickets — direct them to check spam/junk folder">Check spam</button>
+                                <button class="suggestion-chip instruction-chip" data-instruction="Escalate to manager — don't promise a resolution">Escalate</button>
+                                <button class="suggestion-chip instruction-chip" data-instruction="We are sold out of tickets">Sold out</button>
+                            </div>
                             <textarea id="agentInstructions" placeholder="e.g. &quot;I've already cancelled their subscription&quot; or &quot;Don't offer to resend tickets — just direct them to check spam&quot;" rows="2" style="min-height: 56px; resize: vertical;"></textarea>
                         </div>
 
