@@ -251,11 +251,6 @@ const MICROSOFT_REDIRECT_URI = window.location.origin + '/';
 let msalInstance = null;
 let msalInitialized = false;
 async function getMsalInstance() {
-    console.log('[MSAL] getMsalInstance called, typeof msal:', typeof msal);
-    if (typeof msal !== 'undefined') {
-        console.log('[MSAL] msal object keys:', Object.keys(msal));
-        console.log('[MSAL] PublicClientApplication:', !!msal.PublicClientApplication);
-    }
     if (!msalInstance && typeof msal !== 'undefined' && msal.PublicClientApplication) {
         try {
             msalInstance = new msal.PublicClientApplication({
@@ -269,9 +264,8 @@ async function getMsalInstance() {
                     storeAuthStateInCookie: false
                 }
             });
-            console.log('[MSAL] Instance created successfully');
         } catch (e) {
-            console.error('[MSAL] Error creating instance:', e);
+            console.error('MSAL initialization error:', e);
             return null;
         }
     }
@@ -279,9 +273,8 @@ async function getMsalInstance() {
         try {
             await msalInstance.initialize();
             msalInitialized = true;
-            console.log('[MSAL] Initialized successfully');
         } catch (e) {
-            console.error('[MSAL] Error during initialize():', e);
+            console.error('MSAL initialization error:', e);
             return null;
         }
     }
