@@ -243,6 +243,29 @@ function showUpgradeModal(reason, usageCount, limit) {
 // ==================== GOOGLE OAUTH CONFIGURATION ====================
 const GOOGLE_CLIENT_ID = '538611064946-ij0geilde0q1tq0hlpjep886holcmro5.apps.googleusercontent.com';
 
+// ==================== MICROSOFT OAUTH CONFIGURATION ====================
+// Replace with your Azure AD app's client ID after registering at https://portal.azure.com
+const MICROSOFT_CLIENT_ID = 'YOUR_MICROSOFT_CLIENT_ID';
+const MICROSOFT_REDIRECT_URI = window.location.origin + '/';
+
+let msalInstance = null;
+function getMsalInstance() {
+    if (!msalInstance && typeof msal !== 'undefined' && msal.PublicClientApplication) {
+        msalInstance = new msal.PublicClientApplication({
+            auth: {
+                clientId: MICROSOFT_CLIENT_ID,
+                authority: 'https://login.microsoftonline.com/common',
+                redirectUri: MICROSOFT_REDIRECT_URI
+            },
+            cache: {
+                cacheLocation: 'sessionStorage',
+                storeAuthStateInCookie: false
+            }
+        });
+    }
+    return msalInstance;
+}
+
 // ==================== AUTH STATE ====================
 let currentUser = null;
 let users = [];
@@ -735,7 +758,7 @@ function setupAuthEventListeners() {
         });
     }
 
-    // Google Sign-In is the only auth method - no email/password forms
+    // OAuth sign-in only - no email/password forms
 
     // User menu (in main app)
     document.getElementById("userMenuBtn").addEventListener("click", toggleUserDropdown);
@@ -769,6 +792,9 @@ function setupAuthEventListeners() {
 
     // Google Sign-In button
     document.getElementById("googleSignInBtn").addEventListener("click", handleGoogleSignIn);
+
+    // Microsoft Sign-In button
+    document.getElementById("microsoftSignInBtn").addEventListener("click", handleMicrosoftSignIn);
 
     // Pricing buttons - wire up all "Start Free Trial" and "Get Started" buttons
     const pricingTrialBtn = document.getElementById("pricingTrialBtn");
@@ -962,6 +988,124 @@ async function processGoogleUser(googleUser, credential) {
     } catch (error) {
         console.error('Backend auth error:', error);
         showToast("Connection error. Please check your internet and try again.", "error");
+    }
+}
+
+// ==================== MICROSOFT OAUTH ====================
+async function handleMicrosoftSignIn() {
+    const instance = getMsalInstance();
+    if (!instance) {
+        showToast("Microsoft Sign-In is loading. Please try again.", "error");
+        return;
+    }
+
+    try {
+        const loginResponse = await instance.loginPopup({
+            scopes: ['openid', 'profile', 'email', 'User.Read'],
+            prompt: 'select_account'
+        });
+
+        if (loginResponse && loginResponse.account) {
+            await processMicrosoftUser(loginResponse);
+        } else {
+            showToast("Failed to get user information from Microsoft", "error");
+        }
+    } catch (error) {
+        if (error.errorCode === 'user_cancelled' || error.errorMessage?.includes('cancelled')) {
+            // User closed the popup — no toast needed
+            return;
+        }
+        console.error("Microsoft OAuth error:", error);
+        showToast("Failed to sign in with Microsoft", "error");
+    }
+}
+
+async function processMicrosoftUser(loginResponse) {
+    const account = loginResponse.account;
+    const email = account.username || loginResponse.idTokenClaims?.email || loginResponse.idTokenClaims?.preferred_username;
+    const name = account.name || loginResponse.idTokenClaims?.name || email.split('@')[0];
+
+    showToast("Signing in...", "info");
+
+    try {
+        // The MSAL popup flow returns tokens directly (not an auth code).
+        // Get an access token for Microsoft Graph, then send it to our backend
+        // which will verify it by calling Graph API.
+        const accessToken = loginResponse.accessToken;
+
+        const response = await fetch(`${API_BASE_URL}/api/auth/microsoft`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                accessToken: accessToken,
+                email: email,
+                name: name,
+                microsoftId: account.homeAccountId
+            })
+        });
+
+        return await handleMicrosoftAuthResponse(response, email, name, account);
+    } catch (error) {
+        console.error('Microsoft backend auth error:', error);
+        showToast("Connection error. Please check your internet and try again.", "error");
+    }
+}
+
+async function handleMicrosoftAuthResponse(response, email, name, account) {
+    if (response.ok) {
+        const data = await response.json();
+
+        if (data.token) {
+            localStorage.setItem('authToken', data.token);
+        }
+
+        let user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+        if (!user) {
+            user = {
+                id: data.user?.id || generateUserId(),
+                email: email,
+                name: name,
+                password: null,
+                microsoftId: account.homeAccountId || null,
+                picture: data.user?.picture || null,
+                createdAt: new Date().toISOString(),
+                settings: {
+                    defaultName: name.split(" ")[0],
+                    orgName: data.organization?.name || ""
+                },
+                data: {
+                    customKnowledge: [],
+                    feedbackList: [],
+                    responseHistory: [],
+                    favorites: []
+                }
+            };
+            users.push(user);
+        }
+
+        user.backendId = data.user?.id;
+        user.isSuperAdmin = data.user?.isSuperAdmin || false;
+        user.organization = data.organization || null;
+        user.needsOrganization = data.needsOrganization || false;
+        user.picture = data.user?.picture || user.picture;
+
+        localStorage.setItem("lightspeed_users", JSON.stringify(users));
+
+        if (data.needsOrganization) {
+            currentUser = user;
+            localStorage.setItem("lightspeed_current_user", user.id);
+            showOrganizationSetup(user);
+            return;
+        }
+
+        loginUser(user, true);
+        const greeting = data.isNewUser ? "Welcome to Lightspeed" : "Welcome back";
+        showToast(`${greeting}, ${user.name.split(" ")[0]}!`, "success");
+    } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Microsoft backend auth failed:', errorData);
+        showToast(errorData.error || "Sign in failed. Please try again.", "error");
     }
 }
 
