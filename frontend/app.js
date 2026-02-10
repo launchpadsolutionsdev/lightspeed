@@ -5521,6 +5521,7 @@ async function handleGenerate() {
     const lengthValue = document.getElementById("lengthSlider").value;
     const includeLinks = document.getElementById("includeLinks").checked;
     const includeSteps = document.getElementById("includeSteps").checked;
+    const agentInstructions = document.getElementById("agentInstructions")?.value.trim() || "";
 
     // Show loading state
     const generateBtn = document.getElementById("generateBtn");
@@ -5541,7 +5542,7 @@ async function handleGenerate() {
         const relevantKnowledge = getRelevantKnowledge(customerEmail);
         const response = await generateCustomResponse(
             customerEmail, relevantKnowledge, staffName,
-            { toneValue, lengthValue, includeLinks, includeSteps }
+            { toneValue, lengthValue, includeLinks, includeSteps, agentInstructions }
         );
 
         const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -5692,7 +5693,7 @@ function buildRatedExamplesContext(ratedExamples) {
 }
 
 async function generateCustomResponse(customerEmail, knowledge, staffName, options) {
-    const { toneValue, lengthValue, includeLinks, includeSteps } = options;
+    const { toneValue, lengthValue, includeLinks, includeSteps, agentInstructions } = options;
     const isFacebook = inquiryType === "facebook";
 
     const toneDesc = toneValue < 33 ? "formal and professional" :
@@ -5781,18 +5782,22 @@ Knowledge base:
 
 ${knowledgeContext}${buildRatedExamplesContext(ratedExamples)}`;
 
+    const instructionsBlock = agentInstructions
+        ? `\nAGENT INSTRUCTIONS (from the staff member — follow these closely):\n${agentInstructions}\n`
+        : '';
+
     let userPrompt;
     if (isFacebook) {
         const fbEmailRef = orgSupportEmail ? `direct them to email ${orgSupportEmail} for assistance` : 'direct them to email for assistance';
         userPrompt = `Write a FACEBOOK COMMENT reply to this inquiry. Remember: under 400 characters, single paragraph, end with -${staffName}
 
 IMPORTANT: Do NOT offer to take any direct action. Instead, ${fbEmailRef}.
-
+${instructionsBlock}
 INQUIRY:
 ${customerEmail}`;
     } else {
         userPrompt = `Write a response to this inquiry. Detect which lottery it's about from context.
-
+${instructionsBlock}
 INQUIRY:
 ${customerEmail}
 
