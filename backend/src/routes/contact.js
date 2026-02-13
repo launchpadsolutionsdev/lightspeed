@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { sendEmail } = require('../services/email');
 
-const CONTACT_EMAIL = 'torin@launchpadsolutions.ca';
+const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'hello@launchpadsolutions.ca';
 
 router.post('/', async (req, res) => {
     try {
@@ -65,12 +65,12 @@ router.post('/', async (req, res) => {
 
             // Include debug info in non-production environments
             const debugInfo = process.env.NODE_ENV !== 'production' ? ` (Debug: ${result.reason || result.error || 'unknown'})` : '';
-            res.status(503).json({ error: `Our email service is temporarily unavailable. Please email us directly at torin@launchpadsolutions.ca${debugInfo}` });
+            res.status(503).json({ error: `Our email service is temporarily unavailable. Please email us directly at hello@launchpadsolutions.ca${debugInfo}` });
         }
 
     } catch (error) {
         console.error('Contact form error:', error);
-        res.status(500).json({ error: 'Something went wrong. Please try again or email us directly at torin@launchpadsolutions.ca' });
+        res.status(500).json({ error: 'Something went wrong. Please try again or email us directly at hello@launchpadsolutions.ca' });
     }
 });
 
