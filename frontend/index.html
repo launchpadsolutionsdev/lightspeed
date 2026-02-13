@@ -4786,15 +4786,17 @@
         /* ==================== DRAFT STUDIO (Two-Column Layout) ==================== */
         .draft-studio {
             display: grid;
-            grid-template-columns: 340px 1fr;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
             min-height: calc(100vh - 64px);
-            background: var(--bg-light);
         }
 
         /* Sidebar */
         .draft-studio-sidebar {
             background: white;
-            border-right: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -4859,7 +4861,11 @@
 
         /* Main Content Area */
         .draft-studio-main {
-            padding: 32px;
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            padding: 24px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
@@ -4898,7 +4904,7 @@
         }
 
         .draft-empty-tips {
-            background: white;
+            background: var(--bg-light);
             border-radius: var(--radius-lg);
             padding: 20px 24px;
             max-width: 480px;
@@ -5023,7 +5029,7 @@
         }
 
         .draft-output-content {
-            background: white;
+            background: var(--bg-light);
             border-radius: var(--radius-lg);
             padding: 24px;
             font-size: 0.95rem;
@@ -5355,8 +5361,6 @@
             }
 
             .draft-studio-sidebar {
-                border-right: none;
-                border-bottom: 1px solid var(--border);
                 max-height: 45vh;
             }
 
@@ -5366,9 +5370,9 @@
         }
 
         .draft-assistant-container {
-            max-width: none;
-            margin: 0;
-            padding: 0;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 24px 32px;
         }
 
         /* ==================== DATA ANALYSIS TOOL STYLES ==================== */
