@@ -7225,7 +7225,7 @@ function showDraftRatingUI() {
         <button class="rating-btn thumbs-down" onclick="rateDraft('negative', this)">👎</button>
     `;
 
-    const outputSection = document.getElementById('draftOutputSection');
+    const outputSection = document.getElementById('draftStudioOutput');
     if (outputSection) outputSection.appendChild(ratingDiv);
 }
 
@@ -7270,6 +7270,36 @@ const DRAFT_TYPE_LABELS = {
     'ad': 'Facebook/Instagram Ad',
     'write-anything': 'Write Anything'
 };
+
+const DRAFT_EMPTY_STATES = {
+    'email': {
+        icon: '📧', title: 'Email Copy',
+        text: 'Select an email type, fill in the key details, and generate. Lightspeed uses your knowledge base and past rated emails to match your brand voice.',
+        tips: ['Choose a specific email type for best results', 'Include key details like prize amounts and dates', 'Use add-ons to include Subscriptions or Catch The Ace sections']
+    },
+    'social': {
+        icon: '📱', title: 'Social Media',
+        text: 'Enter your topic and tone, and Lightspeed will draft a post with your licence disclaimer and required lines included.',
+        tips: ['Keep it punchy \u2014 social posts work best when short and exciting', 'Lightspeed automatically adds your licence disclaimer', 'Use the Tone selector to control energy level']
+    },
+    'media-release': {
+        icon: '📰', title: 'Media Release',
+        text: 'Provide your announcement details and add quotes from spokespeople. Lightspeed formats it in AP style.',
+        tips: ['Add at least one quote for a more compelling release', 'Include specific numbers \u2014 dollar amounts, dates, and stats', 'Lightspeed structures it with headline, lead, quotes, and boilerplate']
+    },
+    'ad': {
+        icon: '📣', title: 'Facebook/Instagram Ad',
+        text: 'Describe your campaign goal. Lightspeed generates ad copy under 120 characters with your website URL.',
+        tips: ['Ad copy is limited to 120 characters for best performance', 'Focus on one clear call-to-action per ad', 'Your website URL is included automatically']
+    },
+    'write-anything': {
+        icon: '✨', title: 'Write Anything',
+        text: 'Describe what you need in plain English. Set your tone, format, and length, and Lightspeed handles the rest.',
+        tips: ['Be specific about your audience and purpose', 'Use the Format selector to choose structure (paragraphs, bullets, etc.)', 'Adjust Length to control how detailed the output is']
+    }
+};
+
+let activeDraftTab = 'email';
 
 const EMAIL_TYPE_LABELS = {
     'new-draw': 'New Draw Announcement',
@@ -7690,14 +7720,12 @@ function setupDraftAssistant() {
     if (draftAssistantInitialized) return;
     draftAssistantInitialized = true;
 
-    // Content type buttons
-    document.querySelectorAll('.draft-type-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            selectDraftType(btn.dataset.type);
-        });
+    // Tab click handlers
+    document.querySelectorAll('.draft-tab').forEach(tab => {
+        tab.addEventListener('click', () => selectDraftTab(tab.dataset.draftTab));
     });
 
-    // Tone buttons
+    // Tone buttons (standard panel)
     document.querySelectorAll('.draft-tone-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.draft-tone-btn').forEach(b => b.classList.remove('active'));
@@ -7706,240 +7734,169 @@ function setupDraftAssistant() {
         });
     });
 
-    // Change type button (for non-email types)
-    document.getElementById('draftChangeType').addEventListener('click', () => {
-        document.getElementById('draftInputSection').style.display = 'none';
-        document.getElementById('draftTypeSection').style.display = 'block';
-        document.getElementById('draftHeaderActions').style.display = 'none';
-    });
-
-    // Change type button for email section
-    document.getElementById('draftEmailChangeType').addEventListener('click', () => {
-        document.getElementById('draftEmailTypeSection').style.display = 'none';
-        document.getElementById('draftTypeSection').style.display = 'block';
-        document.getElementById('draftHeaderActions').style.display = 'none';
-        currentEmailType = null;
-    });
-
-    // Email type dropdown change handler
+    // Email type dropdown
     document.getElementById('draftEmailTypeSelect').addEventListener('change', (e) => {
         const emailType = e.target.value;
         currentEmailType = emailType;
-
         const impactContext = document.getElementById('impactSundayContext');
         const keyDetails = document.getElementById('emailKeyDetails');
         const emailAddons = document.getElementById('emailAddonsSection');
-        const generateBtn = document.getElementById('draftEmailGenerateBtn');
-
         if (emailType === '') {
-            // No selection
             impactContext.style.display = 'none';
             keyDetails.style.display = 'none';
             emailAddons.style.display = 'none';
-            generateBtn.disabled = true;
         } else if (emailType === 'impact-sunday') {
-            // Show Impact Sunday context, hide key details
             impactContext.style.display = 'block';
             keyDetails.style.display = 'none';
             emailAddons.style.display = 'block';
-            generateBtn.disabled = false;
         } else {
-            // Show key details with appropriate placeholder
             impactContext.style.display = 'none';
             keyDetails.style.display = 'block';
             emailAddons.style.display = 'block';
             document.getElementById('emailDetailsLabel').textContent = EMAIL_DETAILS_LABELS[emailType];
             document.getElementById('draftEmailDetails').placeholder = EMAIL_DETAILS_PLACEHOLDERS[emailType];
-            generateBtn.disabled = false;
         }
     });
 
-    // Email generate button
-    document.getElementById('draftEmailGenerateBtn').addEventListener('click', generateEmailDraft);
-
-    // Write Anything - change type button
-    document.getElementById('writeAnythingChangeType').addEventListener('click', () => {
-        document.getElementById('writeAnythingSection').style.display = 'none';
-        document.getElementById('draftTypeSection').style.display = 'block';
-        document.getElementById('draftHeaderActions').style.display = 'none';
-    });
-
-    // Write Anything - toggle pill groups
+    // Write Anything toggle pills
     document.querySelectorAll('.wa-toggle-pill').forEach(pill => {
         pill.addEventListener('click', () => {
-            // Determine which group this pill belongs to
             const group = pill.closest('.wa-toggle-group');
             group.querySelectorAll('.wa-toggle-pill').forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
         });
     });
 
-    // Write Anything - generate button
-    document.getElementById('writeAnythingGenerateBtn').addEventListener('click', generateWriteAnything);
-
-    // Quote toggles (for multiple quotes)
+    // Quote toggles
     document.querySelectorAll('.draft-quote-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
             const quoteNum = btn.dataset.quote;
             const fields = document.getElementById('draftQuoteFields' + quoteNum);
             if (fields.style.display === 'none') {
                 fields.style.display = 'flex';
-                btn.textContent = '− Remove';
+                btn.textContent = '\u2212 Remove';
             } else {
                 fields.style.display = 'none';
-                btn.textContent = '+ Add Quote';
-                // Clear the fields when closing
-                const nameInput = document.querySelector('.draft-quote-name[data-quote="' + quoteNum + '"]');
-                const titleInput = document.querySelector('.draft-quote-title[data-quote="' + quoteNum + '"]');
-                const textInput = document.querySelector('.draft-quote-text[data-quote="' + quoteNum + '"]');
-                if (nameInput) nameInput.value = '';
-                if (titleInput) titleInput.value = '';
-                if (textInput) textInput.value = '';
+                btn.textContent = '+ Add';
+                document.querySelectorAll('[data-quote="' + quoteNum + '"]').forEach(el => { if (el.value !== undefined) el.value = ''; });
             }
         });
     });
 
-    // Generate button (for non-email types)
-    document.getElementById('draftGenerateBtn').addEventListener('click', generateDraft);
+    // Unified generate button
+    document.getElementById('draftStudioGenerateBtn').addEventListener('click', () => {
+        if (activeDraftTab === 'email') generateEmailDraft();
+        else if (activeDraftTab === 'write-anything') generateWriteAnything();
+        else generateDraft();
+    });
 
-    // Copy button (plain text)
+    // Copy button
     document.getElementById('draftCopyBtn').addEventListener('click', () => {
-        const content = document.getElementById('draftOutputContent').textContent;
-        navigator.clipboard.writeText(content).then(() => {
+        navigator.clipboard.writeText(document.getElementById('draftOutputContent').textContent).then(() => {
             showToast('Copied to clipboard!', 'success');
         });
     });
 
-    // Copy as HTML button (for email drafts — preserves formatting for Mailchimp/email tools)
+    // Copy as HTML button
     document.getElementById('draftCopyHtmlBtn').addEventListener('click', () => {
-        const outputEl = document.getElementById('draftOutputContent');
-        const plainText = outputEl.textContent;
-        // Convert the plain text to simple HTML with paragraphs and line breaks
-        const htmlContent = plainText
-            .split(/\n\n+/)
-            .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
-            .join('\n');
-
-        // Use Clipboard API with both text and HTML formats
+        const plainText = document.getElementById('draftOutputContent').textContent;
+        const htmlContent = plainText.split(/\n\n+/).map(p => '<p>' + p.replace(/\n/g, '<br>') + '</p>').join('\n');
         const blob = new Blob([htmlContent], { type: 'text/html' });
         const textBlob = new Blob([plainText], { type: 'text/plain' });
-        const clipboardItem = new ClipboardItem({
-            'text/html': blob,
-            'text/plain': textBlob
-        });
-        navigator.clipboard.write([clipboardItem]).then(() => {
-            showToast('Copied as HTML — paste into Mailchimp, Gmail, etc.', 'success');
+        navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })]).then(() => {
+            showToast('Copied as HTML \u2014 paste into Mailchimp, Gmail, etc.', 'success');
         }).catch(() => {
-            // Fallback: copy as plain text
-            navigator.clipboard.writeText(plainText).then(() => {
-                showToast('Copied to clipboard (HTML not supported in this browser)', 'info');
-            });
+            navigator.clipboard.writeText(plainText).then(() => showToast('Copied to clipboard', 'info'));
         });
     });
 
     // Regenerate button
     document.getElementById('draftRegenerateBtn').addEventListener('click', () => {
         if (lastDraftRequest) {
-            if (lastDraftRequest.isWriteAnything) {
-                generateWriteAnything();
-            } else if (lastDraftRequest.isEmail) {
-                generateEmailDraft();
-            } else {
-                generateDraft();
-            }
+            if (lastDraftRequest.isWriteAnything) generateWriteAnything();
+            else if (lastDraftRequest.isEmail) generateEmailDraft();
+            else generateDraft();
         }
     });
 
     // Refine chips
     document.querySelectorAll('.draft-refine-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            const instruction = chip.dataset.instruction;
-            refineDraft(instruction);
-        });
+        chip.addEventListener('click', () => refineDraft(chip.dataset.instruction));
     });
 
-    // Refine button (custom input)
+    // Refine button + Enter key
     document.getElementById('draftRefineBtn').addEventListener('click', () => {
         const input = document.getElementById('draftRefineInput');
-        const instruction = input.value.trim();
-        if (instruction) {
-            refineDraft(instruction);
-            input.value = '';
-        }
+        if (input.value.trim()) { refineDraft(input.value.trim()); input.value = ''; }
     });
-
-    // Refine input - allow Enter key
     document.getElementById('draftRefineInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const instruction = e.target.value.trim();
-            if (instruction) {
-                refineDraft(instruction);
-                e.target.value = '';
-            }
-        }
+        if (e.key === 'Enter' && e.target.value.trim()) { refineDraft(e.target.value.trim()); e.target.value = ''; }
     });
 
     // New draft button
     document.getElementById('draftNewBtn').addEventListener('click', resetDraftAssistant);
 
+    // Initialize first tab
+    selectDraftTab('email');
 }
 
-function selectDraftType(type) {
-    currentDraftType = type;
-    document.getElementById('draftTypeSection').style.display = 'none';
+function selectDraftTab(tabId) {
+    activeDraftTab = tabId;
 
-    // For email type, show the email-specific workflow
-    if (type === 'email') {
-        document.getElementById('draftEmailTypeSection').style.display = 'block';
-        document.getElementById('draftInputSection').style.display = 'none';
-        // Reset email form
-        document.getElementById('draftEmailTypeSelect').value = '';
-        document.getElementById('impactSundayContext').style.display = 'none';
-        document.getElementById('emailKeyDetails').style.display = 'none';
-        document.getElementById('draftEmailGenerateBtn').disabled = true;
-        document.getElementById('draftImpactContext').value = '';
-        document.getElementById('draftEmailDetails').value = '';
-        currentEmailType = null;
-        return;
-    }
+    // Update tab active state
+    document.querySelectorAll('.draft-tab').forEach(t => t.classList.remove('active'));
+    const activeTab = document.querySelector('.draft-tab[data-draft-tab="' + tabId + '"]');
+    if (activeTab) activeTab.classList.add('active');
 
-    // For write-anything type, show the writing studio
-    if (type === 'write-anything') {
-        document.getElementById('draftEmailTypeSection').style.display = 'none';
-        document.getElementById('draftInputSection').style.display = 'none';
-        document.getElementById('writeAnythingSection').style.display = 'block';
-        // Reset write anything form
-        document.getElementById('writeAnythingTopic').value = '';
-        document.getElementById('writeAnythingContext').value = '';
-        // Reset toggle pills to defaults
-        document.querySelectorAll('.wa-toggle-pill').forEach(p => p.classList.remove('active'));
-        document.querySelector('.wa-toggle-pill[data-wa-tone="balanced"]').classList.add('active');
-        document.querySelector('.wa-toggle-pill[data-wa-format="paragraphs"]').classList.add('active');
-        document.querySelector('.wa-toggle-pill[data-wa-length="standard"]').classList.add('active');
-        return;
-    }
+    // Show correct panel
+    document.getElementById('draftPanelEmail').style.display = 'none';
+    document.getElementById('draftPanelStandard').style.display = 'none';
+    document.getElementById('draftPanelWriteAnything').style.display = 'none';
 
-    // For other types, show the regular input section
-    document.getElementById('draftEmailTypeSection').style.display = 'none';
-    document.getElementById('writeAnythingSection').style.display = 'none';
-    document.getElementById('draftInputSection').style.display = 'block';
-    document.getElementById('draftTypeBadge').textContent = DRAFT_TYPE_LABELS[type];
-
-    // Show/hide quote section for media releases
-    const quoteSection = document.getElementById('draftQuoteSection');
-    if (type === 'media-release') {
-        quoteSection.style.display = 'block';
+    if (tabId === 'email') {
+        document.getElementById('draftPanelEmail').style.display = 'flex';
+        currentDraftType = 'email';
+    } else if (tabId === 'write-anything') {
+        document.getElementById('draftPanelWriteAnything').style.display = 'flex';
+        currentDraftType = 'write-anything';
     } else {
-        quoteSection.style.display = 'none';
+        document.getElementById('draftPanelStandard').style.display = 'flex';
+        currentDraftType = tabId;
+        // Show quotes section only for media release
+        const quoteSection = document.getElementById('draftQuoteSection');
+        if (quoteSection) quoteSection.style.display = (tabId === 'media-release') ? 'block' : 'none';
     }
 
-    // Reset all quote fields (1-5)
-    for (let i = 1; i <= 5; i++) {
-        const fields = document.getElementById('draftQuoteFields' + i);
-        const toggle = document.querySelector('.draft-quote-toggle[data-quote="' + i + '"]');
-        if (fields) fields.style.display = 'none';
-        if (toggle) toggle.textContent = '+ Add Quote';
+    // Update empty state (only if output is not showing)
+    const outputEl = document.getElementById('draftStudioOutput');
+    if (outputEl && outputEl.style.display === 'none') {
+        updateDraftEmptyState(tabId);
     }
+}
+
+function updateDraftEmptyState(tabId) {
+    const state = DRAFT_EMPTY_STATES[tabId];
+    if (!state) return;
+    const iconEl = document.getElementById('draftEmptyIcon');
+    const titleEl = document.getElementById('draftEmptyTitle');
+    const textEl = document.getElementById('draftEmptyText');
+    const tipsEl = document.getElementById('draftEmptyTips');
+    if (iconEl) iconEl.textContent = state.icon;
+    if (titleEl) titleEl.textContent = state.title;
+    if (textEl) textEl.textContent = state.text;
+    if (tipsEl) {
+        tipsEl.innerHTML = '<h4>Tips</h4><ul>' + state.tips.map(t => '<li>' + t + '</li>').join('') + '</ul>';
+    }
+}
+
+// Helper to show/hide main area sections
+function showDraftMain(section) {
+    document.getElementById('draftStudioEmpty').style.display = 'none';
+    document.getElementById('draftStudioLoading').style.display = 'none';
+    document.getElementById('draftStudioOutput').style.display = 'none';
+    if (section === 'empty') document.getElementById('draftStudioEmpty').style.display = 'flex';
+    else if (section === 'loading') document.getElementById('draftStudioLoading').style.display = 'flex';
+    else if (section === 'output') document.getElementById('draftStudioOutput').style.display = 'flex';
 }
 
 async function generateDraft() {
@@ -8002,13 +7959,9 @@ async function generateDraft() {
 
     lastDraftRequest = { topic, details, quoteInfo };
 
-    // Show loading
-    document.getElementById('draftInputSection').style.display = 'none';
-    document.getElementById('draftLoading').style.display = 'block';
-    document.getElementById('draftHeaderActions').style.display = 'none';
+    showDraftMain('loading');
 
     try {
-        // Build enhanced system prompt with examples from knowledge base + feedback
         const enhancedSystemPrompt = await buildEnhancedSystemPrompt(currentDraftType);
 
         const response = await fetch(API_BASE_URL + '/api/generate', {
@@ -8021,40 +7974,30 @@ async function generateDraft() {
             })
         });
 
-        if (!response.ok) {
-            await handleApiError(response);
-        }
+        if (!response.ok) await handleApiError(response);
 
         const data = await response.json();
         const generatedContent = data.content[0].text;
 
-        // Show output
-        document.getElementById('draftLoading').style.display = 'none';
-        document.getElementById('draftOutputSection').style.display = 'block';
+        showDraftMain('output');
         document.getElementById('draftOutputBadge').textContent = DRAFT_TYPE_LABELS[currentDraftType];
         document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(generatedContent);
-        document.getElementById('draftHeaderActions').style.display = 'flex';
         document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
-        // Save to history and show rating UI
         saveDraftToHistory(userPrompt, generatedContent, currentDraftType);
 
-        // Show disclaimer for ads
         const disclaimer = document.getElementById('draftDisclaimer');
         if (currentDraftType === 'ad') {
             const charCount = generatedContent.length;
-            disclaimer.innerHTML = 'Character count: ' + charCount + '/120 ' + (charCount > 120 ? '⚠️ Over limit!' : '✅');
+            disclaimer.innerHTML = 'Character count: ' + charCount + '/120 ' + (charCount > 120 ? '\u26A0\uFE0F Over limit!' : '\u2705');
             disclaimer.style.display = 'block';
         } else {
-            disclaimer.innerHTML = '⚠️ Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
+            disclaimer.innerHTML = '\u26A0\uFE0F Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
             disclaimer.style.display = 'block';
         }
 
     } catch (error) {
-        console.error('Draft generation error:', error);
-        document.getElementById('draftLoading').style.display = 'none';
-        document.getElementById('draftInputSection').style.display = 'block';
-        // Don't show toast for handled errors (limit reached, etc.)
+        showDraftMain('empty');
         if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error generating draft: ' + error.message, 'error');
         }
@@ -8089,16 +8032,11 @@ async function generateWriteAnything() {
 
     lastDraftRequest = { topic, context, isWriteAnything: true };
 
-    // Show loading
-    document.getElementById('writeAnythingSection').style.display = 'none';
-    document.getElementById('draftLoading').style.display = 'block';
-    document.getElementById('draftHeaderActions').style.display = 'none';
+    showDraftMain('loading');
 
     try {
-        // Build system prompt from Write Anything guide with org placeholders + KB + feedback
         let systemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
 
-        // Inject org-specific knowledge base
         if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
             const kbContext = customKnowledge.slice(0, 15).map(k =>
                 `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
@@ -8106,7 +8044,6 @@ async function generateWriteAnything() {
             systemPrompt += '\n\nORGANIZATION KNOWLEDGE BASE (use this information to stay accurate and on-brand):\n' + kbContext;
         }
 
-        // Inject rated examples from feedback loop
         const ratedExamples = await getRatedExamples('draft_assistant');
         systemPrompt += buildRatedExamplesContext(ratedExamples);
 
@@ -8120,33 +8057,24 @@ async function generateWriteAnything() {
             })
         });
 
-        if (!response.ok) {
-            await handleApiError(response);
-        }
+        if (!response.ok) await handleApiError(response);
 
         const data = await response.json();
         const generatedContent = data.content[0].text;
 
-        // Show output
-        document.getElementById('draftLoading').style.display = 'none';
-        document.getElementById('draftOutputSection').style.display = 'block';
-        document.getElementById('draftOutputBadge').textContent = '✨ Write Anything';
+        showDraftMain('output');
+        document.getElementById('draftOutputBadge').textContent = '\u2728 Write Anything';
         document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(generatedContent);
-        document.getElementById('draftHeaderActions').style.display = 'flex';
         document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
-        // Save to history and show rating UI
         saveDraftToHistory(userPrompt, generatedContent, 'write-anything');
 
-        // Show standard disclaimer
         const disclaimer = document.getElementById('draftDisclaimer');
-        disclaimer.innerHTML = '⚠️ Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
+        disclaimer.innerHTML = '\u26A0\uFE0F Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
         disclaimer.style.display = 'block';
 
     } catch (error) {
-        console.error('Write Anything generation error:', error);
-        document.getElementById('draftLoading').style.display = 'none';
-        document.getElementById('writeAnythingSection').style.display = 'block';
+        showDraftMain('empty');
         if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error generating content: ' + error.message, 'error');
         }
@@ -8214,9 +8142,7 @@ async function generateEmailDraft() {
     lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details, addSubscriptions, addCatchTheAce, addOther };
 
     // Show loading
-    document.getElementById('draftEmailTypeSection').style.display = 'none';
-    document.getElementById('draftLoading').style.display = 'block';
-    document.getElementById('draftHeaderActions').style.display = 'none';
+    showDraftMain('loading');
 
     try {
         // Build enhanced system prompt with examples from knowledge base + feedback
@@ -8241,11 +8167,9 @@ async function generateEmailDraft() {
         const generatedContent = data.content[0].text;
 
         // Show output
-        document.getElementById('draftLoading').style.display = 'none';
-        document.getElementById('draftOutputSection').style.display = 'block';
+        showDraftMain('output');
         document.getElementById('draftOutputBadge').textContent = '📧 ' + EMAIL_TYPE_LABELS[currentEmailType];
         document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(generatedContent);
-        document.getElementById('draftHeaderActions').style.display = 'flex';
         document.getElementById('draftCopyHtmlBtn').style.display = 'inline-flex';
 
         // Save to history and show rating UI
@@ -8258,8 +8182,7 @@ async function generateEmailDraft() {
 
     } catch (error) {
         console.error('Email draft generation error:', error);
-        document.getElementById('draftLoading').style.display = 'none';
-        document.getElementById('draftEmailTypeSection').style.display = 'block';
+        showDraftMain('empty');
         if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error generating email draft: ' + error.message, 'error');
         }
@@ -8267,24 +8190,23 @@ async function generateEmailDraft() {
 }
 
 function resetDraftAssistant() {
-    currentDraftType = null;
     currentDraftTone = 'balanced';
     lastDraftRequest = null;
     currentEmailType = null;
 
-    // Reset form fields
+    // Reset standard form fields
     document.getElementById('draftTopicInput').value = '';
     document.getElementById('draftDetailsInput').value = '';
 
-    // Reset all quote fields (1-5)
-    for (let i = 1; i <= 5; i++) {
+    // Reset all quote fields (1-3)
+    for (let i = 1; i <= 3; i++) {
         const fields = document.getElementById('draftQuoteFields' + i);
         const toggle = document.querySelector('.draft-quote-toggle[data-quote="' + i + '"]');
         const nameInput = document.querySelector('.draft-quote-name[data-quote="' + i + '"]');
         const titleInput = document.querySelector('.draft-quote-title[data-quote="' + i + '"]');
         const textInput = document.querySelector('.draft-quote-text[data-quote="' + i + '"]');
         if (fields) fields.style.display = 'none';
-        if (toggle) toggle.textContent = '+ Add Quote';
+        if (toggle) toggle.textContent = '+ Add';
         if (nameInput) nameInput.value = '';
         if (titleInput) titleInput.value = '';
         if (textInput) textInput.value = '';
@@ -8296,13 +8218,13 @@ function resetDraftAssistant() {
     document.getElementById('draftEmailDetails').value = '';
     document.getElementById('impactSundayContext').style.display = 'none';
     document.getElementById('emailKeyDetails').style.display = 'none';
-    document.getElementById('draftEmailGenerateBtn').disabled = true;
 
     // Reset email add-ons
     document.getElementById('emailAddonsSection').style.display = 'none';
     document.getElementById('emailAddSubscriptions').checked = false;
-    document.getElementById('emailAddRewardsPlus').checked = false;
     document.getElementById('emailAddCatchTheAce').checked = false;
+    const emailAddOther = document.getElementById('emailAddOther');
+    if (emailAddOther) emailAddOther.checked = false;
 
     // Reset Write Anything fields
     document.getElementById('writeAnythingTopic').value = '';
@@ -8317,19 +8239,16 @@ function resetDraftAssistant() {
 
     // Reset tone buttons
     document.querySelectorAll('.draft-tone-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.draft-tone-btn[data-tone="balanced"]').classList.add('active');
+    const defaultDraftTone = document.querySelector('.draft-tone-btn[data-tone="balanced"]');
+    if (defaultDraftTone) defaultDraftTone.classList.add('active');
 
     // Reset refine input
-    document.getElementById('draftRefineInput').value = '';
+    const refineInput = document.getElementById('draftRefineInput');
+    if (refineInput) refineInput.value = '';
 
-    // Show type selection
-    document.getElementById('draftOutputSection').style.display = 'none';
-    document.getElementById('draftInputSection').style.display = 'none';
-    document.getElementById('draftEmailTypeSection').style.display = 'none';
-    document.getElementById('writeAnythingSection').style.display = 'none';
-    document.getElementById('draftLoading').style.display = 'none';
-    document.getElementById('draftTypeSection').style.display = 'block';
-    document.getElementById('draftHeaderActions').style.display = 'none';
+    // Reset to current tab's empty state
+    showDraftMain('empty');
+    selectDraftTab(activeDraftTab || 'email');
 }
 
 // Store conversation history for refine feature
@@ -8348,9 +8267,9 @@ async function refineDraft(instruction) {
         if (lastDraftRequest && lastDraftRequest.isWriteAnything) {
             enhancedSystemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
         } else if (lastDraftRequest && lastDraftRequest.isEmail) {
-            enhancedSystemPrompt = buildEnhancedSystemPrompt('email', lastDraftRequest.emailType);
+            enhancedSystemPrompt = await buildEnhancedSystemPrompt('email', lastDraftRequest.emailType);
         } else {
-            enhancedSystemPrompt = buildEnhancedSystemPrompt(currentDraftType);
+            enhancedSystemPrompt = await buildEnhancedSystemPrompt(currentDraftType);
         }
 
         // Build conversation messages for refinement

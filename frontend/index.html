@@ -19,8 +19,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin-dashboard.css?v=20260210c">
-    <link rel="stylesheet" href="design-system.css?v=20260210c">
+    <link rel="stylesheet" href="admin-dashboard.css?v=20260213a">
+    <link rel="stylesheet" href="design-system.css?v=20260213a">
     <link rel="stylesheet" href="landing.css?v=20260208">
     <!-- SheetJS for Excel parsing (Data Analysis Tool) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
@@ -4783,581 +4783,171 @@
         }
 
         /* ==================== DRAFT ASSISTANT TOOL STYLES ==================== */
-        .draft-assistant-container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-
-        .draft-type-section {
-            text-align: center;
-        }
-
-        /* Draft Hub Hero Header */
-        .draft-hub-hero {
-            margin-bottom: 28px;
-        }
-
-        .draft-hub-hero h1 {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin: 0 0 8px 0;
-        }
-
-        .draft-hub-hero p {
-            font-size: 15px;
-            color: var(--text-secondary);
-            margin: 0;
-        }
-
-        /* Bento-style grid */
-        .draft-hub-grid {
+        /* ==================== DRAFT STUDIO (Two-Column Layout) ==================== */
+        .draft-studio {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: auto auto;
-            gap: 16px;
-            width: 100%;
+            grid-template-columns: 300px 1fr;
+            min-height: calc(100vh - 64px);
+            background: var(--bg-light);
         }
 
-        .draft-hub-card {
-            position: relative;
-            overflow: hidden;
-            border-radius: 20px;
-            padding: 28px;
-            cursor: pointer;
-            transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            animation: fadeInUp 0.5s ease-out both;
-            background: rgba(255, 255, 255, 0.85);
-            border: 1px solid rgba(0, 0, 0, 0.08);
+        /* Sidebar */
+        .draft-studio-sidebar {
+            background: white;
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            text-align: left;
+            overflow: hidden;
         }
 
-        .draft-hub-card:nth-child(1) { animation-delay: 0ms; }
-        .draft-hub-card:nth-child(2) { animation-delay: 80ms; }
-        .draft-hub-compact-row .draft-hub-card:nth-child(1) { animation-delay: 160ms; }
-        .draft-hub-compact-row .draft-hub-card:nth-child(2) { animation-delay: 240ms; }
-        .draft-hub-compact-row .draft-hub-card:nth-child(3) { animation-delay: 320ms; }
-
-        .draft-hub-card:hover {
-            border-color: rgba(0, 0, 0, 0.2);
-            transform: translateY(-4px);
-            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Glow effects */
-        .draft-hub-glow {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .draft-hub-card:hover .draft-hub-glow { opacity: 1; }
-
-        .draft-hub-glow-pink   { background: radial-gradient(ellipse at 30% 50%, rgba(233, 30, 140, 0.08) 0%, transparent 70%); }
-        .draft-hub-glow-purple { background: radial-gradient(ellipse at 30% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 70%); }
-        .draft-hub-glow-blue   { background: radial-gradient(ellipse at 30% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 70%); }
-        .draft-hub-glow-green  { background: radial-gradient(ellipse at 30% 50%, rgba(34, 197, 94, 0.08) 0%, transparent 70%); }
-        .draft-hub-glow-amber  { background: radial-gradient(ellipse at 30% 50%, rgba(245, 166, 35, 0.08) 0%, transparent 70%); }
-
-        /* Hero card */
-        .draft-hub-hero-card {
-            grid-row: 1 / 2;
-            grid-column: 1;
-        }
-
-        /* Standard card */
-        .draft-hub-standard-card {
-            grid-row: 1 / 2;
-            grid-column: 2;
-        }
-
-        /* Compact row */
-        .draft-hub-compact-row {
-            grid-column: 1 / -1;
+        .draft-studio-tabs {
             display: flex;
-            gap: 16px;
+            gap: 4px;
+            padding: 14px 14px 12px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
         }
 
-        .draft-hub-compact {
-            flex: 1;
-            padding: 22px;
-        }
-
-        .draft-hub-compact .draft-hub-title { font-size: 0.95rem; }
-        .draft-hub-compact .draft-hub-desc { font-size: 0.8rem; }
-
-        /* Icon rows */
-        .draft-hub-icon-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 14px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .draft-hub-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            transition: transform 0.35s ease;
-            flex-shrink: 0;
-        }
-
-        .draft-hub-compact .draft-hub-icon {
-            width: 38px;
-            height: 38px;
-            font-size: 19px;
-        }
-
-        .draft-hub-card:hover .draft-hub-icon { transform: scale(1.1); }
-
-        .draft-hub-icon-pink   { background: linear-gradient(135deg, rgba(233, 30, 140, 0.15), rgba(245, 166, 35, 0.15)); }
-        .draft-hub-icon-purple { background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(168, 85, 247, 0.15)); }
-        .draft-hub-icon-blue   { background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.15)); }
-        .draft-hub-icon-green  { background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(74, 222, 128, 0.15)); }
-        .draft-hub-icon-amber  { background: linear-gradient(135deg, rgba(245, 166, 35, 0.15), rgba(250, 204, 21, 0.15)); }
-
-        /* Badges */
-        .draft-hub-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            background: rgba(0, 0, 0, 0.06);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 20px;
-            font-size: 11px;
+        .draft-tab {
+            padding: 5px 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-light);
+            border-radius: 100px;
+            font-size: 0.72rem;
             font-weight: 600;
-            color: var(--text-primary);
-            letter-spacing: 0.3px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            white-space: nowrap;
         }
 
-        .draft-hub-badge-gradient {
+        .draft-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .draft-tab.active {
             background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
             border-color: transparent;
             color: white;
         }
 
-        /* Text */
-        .draft-hub-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .draft-hub-desc {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            line-height: 1.55;
-            position: relative;
-            z-index: 1;
+        .draft-studio-scroll {
             flex: 1;
+            overflow-y: auto;
+            padding: 16px;
         }
 
-        /* Feature tags */
-        .draft-hub-features {
+        .draft-tab-panel {
             display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 14px;
-            position: relative;
-            z-index: 1;
+            flex-direction: column;
+            gap: 14px;
         }
 
-        .draft-hub-feature {
-            padding: 3px 10px;
-            background: rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        .draft-hub-tag {
-            display: inline-block;
-            padding: 3px 10px;
-            background: rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-top: 12px;
-            align-self: flex-start;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* CTA arrow */
-        .draft-hub-cta {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 16px;
-            padding: 10px 20px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            border: none;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: white;
-            position: relative;
-            z-index: 1;
-            transition: all 0.25s ease;
-            cursor: pointer;
-            align-self: flex-start;
-        }
-
-        .draft-hub-cta:hover {
-            transform: translateX(2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-        }
-
-        .draft-hub-cta svg { transition: transform 0.25s ease; }
-        .draft-hub-cta:hover svg { transform: translateX(3px); }
-
-        /* Responsive */
-        @media (max-width: 700px) {
-            .draft-hub-grid {
-                grid-template-columns: 1fr;
-            }
-            .draft-hub-hero-card, .draft-hub-standard-card {
-                grid-column: 1;
-                grid-row: auto;
-            }
-            .draft-hub-compact-row {
-                flex-direction: column;
-            }
-        }
-
-        /* Input Section */
-        .draft-input-section {
+        .draft-studio-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
             background: white;
-            border-radius: var(--radius-xl);
+        }
+
+        .draft-studio-footer .draft-generate-btn {
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 0.9rem;
+        }
+
+        /* Main Content Area */
+        .draft-studio-main {
             padding: 32px;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .draft-input-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        .draft-type-badge {
-            display: inline-block;
-            padding: 6px 14px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            border-radius: 100px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        .draft-change-type {
-            background: none;
-            border: none;
-            color: var(--primary);
-            font-size: 0.85rem;
-            cursor: pointer;
-            font-family: inherit;
-        }
-
-        .draft-change-type:hover {
-            text-decoration: underline;
-        }
-
-        .draft-form {
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 20px;
         }
 
-        .draft-form-group {
+        /* Empty State */
+        .draft-studio-empty {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-        }
-
-        .draft-label {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .draft-textarea {
-            width: 100%;
-            min-height: 120px;
-            padding: 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            font-family: inherit;
-            font-size: 0.95rem;
-            resize: vertical;
-            transition: border-color 0.2s ease;
-        }
-
-        .draft-textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .draft-textarea-sm {
-            min-height: 80px;
-        }
-
-        .draft-select {
-            width: 100%;
-            padding: 14px 16px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            font-family: inherit;
-            font-size: 1rem;
-            background: white;
-            cursor: pointer;
-            transition: border-color 0.2s ease;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 16px center;
-            background-size: 16px;
-        }
-
-        .draft-select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .draft-hint {
-            margin-top: 8px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        .draft-generate-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .draft-input {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            font-family: inherit;
-            font-size: 0.95rem;
-            transition: border-color 0.2s ease;
-        }
-
-        .draft-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        /* Quote Section */
-        .draft-quote-section {
-            background: var(--bg-light);
-            border-radius: var(--radius-md);
-            padding: 16px;
-        }
-
-        .draft-quote-container {
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 12px;
-            margin-bottom: 12px;
-        }
-
-        .draft-quote-container:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-            margin-bottom: 0;
-        }
-
-        .draft-quote-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .draft-quote-number {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .draft-quote-toggle {
-            background: none;
-            border: none;
-            color: var(--primary);
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-        }
-
-        .draft-quote-fields {
-            margin-top: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .draft-quote-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        /* Email Add-ons */
-        .draft-email-addons {
-            background: var(--bg-light);
-            border-radius: var(--radius-md);
-            padding: 16px;
-        }
-
-        .draft-checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 8px;
-        }
-
-        .draft-checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.9rem;
-            color: var(--text-primary);
-            cursor: pointer;
-        }
-
-        .draft-checkbox {
-            width: 18px;
-            height: 18px;
-            accent-color: var(--primary);
-            cursor: pointer;
-        }
-
-        .draft-checkbox-separator {
-            height: 1px;
-            background: var(--border);
-            margin: 12px 0;
-        }
-
-        /* Tone Options */
-        .draft-tone-options {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .draft-tone-btn {
-            padding: 8px 16px;
-            background: var(--bg-light);
-            border: 1px solid var(--border);
-            border-radius: 100px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
-        }
-
-        .draft-tone-btn:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        .draft-tone-btn.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
-        }
-
-        /* (Draft bento grid styles are above in the draft-hub-* section) */
-
-        /* Write Anything Toggle Pills */
-        .wa-toggle-group {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .wa-toggle-pill {
-            padding: 8px 16px;
-            background: var(--bg-light);
-            border: 1px solid var(--border);
-            border-radius: 100px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
-        }
-
-        .wa-toggle-pill:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        .wa-toggle-pill.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
-        }
-
-        /* Generate Button */
-        .draft-generate-btn {
-            display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            padding: 16px 32px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            border: none;
-            border-radius: var(--radius-md);
-            font-size: 1rem;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .draft-empty-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.7;
+        }
+
+        .draft-empty-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 8px;
+        }
+
+        .draft-empty-text {
+            max-width: 420px;
+            line-height: 1.6;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin: 0 0 24px;
+        }
+
+        .draft-empty-tips {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            max-width: 480px;
+            text-align: left;
+            border: 1px solid var(--border);
+        }
+
+        .draft-empty-tips h4 {
+            font-size: 0.75rem;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin: 0 0 10px;
         }
 
-        .draft-generate-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        .draft-empty-tips ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
 
-        .draft-generate-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+        .draft-empty-tips li {
+            padding: 5px 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .draft-empty-tips li::before {
+            content: '\2192\00a0';
+            color: var(--primary);
+            font-weight: 600;
         }
 
         /* Loading */
-        .draft-loading {
+        .draft-studio-loading {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             text-align: center;
             padding: 60px 20px;
+        }
+
+        .draft-studio-loading p {
+            color: var(--text-secondary);
+            font-size: 1rem;
         }
 
         .draft-spinner {
@@ -5370,17 +4960,11 @@
             animation: spin 1s linear infinite;
         }
 
-        .draft-loading p {
-            color: var(--text-secondary);
-            font-size: 1rem;
-        }
-
-        /* Output Section */
-        .draft-output-section {
-            background: white;
-            border-radius: var(--radius-xl);
-            padding: 32px;
-            box-shadow: var(--shadow-lg);
+        /* Output */
+        .draft-studio-output {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .draft-output-header {
@@ -5388,19 +4972,32 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .draft-type-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 600;
         }
 
         .draft-output-actions {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
 
         .draft-action-btn {
-            padding: 8px 16px;
+            padding: 8px 14px;
             background: var(--bg-light);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 500;
             color: var(--text-secondary);
             cursor: pointer;
@@ -5414,14 +5011,26 @@
             color: var(--primary);
         }
 
+        .draft-action-btn.draft-new-btn {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-color: transparent;
+            color: white;
+        }
+
+        .draft-action-btn.draft-new-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
         .draft-output-content {
-            background: var(--bg-light);
-            border-radius: var(--radius-md);
-            padding: 20px;
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
             font-size: 0.95rem;
             line-height: 1.7;
             color: var(--text-primary);
             white-space: pre-wrap;
+            border: 1px solid var(--border);
         }
 
         .draft-disclaimer {
@@ -5513,65 +5122,253 @@
             box-shadow: var(--shadow-md);
         }
 
-        .draft-refine-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+        /* Sidebar Form Elements */
+        .draft-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
-        /* API Setup */
-        .draft-api-setup {
-            text-align: center;
-            padding: 60px 20px;
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .draft-api-icon {
-            font-size: 3rem;
-            margin-bottom: 16px;
-        }
-
-        .draft-api-setup h3 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-
-        .draft-api-setup p {
-            color: var(--text-secondary);
-            margin-bottom: 24px;
-        }
-
-        .draft-api-setup .draft-input {
-            max-width: 400px;
-            margin: 0 auto 16px;
-        }
-
-        .draft-api-note {
+        .draft-label {
             font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-top: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
         }
 
-        .draft-new-btn {
-            padding: 8px 16px;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            border: none;
+        .draft-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .draft-textarea {
+            width: 100%;
+            min-height: 90px;
+            padding: 10px;
+            border: 1px solid var(--border);
             border-radius: var(--radius-md);
+            font-family: inherit;
             font-size: 0.85rem;
-            font-weight: 600;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+
+        .draft-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .draft-textarea-sm {
+            min-height: 60px;
+        }
+
+        .draft-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.85rem;
+            background: white;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        .draft-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .draft-input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.85rem;
+        }
+
+        .draft-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Tone Buttons */
+        .draft-tone-options {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .draft-tone-btn {
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-secondary);
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
         }
 
-        .draft-new-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        .draft-tone-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .draft-tone-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Write Anything Toggle Pills */
+        .wa-toggle-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .wa-toggle-pill {
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .wa-toggle-pill:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .wa-toggle-pill.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Quote Section */
+        .draft-quote-container {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .draft-quote-container:last-child {
+            border-bottom: none;
+        }
+
+        .draft-quote-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .draft-quote-number {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .draft-quote-toggle {
+            background: none;
+            border: none;
+            font-size: 0.78rem;
+            color: var(--primary);
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 500;
+        }
+
+        .draft-quote-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        /* Checkbox Group */
+        .draft-checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .draft-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .draft-checkbox {
+            accent-color: var(--primary);
+        }
+
+        /* Generate Button */
+        .draft-generate-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .draft-generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .draft-generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .draft-studio {
+                grid-template-columns: 1fr;
+            }
+
+            .draft-studio-sidebar {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                max-height: 45vh;
+            }
+
+            .draft-studio-main {
+                min-height: 50vh;
+            }
+        }
+
+        .draft-assistant-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
         }
 
         /* ==================== DATA ANALYSIS TOOL STYLES ==================== */
@@ -10751,364 +10548,239 @@
                         <span>&#9776;</span>
                     </button>
                 </div>
-                <div class="draft-header-actions" id="draftHeaderActions" style="display: none;">
-                    <button class="draft-new-btn" id="draftNewBtn">✨ New Draft</button>
-                </div>
             </div>
         </header>
 
         <div class="container">
-            <div class="draft-assistant-container">
-                <!-- Content Type Selection (Bento Grid) -->
-                <div class="draft-type-section" id="draftTypeSection">
-                    <div class="draft-hub-hero">
-                        <h1>Draft Assistant</h1>
-                        <p>Create polished content in seconds. Choose a content type to get started.</p>
+            <div class="draft-studio">
+                <!-- Left Sidebar -->
+                <div class="draft-studio-sidebar">
+                    <div class="draft-studio-tabs">
+                        <button class="draft-tab active" data-draft-tab="email">📧 Email</button>
+                        <button class="draft-tab" data-draft-tab="social">📱 Social</button>
+                        <button class="draft-tab" data-draft-tab="media-release">📰 Press</button>
+                        <button class="draft-tab" data-draft-tab="ad">📣 Ad</button>
+                        <button class="draft-tab" data-draft-tab="write-anything">✨ Write</button>
                     </div>
 
-                    <div class="draft-hub-grid">
-                        <!-- Hero Card: Email Copy -->
-                        <div class="draft-hub-card draft-hub-hero-card draft-type-btn" data-type="email">
-                            <div class="draft-hub-glow draft-hub-glow-pink"></div>
-                            <div class="draft-hub-icon-row">
-                                <div class="draft-hub-icon draft-hub-icon-pink">📧</div>
-                                <span class="draft-hub-badge draft-hub-badge-gradient">Most Used</span>
+                    <div class="draft-studio-scroll">
+                        <!-- EMAIL Panel -->
+                        <div class="draft-tab-panel" id="draftPanelEmail">
+                            <div class="draft-form-group">
+                                <label class="draft-label">Email type</label>
+                                <select id="draftEmailTypeSelect" class="draft-select">
+                                    <option value="">Select email type...</option>
+                                    <option value="new-draw">New Draw Announcement</option>
+                                    <option value="draw-reminder">Draw Reminder</option>
+                                    <option value="winners">Winner(s) Announcement</option>
+                                    <option value="impact-sunday">Impact Sunday</option>
+                                    <option value="last-chance">Last Chance</option>
+                                </select>
                             </div>
-                            <h3 class="draft-hub-title">Email Copy</h3>
-                            <p class="draft-hub-desc">Generate draw announcements, reminders, winner emails, Impact Sunday stories, and last chance campaigns.</p>
-                            <div class="draft-hub-features">
-                                <span class="draft-hub-feature">Templates</span>
-                                <span class="draft-hub-feature">Add-ons</span>
-                                <span class="draft-hub-feature">Brand Voice</span>
-                            </div>
-                            <div class="draft-hub-cta">
-                                Open Tool
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </div>
-                        </div>
 
-                        <!-- Standard Card: Write Anything -->
-                        <div class="draft-hub-card draft-hub-standard-card draft-type-btn" data-type="write-anything">
-                            <div class="draft-hub-glow draft-hub-glow-purple"></div>
-                            <div class="draft-hub-icon-row">
-                                <div class="draft-hub-icon draft-hub-icon-purple">✨</div>
-                                <span class="draft-hub-badge draft-hub-badge-gradient">AI-Powered</span>
+                            <div class="draft-form-group" id="impactSundayContext" style="display: none;">
+                                <label class="draft-label">Context about the equipment/funding</label>
+                                <textarea id="draftImpactContext" class="draft-textarea" placeholder="Paste the newspaper article, notes, or context about the equipment purchase or funding story..."></textarea>
+                                <p class="draft-hint">Lightspeed will craft an Impact Sunday story from this context.</p>
                             </div>
-                            <h3 class="draft-hub-title">Write Anything</h3>
-                            <p class="draft-hub-desc">Freeform AI writing studio. Describe what you need in plain English and get polished content instantly.</p>
-                            <div class="draft-hub-features">
-                                <span class="draft-hub-feature">Freeform</span>
-                                <span class="draft-hub-feature">Any Format</span>
-                                <span class="draft-hub-feature">Tone Control</span>
-                            </div>
-                        </div>
 
-                        <!-- Compact Row -->
-                        <div class="draft-hub-compact-row">
-                            <div class="draft-hub-card draft-hub-compact draft-type-btn" data-type="social">
-                                <div class="draft-hub-glow draft-hub-glow-blue"></div>
-                                <div class="draft-hub-icon-row">
-                                    <div class="draft-hub-icon draft-hub-icon-blue">📱</div>
+                            <div class="draft-form-group" id="emailKeyDetails" style="display: none;">
+                                <label class="draft-label" id="emailDetailsLabel">Key details</label>
+                                <textarea id="draftEmailDetails" class="draft-textarea" placeholder=""></textarea>
+                            </div>
+
+                            <div class="draft-form-group" id="emailAddonsSection" style="display: none;">
+                                <label class="draft-label">Include additional sections?</label>
+                                <div class="draft-checkbox-group">
+                                    <label class="draft-checkbox-label">
+                                        <input type="checkbox" id="emailAddSubscriptions" class="draft-checkbox">
+                                        <span>Subscriptions</span>
+                                    </label>
+                                    <label class="draft-checkbox-label">
+                                        <input type="checkbox" id="emailAddCatchTheAce" class="draft-checkbox">
+                                        <span>Catch The Ace</span>
+                                    </label>
+                                    <label class="draft-checkbox-label">
+                                        <input type="checkbox" id="emailAddOther" class="draft-checkbox">
+                                        <span>Other program</span>
+                                    </label>
                                 </div>
-                                <h3 class="draft-hub-title">Social Media</h3>
-                                <p class="draft-hub-desc">Posts for Facebook, Instagram, X, and more.</p>
-                                <span class="draft-hub-tag">Campaigns</span>
-                            </div>
-
-                            <div class="draft-hub-card draft-hub-compact draft-type-btn" data-type="media-release">
-                                <div class="draft-hub-glow draft-hub-glow-green"></div>
-                                <div class="draft-hub-icon-row">
-                                    <div class="draft-hub-icon draft-hub-icon-green">📰</div>
-                                </div>
-                                <h3 class="draft-hub-title">Media Release</h3>
-                                <p class="draft-hub-desc">Press releases with quotes and formatting.</p>
-                                <span class="draft-hub-tag">PR & Comms</span>
-                            </div>
-
-                            <div class="draft-hub-card draft-hub-compact draft-type-btn" data-type="ad">
-                                <div class="draft-hub-glow draft-hub-glow-amber"></div>
-                                <div class="draft-hub-icon-row">
-                                    <div class="draft-hub-icon draft-hub-icon-amber">📣</div>
-                                </div>
-                                <h3 class="draft-hub-title">Facebook/Instagram Ad</h3>
-                                <p class="draft-hub-desc">Ad copy optimized for conversions.</p>
-                                <span class="draft-hub-tag">Paid Media</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Email Type Selection Section -->
-                <div class="draft-email-type-section" id="draftEmailTypeSection" style="display: none;">
-                    <div class="draft-input-header">
-                        <span class="draft-type-badge">📧 Email Copy</span>
-                        <button class="draft-change-type" id="draftEmailChangeType">Change type</button>
-                    </div>
-                    <div class="draft-form">
-                        <div class="draft-form-group">
-                            <label class="draft-label">What type of email are you drafting?</label>
-                            <select id="draftEmailTypeSelect" class="draft-select">
-                                <option value="">Select an email type...</option>
-                                <option value="new-draw">New Draw Announcement</option>
-                                <option value="draw-reminder">Draw Reminder</option>
-                                <option value="winners">Winner(s) Announcement</option>
-                                <option value="impact-sunday">Impact Sunday</option>
-                                <option value="last-chance">Last Chance</option>
-                            </select>
-                        </div>
-
-                        <!-- Impact Sunday Context (only shown when Impact Sunday is selected) -->
-                        <div class="draft-form-group" id="impactSundayContext" style="display: none;">
-                            <label class="draft-label">Paste the context about the equipment/funding</label>
-                            <textarea id="draftImpactContext" class="draft-textarea" placeholder="Paste the newspaper article, notes, press release, or other context about the equipment purchase or funding story you want to highlight..."></textarea>
-                            <p class="draft-hint">This will help generate an Impact Sunday email that tells the story of how donor support made this possible.</p>
-                        </div>
-
-                        <!-- Key Details for other email types -->
-                        <div class="draft-form-group" id="emailKeyDetails" style="display: none;">
-                            <label class="draft-label" id="emailDetailsLabel">Key details to include</label>
-                            <textarea id="draftEmailDetails" class="draft-textarea" placeholder=""></textarea>
-                        </div>
-
-                        <!-- Email Add-ons Section -->
-                        <div class="draft-form-group draft-email-addons" id="emailAddonsSection" style="display: none;">
-                            <label class="draft-label">Include additional sections? (optional)</label>
-                            <div class="draft-checkbox-group">
-                                <label class="draft-checkbox-label">
-                                    <input type="checkbox" id="emailAddSubscriptions" class="draft-checkbox">
-                                    <span>Add a section about Subscriptions</span>
-                                </label>
-                                <label class="draft-checkbox-label">
-                                    <input type="checkbox" id="emailAddCatchTheAce" class="draft-checkbox">
-                                    <span>Add a section about Catch The Ace</span>
-                                </label>
-                                <label class="draft-checkbox-label">
-                                    <input type="checkbox" id="emailAddOther" class="draft-checkbox">
-                                    <span>Add other program section</span>
-                                </label>
                             </div>
                         </div>
 
-                        <button class="draft-generate-btn" id="draftEmailGenerateBtn" disabled>
-                            <span class="draft-generate-icon">✨</span>
-                            Generate Email Draft
-                        </button>
-                    </div>
-                </div>
+                        <!-- STANDARD Panel (Social, Media Release, Ad) -->
+                        <div class="draft-tab-panel" id="draftPanelStandard" style="display: none;">
+                            <div class="draft-form-group">
+                                <label class="draft-label">Topic or announcement</label>
+                                <textarea id="draftTopicInput" class="draft-textarea" placeholder="E.g., January Grand Prize has crossed $2,000,000, Early Bird draws happening Wednesday..."></textarea>
+                            </div>
 
-                <!-- Input Section (for non-email types) -->
-                <div class="draft-input-section" id="draftInputSection" style="display: none;">
-                    <div class="draft-input-header">
-                        <span class="draft-type-badge" id="draftTypeBadge">Social Media</span>
-                        <button class="draft-change-type" id="draftChangeType">Change type</button>
-                    </div>
+                            <div class="draft-form-group">
+                                <label class="draft-label">Key details (optional)</label>
+                                <textarea id="draftDetailsInput" class="draft-textarea draft-textarea-sm" placeholder="Prize amounts, dates, winner name, location..."></textarea>
+                            </div>
 
-                    <div class="draft-form">
-                        <div class="draft-form-group">
-                            <label class="draft-label">What's the topic or announcement?</label>
-                            <textarea id="draftTopicInput" class="draft-textarea" placeholder="E.g., January Grand Prize has crossed $2,000,000, Early Bird draws happening Wednesday, New winner announcement..."></textarea>
-                        </div>
+                            <!-- Quotes (Media Release only) -->
+                            <div id="draftQuoteSection" style="display: none;">
+                                <label class="draft-label" style="margin-bottom: 8px; display: block;">Quotes (optional)</label>
 
-                        <div class="draft-form-group">
-                            <label class="draft-label">Key details to include (optional)</label>
-                            <textarea id="draftDetailsInput" class="draft-textarea draft-textarea-sm" placeholder="E.g., Prize amounts, dates, winner name, location..."></textarea>
-                        </div>
-
-                        <!-- Quote Section (for Media Releases) - Up to 5 quotes -->
-                        <div class="draft-quote-section" id="draftQuoteSection" style="display: none;">
-                            <label class="draft-label">Add Quotes (optional)</label>
-
-                            <!-- Quote 1 -->
-                            <div class="draft-quote-container" id="draftQuoteContainer1">
-                                <div class="draft-quote-header">
-                                    <span class="draft-quote-number">Quote 1</span>
-                                    <button type="button" class="draft-quote-toggle" data-quote="1">+ Add Quote</button>
-                                </div>
-                                <div class="draft-quote-fields" id="draftQuoteFields1" style="display: none;">
-                                    <div class="draft-quote-row">
-                                        <input type="text" class="draft-input draft-quote-name" data-quote="1" placeholder="Person's name (e.g., Glenn Craig)">
-                                        <input type="text" class="draft-input draft-quote-title" data-quote="1" placeholder="Title (e.g., President & CEO)">
+                                <div class="draft-quote-container" id="draftQuoteContainer1">
+                                    <div class="draft-quote-header">
+                                        <span class="draft-quote-number">Quote 1</span>
+                                        <button type="button" class="draft-quote-toggle" data-quote="1">+ Add</button>
                                     </div>
-                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="1" placeholder="Paste or type the quote here..."></textarea>
+                                    <div class="draft-quote-fields" id="draftQuoteFields1" style="display: none;">
+                                        <input type="text" class="draft-input draft-quote-name" data-quote="1" placeholder="Name">
+                                        <input type="text" class="draft-input draft-quote-title" data-quote="1" placeholder="Title">
+                                        <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="1" placeholder="Quote text..."></textarea>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <!-- Quote 2 -->
-                            <div class="draft-quote-container" id="draftQuoteContainer2">
-                                <div class="draft-quote-header">
-                                    <span class="draft-quote-number">Quote 2</span>
-                                    <button type="button" class="draft-quote-toggle" data-quote="2">+ Add Quote</button>
-                                </div>
-                                <div class="draft-quote-fields" id="draftQuoteFields2" style="display: none;">
-                                    <div class="draft-quote-row">
-                                        <input type="text" class="draft-input draft-quote-name" data-quote="2" placeholder="Person's name">
+                                <div class="draft-quote-container" id="draftQuoteContainer2">
+                                    <div class="draft-quote-header">
+                                        <span class="draft-quote-number">Quote 2</span>
+                                        <button type="button" class="draft-quote-toggle" data-quote="2">+ Add</button>
+                                    </div>
+                                    <div class="draft-quote-fields" id="draftQuoteFields2" style="display: none;">
+                                        <input type="text" class="draft-input draft-quote-name" data-quote="2" placeholder="Name">
                                         <input type="text" class="draft-input draft-quote-title" data-quote="2" placeholder="Title">
+                                        <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="2" placeholder="Quote text..."></textarea>
                                     </div>
-                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="2" placeholder="Paste or type the quote here..."></textarea>
                                 </div>
-                            </div>
 
-                            <!-- Quote 3 -->
-                            <div class="draft-quote-container" id="draftQuoteContainer3">
-                                <div class="draft-quote-header">
-                                    <span class="draft-quote-number">Quote 3</span>
-                                    <button type="button" class="draft-quote-toggle" data-quote="3">+ Add Quote</button>
-                                </div>
-                                <div class="draft-quote-fields" id="draftQuoteFields3" style="display: none;">
-                                    <div class="draft-quote-row">
-                                        <input type="text" class="draft-input draft-quote-name" data-quote="3" placeholder="Person's name">
+                                <div class="draft-quote-container" id="draftQuoteContainer3">
+                                    <div class="draft-quote-header">
+                                        <span class="draft-quote-number">Quote 3</span>
+                                        <button type="button" class="draft-quote-toggle" data-quote="3">+ Add</button>
+                                    </div>
+                                    <div class="draft-quote-fields" id="draftQuoteFields3" style="display: none;">
+                                        <input type="text" class="draft-input draft-quote-name" data-quote="3" placeholder="Name">
                                         <input type="text" class="draft-input draft-quote-title" data-quote="3" placeholder="Title">
+                                        <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="3" placeholder="Quote text..."></textarea>
                                     </div>
-                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="3" placeholder="Paste or type the quote here..."></textarea>
                                 </div>
                             </div>
 
-                            <!-- Quote 4 -->
-                            <div class="draft-quote-container" id="draftQuoteContainer4">
-                                <div class="draft-quote-header">
-                                    <span class="draft-quote-number">Quote 4</span>
-                                    <button type="button" class="draft-quote-toggle" data-quote="4">+ Add Quote</button>
-                                </div>
-                                <div class="draft-quote-fields" id="draftQuoteFields4" style="display: none;">
-                                    <div class="draft-quote-row">
-                                        <input type="text" class="draft-input draft-quote-name" data-quote="4" placeholder="Person's name">
-                                        <input type="text" class="draft-input draft-quote-title" data-quote="4" placeholder="Title">
-                                    </div>
-                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="4" placeholder="Paste or type the quote here..."></textarea>
-                                </div>
-                            </div>
-
-                            <!-- Quote 5 -->
-                            <div class="draft-quote-container" id="draftQuoteContainer5">
-                                <div class="draft-quote-header">
-                                    <span class="draft-quote-number">Quote 5</span>
-                                    <button type="button" class="draft-quote-toggle" data-quote="5">+ Add Quote</button>
-                                </div>
-                                <div class="draft-quote-fields" id="draftQuoteFields5" style="display: none;">
-                                    <div class="draft-quote-row">
-                                        <input type="text" class="draft-input draft-quote-name" data-quote="5" placeholder="Person's name">
-                                        <input type="text" class="draft-input draft-quote-title" data-quote="5" placeholder="Title">
-                                    </div>
-                                    <textarea class="draft-textarea draft-textarea-sm draft-quote-text" data-quote="5" placeholder="Paste or type the quote here..."></textarea>
+                            <div class="draft-form-group">
+                                <label class="draft-label">Tone</label>
+                                <div class="draft-tone-options">
+                                    <button class="draft-tone-btn active" data-tone="balanced">Balanced</button>
+                                    <button class="draft-tone-btn" data-tone="exciting">Exciting</button>
+                                    <button class="draft-tone-btn" data-tone="professional">Professional</button>
+                                    <button class="draft-tone-btn" data-tone="urgent">Urgent</button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Tone Selector -->
-                        <div class="draft-form-group">
-                            <label class="draft-label">Tone</label>
-                            <div class="draft-tone-options">
-                                <button class="draft-tone-btn active" data-tone="balanced">Balanced</button>
-                                <button class="draft-tone-btn" data-tone="exciting">Exciting</button>
-                                <button class="draft-tone-btn" data-tone="professional">Professional</button>
-                                <button class="draft-tone-btn" data-tone="urgent">Urgent</button>
+                        <!-- WRITE ANYTHING Panel -->
+                        <div class="draft-tab-panel" id="draftPanelWriteAnything" style="display: none;">
+                            <div class="draft-form-group">
+                                <label class="draft-label">What do you want to write?</label>
+                                <textarea id="writeAnythingTopic" class="draft-textarea" placeholder="E.g., A thank-you letter to donors, a board report summary, talking points for a gala speech..."></textarea>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Additional context (optional)</label>
+                                <textarea id="writeAnythingContext" class="draft-textarea draft-textarea-sm" placeholder="Background info, key points, audience details..."></textarea>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Tone</label>
+                                <div class="wa-toggle-group">
+                                    <button class="wa-toggle-pill active" data-wa-tone="balanced">Balanced</button>
+                                    <button class="wa-toggle-pill" data-wa-tone="warm">Warm</button>
+                                    <button class="wa-toggle-pill" data-wa-tone="formal">Formal</button>
+                                    <button class="wa-toggle-pill" data-wa-tone="persuasive">Persuasive</button>
+                                    <button class="wa-toggle-pill" data-wa-tone="conversational">Conversational</button>
+                                </div>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Format</label>
+                                <div class="wa-toggle-group">
+                                    <button class="wa-toggle-pill active" data-wa-format="paragraphs">Paragraphs</button>
+                                    <button class="wa-toggle-pill" data-wa-format="bullet-points">Bullets</button>
+                                    <button class="wa-toggle-pill" data-wa-format="numbered-list">Numbered</button>
+                                    <button class="wa-toggle-pill" data-wa-format="outline">Outline</button>
+                                </div>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Length</label>
+                                <div class="wa-toggle-group">
+                                    <button class="wa-toggle-pill" data-wa-length="brief">Brief</button>
+                                    <button class="wa-toggle-pill active" data-wa-length="standard">Standard</button>
+                                    <button class="wa-toggle-pill" data-wa-length="detailed">Detailed</button>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <button class="draft-generate-btn" id="draftGenerateBtn">
+                    <div class="draft-studio-footer">
+                        <button class="draft-generate-btn" id="draftStudioGenerateBtn">
                             <span class="draft-generate-icon">✨</span>
-                            Generate Draft
+                            Generate
                         </button>
                     </div>
                 </div>
 
-                <!-- Write Anything Input Section -->
-                <div class="draft-input-section write-anything-section" id="writeAnythingSection" style="display: none;">
-                    <div class="draft-input-header">
-                        <span class="draft-type-badge">✨ Write Anything</span>
-                        <button class="draft-change-type" id="writeAnythingChangeType">Change type</button>
-                    </div>
-
-                    <div class="draft-form">
-                        <div class="draft-form-group">
-                            <label class="draft-label">What do you want to write?</label>
-                            <textarea id="writeAnythingTopic" class="draft-textarea" placeholder="E.g., A thank-you letter to donors, a board report summary, a volunteer recruitment post, talking points for a gala speech..."></textarea>
-                        </div>
-
-                        <div class="draft-form-group">
-                            <label class="draft-label">Additional context (optional)</label>
-                            <textarea id="writeAnythingContext" class="draft-textarea draft-textarea-sm" placeholder="Any background info, key points, audience details, or specific requirements..."></textarea>
-                        </div>
-
-                        <!-- Tone Selector -->
-                        <div class="draft-form-group">
-                            <label class="draft-label">Tone</label>
-                            <div class="wa-toggle-group">
-                                <button class="wa-toggle-pill active" data-wa-tone="balanced">Balanced</button>
-                                <button class="wa-toggle-pill" data-wa-tone="warm">Warm</button>
-                                <button class="wa-toggle-pill" data-wa-tone="formal">Formal</button>
-                                <button class="wa-toggle-pill" data-wa-tone="persuasive">Persuasive</button>
-                                <button class="wa-toggle-pill" data-wa-tone="conversational">Conversational</button>
-                            </div>
-                        </div>
-
-                        <!-- Format Selector -->
-                        <div class="draft-form-group">
-                            <label class="draft-label">Format</label>
-                            <div class="wa-toggle-group">
-                                <button class="wa-toggle-pill active" data-wa-format="paragraphs">Paragraphs</button>
-                                <button class="wa-toggle-pill" data-wa-format="bullet-points">Bullet Points</button>
-                                <button class="wa-toggle-pill" data-wa-format="numbered-list">Numbered List</button>
-                                <button class="wa-toggle-pill" data-wa-format="outline">Outline</button>
-                            </div>
-                        </div>
-
-                        <!-- Length Selector -->
-                        <div class="draft-form-group">
-                            <label class="draft-label">Length</label>
-                            <div class="wa-toggle-group">
-                                <button class="wa-toggle-pill" data-wa-length="brief">Brief</button>
-                                <button class="wa-toggle-pill active" data-wa-length="standard">Standard</button>
-                                <button class="wa-toggle-pill" data-wa-length="detailed">Detailed</button>
-                            </div>
-                        </div>
-
-                        <button class="draft-generate-btn" id="writeAnythingGenerateBtn">
-                            <span class="draft-generate-icon">✨</span>
-                            Generate Content
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Loading State -->
-                <div class="draft-loading" id="draftLoading" style="display: none;">
-                    <div class="draft-spinner"></div>
-                    <p>Crafting your draft...</p>
-                </div>
-
-                <!-- Output Section -->
-                <div class="draft-output-section" id="draftOutputSection" style="display: none;">
-                    <div class="draft-output-header">
-                        <span class="draft-type-badge" id="draftOutputBadge">Social Media</span>
-                        <div class="draft-output-actions">
-                            <button class="draft-action-btn" id="draftCopyBtn">📋 Copy</button>
-                            <button class="draft-action-btn" id="draftCopyHtmlBtn" style="display:none;">📧 Copy as HTML</button>
-                            <button class="draft-action-btn" id="draftRegenerateBtn">🔄 Regenerate</button>
+                <!-- Right Main Area -->
+                <div class="draft-studio-main">
+                    <!-- Empty State -->
+                    <div class="draft-studio-empty" id="draftStudioEmpty">
+                        <div class="draft-empty-icon" id="draftEmptyIcon">📧</div>
+                        <h2 class="draft-empty-title" id="draftEmptyTitle">Email Copy</h2>
+                        <p class="draft-empty-text" id="draftEmptyText">Select an email type, fill in the key details, and generate. Lightspeed uses your knowledge base and past rated emails to match your brand voice.</p>
+                        <div class="draft-empty-tips" id="draftEmptyTips">
+                            <h4>Tips</h4>
+                            <ul>
+                                <li>Choose a specific email type for best results</li>
+                                <li>Include key details like prize amounts and dates</li>
+                                <li>Use add-ons to include Subscriptions or Catch The Ace sections</li>
+                            </ul>
                         </div>
                     </div>
-                    <div class="draft-output-content" id="draftOutputContent"></div>
-                    <div class="draft-disclaimer" id="draftDisclaimer"></div>
 
-                    <!-- Refine Section -->
-                    <div class="draft-refine-section" id="draftRefineSection">
-                        <div class="draft-refine-header">
-                            <span class="draft-refine-label">✨ Refine this draft</span>
+                    <!-- Loading -->
+                    <div class="draft-studio-loading" id="draftStudioLoading" style="display: none;">
+                        <div class="draft-spinner"></div>
+                        <p>Crafting your draft...</p>
+                    </div>
+
+                    <!-- Output -->
+                    <div class="draft-studio-output" id="draftStudioOutput" style="display: none;">
+                        <div class="draft-output-header">
+                            <span class="draft-type-badge" id="draftOutputBadge">Email</span>
+                            <div class="draft-output-actions">
+                                <button class="draft-action-btn" id="draftCopyBtn" title="Copy as plain text">📋 Copy</button>
+                                <button class="draft-action-btn" id="draftCopyHtmlBtn" style="display: none;" title="Copy as HTML for email tools">📧 Copy HTML</button>
+                                <button class="draft-action-btn" id="draftRegenerateBtn">🔄 Regenerate</button>
+                                <button class="draft-action-btn draft-new-btn" id="draftNewBtn" title="Start a new draft">✨ New</button>
+                            </div>
                         </div>
-                        <div class="draft-refine-chips">
-                            <button class="draft-refine-chip" data-instruction="Make it shorter">Shorter</button>
-                            <button class="draft-refine-chip" data-instruction="Make it more detailed">More detailed</button>
-                            <button class="draft-refine-chip" data-instruction="Make it more exciting">More exciting</button>
-                            <button class="draft-refine-chip" data-instruction="Make it more professional">More professional</button>
-                            <button class="draft-refine-chip" data-instruction="Make it more urgent">More urgent</button>
-                        </div>
-                        <div class="draft-refine-custom">
-                            <input type="text" class="draft-refine-input" id="draftRefineInput" placeholder="Or type specific changes you want...">
-                            <button class="draft-refine-btn" id="draftRefineBtn">Refine</button>
+                        <div class="draft-output-content" id="draftOutputContent"></div>
+                        <div class="draft-disclaimer" id="draftDisclaimer"></div>
+
+                        <div class="draft-refine-section" id="draftRefineSection">
+                            <div class="draft-refine-header">
+                                <span class="draft-refine-label">Refine this draft</span>
+                            </div>
+                            <div class="draft-refine-chips">
+                                <button class="draft-refine-chip" data-instruction="Make it shorter">Shorter</button>
+                                <button class="draft-refine-chip" data-instruction="Make it more detailed">More detailed</button>
+                                <button class="draft-refine-chip" data-instruction="Make it more exciting">More exciting</button>
+                                <button class="draft-refine-chip" data-instruction="Make it more professional">More professional</button>
+                                <button class="draft-refine-chip" data-instruction="Make it more urgent">More urgent</button>
+                            </div>
+                            <div class="draft-refine-custom">
+                                <input type="text" class="draft-refine-input" id="draftRefineInput" placeholder="Or type specific changes you want...">
+                                <button class="draft-refine-btn" id="draftRefineBtn">Refine</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-
             </div>
+
         </div>
 
         <!-- Footer -->
@@ -12072,10 +11744,10 @@ Answer to question 2..."></textarea>
     </script>
 
     <!-- JavaScript -->
-    <script src="knowledge-base.js?v=20260210c"></script>
-    <script src="draw-schedule.js?v=20260210c"></script>
-    <script src="draft-knowledge-base.js?v=20260210c"></script>
-    <script src="admin-dashboard.js?v=20260210c"></script>
-    <script src="app.js?v=20260210c"></script>
+    <script src="knowledge-base.js?v=20260213a"></script>
+    <script src="draw-schedule.js?v=20260213a"></script>
+    <script src="draft-knowledge-base.js?v=20260213a"></script>
+    <script src="admin-dashboard.js?v=20260213a"></script>
+    <script src="app.js?v=20260213a"></script>
 </body>
 </html>
