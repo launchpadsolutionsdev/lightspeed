@@ -76,6 +76,16 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
+// Stricter rate limiting for auth endpoints
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // 20 requests per 15 minutes per IP
+    message: { error: 'Too many sign-in attempts, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/auth', authLimiter);
+
 // Health check endpoint
 app.get('/health', async (req, res) => {
     try {
@@ -133,17 +143,31 @@ async function runMigrations() {
 }
 
 runMigrations().then(() => {
-    app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
         console.log(`Lightspeed API server running on port ${PORT}`);
-        console.log(`Health check: http://localhost:${PORT}/health`);
 
         // Warn if email is not configured
         if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
             console.warn('\n⚠  EMAIL NOT CONFIGURED — contact form and team invites will not send.');
-            console.warn('   Set SMTP_HOST, SMTP_USER, and SMTP_PASS in your .env file.');
-            console.warn('   For Gmail: SMTP_HOST=smtp.gmail.com, SMTP_USER=you@gmail.com, SMTP_PASS=<app-password>\n');
+            console.warn('   Set SMTP_HOST, SMTP_USER, and SMTP_PASS in your .env file.\n');
         }
     });
+
+    // Graceful shutdown
+    const shutdown = (signal) => {
+        console.log(`\n${signal} received. Shutting down gracefully...`);
+        server.close(() => {
+            pool.end().then(() => {
+                console.log('Database pool closed.');
+                process.exit(0);
+            });
+        });
+        // Force exit after 10s if graceful shutdown fails
+        setTimeout(() => process.exit(1), 10000);
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 });
 
 module.exports = app;

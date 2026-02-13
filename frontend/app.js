@@ -5576,7 +5576,7 @@ async function handleGenerate() {
 
     } catch (error) {
         console.error("Error:", error);
-        showError(error.message || "Something went wrong. Please check your API key and try again.");
+        showError("Something went wrong. Please try again.");
     } finally {
         generateBtn.disabled = false;
         generateBtn.innerHTML = `<span class="btn-icon">⚡</span> Generate Response`;
@@ -9428,7 +9428,7 @@ User instructions: ${instructions}`,
 
     } catch (error) {
         console.error('[Raw Normalizer] Error:', error);
-        showToast("Error: " + error.message, "error");
+        showToast("Something went wrong. Please try again.", "error");
         // Go back to the form (not full reset) so user can retry
         document.getElementById("rawNormalizerProcessing").style.display = "none";
         document.getElementById("rawNormalizerUploadSection").style.display = "block";
