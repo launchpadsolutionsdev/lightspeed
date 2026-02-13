@@ -118,10 +118,9 @@ const requireSuperAdmin = (req, res, next) => {
 
 /**
  * Check AI generation usage limits based on subscription tier
- * Trial: 20 generations, Paid: 500/month, Super admin: unlimited
+ * Trial: unlimited (time-limited only), Paid: 500/month, Super admin: unlimited
  */
 const USAGE_LIMITS = {
-    trial: 20,
     active: 500
 };
 
@@ -145,35 +144,29 @@ const checkUsageLimit = async (req, res, next) => {
 
         const org = orgResult.rows[0];
 
-        // Check if trial has expired
-        if (org.subscription_status === 'trial' && org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
-            return res.status(403).json({ error: 'Trial expired', code: 'TRIAL_EXPIRED' });
-        }
-
-        // Active paid subscriptions get monthly limit
-        const limit = USAGE_LIMITS[org.subscription_status] || USAGE_LIMITS.trial;
-
-        // Count usage this month (or total for trial)
-        let usageQuery;
+        // Trial accounts: no generation cap, just check expiration
         if (org.subscription_status === 'trial') {
-            usageQuery = await pool.query(
-                'SELECT COUNT(*) FROM usage_logs WHERE organization_id = $1',
-                [org.organization_id]
-            );
-        } else {
-            usageQuery = await pool.query(
-                `SELECT COUNT(*) FROM usage_logs
-                 WHERE organization_id = $1 AND created_at >= date_trunc('month', CURRENT_DATE)`,
-                [org.organization_id]
-            );
+            if (org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
+                return res.status(403).json({ error: 'Trial expired', code: 'TRIAL_EXPIRED' });
+            }
+            return next();
         }
+
+        // Paid subscriptions: enforce monthly limit
+        const limit = USAGE_LIMITS[org.subscription_status] || USAGE_LIMITS.active;
+
+        const usageQuery = await pool.query(
+            `SELECT COUNT(*) FROM usage_logs
+             WHERE organization_id = $1 AND created_at >= date_trunc('month', CURRENT_DATE)`,
+            [org.organization_id]
+        );
 
         const usageCount = parseInt(usageQuery.rows[0].count);
 
         if (usageCount >= limit) {
             return res.status(429).json({
                 error: 'Usage limit reached',
-                code: 'TRIAL_LIMIT_REACHED',
+                code: 'USAGE_LIMIT_REACHED',
                 usageCount,
                 limit
             });
