@@ -7,14 +7,14 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, checkUsageLimit } = require('../middleware/auth');
 const claudeService = require('../services/claude');
 
 /**
  * POST /api/generate
  * Generate AI response (Response Assistant)
  */
-router.post('/generate', authenticate, async (req, res) => {
+router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
     try {
         const { messages, system, max_tokens = 1024 } = req.body;
 
@@ -59,7 +59,7 @@ router.post('/generate', authenticate, async (req, res) => {
  * POST /api/analyze
  * Analyze uploaded data (Insights Engine)
  */
-router.post('/analyze', authenticate, async (req, res) => {
+router.post('/analyze', authenticate, checkUsageLimit, async (req, res) => {
     try {
         const { data, reportType, additionalContext } = req.body;
 
@@ -159,7 +159,7 @@ ${JSON.stringify(data, null, 2)}`;
  * POST /api/normalize
  * Normalize list data via AI (List Normalizer - general purpose)
  */
-router.post('/normalize', authenticate, async (req, res) => {
+router.post('/normalize', authenticate, checkUsageLimit, async (req, res) => {
     try {
         const { data, outputFormat, instructions } = req.body;
 
@@ -283,7 +283,7 @@ router.post('/normalize/log', authenticate, async (req, res) => {
  * POST /api/draft
  * Generate draft content (Draft Assistant)
  */
-router.post('/draft', authenticate, async (req, res) => {
+router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
     try {
         const { prompt, draftType, tone, length, additionalContext } = req.body;
 

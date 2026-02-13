@@ -23,6 +23,7 @@ const billingRoutes = require('./routes/billing');
 const contactRoutes = require('./routes/contact');
 const drawScheduleRoutes = require('./routes/drawSchedules');
 const contentTemplateRoutes = require('./routes/contentTemplates');
+const pool = require('../config/database');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -76,8 +77,13 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.json({ status: 'ok', timestamp: new Date().toISOString(), database: 'connected' });
+    } catch (error) {
+        res.status(503).json({ status: 'degraded', timestamp: new Date().toISOString(), database: 'disconnected' });
+    }
 });
 
 // API Routes
@@ -107,7 +113,6 @@ app.use((err, req, res, next) => {
 });
 
 // Run pending migrations on startup
-const pool = require('../config/database');
 async function runMigrations() {
     try {
         const fs = require('fs');

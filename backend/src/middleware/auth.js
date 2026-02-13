@@ -116,10 +116,81 @@ const requireSuperAdmin = (req, res, next) => {
     next();
 };
 
+/**
+ * Check AI generation usage limits based on subscription tier
+ * Trial: 20 generations, Paid: 500/month, Super admin: unlimited
+ */
+const USAGE_LIMITS = {
+    trial: 20,
+    active: 500
+};
+
+const checkUsageLimit = async (req, res, next) => {
+    try {
+        // Super admins bypass limits
+        if (req.user.is_super_admin) return next();
+
+        // Get user's organization and subscription
+        const orgResult = await pool.query(
+            `SELECT o.subscription_status, o.trial_ends_at, om.organization_id
+             FROM organizations o
+             JOIN organization_memberships om ON o.id = om.organization_id
+             WHERE om.user_id = $1 LIMIT 1`,
+            [req.userId]
+        );
+
+        if (orgResult.rows.length === 0) {
+            return res.status(403).json({ error: 'No organization found', code: 'AUTH_REQUIRED' });
+        }
+
+        const org = orgResult.rows[0];
+
+        // Check if trial has expired
+        if (org.subscription_status === 'trial' && org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
+            return res.status(403).json({ error: 'Trial expired', code: 'TRIAL_EXPIRED' });
+        }
+
+        // Active paid subscriptions get monthly limit
+        const limit = USAGE_LIMITS[org.subscription_status] || USAGE_LIMITS.trial;
+
+        // Count usage this month (or total for trial)
+        let usageQuery;
+        if (org.subscription_status === 'trial') {
+            usageQuery = await pool.query(
+                'SELECT COUNT(*) FROM usage_logs WHERE organization_id = $1',
+                [org.organization_id]
+            );
+        } else {
+            usageQuery = await pool.query(
+                `SELECT COUNT(*) FROM usage_logs
+                 WHERE organization_id = $1 AND created_at >= date_trunc('month', CURRENT_DATE)`,
+                [org.organization_id]
+            );
+        }
+
+        const usageCount = parseInt(usageQuery.rows[0].count);
+
+        if (usageCount >= limit) {
+            return res.status(429).json({
+                error: 'Usage limit reached',
+                code: 'TRIAL_LIMIT_REACHED',
+                usageCount,
+                limit
+            });
+        }
+
+        next();
+    } catch (error) {
+        console.error('Usage limit check error:', error);
+        next(); // Fail open — don't block users on errors
+    }
+};
+
 module.exports = {
     authenticate,
     requireOrganization,
     requireAdmin,
     requireOwner,
-    requireSuperAdmin
+    requireSuperAdmin,
+    checkUsageLimit
 };

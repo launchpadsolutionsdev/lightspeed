@@ -296,7 +296,6 @@ try {
     const storedUsers = localStorage.getItem("lightspeed_users");
     if (storedUsers) {
         users = JSON.parse(storedUsers);
-        console.log("Loaded " + users.length + " users from localStorage");
     }
 } catch (e) {
     console.error("Failed to load users from localStorage:", e);
@@ -557,7 +556,6 @@ function checkForInviteToken() {
     const inviteToken = urlParams.get('invite');
 
     if (inviteToken) {
-        console.log('Invite token detected:', inviteToken);
         // Store the token for processing after login
         localStorage.setItem('pendingInviteToken', inviteToken);
         // Clean up the URL (remove the invite parameter)
@@ -575,11 +573,9 @@ async function processPendingInvite() {
 
     const authToken = localStorage.getItem('authToken');
     if (!authToken) {
-        console.log('No auth token, will process invite after login');
         return;
     }
 
-    console.log('Processing pending invite token...');
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/organizations/accept-invite`, {
@@ -633,18 +629,14 @@ function init() {
 
     // Check if user is logged in
     const savedUserId = localStorage.getItem("lightspeed_current_user");
-    console.log("Init - savedUserId:", savedUserId);
-    console.log("Init - users count:", users.length);
 
     if (savedUserId) {
         const user = users.find(u => u.id === savedUserId);
-        console.log("Init - found user:", user ? user.email : "not found");
         if (user) {
             loginUser(user, false); // false = don't show message
             return;
         } else {
             // User ID exists but user not found - clear stale session
-            console.log("Clearing stale session - user not found in users array");
             localStorage.removeItem("lightspeed_current_user");
         }
     }
@@ -951,7 +943,6 @@ async function processGoogleUser(googleUser, credential) {
             // Save auth token
             if (data.token) {
                 localStorage.setItem('authToken', data.token);
-                console.log('Backend auth token saved');
             }
 
             // Create/update local user object with backend data
@@ -1453,7 +1444,6 @@ function showToolMenu() {
                 }
             };
             toolMenuUser.insertBefore(adminBtn, toolMenuUser.firstChild);
-            console.log('Admin Dashboard button added for super admin');
         } else if (!currentUser.isSuperAdmin && existingAdminBtn) {
             existingAdminBtn.remove();
         }
@@ -2241,14 +2231,11 @@ function loginUser(user, showMessage = true) {
 
     // Check if user was trying to reach a specific page before login
     const hadRedirect = handlePostLoginRedirect();
-    console.log('[LOGIN] handlePostLoginRedirect returned:', hadRedirect);
     if (!hadRedirect) {
         // Check if there's an initial path from page load (e.g. browser refresh on /list-normalizer)
         const initialPath = window._initialPath;
         const route = initialPath ? ROUTES[initialPath] : null;
-        console.log('[LOGIN] initialPath:', initialPath, 'route:', route);
         if (route && route.view === 'tool') {
-            console.log('[LOGIN] Opening tool:', route.tool);
             _routerNavigating = true;
             openTool(route.tool);
             if (route.page) switchPage(route.page);
@@ -2256,10 +2243,8 @@ function loginUser(user, showMessage = true) {
             _routerNavigating = false;
             history.replaceState({ path: initialPath }, '', initialPath);
         } else if (route && route.view === 'dashboard') {
-            console.log('[LOGIN] Showing dashboard');
             showToolMenu();
         } else {
-            console.log('[LOGIN] Default: showing dashboard');
             showToolMenu();
         }
     }
@@ -2292,7 +2277,6 @@ function loginUser(user, showMessage = true) {
     const selectedPlan = localStorage.getItem('selectedPlan');
     if (selectedPlan) {
         localStorage.removeItem('selectedPlan');
-        console.log('[LOGIN] User had selected plan:', selectedPlan, '— starting checkout');
         startCheckout(selectedPlan);
     }
 
@@ -3096,7 +3080,6 @@ function setupDataAnalysisListeners() {
     }
 
     dataAnalysisListenersSetup = true;
-    console.log("Setting up data analysis listeners...");
 
     // Report type selection - now reveals upload step on same page
     const reportTypeSelect = document.getElementById("dataReportTypeSelect");
@@ -3165,7 +3148,6 @@ function setupDataAnalysisListeners() {
 
     if (resetBtn) resetBtn.addEventListener("click", resetDataAnalysis);
 
-    console.log("Data analysis listeners attached successfully");
 }
 
 function processDataFile(file) {
@@ -3235,7 +3217,6 @@ function analyzeDataFull(data) {
     const allColumns = new Set();
     data.forEach(row => Object.keys(row).forEach(key => allColumns.add(key)));
     const columns = Array.from(allColumns);
-    console.log("Insights Engine - Detected columns:", columns);
 
     // Improved column matching - exact matches first, then partial
     const findCol = (exactMatches, partialMatches = []) => {
@@ -3260,7 +3241,6 @@ function analyzeDataFull(data) {
     const phoneCol = findCol(['phone', 'phone number'], ['phone']);
     const zipCol = findCol(['zip code', 'postal code', 'zip', 'postal'], ['zip', 'postal']);
 
-    console.log("Insights Engine - Column mapping:", { emailCol, spentCol, cityCol, nameCol, ticketCol, phoneCol, zipCol });
 
     const PACKAGES = [100, 75, 50, 20, 10];
     const SINGLE_PACKAGE_AMOUNTS = new Set([10, 20, 50, 75, 100]);
@@ -3391,11 +3371,6 @@ function analyzeDataFull(data) {
     // Store for other pages
     dataAnalysisResults = { cityData, customerSpending, totalRevenue };
 
-    console.log("Customer Purchases - Metrics calculated:", {
-        totalRevenue, totalTransactions, avgSale, totalPackageCount,
-        uniqueCustomers, avgPerCustomer, repeatBuyersCount, totalTickets,
-        northernRevenue, northernCount, rsuRevenue, rsuCount
-    });
 
     // Update UI - use exact amounts for main revenue figures
     // Set immediate values first (in case animation fails), then animate
@@ -3878,7 +3853,6 @@ function analyzeCustomersReport(data) {
     const allColumns = new Set();
     data.forEach(row => Object.keys(row).forEach(key => allColumns.add(key)));
     const columns = Array.from(allColumns);
-    console.log("Customers Report - Detected columns:", columns);
 
     // Improved column matching - exact matches first, then partial
     const findCol = (exactMatches, partialMatches = []) => {
@@ -3898,7 +3872,6 @@ function analyzeCustomersReport(data) {
     const zipCol = findCol(['zip code', 'postal code', 'zip', 'postal'], ['zip', 'postal']);
     const emailCol = findCol(['e-mail', 'email', 'email address'], ['email']);
 
-    console.log("Customers Report - Column mapping:", { cityCol, phoneCol, zipCol, emailCol });
 
     const totalCustomers = data.length;
 
@@ -4101,7 +4074,6 @@ function analyzePaymentTicketsReport(data) {
     const allColumns = new Set();
     data.forEach(row => Object.keys(row).forEach(key => allColumns.add(key)));
     const columns = Array.from(allColumns);
-    console.log("Payment Tickets Report - Detected columns:", columns);
 
     // Improved column matching - exact matches first, then partial
     const findCol = (exactMatches, partialMatches = []) => {
@@ -4119,7 +4091,6 @@ function analyzePaymentTicketsReport(data) {
     const sellerCol = findCol(['seller'], ['seller']);
     const amountCol = findCol(['amount'], ['amount']);
 
-    console.log("Payment Tickets Report - Column mapping:", { sellerCol, amountCol });
 
     // Analyze seller data
     const sellerData = {};
@@ -4359,7 +4330,6 @@ function analyzeSellersReport(data) {
     const allColumns = new Set();
     data.forEach(row => Object.keys(row).forEach(key => allColumns.add(key)));
     const columns = Array.from(allColumns);
-    console.log("Sellers Report - Detected columns:", columns);
 
     // Improved column matching - exact matches first, then partial
     const findCol = (exactMatches, partialMatches = []) => {
@@ -4384,7 +4354,6 @@ function analyzeSellersReport(data) {
     const avgOrderCol = findCol(['average order', 'avg order'], ['avg', 'average']);
     const netNumbersCol = findCol(['net numbers', 'net tickets'], ['net number', 'net ticket']);
 
-    console.log("Sellers Report - Column mapping:", { sellerCol, netSalesCol, cashCol, ccCol, debitCol, txCol, voidedSalesCol, avgOrderCol, netNumbersCol });
 
     // Aggregate data
     let totalNetSales = 0;
@@ -6288,12 +6257,12 @@ async function handleBulkFile(file) {
     }).filter(i => i.length > 10);
 
     if (inquiries.length === 0) {
-        alert("No valid inquiries found in the file.");
+        showToast("No valid inquiries found in the file.", "error");
         return;
     }
 
     if (inquiries.length > 50) {
-        alert("Maximum 50 inquiries per batch. Only the first 50 will be processed.");
+        showToast("Maximum 50 inquiries per batch. Only the first 50 will be processed.", "info");
         inquiries.length = 50;
     }
 
@@ -6750,7 +6719,7 @@ async function addKnowledge() {
     const response = document.getElementById("knowledgeResponse").value.trim();
 
     if (!question || !response) {
-        alert("Please fill in the question and response fields.");
+        showToast("Please fill in the question and response fields.", "error");
         return;
     }
 
@@ -6889,7 +6858,7 @@ async function uploadKnowledgeDoc(input) {
 function parseAndImportKnowledge() {
     const content = document.getElementById("importContent").value.trim();
     if (!content) {
-        alert("Please paste some content to import.");
+        showToast("Please paste some content to import.", "error");
         return;
     }
 
@@ -6928,7 +6897,7 @@ function parseAndImportKnowledge() {
     }
 
     if (pairs.length === 0) {
-        alert("Could not parse any Q&A pairs from the content. Try formatting with clear question/answer sections.");
+        showToast("Could not parse any Q&A pairs from the content. Try formatting with clear question/answer sections.", "error");
         return;
     }
 
@@ -6986,7 +6955,7 @@ async function submitFeedback() {
     const message = document.getElementById("feedbackMessage").value.trim();
 
     if (!name || !message) {
-        alert("Please fill in your name and feedback message.");
+        showToast("Please fill in your name and feedback message.", "error");
         return;
     }
 
@@ -7025,7 +6994,6 @@ async function submitFeedback() {
     document.getElementById("feedbackSuccess").style.display = "flex";
     setTimeout(() => document.getElementById("feedbackSuccess").style.display = "none", 5000);
 
-    console.log("Feedback submitted:", feedback);
 }
 
 // ==================== UTILITIES ====================
@@ -8264,7 +8232,6 @@ async function generateEmailDraft() {
             })
         });
 
-        console.log('API response status:', response.status);
 
         if (!response.ok) {
             await handleApiError(response);
@@ -8882,7 +8849,6 @@ function setupListNormalizerListeners() {
     }
 
     listNormalizerListenersSetup = true;
-    console.log("Setting up List Normalizer listeners...");
 
     // Drag and drop handlers
     dropzone.addEventListener("dragover", (e) => {
@@ -8916,7 +8882,6 @@ function setupListNormalizerListeners() {
     // Show export history
     renderNormalizerHistory();
 
-    console.log("List Normalizer listeners attached successfully");
 }
 
 function processNormalizerFile(file) {
@@ -8964,7 +8929,6 @@ function processForMailchimp(rawData) {
         Object.keys(row).forEach(key => allColumns.add(key));
     });
     const columns = Array.from(allColumns);
-    console.log("Detected columns (from all rows):", columns);
 
     // More specific column matching - check exact matches first, then partial
     const findCol = (exactMatches, partialMatches) => {
@@ -8994,7 +8958,6 @@ function processForMailchimp(rawData) {
         ['email', 'e-mail']
     );
 
-    console.log("Column mapping - First:", firstNameCol, "Last:", lastNameCol, "Email:", emailCol);
 
     if (!emailCol) {
         showToast("Could not find an email column in the file", "error");
@@ -9016,7 +8979,6 @@ function processForMailchimp(rawData) {
             const firstName = firstNameCol && row[firstNameCol] ? String(row[firstNameCol]).trim() : '';
             const lastName = lastNameCol && row[lastNameCol] ? String(row[lastNameCol]).trim() : '';
 
-            console.log("Processing row - First:", firstName, "Last:", lastName);
 
             // Build full name by concatenating first and last
             let fullName = '';
@@ -9378,7 +9340,6 @@ User instructions: ${instructions}`,
 
         const result = await response.json();
         let aiText = (result.content && result.content[0] && result.content[0].text) || '';
-        console.log('[Raw Normalizer] AI returned transform function:', aiText.substring(0, 500));
 
         if (!aiText) {
             throw new Error('AI returned an empty response. Please try again.');
@@ -9392,7 +9353,6 @@ User instructions: ${instructions}`,
             aiText = aiText.substring(firstStatement);
         }
 
-        console.log('[Raw Normalizer] Cleaned function code:\n', aiText);
 
         // Build the transform function from AI-generated code
         let transformFn;
@@ -9407,8 +9367,6 @@ User instructions: ${instructions}`,
         const testRow = rawNormalizerRawData[0];
         try {
             const testResult = transformFn(testRow);
-            console.log('[Raw Normalizer] Test row input:', JSON.stringify(testRow).substring(0, 200));
-            console.log('[Raw Normalizer] Test row output:', JSON.stringify(testResult).substring(0, 200));
             if (testResult !== null && typeof testResult !== 'object') {
                 throw new Error('Function returned ' + typeof testResult + ' instead of an object');
             }
@@ -10415,23 +10373,19 @@ function handlePostLoginRedirect() {
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", () => {
     try {
-        console.log('[BOOT] DOMContentLoaded fired, URL:', window.location.pathname);
 
         // Check if we were redirected from 404.html (SPA catch-all)
         const spaRedirect = sessionStorage.getItem('spa_redirect');
         if (spaRedirect) {
             sessionStorage.removeItem('spa_redirect');
-            console.log('[BOOT] SPA redirect detected, restoring path:', spaRedirect);
             history.replaceState(null, '', spaRedirect);
         }
 
         // Capture the URL BEFORE init() runs (init may change it via showToolMenu → pushRoute)
         // Store globally so loginUser() can use it for direct navigation
         window._initialPath = spaRedirect || window.location.pathname;
-        console.log('[BOOT] Initial path set to:', window._initialPath);
 
         init();
-        console.log('[BOOT] init() completed');
 
         initParallaxAndAnimations();
 
@@ -10445,23 +10399,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const appWrapperVisible = document.getElementById('appWrapper')?.classList.contains('visible');
         const loginVisible = document.getElementById('loginPage')?.classList.contains('visible');
 
-        console.log('[BOOT] Visibility check:', {
-            landingPage: landingVisible,
-            toolMenuPage: toolMenuVisible,
-            appWrapper: appWrapperVisible,
-            loginPage: loginVisible,
-        });
 
         // If NOTHING is visible, the user would see a blank page — recover now
         if (!landingVisible && !toolMenuVisible && !appWrapperVisible && !loginVisible) {
             console.warn('[BOOT] Blank page detected! No container is visible. Recovering...');
             if (currentUser) {
                 // User is logged in but nothing rendered — show the dashboard
-                console.log('[BOOT] Recovery: showing tool menu for logged-in user');
                 showToolMenu();
             } else {
                 // Not logged in — show landing page
-                console.log('[BOOT] Recovery: showing landing page');
                 document.getElementById('landingPage').classList.remove('hidden');
             }
         }
