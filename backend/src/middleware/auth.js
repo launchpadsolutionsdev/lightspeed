@@ -182,7 +182,7 @@ const checkUsageLimit = async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Usage limit check error:', error);
-        next(); // Fail open — don't block users on errors
+        res.status(503).json({ error: 'Unable to verify usage limits. Please try again.' });
     }
 };
 

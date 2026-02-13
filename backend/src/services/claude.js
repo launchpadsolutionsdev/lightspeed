@@ -77,8 +77,6 @@ async function generateWithKnowledge({ messages, system, knowledgeEntries, max_t
  * @returns {Promise<Object>} API response
  */
 async function streamResponse(options) {
-    // TODO: Implement streaming with SSE
-    // For now, use regular response
     return generateResponse(options);
 }
 

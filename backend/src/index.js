@@ -25,6 +25,14 @@ const drawScheduleRoutes = require('./routes/drawSchedules');
 const contentTemplateRoutes = require('./routes/contentTemplates');
 const pool = require('../config/database');
 
+// Validate required environment variables
+const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET', 'ANTHROPIC_API_KEY', 'GOOGLE_CLIENT_ID'];
+const missing = REQUIRED_ENV.filter(v => !process.env[v]);
+if (missing.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -33,9 +41,11 @@ app.use(helmet());
 
 // CORS configuration
 const allowedOrigins = [
-    'http://localhost:8000',
-    'http://localhost:3000',
-    'http://127.0.0.1:8000',
+    ...(process.env.NODE_ENV !== 'production' ? [
+        'http://localhost:8000',
+        'http://localhost:3000',
+        'http://127.0.0.1:8000'
+    ] : []),
     'https://www.lightspeedutility.ca',
     'https://lightspeedutility.ca',
     process.env.FRONTEND_URL
