@@ -9,6 +9,15 @@ const { sendEmail } = require('../services/email');
 
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'hello@launchpadsolutions.ca';
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 router.post('/', async (req, res) => {
     try {
         const { organizationName, name, title, phone, email, message } = req.body;
@@ -42,15 +51,15 @@ router.post('/', async (req, res) => {
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <h2 style="color: #7c3aed;">New Contact Form Submission</h2>
     <table style="width: 100%; border-collapse: collapse;">
-        <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Name</td><td style="padding: 8px 0;">${name}</td></tr>
-        ${title ? `<tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Title</td><td style="padding: 8px 0;">${title}</td></tr>` : ''}
-        ${organizationName ? `<tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Organization</td><td style="padding: 8px 0;">${organizationName}</td></tr>` : ''}
-        <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Email</td><td style="padding: 8px 0;"><a href="mailto:${email}">${email}</a></td></tr>
-        ${phone ? `<tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Phone</td><td style="padding: 8px 0;">${phone}</td></tr>` : ''}
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Name</td><td style="padding: 8px 0;">${escapeHtml(name)}</td></tr>
+        ${title ? `<tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Title</td><td style="padding: 8px 0;">${escapeHtml(title)}</td></tr>` : ''}
+        ${organizationName ? `<tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Organization</td><td style="padding: 8px 0;">${escapeHtml(organizationName)}</td></tr>` : ''}
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Email</td><td style="padding: 8px 0;"><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></td></tr>
+        ${phone ? `<tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Phone</td><td style="padding: 8px 0;">${escapeHtml(phone)}</td></tr>` : ''}
     </table>
     <div style="margin-top: 20px; padding: 16px; background: #f9fafb; border-radius: 8px;">
         <p style="font-weight: bold; color: #555; margin: 0 0 8px;">Message:</p>
-        <p style="margin: 0; white-space: pre-wrap;">${message}</p>
+        <p style="margin: 0; white-space: pre-wrap;">${escapeHtml(message)}</p>
     </div>
 </div>`.trim();
 
