@@ -2288,6 +2288,42 @@
         .feedback-btn-submit:hover { background: #2563eb; }
         .feedback-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
+        /* KB entries in feedback modal */
+        .feedback-kb-section { margin-top: 0.75rem; }
+        .feedback-kb-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .feedback-kb-entry {
+            border: 1px solid #e5e7eb; border-radius: 8px;
+            padding: 0.6rem 0.75rem; background: #f9fafb;
+            transition: border-color 0.15s ease;
+        }
+        .feedback-kb-entry:hover { border-color: #93c5fd; }
+        .feedback-kb-entry-header {
+            display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;
+        }
+        .feedback-kb-entry-category {
+            font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+            color: #6b7280; background: #e5e7eb; border-radius: 4px;
+            padding: 0.1rem 0.4rem; flex-shrink: 0;
+        }
+        .feedback-kb-entry-title {
+            font-size: 0.8rem; font-weight: 600; color: #374151;
+            flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .feedback-kb-edit-btn {
+            font-size: 0.7rem; font-weight: 600; color: #3B82F6;
+            background: none; border: 1px solid #3B82F6; border-radius: 5px;
+            padding: 0.15rem 0.5rem; cursor: pointer; flex-shrink: 0;
+            transition: all 0.15s ease;
+        }
+        .feedback-kb-edit-btn:hover { background: #3B82F6; color: white; }
+        .feedback-kb-entry-content {
+            font-size: 0.78rem; color: #4b5563; line-height: 1.4;
+            max-height: 3.5em; overflow: hidden;
+        }
+        .feedback-kb-textarea {
+            margin-top: 0.3rem; font-size: 0.8rem;
+        }
+
         .quality-checks {
             display: flex;
             flex-wrap: wrap;

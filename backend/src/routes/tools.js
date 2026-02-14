@@ -38,6 +38,7 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
         const organizationId = orgResult.rows[0]?.organization_id;
 
         let enhancedSystem = system || '';
+        let referencedKbEntries = [];
 
         // Server-side KB relevance picking when inquiry is provided
         if (inquiry && organizationId) {
@@ -57,6 +58,14 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
                     );
 
                     if (relevantEntries.length > 0) {
+                        // Store the referenced entries to return to the frontend
+                        referencedKbEntries = relevantEntries.map(entry => ({
+                            id: entry.id,
+                            title: entry.title,
+                            content: entry.content,
+                            category: entry.category
+                        }));
+
                         const knowledgeContext = relevantEntries
                             .map(entry => `[${entry.category}] ${entry.title}: ${entry.content}`)
                             .join('\n\n');
@@ -93,6 +102,12 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
                  VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, NOW())`,
                 [organizationId, req.userId, totalTokens]
             );
+        }
+
+        // Include referenced KB entries in the response so the frontend
+        // can show them in the feedback modal for inline editing
+        if (referencedKbEntries.length > 0) {
+            response.referenced_kb_entries = referencedKbEntries;
         }
 
         res.json(response);
