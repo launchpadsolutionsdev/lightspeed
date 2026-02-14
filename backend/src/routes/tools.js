@@ -13,10 +13,17 @@ const claudeService = require('../services/claude');
 /**
  * POST /api/generate
  * Generate AI response (Response Assistant)
+ *
+ * When `inquiry` is provided in the body, the server will:
+ *   1. Fetch all KB entries for the organization
+ *   2. Use Haiku to pick the most relevant entries for the inquiry
+ *   3. Inject those entries into the system prompt
+ *
+ * This replaces the old approach of the frontend dumping 30 random entries.
  */
 router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
     try {
-        const { messages, system, max_tokens = 1024 } = req.body;
+        const { messages, system, inquiry, max_tokens = 1024 } = req.body;
 
         if (!messages || !Array.isArray(messages)) {
             return res.status(400).json({ error: 'Messages array required' });
@@ -30,10 +37,51 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
 
         const organizationId = orgResult.rows[0]?.organization_id;
 
+        let enhancedSystem = system || '';
+
+        // Server-side KB relevance picking when inquiry is provided
+        if (inquiry && organizationId) {
+            try {
+                // Fetch all KB entries for this organization
+                const kbResult = await pool.query(
+                    'SELECT id, title, content, category, tags FROM knowledge_base WHERE organization_id = $1 ORDER BY category, title',
+                    [organizationId]
+                );
+
+                if (kbResult.rows.length > 0) {
+                    // Use Haiku to pick relevant entries
+                    const relevantEntries = await claudeService.pickRelevantKnowledge(
+                        inquiry,
+                        kbResult.rows,
+                        8
+                    );
+
+                    if (relevantEntries.length > 0) {
+                        const knowledgeContext = relevantEntries
+                            .map(entry => `[${entry.category}] ${entry.title}: ${entry.content}`)
+                            .join('\n\n');
+
+                        // Insert KB entries after the "Knowledge base:" marker in the system prompt.
+                        // The marker is placed by the frontend; rated examples may follow it.
+                        if (enhancedSystem.includes('Knowledge base:')) {
+                            enhancedSystem = enhancedSystem.replace(
+                                'Knowledge base:\n',
+                                `Knowledge base:\n\n${knowledgeContext}\n`
+                            );
+                        } else {
+                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}`;
+                        }
+                    }
+                }
+            } catch (kbError) {
+                console.warn('KB relevance picking failed, continuing without:', kbError.message);
+            }
+        }
+
         // Call Claude API
         const response = await claudeService.generateResponse({
             messages,
-            system,
+            system: enhancedSystem,
             max_tokens
         });
 
