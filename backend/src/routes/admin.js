@@ -55,10 +55,19 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
             `SELECT COUNT(*) FROM usage_logs WHERE created_at > CURRENT_DATE`
         );
 
-        // Calculate estimated metrics (response time and success rate)
-        // These are estimated since we don't track individual response times yet
-        const avgResponseTimeMs = 245; // Reasonable default for Claude API calls
-        const successRate = 98; // High success rate based on typical API performance
+        // Calculate real performance metrics from usage_logs
+        const perfMetrics = await pool.query(
+            `SELECT
+                 COALESCE(AVG(response_time_ms) FILTER (WHERE response_time_ms IS NOT NULL), 0) as avg_response_time,
+                 CASE WHEN COUNT(*) > 0
+                      THEN ROUND(COUNT(*) FILTER (WHERE success IS NOT FALSE)::numeric / COUNT(*) * 100)
+                      ELSE 100
+                 END as success_rate
+             FROM usage_logs
+             WHERE created_at > NOW() - INTERVAL '30 days'`
+        );
+        const avgResponseTimeMs = Math.round(parseFloat(perfMetrics.rows[0].avg_response_time)) || 0;
+        const successRate = parseInt(perfMetrics.rows[0].success_rate) || 100;
 
         // Get tool usage breakdown
         const toolUsage = await pool.query(
@@ -124,15 +133,16 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
 router.get('/analytics/engagement', authenticate, requireSuperAdmin, async (req, res) => {
     try {
         const { period = 30 } = req.query;
-        const days = parseInt(period);
+        const days = Math.max(1, Math.min(365, parseInt(period) || 30));
 
         // Daily active users
         const dailyActiveUsers = await pool.query(
             `SELECT DATE(created_at) as date, COUNT(DISTINCT user_id) as active_users
              FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '${days} days'
+             WHERE created_at > NOW() - make_interval(days => $1)
              GROUP BY DATE(created_at)
-             ORDER BY date DESC`
+             ORDER BY date DESC`,
+            [days]
         );
 
         // Retention calculation (week over week)
@@ -156,8 +166,9 @@ router.get('/analytics/engagement', authenticate, requireSuperAdmin, async (req,
         const featureAdoption = await pool.query(
             `SELECT tool, COUNT(DISTINCT user_id) as users
              FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '${days} days'
-             GROUP BY tool`
+             WHERE created_at > NOW() - make_interval(days => $1)
+             GROUP BY tool`,
+            [days]
         );
         const totalUserCount = parseInt(totalUsers.rows[0].count) || 1;
         const featureAdoptionData = featureAdoption.rows.map(f => ({
@@ -172,19 +183,21 @@ router.get('/analytics/engagement', authenticate, requireSuperAdmin, async (req,
                     MAX(ul.created_at) as last_active
              FROM usage_logs ul
              JOIN users u ON ul.user_id = u.id
-             WHERE ul.created_at > NOW() - INTERVAL '${days} days'
+             WHERE ul.created_at > NOW() - make_interval(days => $1)
              GROUP BY u.id, u.first_name, u.last_name, u.email
              ORDER BY request_count DESC
-             LIMIT 10`
+             LIMIT 10`,
+            [days]
         );
 
         // Peak usage hours
         const peakUsageHours = await pool.query(
             `SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as request_count
              FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '${days} days'
+             WHERE created_at > NOW() - make_interval(days => $1)
              GROUP BY EXTRACT(HOUR FROM created_at)
-             ORDER BY hour`
+             ORDER BY hour`,
+            [days]
         );
 
         res.json({
@@ -392,7 +405,8 @@ router.get('/organizations', authenticate, requireSuperAdmin, async (req, res) =
  */
 router.get('/usage', authenticate, requireSuperAdmin, async (req, res) => {
     try {
-        const { days = 30 } = req.query;
+        const { days: rawDays = 30 } = req.query;
+        const days = Math.max(1, Math.min(365, parseInt(rawDays) || 30));
 
         // Daily usage for the period
         const dailyUsage = await pool.query(
@@ -401,9 +415,10 @@ router.get('/usage', authenticate, requireSuperAdmin, async (req, res) => {
                     SUM(total_tokens) as tokens,
                     COUNT(*) as requests
              FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '${parseInt(days)} days'
+             WHERE created_at > NOW() - make_interval(days => $1)
              GROUP BY DATE(created_at), tool
-             ORDER BY date DESC`
+             ORDER BY date DESC`,
+            [days]
         );
 
         // Top organizations by usage
@@ -411,19 +426,21 @@ router.get('/usage', authenticate, requireSuperAdmin, async (req, res) => {
             `SELECT o.name, SUM(ul.total_tokens) as total_tokens, COUNT(*) as requests
              FROM usage_logs ul
              JOIN organizations o ON ul.organization_id = o.id
-             WHERE ul.created_at > NOW() - INTERVAL '${parseInt(days)} days'
+             WHERE ul.created_at > NOW() - make_interval(days => $1)
              GROUP BY o.id, o.name
              ORDER BY total_tokens DESC
-             LIMIT 10`
+             LIMIT 10`,
+            [days]
         );
 
         // Usage by tool
         const toolUsage = await pool.query(
             `SELECT tool, SUM(total_tokens) as total_tokens, COUNT(*) as requests
              FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '${parseInt(days)} days'
+             WHERE created_at > NOW() - make_interval(days => $1)
              GROUP BY tool
-             ORDER BY total_tokens DESC`
+             ORDER BY total_tokens DESC`,
+            [days]
         );
 
         res.json({

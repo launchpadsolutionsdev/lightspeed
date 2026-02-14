@@ -88,19 +88,21 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
         }
 
         // Call Claude API
+        const startTime = Date.now();
         const response = await claudeService.generateResponse({
             messages,
             system: enhancedSystem,
             max_tokens
         });
+        const responseTimeMs = Date.now() - startTime;
 
         // Log usage
         if (organizationId && response.usage) {
             const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
             await pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, NOW())`,
-                [organizationId, req.userId, totalTokens]
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, $4, TRUE, NOW())`,
+                [organizationId, req.userId, totalTokens, responseTimeMs]
             );
         }
 
@@ -194,19 +196,21 @@ ${JSON.stringify(data, null, 2)}`;
         }
 
         // Call Claude API
+        const startTime = Date.now();
         const response = await claudeService.generateResponse({
             messages: [{ role: 'user', content: userPrompt }],
             system: systemPrompt,
             max_tokens: 2048
         });
+        const responseTimeMs = Date.now() - startTime;
 
         // Log usage
         if (organization?.organization_id && response.usage) {
             const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
             await pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'insights_engine', $3, NOW())`,
-                [organization.organization_id, req.userId, totalTokens]
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'insights_engine', $3, $4, TRUE, NOW())`,
+                [organization.organization_id, req.userId, totalTokens, responseTimeMs]
             );
         }
 
@@ -280,11 +284,13 @@ Return ONLY the JavaScript function body. No explanation, no markdown, no \`\`\`
         }
 
         // Call Claude API
+        const startTime = Date.now();
         const response = await claudeService.generateResponse({
             messages: [{ role: 'user', content: userPrompt }],
             system: systemPrompt,
             max_tokens: isTransformMode ? 2048 : 8192
         });
+        const responseTimeMs = Date.now() - startTime;
 
         // Get organization for logging
         const orgResult = await pool.query(
@@ -298,9 +304,9 @@ Return ONLY the JavaScript function body. No explanation, no markdown, no \`\`\`
         if (organizationId && response.usage) {
             const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
             await pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'list_normalizer', $3, NOW())`,
-                [organizationId, req.userId, totalTokens]
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'list_normalizer', $3, $4, TRUE, NOW())`,
+                [organizationId, req.userId, totalTokens, responseTimeMs]
             );
         }
 
@@ -390,11 +396,13 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
         }
 
         // Call Claude API
+        const startTime2 = Date.now();
         const response = await claudeService.generateResponse({
             messages: [{ role: 'user', content: userPrompt }],
             system: systemPrompt,
             max_tokens: 2048
         });
+        const responseTimeMs2 = Date.now() - startTime2;
 
         // Get organization for logging
         const orgResult2 = await pool.query(
@@ -408,9 +416,9 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
         if (organizationId && response.usage) {
             const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
             await pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'draft_assistant', $3, NOW())`,
-                [organizationId, req.userId, totalTokens]
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'draft_assistant', $3, $4, TRUE, NOW())`,
+                [organizationId, req.userId, totalTokens, responseTimeMs2]
             );
         }
 

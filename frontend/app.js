@@ -5562,9 +5562,12 @@ async function handleGenerate() {
                 const backendData = await backendResp.json();
                 historyEntry.backendId = backendData.entry.id;
                 saveUserData();
+            } else {
+                showToast("Response saved locally but cloud sync failed — it won't appear on other devices", "error");
             }
         } catch (error) {
             console.warn('Failed to save response to backend:', error);
+            showToast("Response saved locally but cloud sync failed — it won't appear on other devices", "error");
         }
 
         displayResults(responseText, historyEntry.id);
