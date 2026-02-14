@@ -5520,10 +5520,13 @@ async function handleGenerate() {
 
     try {
         const relevantKnowledge = getRelevantKnowledge(customerEmail);
-        const response = await generateCustomResponse(
+        const result = await generateCustomResponse(
             customerEmail, relevantKnowledge, staffName,
             { toneValue, lengthValue, includeLinks, includeSteps, agentInstructions }
         );
+
+        const responseText = result.text;
+        const referencedKbEntries = result.referencedKbEntries || [];
 
         const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
         const category = detectCategory(customerEmail);
@@ -5533,7 +5536,8 @@ async function handleGenerate() {
             id: `history-${Date.now()}`,
             backendId: null,
             inquiry: customerEmail,
-            response: response,
+            response: responseText,
+            referencedKbEntries: referencedKbEntries,
             staffName: staffName,
             category: category,
             timestamp: new Date().toISOString(),
@@ -5543,7 +5547,7 @@ async function handleGenerate() {
         responseHistory.unshift(historyEntry);
         if (responseHistory.length > 100) responseHistory.pop();
 
-        currentResponse = response;
+        currentResponse = responseText;
         currentInquiry = customerEmail;
         currentHistoryId = historyEntry.id;
 
@@ -5558,7 +5562,7 @@ async function handleGenerate() {
                 headers: getAuthHeaders(),
                 body: JSON.stringify({
                     inquiry: customerEmail,
-                    response: response,
+                    response: responseText,
                     format: inquiryType || 'email',
                     tone: toneDesc
                 })
@@ -5572,7 +5576,7 @@ async function handleGenerate() {
             console.warn('Failed to save response to backend:', error);
         }
 
-        displayResults(response, historyEntry.id);
+        displayResults(responseText, historyEntry.id);
 
     } catch (error) {
         console.error("Error:", error);
@@ -5801,7 +5805,10 @@ Sign as: ${staffName}`;
     }
 
     const data = await response.json();
-    return data.content[0].text;
+    return {
+        text: data.content[0].text,
+        referencedKbEntries: data.referenced_kb_entries || []
+    };
 }
 
 function displayResults(response, historyId) {
@@ -6043,18 +6050,67 @@ async function rateResponse(historyId, rating, button) {
         }
         showToast("Thanks! This helps Lightspeed learn your preferences.", "success");
     } else {
-        // Negative: show feedback modal
+        // Negative: show feedback modal with referenced KB entries
         const backendId = entry ? entry.backendId : null;
-        showFeedbackModal(backendId, entry?.inquiry, entry?.response);
+        const kbEntries = entry?.referencedKbEntries || [];
+        showFeedbackModal(backendId, entry?.inquiry, entry?.response, kbEntries);
     }
 }
 
-function showFeedbackModal(backendId, inquiryText, responseText) {
+function showFeedbackModal(backendId, inquiryText, responseText, referencedKbEntries) {
     // Remove any existing modal
     document.getElementById('feedbackModal')?.remove();
 
     const inquiry = inquiryText ? escapeHtml(inquiryText).substring(0, 300) : '';
     const response = responseText ? escapeHtml(responseText).substring(0, 300) : '';
+    const kbEntries = referencedKbEntries || [];
+
+    // Build the referenced KB entries HTML for the info section
+    let kbEntriesHtml = '';
+    if (kbEntries.length > 0) {
+        kbEntriesHtml = `
+            <div class="feedback-kb-section">
+                <label class="feedback-label" style="margin-bottom: 0.5rem;">Knowledge base entries used in this response:</label>
+                <div class="feedback-kb-list">
+                    ${kbEntries.map((kb, i) => `
+                        <div class="feedback-kb-entry" data-kb-id="${kb.id}" data-kb-index="${i}">
+                            <div class="feedback-kb-entry-header">
+                                <span class="feedback-kb-entry-category">${escapeHtml(kb.category)}</span>
+                                <span class="feedback-kb-entry-title">${escapeHtml(kb.title)}</span>
+                                <button class="feedback-kb-edit-btn" onclick="toggleKbEntryEdit(${i})">Edit</button>
+                            </div>
+                            <div class="feedback-kb-entry-content">${escapeHtml(kb.content)}</div>
+                            <div class="feedback-kb-entry-edit" id="kbEdit_${i}" style="display:none;">
+                                <textarea class="feedback-textarea feedback-kb-textarea" id="kbEditContent_${i}" rows="4">${escapeHtml(kb.content)}</textarea>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+    }
+
+    // Fallback section for when there are no referenced KB entries (or user wants to add new info)
+    const newInfoHtml = `
+        <div id="feedbackNewInfoSection" style="margin-top: ${kbEntries.length > 0 ? '0.75rem' : '0'};">
+            <label class="feedback-label">${kbEntries.length > 0
+                ? 'Or add new information to the knowledge base:'
+                : 'What is the correct information?'}</label>
+            <textarea id="feedbackCorrectAnswer" class="feedback-textarea" rows="3"
+                placeholder="${kbEntries.length > 0
+                    ? 'Add new info that\'s missing from the knowledge base (optional)'
+                    : 'Type the correct information here. This will be saved to the knowledge base so Lightspeed gets it right next time.'}"></textarea>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                <div style="flex: 1;">
+                    <label class="feedback-label">Category</label>
+                    <select id="feedbackKBCategory" class="feedback-select">
+                        <option value="faqs">FAQ</option>
+                        <option value="policies">Policy</option>
+                        <option value="products">Product</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+        </div>`;
 
     const overlay = document.createElement('div');
     overlay.id = 'feedbackModal';
@@ -6097,19 +6153,8 @@ function showFeedbackModal(backendId, inquiryText, responseText) {
                         <div class="feedback-context-label">AI generated:</div>
                         <div class="feedback-context-text">${response}...</div>
                     </div>
-                    <label class="feedback-label" style="margin-top: 0.75rem;">What is the correct information?</label>
-                    <textarea id="feedbackCorrectAnswer" class="feedback-textarea" rows="4" placeholder="Type the correct information here. This will be saved to the knowledge base so Lightspeed gets it right next time."></textarea>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                        <div style="flex: 1;">
-                            <label class="feedback-label">Category</label>
-                            <select id="feedbackKBCategory" class="feedback-select">
-                                <option value="faqs">FAQ</option>
-                                <option value="policies">Policy</option>
-                                <option value="products">Product</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                    </div>
+                    ${kbEntriesHtml}
+                    ${newInfoHtml}
                 </div>
             </div>
             <div class="feedback-modal-footer">
@@ -6119,12 +6164,25 @@ function showFeedbackModal(backendId, inquiryText, responseText) {
         </div>
     `;
 
-    // Store the inquiry text on the modal for submitRatingFeedback to use
+    // Store metadata on the modal for submitRatingFeedback to use
     overlay.dataset.inquiryText = inquiryText || '';
     overlay.dataset.backendId = backendId || '';
+    overlay.dataset.kbEntries = JSON.stringify(kbEntries);
 
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('visible'));
+}
+
+function toggleKbEntryEdit(index) {
+    const editDiv = document.getElementById(`kbEdit_${index}`);
+    const contentDiv = editDiv?.previousElementSibling;
+    const editBtn = editDiv?.parentElement.querySelector('.feedback-kb-edit-btn');
+    if (!editDiv) return;
+
+    const isEditing = editDiv.style.display !== 'none';
+    editDiv.style.display = isEditing ? 'none' : 'block';
+    if (contentDiv) contentDiv.style.display = isEditing ? 'block' : 'none';
+    if (editBtn) editBtn.textContent = isEditing ? 'Edit' : 'Cancel';
 }
 
 function switchFeedbackType(type, btn) {
@@ -6147,6 +6205,7 @@ async function submitRatingFeedback() {
     const backendId = modal?.dataset.backendId || null;
     const inquiryText = modal?.dataset.inquiryText || '';
     const activeType = document.querySelector('.feedback-type-btn.active')?.dataset.type || 'style';
+    const kbEntries = JSON.parse(modal?.dataset.kbEntries || '[]');
 
     const submitBtn = document.getElementById('feedbackSubmitBtn');
     submitBtn.disabled = true;
@@ -6154,14 +6213,70 @@ async function submitRatingFeedback() {
 
     try {
         let feedback = '';
+        let kbUpdated = false;
 
         if (activeType === 'style') {
             feedback = (document.getElementById('feedbackStyleText')?.value || '').trim();
         } else {
-            feedback = (document.getElementById('feedbackCorrectAnswer')?.value || '').trim();
+            // Check for edited KB entries and update them
+            const editedEntries = [];
+            for (let i = 0; i < kbEntries.length; i++) {
+                const editDiv = document.getElementById(`kbEdit_${i}`);
+                const textarea = document.getElementById(`kbEditContent_${i}`);
+                if (editDiv && editDiv.style.display !== 'none' && textarea) {
+                    const newContent = textarea.value.trim();
+                    if (newContent && newContent !== kbEntries[i].content) {
+                        editedEntries.push({ id: kbEntries[i].id, title: kbEntries[i].title, content: newContent, category: kbEntries[i].category });
+                    }
+                }
+            }
+
+            // Update each edited KB entry via PUT
+            for (const entry of editedEntries) {
+                try {
+                    const updateResp = await fetch(`${API_BASE_URL}/api/knowledge-base/${entry.id}`, {
+                        method: 'PUT',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ title: entry.title, content: entry.content, category: entry.category })
+                    });
+                    if (updateResp.ok) kbUpdated = true;
+                } catch (err) {
+                    console.warn('Failed to update KB entry:', entry.id, err);
+                }
+            }
+
+            // Build feedback text from edits
+            if (editedEntries.length > 0) {
+                feedback = editedEntries.map(e => `Updated "${e.title}": ${e.content}`).join('\n');
+            }
+
+            // Also handle new info addition (the textarea below the KB entries)
+            const newInfo = (document.getElementById('feedbackCorrectAnswer')?.value || '').trim();
+            if (newInfo) {
+                const category = document.getElementById('feedbackKBCategory')?.value || 'faqs';
+                const title = inquiryText ? inquiryText.substring(0, 255) : 'Feedback correction';
+
+                const kbResponse = await fetch(`${API_BASE_URL}/api/knowledge-base/from-feedback`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        responseHistoryId: backendId,
+                        title: title,
+                        content: newInfo,
+                        category: category
+                    })
+                });
+
+                if (kbResponse.ok) kbUpdated = true;
+                if (feedback) {
+                    feedback += '\n' + newInfo;
+                } else {
+                    feedback = newInfo;
+                }
+            }
         }
 
-        // 1. Save the rating + feedback to response history (style learning channel)
+        // Save the rating + feedback to response history
         if (backendId) {
             await fetch(`${API_BASE_URL}/api/response-history/${backendId}/rate`, {
                 method: 'POST',
@@ -6170,29 +6285,12 @@ async function submitRatingFeedback() {
             });
         }
 
-        // 2. If "info" type with a correction, also create a KB entry
-        if (activeType === 'info' && feedback) {
-            const category = document.getElementById('feedbackKBCategory')?.value || 'faqs';
-            const title = inquiryText ? inquiryText.substring(0, 255) : 'Feedback correction';
-
-            const kbResponse = await fetch(`${API_BASE_URL}/api/knowledge-base/from-feedback`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({
-                    responseHistoryId: backendId,
-                    title: title,
-                    content: feedback,
-                    category: category
-                })
-            });
-
-            if (kbResponse.ok) {
-                // Reload KB so the new entry is available immediately
-                await loadKnowledgeFromBackend();
-                showToast("Knowledge base updated — Lightspeed will get this right next time!", "success");
-            } else {
-                showToast("Feedback saved, but could not update knowledge base.", "info");
-            }
+        // Reload KB if any entries were updated or created
+        if (kbUpdated) {
+            await loadKnowledgeFromBackend();
+            showToast("Knowledge base updated — Lightspeed will get this right next time!", "success");
+        } else if (activeType === 'info') {
+            showToast("Got it — Lightspeed will learn from this feedback.", "info");
         } else {
             showToast("Got it — Lightspeed will learn from this feedback.", "info");
         }
@@ -6282,11 +6380,11 @@ async function handleBulkFile(file) {
         document.getElementById("progressText").textContent = `Processing ${i + 1} of ${inquiries.length}...`;
 
         try {
-            const response = await generateCustomResponse(
+            const result = await generateCustomResponse(
                 inquiries[i], allKnowledge, staffName,
                 { toneValue: 50, lengthValue: 50, includeLinks: true, includeSteps: false }
             );
-            bulkResults.push({ inquiry: inquiries[i], response: response, error: null });
+            bulkResults.push({ inquiry: inquiries[i], response: result.text, error: null });
         } catch (error) {
             bulkResults.push({ inquiry: inquiries[i], response: null, error: error.message });
         }
