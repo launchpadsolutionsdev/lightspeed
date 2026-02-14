@@ -256,18 +256,31 @@ router.get('/rated-examples', authenticate, async (req, res) => {
         );
 
         // Get most recent negative examples with feedback (mistakes to avoid)
+        // Left join with knowledge_base to pull in corrections created from feedback
         const negativeResult = await pool.query(
-            `SELECT inquiry, response, rating_feedback, format, tone
-             FROM response_history
-             WHERE organization_id = $1 AND rating = 'negative' AND (tool = $2 OR tool IS NULL)
-             ORDER BY rating_at DESC
+            `SELECT rh.inquiry, rh.response, rh.rating_feedback, rh.format, rh.tone,
+                    kb.content AS corrected_response
+             FROM response_history rh
+             LEFT JOIN knowledge_base kb
+                ON rh.rating_feedback LIKE '%[KB entry created: ' || kb.id::text || ']%'
+                AND kb.organization_id = $1
+             WHERE rh.organization_id = $1 AND rh.rating = 'negative' AND (rh.tool = $2 OR rh.tool IS NULL)
+             ORDER BY rh.rating_at DESC
              LIMIT 3`,
             [organizationId, tool]
         );
 
+        // Clean up rating_feedback by removing the internal KB link markers
+        const negativeRows = negativeResult.rows.map(row => ({
+            ...row,
+            rating_feedback: row.rating_feedback
+                ? row.rating_feedback.replace(/\n?\[KB entry created: [a-f0-9-]+\]/g, '').trim()
+                : null
+        }));
+
         res.json({
             positive: positiveResult.rows,
-            negative: negativeResult.rows
+            negative: negativeRows
         });
 
     } catch (error) {

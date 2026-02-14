@@ -5655,16 +5655,19 @@ function buildRatedExamplesContext(ratedExamples) {
     if (ratedExamples.positive && ratedExamples.positive.length > 0) {
         context += '\n\nPREVIOUSLY APPROVED RESPONSES (emulate this style and approach):\n';
         ratedExamples.positive.forEach((ex, i) => {
-            context += `\nExample ${i + 1}:\nCustomer inquiry: ${ex.inquiry.substring(0, 200)}...\nApproved response: ${ex.response.substring(0, 300)}...\n`;
+            context += `\nExample ${i + 1}:\nCustomer inquiry: ${ex.inquiry}\nApproved response: ${ex.response}\n`;
         });
     }
 
     if (ratedExamples.negative && ratedExamples.negative.length > 0) {
         context += '\n\nPREVIOUSLY REJECTED RESPONSES (avoid these patterns):\n';
         ratedExamples.negative.forEach((ex, i) => {
-            context += `\nExample ${i + 1}:\nCustomer inquiry: ${ex.inquiry.substring(0, 200)}...\nRejected response: ${ex.response.substring(0, 300)}...\n`;
+            context += `\nExample ${i + 1}:\nCustomer inquiry: ${ex.inquiry}\nRejected response: ${ex.response}\n`;
             if (ex.rating_feedback) {
-                context += `Reason: ${ex.rating_feedback}\n`;
+                context += `Reason for rejection: ${ex.rating_feedback}\n`;
+            }
+            if (ex.corrected_response) {
+                context += `Correct response: ${ex.corrected_response}\n`;
             }
         });
     }
@@ -5682,9 +5685,8 @@ async function generateCustomResponse(customerEmail, knowledge, staffName, optio
                        lengthValue < 33 ? "brief and concise" :
                        lengthValue > 66 ? "detailed and thorough" : "moderate length";
 
-    const knowledgeContext = knowledge.slice(0, 30).map(k =>
-        `Topic: ${k.question}\nKeywords: ${k.keywords.join(", ")}\nResponse:\n${k.response}`
-    ).join("\n\n---\n\n");
+    // KB entries are now picked server-side by the Haiku relevance picker.
+    // We no longer dump all entries here — the backend handles it when we pass `inquiry`.
 
     // Fetch rated examples for learning
     const ratedExamples = await getRatedExamples();
@@ -5759,8 +5761,7 @@ ESCALATION: If the inquiry is unclear, bizarre, nonsensical, confrontational, th
 IMPORTANT: Only reference information from the organization knowledge base below and the draw schedule above. Do not assume details about websites, locations, game types, eligibility rules, or operational procedures that are not explicitly provided.
 
 Knowledge base:
-
-${knowledgeContext}${buildRatedExamplesContext(ratedExamples)}`;
+${buildRatedExamplesContext(ratedExamples)}`;
 
     const instructionsBlock = agentInstructions
         ? `\nAGENT INSTRUCTIONS (from the staff member — follow these closely):\n${agentInstructions}\n`
@@ -5789,6 +5790,7 @@ Sign as: ${staffName}`;
         headers: getAuthHeaders(),
         body: JSON.stringify({
             system: systemPrompt,
+            inquiry: customerEmail,
             messages: [{ role: "user", content: userPrompt }],
             max_tokens: isFacebook ? 200 : 1024
         })
