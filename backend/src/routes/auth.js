@@ -62,14 +62,8 @@ router.post('/google', async (req, res) => {
                 console.error('Google token verification failed:', verifyError);
                 return res.status(401).json({ error: 'Invalid Google credential' });
             }
-        } else if (email && googleId) {
-            // Fallback: use provided user info
-            userEmail = email;
-            userName = name || '';
-            userGoogleId = googleId;
-            userPicture = picture || '';
         } else {
-            return res.status(400).json({ error: 'Credential or email required' });
+            return res.status(401).json({ error: 'Google credential is required' });
         }
 
         // Check if user exists

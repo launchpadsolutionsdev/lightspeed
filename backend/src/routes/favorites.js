@@ -86,9 +86,21 @@ router.delete('/:id', authenticate, async (req, res) => {
     try {
         const { id } = req.params;
 
+        // Verify user still belongs to an organization
+        const orgResult = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [req.userId]
+        );
+
+        if (orgResult.rows.length === 0) {
+            return res.status(403).json({ error: 'No active organization membership' });
+        }
+
+        const organizationId = orgResult.rows[0].organization_id;
+
         const result = await pool.query(
-            'DELETE FROM favorites WHERE id = $1 AND user_id = $2 RETURNING id',
-            [id, req.userId]
+            'DELETE FROM favorites WHERE id = $1 AND user_id = $2 AND organization_id = $3 RETURNING id',
+            [id, req.userId, organizationId]
         );
 
         if (result.rows.length === 0) {
