@@ -2344,6 +2344,38 @@
         .quality-item.quality-warn { color: var(--warning); }
         .quality-item.quality-fail { color: var(--danger); }
 
+        /* Response Sources */
+        .response-sources {
+            margin-top: 12px; border: 1px solid #e5e7eb; border-radius: 10px;
+            background: #fafbfc; overflow: hidden;
+        }
+        .response-sources-header {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 0.75rem; cursor: pointer; user-select: none;
+            transition: background 0.15s ease;
+        }
+        .response-sources-header:hover { background: #f3f4f6; }
+        .response-sources-icon { font-size: 0.85rem; }
+        .response-sources-title {
+            font-size: 0.78rem; font-weight: 600; color: #6b7280; flex: 1;
+        }
+        .response-sources-toggle {
+            font-size: 0.7rem; color: #9ca3af; transition: transform 0.15s ease;
+        }
+        .response-sources-list {
+            border-top: 1px solid #e5e7eb; padding: 0.4rem 0.75rem;
+        }
+        .response-source-item {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.3rem 0; font-size: 0.75rem;
+        }
+        .response-source-category {
+            font-size: 0.6rem; font-weight: 600; text-transform: uppercase;
+            color: #6b7280; background: #e5e7eb; border-radius: 3px;
+            padding: 0.1rem 0.35rem; flex-shrink: 0;
+        }
+        .response-source-title { color: #374151; }
+
         /* ==================== REFINE RESPONSE ==================== */
         .refine-section {
             margin-top: 20px;
