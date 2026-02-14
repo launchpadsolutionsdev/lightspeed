@@ -314,6 +314,7 @@ let responseHistory = [];
 let favorites = [];
 let currentResponse = null;
 let currentInquiry = null;
+let currentReferencedKb = [];
 let bulkResults = [];
 let currentFilter = "all";
 let currentHistoryItem = null;
@@ -1730,14 +1731,8 @@ You are a fully capable AI assistant. You can help with absolutely anything:
 
 Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
-        // Inject org-specific knowledge base
-        let kbSection = '';
-        if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
-            const kbContext = customKnowledge.slice(0, 15).map(k =>
-                `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
-            ).join('\n\n---\n\n');
-            kbSection = '\n\nORGANIZATION KNOWLEDGE BASE (use this to answer org-specific questions accurately):\n' + kbContext;
-        }
+        // KB entries are now picked server-side by the Haiku relevance picker
+        // when we pass `inquiry` to /api/generate.
 
         // Inject rated examples from feedback loop
         const ratedExamples = await getRatedExamples('ask_lightspeed');
@@ -1745,13 +1740,14 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
         // Inject draw schedule context for accurate date/prize awareness
         const drawScheduleSection = getDrawScheduleContext();
-        const fullSystemPrompt = systemPrompt + kbSection + (drawScheduleSection ? '\n\n' + drawScheduleSection : '') + feedbackSection;
+        const fullSystemPrompt = systemPrompt + '\n\nKnowledge base:\n' + (drawScheduleSection ? '\n\n' + drawScheduleSection : '') + feedbackSection;
 
         const response = await fetch(`${API_BASE_URL}/api/generate`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({
                 system: fullSystemPrompt,
+                inquiry: message,
                 messages: askConversation.map(m => ({ role: m.role, content: m.content })),
                 max_tokens: 4096
             })
@@ -2042,25 +2038,19 @@ You are a fully capable AI assistant. You can help with absolutely anything:
 
 Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
-        let kbSection = '';
-        if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
-            const kbContext = customKnowledge.slice(0, 15).map(k =>
-                `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
-            ).join('\n\n---\n\n');
-            kbSection = '\n\nORGANIZATION KNOWLEDGE BASE (use this to answer org-specific questions accurately):\n' + kbContext;
-        }
+        // KB entries are now picked server-side by the Haiku relevance picker
 
         const ratedExamples = await getRatedExamples('ask_lightspeed');
         const feedbackSection = buildRatedExamplesContext(ratedExamples);
-        // Inject draw schedule context for accurate date/prize awareness
         const drawScheduleSection = getDrawScheduleContext();
-        const fullSystemPrompt = systemPrompt + kbSection + (drawScheduleSection ? '\n\n' + drawScheduleSection : '') + feedbackSection;
+        const fullSystemPrompt = systemPrompt + '\n\nKnowledge base:\n' + (drawScheduleSection ? '\n\n' + drawScheduleSection : '') + feedbackSection;
 
         const response = await fetch(`${API_BASE_URL}/api/generate`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({
                 system: fullSystemPrompt,
+                inquiry: message,
                 messages: askConversation.map(m => ({ role: m.role, content: m.content })),
                 max_tokens: 4096
             })
@@ -5549,6 +5539,7 @@ async function handleGenerate() {
 
         currentResponse = responseText;
         currentInquiry = customerEmail;
+        currentReferencedKb = referencedKbEntries;
         currentHistoryId = historyEntry.id;
 
         // Save user data with updated history
@@ -5848,6 +5839,24 @@ function displayResults(response, historyId) {
             <button class="rating-btn thumbs-down" onclick="rateResponse('${historyId}', 'negative', this)">👎</button>
         </div>
 
+        ${currentReferencedKb.length > 0 ? `
+        <div class="response-sources">
+            <div class="response-sources-header" onclick="toggleSources()">
+                <span class="response-sources-icon">📚</span>
+                <span class="response-sources-title">Sources (${currentReferencedKb.length} KB entries used)</span>
+                <span class="response-sources-toggle" id="sourcesToggle">▸</span>
+            </div>
+            <div class="response-sources-list" id="sourcesList" style="display:none;">
+                ${currentReferencedKb.map(kb => `
+                    <div class="response-source-item">
+                        <span class="response-source-category">${escapeHtml(kb.category)}</span>
+                        <span class="response-source-title">${escapeHtml(kb.title)}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+
         <div class="quality-checks">
             ${qualityChecks.map(check => `
                 <div class="quality-item ${check.status}">
@@ -5891,6 +5900,15 @@ function displayResults(response, historyId) {
     }, 100);
 }
 
+function toggleSources() {
+    const list = document.getElementById('sourcesList');
+    const toggle = document.getElementById('sourcesToggle');
+    if (!list) return;
+    const isHidden = list.style.display === 'none';
+    list.style.display = isHidden ? 'block' : 'none';
+    if (toggle) toggle.textContent = isHidden ? '▾' : '▸';
+}
+
 // ==================== REFINE RESPONSE ====================
 async function refineResponse(instruction) {
     if (!instruction || !instruction.trim()) {
@@ -5915,6 +5933,13 @@ async function refineResponse(instruction) {
     try {
         const isFacebook = inquiryType === "facebook";
 
+        // Build KB context so refinements can draw on factual information
+        let kbContext = '';
+        if (currentReferencedKb.length > 0) {
+            kbContext = '\n\nKNOWLEDGE BASE (use this to add accurate details when the instruction asks for more information):\n' +
+                currentReferencedKb.map(kb => `[${kb.category}] ${kb.title}: ${kb.content}`).join('\n\n');
+        }
+
         const systemPrompt = `You are a helpful assistant that refines customer support responses.
 You will be given an original customer inquiry, the current response, and an instruction for how to modify it.
 
@@ -5924,8 +5949,8 @@ IMPORTANT RULES:
 - Keep the response appropriate for customer support
 - If this is a Facebook response, keep it under 400 characters and end with -${defaultName}
 ${isFacebook ? '- Facebook responses should be a single paragraph with no line breaks' : ''}
-- Do NOT add information that wasn't in the original response unless specifically asked
-- Only output the refined response, nothing else`;
+- If asked to add details, use ONLY information from the knowledge base below — do not make up facts
+- Only output the refined response, nothing else${kbContext}`;
 
         const userPrompt = `ORIGINAL CUSTOMER INQUIRY:
 ${currentInquiry}
@@ -5985,38 +6010,68 @@ Please provide the refined response:`;
 
 function performQualityChecks(response) {
     const checks = [];
-
-    // Length check
+    const isFacebook = inquiryType === 'facebook';
+    const lowerResponse = response.toLowerCase();
     const wordCount = response.split(/\s+/).length;
-    if (wordCount < 20) {
-        checks.push({ status: 'quality-warn', message: 'Response may be too brief' });
-    } else if (wordCount > 300) {
-        checks.push({ status: 'quality-warn', message: 'Response may be too long' });
-    } else {
-        checks.push({ status: 'quality-pass', message: 'Response length is appropriate' });
-    }
+    const charCount = response.length;
 
-    // Greeting check
-    if (response.toLowerCase().includes('hi there') || response.toLowerCase().includes('hello') || response.toLowerCase().includes('hi,')) {
-        checks.push({ status: 'quality-pass', message: 'Includes greeting' });
-    } else {
-        checks.push({ status: 'quality-warn', message: 'Consider adding a greeting' });
-    }
-
-    // Sign-off check
-    if (response.includes('thank') || response.includes('Thank')) {
-        checks.push({ status: 'quality-pass', message: 'Includes thank you' });
-    } else {
-        checks.push({ status: 'quality-warn', message: 'Consider thanking the customer' });
-    }
-
-    // Link check (if option was selected)
-    if (document.getElementById("includeLinks").checked) {
-        if (response.includes('http') || response.includes('.ca') || response.includes('.com')) {
-            checks.push({ status: 'quality-pass', message: 'Includes relevant links' });
+    if (isFacebook) {
+        // Facebook-specific checks
+        if (charCount <= 400) {
+            checks.push({ status: 'quality-pass', message: `Under 400 chars (${charCount})` });
         } else {
-            checks.push({ status: 'quality-warn', message: 'No links included' });
+            checks.push({ status: 'quality-fail', message: `Over 400 chars (${charCount}) — Facebook will truncate` });
         }
+
+        if (response.includes('\n')) {
+            checks.push({ status: 'quality-warn', message: 'Contains line breaks — Facebook comments should be single paragraph' });
+        } else {
+            checks.push({ status: 'quality-pass', message: 'Single paragraph format' });
+        }
+
+        // Facebook should direct to email, not take action
+        if (lowerResponse.includes('email') || lowerResponse.includes('contact')) {
+            checks.push({ status: 'quality-pass', message: 'Directs to email for follow-up' });
+        }
+    } else {
+        // Email-specific checks
+        if (wordCount < 20) {
+            checks.push({ status: 'quality-warn', message: 'Response may be too brief' });
+        } else if (wordCount > 300) {
+            checks.push({ status: 'quality-warn', message: 'Response may be too long' });
+        } else {
+            checks.push({ status: 'quality-pass', message: 'Response length is appropriate' });
+        }
+
+        // Greeting check (emails should have one)
+        if (lowerResponse.includes('hi there') || lowerResponse.includes('hello') || lowerResponse.includes('hi,') || lowerResponse.startsWith('dear')) {
+            checks.push({ status: 'quality-pass', message: 'Includes greeting' });
+        } else {
+            checks.push({ status: 'quality-warn', message: 'Consider adding a greeting' });
+        }
+
+        // Sign-off check
+        if (lowerResponse.includes('thank')) {
+            checks.push({ status: 'quality-pass', message: 'Includes thank you' });
+        } else {
+            checks.push({ status: 'quality-warn', message: 'Consider thanking the customer' });
+        }
+
+        // Link check (if option was selected)
+        if (document.getElementById("includeLinks").checked) {
+            if (response.includes('http') || response.includes('.ca') || response.includes('.com')) {
+                checks.push({ status: 'quality-pass', message: 'Includes relevant links' });
+            } else {
+                checks.push({ status: 'quality-warn', message: 'No links included' });
+            }
+        }
+    }
+
+    // KB grounding check (applies to both types)
+    if (currentReferencedKb.length > 0) {
+        checks.push({ status: 'quality-pass', message: `Grounded in ${currentReferencedKb.length} KB source${currentReferencedKb.length > 1 ? 's' : ''}` });
+    } else {
+        checks.push({ status: 'quality-warn', message: 'No KB sources matched — response uses general knowledge' });
     }
 
     return checks;
