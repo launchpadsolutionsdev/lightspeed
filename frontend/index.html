@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="admin-dashboard.css?v=20260213a">
     <link rel="stylesheet" href="design-system.css?v=20260213a">
     <link rel="stylesheet" href="landing.css?v=20260208">
+    <link rel="stylesheet" href="rules-of-play.css?v=20260215">
     <!-- SheetJS for Excel parsing (Data Analysis Tool) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js for visualizations -->
@@ -8774,6 +8775,25 @@
 
                 </div>
 
+                <!-- Rules of Play Generator -->
+                <div class="bento-card bento-standard" id="toolRulesOfPlay">
+                    <div class="bento-card-glow rop-glow"></div>
+                    <div class="bento-icon-row">
+                        <div class="bento-icon rop">
+                            <span style="font-size: 22px; line-height: 1;">&#9878;</span>
+                        </div>
+                        <span class="bento-badge ai-badge">AI-Powered</span>
+                    </div>
+                    <h3 class="bento-title">Rules of Play</h3>
+                    <p class="bento-description">Generate jurisdiction-compliant Rules of Play documents for your raffles.</p>
+                    <div class="bento-features">
+                        <span class="bento-feature">50/50</span>
+                        <span class="bento-feature">Catch the Ace</span>
+                        <span class="bento-feature">Prize Raffle</span>
+                        <span class="bento-feature">House Lottery</span>
+                    </div>
+                </div>
+
                 <!-- Ask Lightspeed - Full width bottom card -->
                 <div class="bento-card bento-full-width" id="toolAskLightspeed">
                     <div class="bento-card-glow ask-glow"></div>
@@ -8869,6 +8889,10 @@
                     <button class="sidebar-btn" data-tool="ask-lightspeed">
                         <span class="sidebar-btn-icon">&#10024;</span>
                         <span class="sidebar-btn-label">Ask Lightspeed</span>
+                    </button>
+                    <button class="sidebar-btn" data-tool="rules-of-play">
+                        <span class="sidebar-btn-icon">&#9878;</span>
+                        <span class="sidebar-btn-label">Rules of Play</span>
                     </button>
                 </div>
 
@@ -11581,6 +11605,164 @@
             </div>
         </div>
     </div><!-- /#askLightspeedApp -->
+
+    <!-- ==================== RULES OF PLAY GENERATOR ==================== -->
+    <div class="app" id="rulesOfPlayApp">
+        <header class="header">
+            <div class="header-inner">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="sidebar-toggle" id="ropSidebarToggle" title="Toggle menu">
+                        <span>&#9776;</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="container">
+            <div class="rop-container">
+
+                <!-- LIST VIEW -->
+                <div id="ropListView" class="rop-view">
+                    <div class="rop-list-header">
+                        <div>
+                            <h2 class="rop-page-title">Rules of Play</h2>
+                            <p class="rop-page-subtitle">Generate jurisdiction-compliant raffle documents</p>
+                        </div>
+                        <button class="btn-primary" id="ropNewBtn">+ New Rules of Play</button>
+                    </div>
+
+                    <div class="rop-disclaimer">
+                        <strong>Disclaimer:</strong> This document was generated using AI and should be reviewed by qualified legal counsel and your jurisdiction's regulatory body before submission or use. Lightspeed is not responsible for ensuring regulatory compliance.
+                    </div>
+
+                    <div id="ropDraftsList" class="rop-drafts-list">
+                        <div class="rop-empty-state">
+                            <span style="font-size: 48px;">&#9878;</span>
+                            <h3>No drafts yet</h3>
+                            <p>Create your first Rules of Play document to get started.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 0: TYPE & JURISDICTION SELECTOR -->
+                <div id="ropSelectorView" class="rop-view" style="display:none;">
+                    <button class="rop-back-btn" id="ropBackToList">&#8592; Back to Drafts</button>
+                    <h2 class="rop-page-title">New Rules of Play</h2>
+                    <p class="rop-page-subtitle">Select a raffle type and jurisdiction to begin</p>
+
+                    <div class="rop-section">
+                        <label class="rop-section-label">Document Name</label>
+                        <input type="text" id="ropDraftName" class="rop-input" placeholder="e.g., 2025 Summer 50/50 Raffle">
+                    </div>
+
+                    <div class="rop-section">
+                        <label class="rop-section-label">Raffle Type</label>
+                        <div class="rop-type-cards" id="ropTypeCards">
+                            <div class="rop-type-card" data-type="5050">
+                                <div class="rop-type-icon" style="background: rgba(16,185,129,0.15); color: #10b981;">&#128176;</div>
+                                <h4>50/50 Lottery</h4>
+                                <p>Progressive jackpot where the winner receives half the ticket sales</p>
+                            </div>
+                            <div class="rop-type-card" data-type="catch_the_ace">
+                                <div class="rop-type-icon" style="background: rgba(139,92,246,0.15); color: #8b5cf6;">&#127183;</div>
+                                <h4>Catch the Ace</h4>
+                                <p>Weekly progressive draw with card reveal and growing jackpot</p>
+                            </div>
+                            <div class="rop-type-card" data-type="prize_raffle">
+                                <div class="rop-type-icon" style="background: rgba(245,158,11,0.15); color: #f59e0b;">&#127942;</div>
+                                <h4>Prize Raffle</h4>
+                                <p>Fixed prize draw for a specific item like a vehicle or prize package</p>
+                            </div>
+                            <div class="rop-type-card" data-type="house_lottery">
+                                <div class="rop-type-icon" style="background: rgba(59,130,246,0.15); color: #3b82f6;">&#127968;</div>
+                                <h4>House Lottery</h4>
+                                <p>Grand prize property draw with fixed ticket quantity</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rop-section">
+                        <label class="rop-section-label">Jurisdiction</label>
+                        <div class="rop-jurisdiction-row">
+                            <select id="ropCountry" class="rop-select">
+                                <option value="">Select Country</option>
+                                <option value="CA">Canada</option>
+                                <option value="US">United States</option>
+                            </select>
+                            <select id="ropProvState" class="rop-select" disabled>
+                                <option value="">Select Province/State</option>
+                            </select>
+                        </div>
+                        <div id="ropComingSoon" class="rop-coming-soon" style="display:none;">
+                            <p>Rules of Play generation for <strong id="ropComingSoonName"></strong> is coming soon.</p>
+                            <p>Click below to be notified when it's available.</p>
+                            <button class="btn-primary" id="ropNotifyBtn">Notify Me</button>
+                            <span id="ropNotifyConfirm" style="display:none; color: #10b981; margin-left: 12px;">You'll be notified!</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary rop-proceed-btn" id="ropProceedBtn" disabled>Continue to Form</button>
+                </div>
+
+                <!-- FORM VIEW -->
+                <div id="ropFormView" class="rop-view" style="display:none;">
+                    <div class="rop-form-header">
+                        <button class="rop-back-btn" id="ropBackToSelector">&#8592; Back</button>
+                        <div class="rop-form-header-info">
+                            <h2 class="rop-page-title" id="ropFormTitle">Edit Draft</h2>
+                            <span class="rop-badge" id="ropFormBadge"></span>
+                        </div>
+                        <div class="rop-form-actions">
+                            <span class="rop-autosave-status" id="ropSaveStatus">Saved</span>
+                            <button class="btn-secondary" id="ropSaveDraftBtn">Save Draft</button>
+                            <button class="btn-primary" id="ropGenerateBtn">Generate Document</button>
+                        </div>
+                    </div>
+
+                    <div class="rop-disclaimer">
+                        <strong>Disclaimer:</strong> This document was generated using AI and should be reviewed by qualified legal counsel and your jurisdiction's regulatory body before submission or use. Lightspeed is not responsible for ensuring regulatory compliance.
+                    </div>
+
+                    <div class="rop-form-body" id="ropFormBody">
+                        <!-- Form sections rendered by JS based on raffle type -->
+                    </div>
+                </div>
+
+                <!-- GENERATION VIEW -->
+                <div id="ropOutputView" class="rop-view" style="display:none;">
+                    <div class="rop-form-header">
+                        <button class="rop-back-btn" id="ropBackToForm">&#8592; Back to Form</button>
+                        <div class="rop-form-header-info">
+                            <h2 class="rop-page-title" id="ropOutputTitle">Generated Document</h2>
+                            <span class="rop-badge" id="ropOutputBadge"></span>
+                        </div>
+                        <div class="rop-form-actions">
+                            <button class="btn-secondary" id="ropRegenerateBtn">Regenerate</button>
+                            <button class="btn-secondary" id="ropCopyBtn">Copy to Clipboard</button>
+                            <button class="btn-secondary" id="ropExportBtn">Export as DOCX</button>
+                            <button class="btn-primary" id="ropSaveOutputBtn">Save</button>
+                        </div>
+                    </div>
+
+                    <div class="rop-disclaimer">
+                        <strong>Disclaimer:</strong> This document was generated using AI and should be reviewed by qualified legal counsel and your jurisdiction's regulatory body before submission or use. Lightspeed is not responsible for ensuring regulatory compliance.
+                    </div>
+
+                    <textarea id="ropOutputText" class="rop-output-textarea" placeholder="Your generated document will appear here..."></textarea>
+                </div>
+
+                <!-- GENERATING SPINNER -->
+                <div id="ropGeneratingView" class="rop-view" style="display:none;">
+                    <div class="rop-generating">
+                        <div class="rop-spinner"></div>
+                        <h3>Generating your Rules of Play document...</h3>
+                        <p>This may take 30-60 seconds depending on the raffle type and complexity.</p>
+                    </div>
+                </div>
+
+            </div><!-- /.rop-container -->
+        </div>
+    </div><!-- /#rulesOfPlayApp -->
 
     </div><!-- /.app-tools-area -->
     </div><!-- /#appWrapper -->

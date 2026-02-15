@@ -875,6 +875,7 @@ function setupAuthEventListeners() {
     document.getElementById("toolDataAnalysis").addEventListener("click", () => openTool('data-analysis'));
     document.getElementById("toolListNormalizer").addEventListener("click", () => openTool('list-normalizer'));
     document.getElementById("toolAskLightspeed").addEventListener("click", () => openTool('ask-lightspeed'));
+    document.getElementById("toolRulesOfPlay").addEventListener("click", () => openTool('rules-of-play'));
 
     // Back to menu button (in sidebar)
     document.getElementById("backToMenuBtn").addEventListener("click", goBackToMenu);
@@ -1556,6 +1557,7 @@ function openTool(toolId) {
     document.getElementById("draftAssistantApp").classList.remove("visible");
     document.getElementById("listNormalizerApp").classList.remove("visible");
     document.getElementById("askLightspeedApp").classList.remove("visible");
+    document.getElementById("rulesOfPlayApp").classList.remove("visible");
 
     if (toolId === 'customer-response') {
         document.getElementById("mainApp").classList.add("visible");
@@ -1572,6 +1574,9 @@ function openTool(toolId) {
     } else if (toolId === 'ask-lightspeed') {
         document.getElementById("askLightspeedApp").classList.add("visible");
         initAskLightspeedPage();
+    } else if (toolId === 'rules-of-play') {
+        document.getElementById("rulesOfPlayApp").classList.add("visible");
+        initRulesOfPlay();
     }
 
     // Update sidebar active states
@@ -1608,6 +1613,7 @@ function goBackToMenu() {
     document.getElementById("draftAssistantApp").classList.remove("visible");
     document.getElementById("listNormalizerApp").classList.remove("visible");
     document.getElementById("askLightspeedApp").classList.remove("visible");
+    document.getElementById("rulesOfPlayApp").classList.remove("visible");
     showToolMenu();
 }
 
@@ -2922,7 +2928,7 @@ function setupEventListeners() {
     });
 
     // Sidebar toggle for mobile - all toggle buttons (including dashboard)
-    ["sidebarToggle", "dataSidebarToggle", "draftSidebarToggle", "listNormalizerSidebarToggle", "dashboardSidebarToggle"].forEach(id => {
+    ["sidebarToggle", "dataSidebarToggle", "draftSidebarToggle", "listNormalizerSidebarToggle", "dashboardSidebarToggle", "ropSidebarToggle"].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.addEventListener("click", toggleSidebar);
     });
@@ -10489,6 +10495,845 @@ function revealDemoPanel(panel) {
     });
 }
 
+// ==================== RULES OF PLAY GENERATOR ====================
+const ROP_TYPE_LABELS = {
+    '5050': '50/50 Lottery',
+    'catch_the_ace': 'Catch the Ace',
+    'prize_raffle': 'Prize Raffle',
+    'house_lottery': 'House Lottery'
+};
+
+const ROP_TYPE_COLORS = {
+    '5050': '#10b981',
+    'catch_the_ace': '#8b5cf6',
+    'prize_raffle': '#f59e0b',
+    'house_lottery': '#3b82f6'
+};
+
+let ropState = {
+    drafts: [],
+    jurisdictions: [],
+    currentDraftId: null,
+    currentDraft: null,
+    selectedType: null,
+    selectedJurisdictionId: null,
+    initialized: false,
+    saveTimeout: null
+};
+
+function initRulesOfPlay() {
+    if (!ropState.initialized) {
+        setupRopEventListeners();
+        ropState.initialized = true;
+    }
+    ropShowList();
+}
+
+function setupRopEventListeners() {
+    document.getElementById('ropNewBtn').addEventListener('click', ropShowSelector);
+    document.getElementById('ropBackToList').addEventListener('click', ropShowList);
+    document.getElementById('ropBackToSelector').addEventListener('click', () => {
+        if (ropState.currentDraftId) {
+            ropShowSelector();
+        } else {
+            ropShowSelector();
+        }
+    });
+    document.getElementById('ropBackToForm').addEventListener('click', () => ropShowForm(ropState.currentDraftId));
+    document.getElementById('ropProceedBtn').addEventListener('click', ropProceedToForm);
+    document.getElementById('ropSaveDraftBtn').addEventListener('click', ropSaveDraft);
+    document.getElementById('ropGenerateBtn').addEventListener('click', ropGenerate);
+    document.getElementById('ropRegenerateBtn').addEventListener('click', ropGenerate);
+    document.getElementById('ropCopyBtn').addEventListener('click', ropCopyOutput);
+    document.getElementById('ropExportBtn').addEventListener('click', ropExport);
+    document.getElementById('ropSaveOutputBtn').addEventListener('click', ropSaveOutput);
+    document.getElementById('ropNotifyBtn').addEventListener('click', ropNotifyMe);
+
+    // Type card selection
+    document.getElementById('ropTypeCards').addEventListener('click', (e) => {
+        const card = e.target.closest('.rop-type-card');
+        if (!card) return;
+        document.querySelectorAll('.rop-type-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        ropState.selectedType = card.dataset.type;
+        ropUpdateProceedBtn();
+    });
+
+    // Country change -> load provinces/states
+    document.getElementById('ropCountry').addEventListener('change', ropLoadProvinces);
+    document.getElementById('ropProvState').addEventListener('change', ropOnJurisdictionChange);
+}
+
+// --- Views ---
+
+function ropSwitchView(viewId) {
+    document.querySelectorAll('#rulesOfPlayApp .rop-view').forEach(v => v.style.display = 'none');
+    document.getElementById(viewId).style.display = '';
+}
+
+async function ropShowList() {
+    ropSwitchView('ropListView');
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/rules-of-play`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load drafts');
+        const data = await resp.json();
+        ropState.drafts = data.drafts || [];
+        ropRenderDraftsList();
+    } catch (err) {
+        console.error('ROP list error:', err);
+    }
+}
+
+function ropRenderDraftsList() {
+    const container = document.getElementById('ropDraftsList');
+    if (ropState.drafts.length === 0) {
+        container.innerHTML = `
+            <div class="rop-empty-state">
+                <span style="font-size: 48px;">&#9878;</span>
+                <h3>No drafts yet</h3>
+                <p>Create your first Rules of Play document to get started.</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <table class="rop-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Jurisdiction</th>
+                    <th>Status</th>
+                    <th>Last Updated</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                ${ropState.drafts.map(d => `
+                    <tr class="rop-draft-row" data-id="${d.id}">
+                        <td class="rop-draft-name">${escapeHtml(d.name)}</td>
+                        <td><span class="rop-type-badge" style="--type-color: ${ROP_TYPE_COLORS[d.raffle_type] || '#888'}">${ROP_TYPE_LABELS[d.raffle_type] || d.raffle_type}</span></td>
+                        <td>${d.province_state_name || '—'}</td>
+                        <td><span class="rop-status-badge rop-status-${d.status}">${d.status}</span></td>
+                        <td>${new Date(d.updated_at).toLocaleDateString()}</td>
+                        <td><button class="rop-delete-btn" data-id="${d.id}" title="Delete">&#128465;</button></td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>`;
+
+    // Row click -> open form
+    container.querySelectorAll('.rop-draft-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('.rop-delete-btn')) return;
+            ropShowForm(row.dataset.id);
+        });
+    });
+
+    // Delete buttons
+    container.querySelectorAll('.rop-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm('Delete this draft?')) return;
+            try {
+                await fetch(`${API_BASE_URL}/api/rules-of-play/${btn.dataset.id}`, {
+                    method: 'DELETE', headers: getAuthHeaders()
+                });
+                ropShowList();
+            } catch (err) {
+                showToast('Failed to delete draft', 'error');
+            }
+        });
+    });
+}
+
+function ropShowSelector() {
+    ropState.currentDraftId = null;
+    ropState.selectedType = null;
+    ropState.selectedJurisdictionId = null;
+    document.getElementById('ropDraftName').value = '';
+    document.querySelectorAll('.rop-type-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('ropCountry').value = '';
+    document.getElementById('ropProvState').innerHTML = '<option value="">Select Province/State</option>';
+    document.getElementById('ropProvState').disabled = true;
+    document.getElementById('ropComingSoon').style.display = 'none';
+    document.getElementById('ropProceedBtn').disabled = true;
+    ropSwitchView('ropSelectorView');
+}
+
+async function ropLoadProvinces() {
+    const country = document.getElementById('ropCountry').value;
+    const select = document.getElementById('ropProvState');
+    select.innerHTML = '<option value="">Select Province/State</option>';
+    document.getElementById('ropComingSoon').style.display = 'none';
+
+    if (!country) {
+        select.disabled = true;
+        ropUpdateProceedBtn();
+        return;
+    }
+
+    try {
+        if (ropState.jurisdictions.length === 0) {
+            const resp = await fetch(`${API_BASE_URL}/api/jurisdictions`, { headers: getAuthHeaders() });
+            const data = await resp.json();
+            ropState.jurisdictions = data.jurisdictions || [];
+        }
+
+        const filtered = ropState.jurisdictions.filter(j => j.country === country);
+        filtered.forEach(j => {
+            const opt = document.createElement('option');
+            opt.value = j.id;
+            opt.textContent = j.province_state_name + (j.is_active ? '' : ' (Coming Soon)');
+            opt.dataset.active = j.is_active;
+            select.appendChild(opt);
+        });
+        select.disabled = false;
+    } catch (err) {
+        console.error('Load jurisdictions error:', err);
+        select.disabled = true;
+    }
+    ropUpdateProceedBtn();
+}
+
+function ropOnJurisdictionChange() {
+    const select = document.getElementById('ropProvState');
+    const selectedOpt = select.options[select.selectedIndex];
+    const comingSoon = document.getElementById('ropComingSoon');
+
+    if (!selectedOpt || !selectedOpt.value) {
+        comingSoon.style.display = 'none';
+        ropState.selectedJurisdictionId = null;
+        ropUpdateProceedBtn();
+        return;
+    }
+
+    const isActive = selectedOpt.dataset.active === 'true';
+    if (isActive) {
+        comingSoon.style.display = 'none';
+        ropState.selectedJurisdictionId = selectedOpt.value;
+    } else {
+        const jur = ropState.jurisdictions.find(j => j.id === selectedOpt.value);
+        document.getElementById('ropComingSoonName').textContent = jur ? jur.province_state_name : selectedOpt.textContent;
+        comingSoon.style.display = 'block';
+        document.getElementById('ropNotifyConfirm').style.display = 'none';
+        ropState.selectedJurisdictionId = null;
+    }
+    ropUpdateProceedBtn();
+}
+
+function ropUpdateProceedBtn() {
+    const nameVal = document.getElementById('ropDraftName').value.trim();
+    document.getElementById('ropProceedBtn').disabled = !(ropState.selectedType && ropState.selectedJurisdictionId && nameVal);
+}
+
+// Listen for name changes too
+document.addEventListener('DOMContentLoaded', () => {
+    const nameInput = document.getElementById('ropDraftName');
+    if (nameInput) nameInput.addEventListener('input', ropUpdateProceedBtn);
+});
+
+async function ropNotifyMe() {
+    const select = document.getElementById('ropProvState');
+    const jId = select.value;
+    if (!jId) return;
+    try {
+        await fetch(`${API_BASE_URL}/api/jurisdictions/waitlist`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ jurisdiction_id: jId })
+        });
+        document.getElementById('ropNotifyConfirm').style.display = 'inline';
+        document.getElementById('ropNotifyBtn').disabled = true;
+    } catch (err) {
+        showToast('Failed to register interest', 'error');
+    }
+}
+
+async function ropProceedToForm() {
+    const name = document.getElementById('ropDraftName').value.trim();
+    if (!name || !ropState.selectedType || !ropState.selectedJurisdictionId) return;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/rules-of-play`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                name,
+                raffle_type: ropState.selectedType,
+                jurisdiction_id: ropState.selectedJurisdictionId,
+                form_data: {}
+            })
+        });
+        if (!resp.ok) throw new Error('Failed to create draft');
+        const draft = await resp.json();
+        ropShowForm(draft.id);
+    } catch (err) {
+        showToast('Failed to create draft', 'error');
+    }
+}
+
+// --- Form ---
+
+async function ropShowForm(draftId) {
+    ropSwitchView('ropFormView');
+    ropState.currentDraftId = draftId;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/rules-of-play/${draftId}`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load draft');
+        ropState.currentDraft = await resp.json();
+
+        document.getElementById('ropFormTitle').textContent = ropState.currentDraft.name;
+        const badge = document.getElementById('ropFormBadge');
+        badge.textContent = ROP_TYPE_LABELS[ropState.currentDraft.raffle_type] || '';
+        badge.style.setProperty('--type-color', ROP_TYPE_COLORS[ropState.currentDraft.raffle_type] || '#888');
+
+        ropRenderForm();
+    } catch (err) {
+        showToast('Failed to load draft', 'error');
+        ropShowList();
+    }
+}
+
+function ropRenderForm() {
+    const d = ropState.currentDraft;
+    const fd = d.form_data || {};
+    const type = d.raffle_type;
+    const body = document.getElementById('ropFormBody');
+
+    const sections = [];
+
+    // Section 1: Organization & License
+    sections.push(ropSection('Organization & License Info', `
+        ${ropField('organization_legal_name', 'Organization Legal Name', fd.organization_legal_name, 'text', 'e.g., Thunder Bay Regional Health Sciences Foundation')}
+        ${ropField('raffle_brand_name', 'Lottery/Raffle Brand Name', fd.raffle_brand_name, 'text', 'e.g., Cruising For a Cure')}
+        ${ropField('license_number', 'License Number', fd.license_number, 'text', 'e.g., RAF-12345')}
+        ${type === '5050' ? ropField('draw_range', 'Draw Numbers Covered', fd.draw_range, 'text', 'e.g., Draws #1-12') : ''}
+        ${ropField('regulatory_body', 'Licensing/Regulatory Body', fd.regulatory_body || d.regulatory_body_name || '', 'text', '', true)}
+    `));
+
+    // Section 2: Eligibility
+    sections.push(ropSection('Eligibility', `
+        ${ropField('minimum_age', 'Minimum Age to Play', fd.minimum_age || d.minimum_age || 18, 'number')}
+        ${ropField('geographic_restriction', 'Geographic Restriction', fd.geographic_restriction || d.geographic_restriction_text || '', 'textarea', '', true)}
+        <div class="rop-subsection">
+            <label class="rop-field-label">Ineligible Persons</label>
+            <div id="ropIneligibleGroups">${ropRenderRepeatableGroups('ineligible_groups', fd.ineligible_groups || [{ group_name: '', description: '', consequence: 'disqualification, purchased tickets will be considered void' }], ['group_name:Group Name:e.g. Foundation Staff and Board of Directors', 'description:Description:e.g. as well as family members living in the same household', 'consequence:Consequence:e.g. disqualification'])}</div>
+            <button class="rop-add-btn" data-group="ineligible_groups">+ Add Group</button>
+        </div>
+        <div class="rop-toggle-row">
+            <label><input type="checkbox" class="rop-field" data-field="include_volunteer_exception" ${fd.include_volunteer_exception ? 'checked' : ''}> Include volunteer exception? (Volunteers ARE eligible to participate)</label>
+        </div>
+    `));
+
+    // Section 3: Ticket Sales
+    let ticketSalesExtra = '';
+    if (type === 'prize_raffle' || type === 'house_lottery') {
+        ticketSalesExtra += ropField('max_tickets', 'Maximum Tickets Available', fd.max_tickets, 'number', 'e.g., 20000');
+    }
+    if (type === 'house_lottery') {
+        ticketSalesExtra += ropField('multipack_description', 'Multi-Pack Pricing', fd.multipack_description, 'text', 'e.g., 3-Pack for $250');
+        ticketSalesExtra += `<div class="rop-toggle-row"><label><input type="checkbox" class="rop-field" data-field="group_purchase_rules" ${fd.group_purchase_rules ? 'checked' : ''}> Include group purchase rules</label></div>`;
+        ticketSalesExtra += ropField('payment_methods', 'Accepted Payment Methods', fd.payment_methods, 'text', 'e.g., Visa, Mastercard, Amex, Debit');
+    }
+    if (type === 'catch_the_ace') {
+        ticketSalesExtra += `<div class="rop-prefilled"><strong>Envelope Selection:</strong> Each ticket purchase entitles the purchaser to select ONE virtual envelope, regardless of how many tickets are purchased.</div>`;
+    }
+
+    sections.push(ropSection('Ticket Sales', `
+        ${ropField('electronic_system_provider', 'Electronic Raffle System Provider', fd.electronic_system_provider, 'text', 'e.g., BUMP, a Division of Canada Banknote Company')}
+        ${ropField('online_sales_url', 'Online Sales URL', fd.online_sales_url, 'text', 'e.g., https://example.bumpraffles.com')}
+        <div class="rop-subsection">
+            <label class="rop-field-label">Physical Sales Locations</label>
+            <div id="ropSalesLocations">${ropRenderRepeatableGroups('sales_locations', fd.sales_locations || [], ['location_name:Location Name:e.g. Main Office', 'address:Address:e.g. 123 Main St, Thunder Bay, ON'])}</div>
+            <button class="rop-add-btn" data-group="sales_locations">+ Add Location</button>
+        </div>
+        <div class="rop-subsection">
+            <label class="rop-field-label">Ticket Pricing Tiers</label>
+            <div id="ropPricingTiers">${ropRenderRepeatableGroups('pricing_tiers', fd.pricing_tiers || [{ quantity: '', price: '', label: type === '5050' ? 'numbers' : 'tickets' }], ['quantity:Quantity:e.g. 5', 'price:Price ($):e.g. 10', 'label:Label:e.g. tickets'])}</div>
+            <button class="rop-add-btn" data-group="pricing_tiers">+ Add Tier</button>
+        </div>
+        ${ticketSalesExtra}
+        ${ropField('ticket_delivery_method', 'Ticket Delivery Method', fd.ticket_delivery_method, 'text', 'e.g., Email receipt with registered numbers')}
+    `));
+
+    // Section 4: Draw Schedule (varies by type)
+    let drawScheduleContent = '';
+    if (type === '5050') {
+        drawScheduleContent = `
+            <div class="rop-subsection">
+                <label class="rop-field-label">Draws</label>
+                <div id="ropDraws5050">${ropRender5050Draws(fd.draws || [{ draw_number: 1 }])}</div>
+                <button class="rop-add-btn" data-group="draws_5050">+ Add Draw</button>
+            </div>`;
+    } else if (type === 'catch_the_ace') {
+        drawScheduleContent = `
+            ${ropField('cta_start_date', 'Raffle Start Date', fd.cta_start_date, 'date')}
+            ${ropField('cta_draw_day', 'Draw Day of Week', fd.cta_draw_day || 'Tuesday', 'text')}
+            ${ropField('cta_draw_time', 'Draw Time', fd.cta_draw_time || '9:00 AM EST', 'text')}
+            ${ropField('cta_sales_close', 'Sales Close Day/Time', fd.cta_sales_close || 'Monday 11:59 PM EST', 'text')}
+            ${ropField('cta_sales_reopen', 'Sales Reopen Day/Time', fd.cta_sales_reopen || 'Tuesday 9:00 AM EST after draw', 'text')}
+            ${ropField('cta_weekly_prize_pct', 'Weekly Prize % of Sales', fd.cta_weekly_prize_pct || 20, 'number')}
+            ${ropField('cta_jackpot_pct', 'Progressive Jackpot % of Sales', fd.cta_jackpot_pct || 30, 'number')}
+            ${ropField('cta_guaranteed_min_jackpot', 'Guaranteed Minimum Jackpot ($)', fd.cta_guaranteed_min_jackpot, 'number', 'e.g., 500')}
+            ${ropField('cta_remaining_allocation', 'Remaining % Allocated To', fd.cta_remaining_allocation || 'Licensee/charity', 'text')}`;
+    } else if (type === 'prize_raffle') {
+        drawScheduleContent = `
+            ${ropField('pr_draw_name', 'Draw Name', fd.pr_draw_name, 'text', 'e.g., 2025 Cruising For a Cure Jeep Raffle')}
+            ${ropField('pr_sales_start', 'Sales Start Date', fd.pr_sales_start, 'date')}
+            ${ropField('pr_sales_end', 'Sales End Date', fd.pr_sales_end, 'date')}
+            ${ropField('pr_draw_date', 'Draw Date/Time', fd.pr_draw_date, 'text', 'e.g., June 15, 2025 at 2:00 PM EST')}
+            ${ropField('pr_grand_prize_description', 'Grand Prize Description', fd.pr_grand_prize_description, 'textarea', 'e.g., 2025 Jeep Wrangler Willys 4-Door in Anvil Grey')}
+            ${ropField('pr_grand_prize_value', 'Grand Prize Declared Value ($)', fd.pr_grand_prize_value, 'number')}
+            <div class="rop-subsection">
+                <label class="rop-field-label">Early Bird Draws</label>
+                <div id="ropEarlyBirdsPR">${ropRenderRepeatableGroups('early_birds_pr', fd.early_birds_pr || [], ['date:Date:e.g. May 1 2025', 'prize:Prize:e.g. $2,500 cash'])}</div>
+                <button class="rop-add-btn" data-group="early_birds_pr">+ Add Early Bird</button>
+            </div>
+            ${ropField('pr_early_bird_deadline', 'Early Bird Deadline Rule', fd.pr_early_bird_deadline, 'text', 'e.g., Tickets must be purchased before midnight the day before each Early Bird draw')}`;
+    } else if (type === 'house_lottery') {
+        drawScheduleContent = `
+            <div class="rop-subsection">
+                <label class="rop-field-label">Early Bird Draws</label>
+                <div id="ropEarlyBirdsHL">${ropRenderRepeatableGroups('early_birds_hl', fd.early_birds_hl || [], ['date:Date:e.g. March 15 2025', 'amount:Prize Amount ($):e.g. 5000'])}</div>
+                <button class="rop-add-btn" data-group="early_birds_hl">+ Add Early Bird</button>
+            </div>
+            ${ropField('hl_early_bird_deadline', 'Early Bird Deadline', fd.hl_early_bird_deadline, 'text', 'e.g., March 1, 2025 at 11:59 PM EST')}
+            ${ropField('hl_early_bird_payment', 'Early Bird Payment Method', fd.hl_early_bird_payment || 'Paid by cheque', 'text')}
+            ${ropField('hl_sales_deadline', 'Grand Prize Sales Deadline', fd.hl_sales_deadline, 'text', 'e.g., July 1, 2025 at 11:59 PM EST')}
+            ${ropField('hl_draw_date', 'Grand Prize Draw Date/Time', fd.hl_draw_date, 'text', 'e.g., July 15, 2025 at 2:00 PM EST')}
+            ${ropField('hl_draw_location', 'Grand Prize Draw Location', fd.hl_draw_location, 'text', 'e.g., 123 Property Dr, Thunder Bay, ON')}
+            ${ropField('hl_property_address', 'Property Address', fd.hl_property_address, 'text')}
+            ${ropField('hl_property_value', 'Grand Prize Total Value (inclusive of HST) ($)', fd.hl_property_value, 'number')}
+            <div class="rop-toggle-row"><label><input type="checkbox" class="rop-field" data-field="hl_no_cash_substitute" ${fd.hl_no_cash_substitute !== false ? 'checked' : ''}> No cash substitute for Grand Prize</label></div>
+            ${ropField('hl_draw_method', 'Draw Method', fd.hl_draw_method || 'Event Management Terminal maintained by BUMP', 'text')}
+            ${ropField('hl_results_deadline', 'Results Publication Deadline', fd.hl_results_deadline, 'text', 'e.g., Complete results published on website by July 31, 2025')}`;
+    }
+    sections.push(ropSection('Draw Schedule', drawScheduleContent));
+
+    // Section 5: Draw Mechanics
+    sections.push(ropSection('Draw Mechanics', `
+        ${ropField('rng_method', 'Random Number Selection Method', fd.rng_method || 'Random Number Generation (RNG) system', 'text', '', true)}
+        <div class="rop-toggle-row"><label><input type="checkbox" class="rop-field" data-field="can_choose_numbers" ${fd.can_choose_numbers ? 'checked' : ''}> Buyers can choose specific numbers</label></div>
+        ${type === 'catch_the_ace' ? `<div class="rop-prefilled"><strong>Envelope Mechanic:</strong> Each ticket purchase entitles the purchaser to select ONE virtual envelope containing a hidden playing card. If the Ace of Spades is revealed, the winner receives the Progressive Jackpot.</div>` : ''}
+    `));
+
+    // Section 6: Winner Notification & Prize Claiming
+    let winnerExtra = '';
+    if (type === '5050') {
+        winnerExtra = ropField('prize_payment_method', 'Prize Payment Method', fd.prize_payment_method || 'Cheque representing 50% of total ticket sales', 'text');
+    }
+    if (type === 'house_lottery') {
+        winnerExtra += `<div class="rop-toggle-row"><label><input type="checkbox" class="rop-field" data-field="prizes_as_awarded" ${fd.prizes_as_awarded !== false ? 'checked' : ''}> All prizes must be accepted as awarded</label></div>`;
+        winnerExtra += `<div class="rop-toggle-row"><label><input type="checkbox" class="rop-field" data-field="winner_publicity_consent" ${fd.winner_publicity_consent !== false ? 'checked' : ''}> Include winner publicity consent clause</label></div>`;
+    }
+
+    sections.push(ropSection('Winner Notification & Prize Claiming', `
+        ${ropField('winner_notification', 'How Winners Are Notified', fd.winner_notification || 'Telephone', 'text')}
+        ${ropField('results_posted_url', 'Where Results Are Posted', fd.results_posted_url, 'text', 'e.g., https://example.com/results')}
+        ${ropField('prize_claim_period', 'Prize Claim Period', fd.prize_claim_period || '6 months', 'text')}
+        ${ropField('id_requirements', 'ID Requirements', fd.id_requirements || 'Name, address, phone number, valid government-issued photo identification', 'text')}
+        ${ropField('claim_contact_email', 'Contact Email for Claiming', fd.claim_contact_email, 'text')}
+        ${ropField('claim_contact_phone', 'Contact Phone for Claiming', fd.claim_contact_phone, 'text')}
+        ${winnerExtra}
+        ${ropField('unclaimed_prize_rule', 'Unclaimed Prize Procedure', fd.unclaimed_prize_rule || d.unclaimed_prize_rule || '', 'textarea', '', true)}
+    `));
+
+    // Section 7: Prize-Specific Terms (prize_raffle + house_lottery)
+    if (type === 'prize_raffle' || type === 'house_lottery') {
+        let prizeTerms = '';
+        if (type === 'prize_raffle') {
+            prizeTerms = `
+                ${ropField('prize_condition', 'Prize Condition Statement', fd.prize_condition || 'Delivered free and clear of all liens, security interests, and encumbrances', 'textarea')}
+                ${ropField('winner_responsibilities', 'Winner Responsibilities After Delivery', fd.winner_responsibilities || 'Insurance, licensing, registration, fuel, maintenance, applicable taxes', 'textarea')}
+                ${ropField('delivery_terms', 'Delivery & Transport Terms', fd.delivery_terms, 'textarea', 'e.g., Dealer will arrange transport within Ontario. Winner not required to be present.')}
+                ${ropField('prize_supplier', 'Prize Supplier/Dealer Name', fd.prize_supplier, 'text')}
+                ${ropField('dealer_support_terms', 'Dealer/Manufacturer Post-Delivery Support', fd.dealer_support_terms, 'textarea', 'e.g., Post-delivery warranty and service matters are between the winner and the dealer.')}`;
+        }
+        if (type === 'house_lottery') {
+            prizeTerms += ropField('liability_statement', 'Liability Limitation', fd.liability_statement || 'Liability limited to the price of the ticket purchased', 'text');
+        }
+        sections.push(ropSection('Prize-Specific Terms', prizeTerms));
+    }
+
+    // Section 8: Privacy (CTA primary, optional for others)
+    if (type === 'catch_the_ace') {
+        sections.push(ropSection('Privacy', `
+            <div class="rop-toggle-row"><label><input type="checkbox" class="rop-field" data-field="privacy_winner_consent" ${fd.privacy_winner_consent !== false ? 'checked' : ''}> Winners consent to promotional use of name, likeness, photo, municipality, recordings</label></div>
+            <div class="rop-toggle-row"><label><input type="checkbox" class="rop-field" data-field="privacy_no_sell_data" ${fd.privacy_no_sell_data !== false ? 'checked' : ''}> Include privacy policy (no selling/renting of personal data)</label></div>
+        `));
+    }
+
+    // Section 9: Subscriptions
+    if (type === '5050' || type === 'catch_the_ace') {
+        const freq = type === 'catch_the_ace' ? 'weekly' : 'monthly';
+        sections.push(ropSection('Subscriptions (Optional)', `
+            <div class="rop-toggle-row"><label><input type="checkbox" class="rop-field" data-field="subscriptions_available" ${fd.subscriptions_available ? 'checked' : ''}> Subscription/auto-purchase available</label></div>
+            <div class="rop-subscription-fields" ${fd.subscriptions_available ? '' : 'style="display:none"'}>
+                ${ropField('subscription_frequency', 'Subscription Frequency', fd.subscription_frequency || freq, 'text', '', true)}
+                ${ropField('subscription_cancel_method', 'How to Cancel', fd.subscription_cancel_method || 'Account portal or email', 'text')}
+                ${ropField('subscription_declined_behavior', 'Declined Payment Behavior', fd.subscription_declined_behavior || 'Subscription automatically cancelled', 'text')}
+                ${type === '5050' ? ropField('subscription_earlybird_bonus', 'Subscription Bonus for Early Bird Winners ($)', fd.subscription_earlybird_bonus, 'number', 'e.g., 1000') : ''}
+                ${type === 'catch_the_ace' ? `<div class="rop-prefilled"><strong>Envelope Re-assignment:</strong> If a subscriber's selected envelope is revealed, they are automatically assigned the next available envelope.</div>` : ''}
+            </div>
+        `));
+    }
+
+    // Section 10: Responsible Gambling
+    sections.push(ropSection('Responsible Gambling', `
+        ${ropField('responsible_gambling_message', 'Responsible Gambling Message', fd.responsible_gambling_message || 'Play responsibly: Set a limit and stick to it.', 'text', '', true)}
+        ${ropField('helpline_name', 'Helpline Name', fd.helpline_name || d.responsible_gambling_org || '', 'text', '', true)}
+        ${ropField('helpline_phone', 'Helpline Phone', fd.helpline_phone || d.responsible_gambling_phone || '', 'text', '', true)}
+        ${ropField('helpline_url', 'Helpline Website (optional)', fd.helpline_url || '', 'text')}
+    `));
+
+    // Section 11: Contact
+    sections.push(ropSection('Contact Information', `
+        ${ropField('contact_phone', 'General Inquiries Phone', fd.contact_phone, 'text')}
+        ${ropField('contact_email', 'General Inquiries Email', fd.contact_email, 'text')}
+        ${ropField('contact_website', 'Website URL', fd.contact_website, 'text')}
+    `));
+
+    // Section 12: Reference Document Upload
+    sections.push(ropSection('Reference Document (Optional)', `
+        <p class="rop-field-hint">Upload an existing Rules of Play document from your organization or jurisdiction. The AI will use it as a structural guide while generating your new document.</p>
+        <div class="rop-upload-area">
+            <input type="file" id="ropReferenceFile" accept=".docx,.pdf" style="display:none">
+            <button class="btn-secondary" id="ropUploadBtn">Upload .docx or .pdf</button>
+            <span id="ropUploadStatus">${d.reference_document_text ? 'Reference document loaded (' + d.reference_document_text.length + ' chars)' : 'No document uploaded'}</span>
+        </div>
+    `));
+
+    body.innerHTML = sections.join('');
+
+    // Wire up event listeners
+    ropAttachFormListeners();
+}
+
+function ropSection(title, content) {
+    return `
+        <div class="rop-form-section">
+            <div class="rop-section-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <h3>${title}</h3>
+                <span class="rop-section-toggle">&#9660;</span>
+            </div>
+            <div class="rop-section-body">${content}</div>
+        </div>`;
+}
+
+function ropField(name, label, value, type, placeholder, prefilled) {
+    const val = value !== undefined && value !== null ? value : '';
+    const prefilledClass = prefilled ? ' rop-prefilled-field' : '';
+    if (type === 'textarea') {
+        return `<div class="rop-form-group${prefilledClass}"><label class="rop-field-label">${label}</label><textarea class="rop-input rop-field" data-field="${name}" placeholder="${placeholder || ''}" rows="3">${escapeHtml(String(val))}</textarea></div>`;
+    }
+    return `<div class="rop-form-group${prefilledClass}"><label class="rop-field-label">${label}</label><input type="${type || 'text'}" class="rop-input rop-field" data-field="${name}" value="${escapeHtml(String(val))}" placeholder="${placeholder || ''}"></div>`;
+}
+
+function ropRenderRepeatableGroups(groupName, items, fieldDefs) {
+    if (!items || items.length === 0) return '';
+    return items.map((item, idx) => `
+        <div class="rop-repeatable-row" data-group="${groupName}" data-index="${idx}">
+            ${fieldDefs.map(def => {
+                const [key, label, ph] = def.split(':');
+                return `<div class="rop-repeat-field"><label>${label}</label><input type="text" class="rop-input rop-repeat-input" data-group="${groupName}" data-index="${idx}" data-key="${key}" value="${escapeHtml(String(item[key] || ''))}" placeholder="${ph || ''}"></div>`;
+            }).join('')}
+            <button class="rop-remove-btn" data-group="${groupName}" data-index="${idx}" title="Remove">&#10005;</button>
+        </div>
+    `).join('');
+}
+
+function ropRender5050Draws(draws) {
+    if (!draws || draws.length === 0) return '';
+    return draws.map((draw, idx) => `
+        <div class="rop-draw-block" data-index="${idx}">
+            <div class="rop-draw-header">
+                <strong>Draw #${draw.draw_number || (idx + 1)}</strong>
+                <button class="rop-remove-btn" data-group="draws_5050" data-index="${idx}" title="Remove">&#10005;</button>
+            </div>
+            <div class="rop-draw-fields">
+                <div class="rop-repeat-field"><label>Draw Number</label><input type="number" class="rop-input rop-draw-field" data-index="${idx}" data-key="draw_number" value="${draw.draw_number || (idx + 1)}"></div>
+                <div class="rop-repeat-field"><label>Sales Start</label><input type="date" class="rop-input rop-draw-field" data-index="${idx}" data-key="sales_start" value="${draw.sales_start || ''}"></div>
+                <div class="rop-repeat-field"><label>Sales End</label><input type="date" class="rop-input rop-draw-field" data-index="${idx}" data-key="sales_end" value="${draw.sales_end || ''}"></div>
+                <div class="rop-repeat-field"><label>Draw Date/Time</label><input type="text" class="rop-input rop-draw-field" data-index="${idx}" data-key="draw_date" value="${draw.draw_date || ''}" placeholder="e.g., Jan 15, 2025 2:00 PM EST"></div>
+                <div class="rop-repeat-field"><label>Guaranteed Min Prize ($)</label><input type="number" class="rop-input rop-draw-field" data-index="${idx}" data-key="guaranteed_min" value="${draw.guaranteed_min || ''}"></div>
+                <div class="rop-repeat-field"><label>Sales Threshold for 50/50 ($)</label><input type="number" class="rop-input rop-draw-field" data-index="${idx}" data-key="sales_threshold" value="${draw.sales_threshold || ''}"></div>
+                <div class="rop-repeat-field"><label>Early Bird Dates/Prizes</label><textarea class="rop-input rop-draw-field" data-index="${idx}" data-key="early_birds" rows="2" placeholder="e.g., Jan 5: 5 x $5,000">${draw.early_birds || ''}</textarea></div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function ropAttachFormListeners() {
+    const body = document.getElementById('ropFormBody');
+
+    // Auto-save on field change (debounced)
+    body.addEventListener('input', (e) => {
+        if (e.target.classList.contains('rop-field') || e.target.classList.contains('rop-repeat-input') || e.target.classList.contains('rop-draw-field')) {
+            document.getElementById('ropSaveStatus').textContent = 'Unsaved changes';
+            clearTimeout(ropState.saveTimeout);
+            ropState.saveTimeout = setTimeout(ropSaveDraft, 3000);
+        }
+    });
+
+    // Checkbox change
+    body.addEventListener('change', (e) => {
+        if (e.target.type === 'checkbox' && e.target.classList.contains('rop-field')) {
+            // Toggle subscription fields visibility
+            if (e.target.dataset.field === 'subscriptions_available') {
+                const fields = e.target.closest('.rop-form-section').querySelector('.rop-subscription-fields');
+                if (fields) fields.style.display = e.target.checked ? '' : 'none';
+            }
+            clearTimeout(ropState.saveTimeout);
+            ropState.saveTimeout = setTimeout(ropSaveDraft, 3000);
+        }
+    });
+
+    // Add repeatable group items
+    body.addEventListener('click', (e) => {
+        const addBtn = e.target.closest('.rop-add-btn');
+        if (addBtn) {
+            const groupName = addBtn.dataset.group;
+            ropAddRepeatableItem(groupName);
+            return;
+        }
+
+        const removeBtn = e.target.closest('.rop-remove-btn');
+        if (removeBtn) {
+            const row = removeBtn.closest('.rop-repeatable-row, .rop-draw-block');
+            if (row) row.remove();
+            clearTimeout(ropState.saveTimeout);
+            ropState.saveTimeout = setTimeout(ropSaveDraft, 2000);
+        }
+    });
+
+    // Upload button
+    const uploadBtn = document.getElementById('ropUploadBtn');
+    const fileInput = document.getElementById('ropReferenceFile');
+    if (uploadBtn && fileInput) {
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', ropUploadReference);
+    }
+}
+
+function ropAddRepeatableItem(groupName) {
+    let container, fieldDefs;
+    if (groupName === 'ineligible_groups') {
+        container = document.getElementById('ropIneligibleGroups');
+        fieldDefs = ['group_name:Group Name:e.g. Staff', 'description:Description:', 'consequence:Consequence:disqualification'];
+    } else if (groupName === 'sales_locations') {
+        container = document.getElementById('ropSalesLocations');
+        fieldDefs = ['location_name:Location Name:', 'address:Address:'];
+    } else if (groupName === 'pricing_tiers') {
+        container = document.getElementById('ropPricingTiers');
+        fieldDefs = ['quantity:Quantity:', 'price:Price ($):', 'label:Label:tickets'];
+    } else if (groupName === 'early_birds_pr') {
+        container = document.getElementById('ropEarlyBirdsPR');
+        fieldDefs = ['date:Date:', 'prize:Prize:'];
+    } else if (groupName === 'early_birds_hl') {
+        container = document.getElementById('ropEarlyBirdsHL');
+        fieldDefs = ['date:Date:', 'amount:Prize Amount ($):'];
+    } else if (groupName === 'draws_5050') {
+        const container5050 = document.getElementById('ropDraws5050');
+        const existing = container5050.querySelectorAll('.rop-draw-block');
+        const newIdx = existing.length;
+        const newDraw = { draw_number: newIdx + 1 };
+        container5050.insertAdjacentHTML('beforeend', ropRender5050Draws([newDraw]).replace(/data-index="\d+"/g, `data-index="${newIdx}"`));
+        return;
+    }
+
+    if (!container) return;
+    const existingRows = container.querySelectorAll('.rop-repeatable-row');
+    const newIdx = existingRows.length;
+    const emptyItem = {};
+    fieldDefs.forEach(def => { emptyItem[def.split(':')[0]] = ''; });
+
+    container.insertAdjacentHTML('beforeend', ropRenderRepeatableGroups(groupName, [emptyItem], fieldDefs).replace(/data-index="\d+"/g, `data-index="${newIdx}"`));
+}
+
+function ropCollectFormData() {
+    const fd = {};
+    const body = document.getElementById('ropFormBody');
+
+    // Simple fields
+    body.querySelectorAll('.rop-field').forEach(el => {
+        const key = el.dataset.field;
+        if (!key) return;
+        if (el.type === 'checkbox') {
+            fd[key] = el.checked;
+        } else if (el.type === 'number') {
+            fd[key] = el.value ? Number(el.value) : null;
+        } else {
+            fd[key] = el.value;
+        }
+    });
+
+    // Repeatable groups
+    ['ineligible_groups', 'sales_locations', 'pricing_tiers', 'early_birds_pr', 'early_birds_hl'].forEach(groupName => {
+        const rows = body.querySelectorAll(`.rop-repeatable-row[data-group="${groupName}"]`);
+        if (rows.length > 0) {
+            fd[groupName] = [];
+            rows.forEach(row => {
+                const item = {};
+                row.querySelectorAll('.rop-repeat-input').forEach(inp => {
+                    item[inp.dataset.key] = inp.value;
+                });
+                fd[groupName].push(item);
+            });
+        }
+    });
+
+    // 50/50 draws
+    const drawBlocks = body.querySelectorAll('.rop-draw-block');
+    if (drawBlocks.length > 0) {
+        fd.draws = [];
+        drawBlocks.forEach(block => {
+            const draw = {};
+            block.querySelectorAll('.rop-draw-field').forEach(inp => {
+                draw[inp.dataset.key] = inp.type === 'number' ? (inp.value ? Number(inp.value) : null) : inp.value;
+            });
+            fd.draws.push(draw);
+        });
+    }
+
+    return fd;
+}
+
+async function ropSaveDraft() {
+    if (!ropState.currentDraftId) return;
+    clearTimeout(ropState.saveTimeout);
+    const formData = ropCollectFormData();
+
+    try {
+        await fetch(`${API_BASE_URL}/api/rules-of-play/${ropState.currentDraftId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ form_data: formData })
+        });
+        document.getElementById('ropSaveStatus').textContent = 'Saved';
+    } catch (err) {
+        document.getElementById('ropSaveStatus').textContent = 'Save failed';
+    }
+}
+
+async function ropUploadReference() {
+    const fileInput = document.getElementById('ropReferenceFile');
+    if (!fileInput.files.length || !ropState.currentDraftId) return;
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    const status = document.getElementById('ropUploadStatus');
+    status.textContent = 'Uploading...';
+
+    try {
+        const token = localStorage.getItem('authToken');
+        const resp = await fetch(`${API_BASE_URL}/api/rules-of-play/${ropState.currentDraftId}/upload-reference`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        if (!resp.ok) throw new Error('Upload failed');
+        const data = await resp.json();
+        status.textContent = `Reference loaded (${data.text_length} chars)`;
+    } catch (err) {
+        status.textContent = 'Upload failed — try .docx format';
+    }
+}
+
+async function ropGenerate() {
+    if (!ropState.currentDraftId) return;
+
+    // Save current form data first
+    await ropSaveDraft();
+
+    ropSwitchView('ropGeneratingView');
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/rules-of-play/${ropState.currentDraftId}/generate`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+
+        if (!resp.ok) await handleApiError(resp);
+
+        const data = await resp.json();
+        ropShowOutput(data.generated_document);
+    } catch (err) {
+        if (err.message === 'LIMIT_REACHED' || err.message === 'TRIAL_EXPIRED') {
+            ropShowForm(ropState.currentDraftId);
+            return;
+        }
+        showToast('Generation failed: ' + err.message, 'error');
+        ropShowForm(ropState.currentDraftId);
+    }
+}
+
+function ropShowOutput(text) {
+    ropSwitchView('ropOutputView');
+    const d = ropState.currentDraft;
+    document.getElementById('ropOutputTitle').textContent = d ? d.name : 'Generated Document';
+    const badge = document.getElementById('ropOutputBadge');
+    if (d) {
+        badge.textContent = ROP_TYPE_LABELS[d.raffle_type] || '';
+        badge.style.setProperty('--type-color', ROP_TYPE_COLORS[d.raffle_type] || '#888');
+    }
+    document.getElementById('ropOutputText').value = text || '';
+}
+
+function ropCopyOutput() {
+    const text = document.getElementById('ropOutputText').value;
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard');
+    }).catch(() => {
+        showToast('Failed to copy', 'error');
+    });
+}
+
+async function ropExport() {
+    if (!ropState.currentDraftId) return;
+    // Save any edits first
+    await ropSaveOutput();
+
+    try {
+        const token = localStorage.getItem('authToken');
+        const resp = await fetch(`${API_BASE_URL}/api/rules-of-play/${ropState.currentDraftId}/export`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        if (!resp.ok) throw new Error('Export failed');
+
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Rules_of_Play.doc`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Document exported');
+    } catch (err) {
+        showToast('Export failed', 'error');
+    }
+}
+
+async function ropSaveOutput() {
+    if (!ropState.currentDraftId) return;
+    const text = document.getElementById('ropOutputText').value;
+    try {
+        await fetch(`${API_BASE_URL}/api/rules-of-play/${ropState.currentDraftId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ generated_document: text, status: 'generated' })
+        });
+        showToast('Document saved');
+    } catch (err) {
+        showToast('Save failed', 'error');
+    }
+}
+
 // ==================== URL ROUTER ====================
 const ROUTES = {
     '/':                    { view: 'landing' },
@@ -10513,6 +11358,7 @@ const ROUTES = {
     '/list-normalizer/compare':      { view: 'tool', tool: 'list-normalizer', subTool: 'compare' },
     '/list-normalizer/email-cleaner': { view: 'tool', tool: 'list-normalizer', subTool: 'email-cleaner' },
     '/ask-lightspeed':               { view: 'tool', tool: 'ask-lightspeed' },
+    '/rules-of-play':                { view: 'tool', tool: 'rules-of-play' },
 };
 
 // Map tools/pages to URL paths (reverse lookup)
@@ -10522,6 +11368,7 @@ const TOOL_ROUTES = {
     'draft-assistant':   '/draft-assistant',
     'list-normalizer':   '/list-normalizer',
     'ask-lightspeed':    '/ask-lightspeed',
+    'rules-of-play':     '/rules-of-play',
 };
 
 const PAGE_ROUTES = {
