@@ -370,6 +370,17 @@ try {
 let currentTool = null; // 'customer-response' or 'data-analysis'
 let defaultName = "Bella";
 let orgName = "";
+let responseLanguage = "en";
+
+const LANGUAGE_INSTRUCTIONS = {
+    en: '',
+    fr: '\nLANGUAGE: You MUST write your entire response in French (Français). The customer inquiry may be in any language, but your response must always be in French.\n',
+    es: '\nLANGUAGE: You MUST write your entire response in Spanish (Español). The customer inquiry may be in any language, but your response must always be in Spanish.\n'
+};
+
+function getLanguageInstruction() {
+    return LANGUAGE_INSTRUCTIONS[responseLanguage] || '';
+}
 let customKnowledge = [];
 let orgDrawSchedule = null; // Active draw schedule from database
 let orgContentTemplates = []; // Per-org content templates from database
@@ -1777,7 +1788,7 @@ async function sendAskMessage() {
         const systemPrompt = `You are Lightspeed AI, a powerful, full-featured AI assistant built by Launchpad Solutions. You work for ${orgName}.
 
 TONE: Respond in a ${toneDesc} tone.
-
+${getLanguageInstruction()}
 CORE BEHAVIOR — ALWAYS FOLLOW:
 Before generating any content (emails, posts, documents, strategies, analyses, code, or anything substantial), you MUST first ask 2-3 clarifying questions to understand exactly what the user needs. This includes understanding context, audience, goals, constraints, and preferences. Only after the user answers should you produce the final output. This makes your work dramatically more accurate and tailored.
 
@@ -2125,7 +2136,7 @@ async function sendAlsMessage() {
         const systemPrompt = `You are Lightspeed AI, a powerful, full-featured AI assistant built by Launchpad Solutions. You work for ${orgName}.
 
 TONE: Respond in a ${toneDesc} tone.
-
+${getLanguageInstruction()}
 CORE BEHAVIOR — ALWAYS FOLLOW:
 Before generating any content (emails, posts, documents, strategies, analyses, code, or anything substantial), you MUST first ask 2-3 clarifying questions to understand exactly what the user needs. This includes understanding context, audience, goals, constraints, and preferences. Only after the user answers should you produce the final output. This makes your work dramatically more accurate and tailored.
 
@@ -2385,6 +2396,7 @@ function loadUserData(user) {
 
     defaultName = user.settings.defaultName || (user.name ? user.name.split(" ")[0] : "User");
     orgName = user.settings.orgName || "";
+    responseLanguage = user.settings.responseLanguage || "en";
     customKnowledge = user.data.customKnowledge || [];
     feedbackList = user.data.feedbackList || [];
     responseHistory = user.data.responseHistory || [];
@@ -2805,6 +2817,7 @@ function saveUserData() {
     // Update user object
     currentUser.settings.defaultName = defaultName;
     currentUser.settings.orgName = orgName;
+    currentUser.settings.responseLanguage = responseLanguage;
     currentUser.data.customKnowledge = customKnowledge;
     currentUser.data.feedbackList = feedbackList;
     currentUser.data.responseHistory = responseHistory;
@@ -2874,6 +2887,10 @@ function loadSettings() {
     }
     if (orgNameEl && orgName) {
         orgNameEl.value = orgName;
+    }
+    const langEl = document.getElementById("responseLanguage");
+    if (langEl) {
+        langEl.value = responseLanguage || 'en';
     }
 }
 
@@ -5616,6 +5633,7 @@ window.copyInviteLink = copyInviteLink;
 function saveSettings() {
     defaultName = document.getElementById("defaultName").value.trim() || "Bella";
     orgName = document.getElementById("orgName").value.trim();
+    responseLanguage = document.getElementById("responseLanguage").value || "en";
 
     // Save to user data (handles localStorage automatically)
     saveUserData();
@@ -5907,7 +5925,7 @@ ${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : 
 
 TONE: Write in a ${toneDesc} tone.
 LENGTH: Keep the response ${lengthDesc}.
-${formatInstructions}
+${getLanguageInstruction()}${formatInstructions}
 
 ${orgInfoSection}
 
@@ -6128,7 +6146,7 @@ async function refineResponse(instruction) {
 
         const systemPrompt = `You are a helpful assistant that refines customer support responses.
 You will be given an original customer inquiry, the current response, and an instruction for how to modify it.
-
+${getLanguageInstruction()}
 IMPORTANT RULES:
 - Keep the same general meaning and information, just adjust based on the instruction
 - Maintain a professional, helpful tone
@@ -7996,6 +8014,9 @@ async function buildEnhancedSystemPrompt(contentType, emailType = null) {
         knowledgeBaseType = typeMapping[contentType];
     }
 
+    // Inject language preference
+    basePrompt += getLanguageInstruction();
+
     // Inject org-specific brand guidelines from database (replaces former hardcoded DRAFT_KNOWLEDGE_BASE)
     const org = currentUser?.organization;
     if (org?.brand_terminology) {
@@ -8374,7 +8395,7 @@ async function generateWriteAnything() {
     document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
     try {
-        let systemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
+        let systemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE) + getLanguageInstruction();
 
         if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
             const kbContext = customKnowledge.slice(0, 15).map(k =>
@@ -8584,7 +8605,7 @@ async function refineDraft(instruction) {
     try {
         let enhancedSystemPrompt;
         if (lastDraftRequest && lastDraftRequest.isWriteAnything) {
-            enhancedSystemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
+            enhancedSystemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE) + getLanguageInstruction();
         } else if (lastDraftRequest && lastDraftRequest.isEmail) {
             enhancedSystemPrompt = await buildEnhancedSystemPrompt('email', lastDraftRequest.emailType);
         } else {
