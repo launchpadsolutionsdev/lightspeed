@@ -16,6 +16,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Lightspeed by Launchpad">
     <meta name="twitter:description" content="AI-powered productivity suite for hospital lotteries and charitable gaming.">
+    <!-- FOUC guard: hide body until external CSS loads and overrides this -->
+    <style>body{opacity:0}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -33,9 +35,6 @@
     <!-- Microsoft Authentication Library (MSAL) for OAuth -->
     <script src="msal-browser.min.js"></script>
     <style>
-        /* Prevent FOUC: hide body until external CSS loads and overrides this */
-        body { opacity: 0; }
-
         /* App-scoped overrides: keep no-shadow behavior for app sections */
         .auth-page *,
         #toolMenuPage *,
