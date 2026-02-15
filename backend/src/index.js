@@ -23,6 +23,7 @@ const billingRoutes = require('./routes/billing');
 const contactRoutes = require('./routes/contact');
 const drawScheduleRoutes = require('./routes/drawSchedules');
 const contentTemplateRoutes = require('./routes/contentTemplates');
+const exportRoutes = require('./routes/export');
 const pool = require('../config/database');
 
 // Validate required environment variables
@@ -120,6 +121,7 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/draw-schedules', drawScheduleRoutes);
 app.use('/api/content-templates', contentTemplateRoutes);
+app.use('/api/organizations', exportRoutes); // /api/organizations/:orgId/export
 
 // 404 handler
 app.use((req, res) => {

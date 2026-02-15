@@ -11,6 +11,7 @@ const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const multer = require('multer');
 const mammoth = require('mammoth');
+const auditLog = require('../services/auditLog');
 
 // Configure multer for in-memory file uploads (max 10MB)
 const upload = multer({
@@ -150,6 +151,7 @@ router.post('/', authenticate, [
             [entryId, organizationId, title, content, category, combinedTags, req.userId]
         );
 
+        auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'KB_ENTRY_CREATED', resourceType: 'KNOWLEDGE_BASE', resourceId: entryId, changes: { title, category }, req });
         res.status(201).json({ entry: result.rows[0] });
 
     } catch (error) {
@@ -247,6 +249,14 @@ router.put('/:id', authenticate, [
             values.push(tags);
         }
 
+        // Optimistic concurrency check
+        if (req.body.expected_updated_at) {
+            const current = await pool.query('SELECT updated_at FROM knowledge_base WHERE id = $1 AND organization_id = $2', [id, organizationId]);
+            if (current.rows.length > 0 && current.rows[0].updated_at?.toISOString() !== req.body.expected_updated_at) {
+                return res.status(409).json({ error: 'conflict', message: 'This entry was modified by someone else. Please refresh and try again.' });
+            }
+        }
+
         updates.push(`updated_at = NOW()`);
 
         values.push(id, organizationId);
@@ -262,6 +272,7 @@ router.put('/:id', authenticate, [
             return res.status(404).json({ error: 'Entry not found' });
         }
 
+        auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'KB_ENTRY_UPDATED', resourceType: 'KNOWLEDGE_BASE', resourceId: id, changes: { title, content: content?.substring(0, 100), category }, req });
         res.json({ entry: result.rows[0] });
 
     } catch (error) {
@@ -291,7 +302,7 @@ router.delete('/:id', authenticate, async (req, res) => {
         const organizationId = orgResult.rows[0].organization_id;
 
         const result = await pool.query(
-            'DELETE FROM knowledge_base WHERE id = $1 AND organization_id = $2 RETURNING id',
+            'DELETE FROM knowledge_base WHERE id = $1 AND organization_id = $2 RETURNING id, title',
             [id, organizationId]
         );
 
@@ -299,6 +310,7 @@ router.delete('/:id', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Entry not found' });
         }
 
+        auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'KB_ENTRY_DELETED', resourceType: 'KNOWLEDGE_BASE', resourceId: id, changes: { title: result.rows[0].title }, req });
         res.json({ message: 'Entry deleted' });
 
     } catch (error) {
@@ -418,6 +430,7 @@ router.post('/import', authenticate, async (req, res) => {
             }
         }
 
+        auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'KB_BULK_IMPORTED', resourceType: 'KNOWLEDGE_BASE', changes: { imported_count: imported.length, error_count: errors.length }, req });
         res.json({
             imported: imported.length,
             errors: errors.length,
@@ -542,6 +555,7 @@ router.post('/upload-doc', authenticate, upload.single('document'), async (req, 
             imported.push(dbResult.rows[0]);
         }
 
+        auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'KB_DOC_UPLOADED', resourceType: 'KNOWLEDGE_BASE', changes: { filename: req.file.originalname, entries_created: imported.length }, req });
         res.json({
             message: `Successfully imported ${imported.length} entries from ${req.file.originalname}`,
             imported: imported.length,
