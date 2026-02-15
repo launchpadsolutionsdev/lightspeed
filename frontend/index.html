@@ -33,6 +33,9 @@
     <!-- Microsoft Authentication Library (MSAL) for OAuth -->
     <script src="msal-browser.min.js"></script>
     <style>
+        /* Prevent FOUC: hide body until external CSS loads and overrides this */
+        body { opacity: 0; }
+
         /* App-scoped overrides: keep no-shadow behavior for app sections */
         .auth-page *,
         #toolMenuPage *,
