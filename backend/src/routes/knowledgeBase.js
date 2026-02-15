@@ -344,19 +344,19 @@ router.post('/from-feedback', authenticate, async (req, res) => {
         const tags = ['source:feedback', ...autoKeywords];
 
         const result = await pool.query(
-            `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, created_by, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, created_by, source_response_id, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
              RETURNING *`,
-            [entryId, organizationId, title, content, category || 'faqs', tags, req.userId]
+            [entryId, organizationId, title, content, category || 'faqs', tags, req.userId, responseHistoryId || null]
         );
 
-        // If we have a response history ID, update it with a reference to the new KB entry
+        // Link the response_history record back to this KB entry via proper FK
         if (responseHistoryId) {
             try {
                 await pool.query(
-                    `UPDATE response_history SET rating_feedback = COALESCE(rating_feedback, '') || $1
+                    `UPDATE response_history SET feedback_kb_entry_id = $1
                      WHERE id = $2 AND organization_id = $3`,
-                    [`\n[KB entry created: ${entryId}]`, responseHistoryId, organizationId]
+                    [entryId, responseHistoryId, organizationId]
                 );
             } catch (linkErr) {
                 console.warn('Could not link KB entry to response history:', linkErr);

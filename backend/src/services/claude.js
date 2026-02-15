@@ -72,9 +72,76 @@ async function generateWithKnowledge({ messages, system, knowledgeEntries, max_t
 }
 
 /**
+ * Score KB entries by keyword/tag overlap with the inquiry.
+ * Used as a fallback when Haiku is unavailable.
+ *
+ * @param {string} inquiry - The customer inquiry text
+ * @param {Array} knowledgeEntries - All KB entries for the organization
+ * @param {number} maxEntries - Maximum entries to return
+ * @returns {Array} Entries sorted by tag-match score (descending)
+ */
+function tagMatchFallback(inquiry, knowledgeEntries, maxEntries) {
+    const inquiryLower = inquiry.toLowerCase();
+    const inquiryTokens = inquiryLower.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2);
+
+    const scored = knowledgeEntries.map(entry => {
+        let score = 0;
+        const tags = entry.tags || [];
+
+        for (const tag of tags) {
+            // Extract the value after the prefix (keyword:xxx, lottery:xxx)
+            const value = tag.includes(':') ? tag.split(':').slice(1).join(':').toLowerCase() : tag.toLowerCase();
+
+            // Direct substring match: inquiry contains the tag value
+            if (inquiryLower.includes(value)) {
+                score += 3;
+            } else {
+                // Token overlap: any inquiry word matches a word in the tag value
+                const tagWords = value.split(/\s+/);
+                for (const token of inquiryTokens) {
+                    if (tagWords.some(tw => tw.includes(token) || token.includes(tw))) {
+                        score += 1;
+                    }
+                }
+            }
+        }
+
+        // Light boost for title keyword matches
+        const titleLower = entry.title.toLowerCase();
+        for (const token of inquiryTokens) {
+            if (titleLower.includes(token)) {
+                score += 1;
+            }
+        }
+
+        return { entry, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, maxEntries).map(s => s.entry);
+}
+
+/**
+ * Format tags for display in the Haiku catalogue.
+ * Extracts keyword values and returns a short summary.
+ */
+function formatTagsForCatalogue(tags) {
+    if (!tags || tags.length === 0) return '';
+    const keywords = tags
+        .filter(t => t.startsWith('keyword:'))
+        .map(t => t.replace('keyword:', ''))
+        .slice(0, 5);
+    const lotteryTags = tags
+        .filter(t => t.startsWith('lottery:'))
+        .map(t => t.replace('lottery:', ''));
+    const parts = [...lotteryTags, ...keywords];
+    return parts.length > 0 ? ` [tags: ${parts.join(', ')}]` : '';
+}
+
+/**
  * Pick the most relevant knowledge base entries for a customer inquiry using Haiku.
  * Returns a filtered subset of entries sorted by relevance.
- * Falls back to returning all entries (capped) if the picker call fails.
+ * Falls back to tag-match scoring if the Haiku picker call fails.
  *
  * @param {string} inquiry - The customer inquiry text
  * @param {Array} knowledgeEntries - All KB entries for the organization
@@ -92,9 +159,9 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
     }
 
     try {
-        // Build a numbered catalogue of KB entries for Haiku to evaluate
+        // Build a numbered catalogue including tags for better Haiku decisions
         const catalogue = knowledgeEntries.map((entry, i) =>
-            `[${i}] ${entry.title} (${entry.category}): ${entry.content.substring(0, 150)}`
+            `[${i}] ${entry.title} (${entry.category})${formatTagsForCatalogue(entry.tags)}: ${entry.content.substring(0, 150)}`
         ).join('\n');
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -116,8 +183,8 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
         });
 
         if (!response.ok) {
-            console.warn('Haiku relevance picker failed, falling back to all entries');
-            return knowledgeEntries.slice(0, maxEntries);
+            console.warn('Haiku relevance picker failed, using tag-match fallback');
+            return tagMatchFallback(inquiry, knowledgeEntries, maxEntries);
         }
 
         const data = await response.json();
@@ -126,8 +193,8 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
         // Extract the JSON array from the response
         const match = text.match(/\[[\d,\s]*\]/);
         if (!match) {
-            console.warn('Haiku relevance picker returned unexpected format, falling back');
-            return knowledgeEntries.slice(0, maxEntries);
+            console.warn('Haiku relevance picker returned unexpected format, using tag-match fallback');
+            return tagMatchFallback(inquiry, knowledgeEntries, maxEntries);
         }
 
         const indices = JSON.parse(match[0]);
@@ -136,14 +203,14 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
             .slice(0, maxEntries);
 
         if (validIndices.length === 0) {
-            return knowledgeEntries.slice(0, maxEntries);
+            return tagMatchFallback(inquiry, knowledgeEntries, maxEntries);
         }
 
         return validIndices.map(i => knowledgeEntries[i]);
 
     } catch (error) {
-        console.warn('Haiku relevance picker error, falling back:', error.message);
-        return knowledgeEntries.slice(0, maxEntries);
+        console.warn('Haiku relevance picker error, using tag-match fallback:', error.message);
+        return tagMatchFallback(inquiry, knowledgeEntries, maxEntries);
     }
 }
 

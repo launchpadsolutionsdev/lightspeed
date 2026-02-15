@@ -229,7 +229,13 @@ router.post('/:id/rate', authenticate, async (req, res) => {
 /**
  * GET /api/response-history/rated-examples
  * Get rated examples for AI prompt injection (learning)
- * Returns recent positive and negative examples for the organization
+ * Returns recent positive and negative examples for the organization.
+ *
+ * Query params:
+ *   tool   - filter by tool (default: 'response_assistant')
+ *   format - filter by format ('email', 'facebook'). When provided, results
+ *            are scoped to matching formats so email examples don't leak into
+ *            Facebook prompts and vice versa.
  */
 router.get('/rated-examples', authenticate, async (req, res) => {
     try {
@@ -244,43 +250,40 @@ router.get('/rated-examples', authenticate, async (req, res) => {
 
         const organizationId = orgResult.rows[0].organization_id;
         const tool = req.query.tool || 'response_assistant';
+        const format = req.query.format || null;
+
+        // Build optional format filter clause
+        const formatClause = format ? ` AND format = $3` : '';
+        const positiveParams = format ? [organizationId, tool, format] : [organizationId, tool];
+        const negativeParams = format ? [organizationId, tool, format] : [organizationId, tool];
 
         // Get most recent positive examples (good responses to emulate)
         const positiveResult = await pool.query(
             `SELECT inquiry, response, format, tone
              FROM response_history
-             WHERE organization_id = $1 AND rating = 'positive' AND (tool = $2 OR tool IS NULL)
+             WHERE organization_id = $1 AND rating = 'positive' AND (tool = $2 OR tool IS NULL)${formatClause}
              ORDER BY rating_at DESC
              LIMIT 5`,
-            [organizationId, tool]
+            positiveParams
         );
 
         // Get most recent negative examples with feedback (mistakes to avoid)
-        // Left join with knowledge_base to pull in corrections created from feedback
+        // Join via proper FK (feedback_kb_entry_id) to pull in corrections
         const negativeResult = await pool.query(
             `SELECT rh.inquiry, rh.response, rh.rating_feedback, rh.format, rh.tone,
                     kb.content AS corrected_response
              FROM response_history rh
              LEFT JOIN knowledge_base kb
-                ON rh.rating_feedback LIKE '%[KB entry created: ' || kb.id::text || ']%'
-                AND kb.organization_id = $1
-             WHERE rh.organization_id = $1 AND rh.rating = 'negative' AND (rh.tool = $2 OR rh.tool IS NULL)
+                ON rh.feedback_kb_entry_id = kb.id
+             WHERE rh.organization_id = $1 AND rh.rating = 'negative' AND (rh.tool = $2 OR rh.tool IS NULL)${formatClause.replace('format', 'rh.format')}
              ORDER BY rh.rating_at DESC
              LIMIT 3`,
-            [organizationId, tool]
+            negativeParams
         );
-
-        // Clean up rating_feedback by removing the internal KB link markers
-        const negativeRows = negativeResult.rows.map(row => ({
-            ...row,
-            rating_feedback: row.rating_feedback
-                ? row.rating_feedback.replace(/\n?\[KB entry created: [a-f0-9-]+\]/g, '').trim()
-                : null
-        }));
 
         res.json({
             positive: positiveResult.rows,
-            negative: negativeRows
+            negative: negativeResult.rows
         });
 
     } catch (error) {
