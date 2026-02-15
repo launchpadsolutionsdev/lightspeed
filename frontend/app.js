@@ -5631,9 +5631,12 @@ function getRelevantKnowledge(inquiry) {
 }
 
 // Fetch rated examples from backend for AI learning
-async function getRatedExamples(tool = 'response_assistant') {
+// Optional format param ('email' or 'facebook') scopes examples to matching format
+async function getRatedExamples(tool = 'response_assistant', format = null) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/response-history/rated-examples?tool=${tool}`, {
+        let url = `${API_BASE_URL}/api/response-history/rated-examples?tool=${tool}`;
+        if (format) url += `&format=${encodeURIComponent(format)}`;
+        const response = await fetch(url, {
             headers: getAuthHeaders()
         });
         if (response.ok) {
@@ -5686,8 +5689,9 @@ async function generateCustomResponse(customerEmail, knowledge, staffName, optio
     // KB entries are now picked server-side by the Haiku relevance picker.
     // We no longer dump all entries here — the backend handles it when we pass `inquiry`.
 
-    // Fetch rated examples for learning
-    const ratedExamples = await getRatedExamples();
+    // Fetch rated examples for learning, scoped to the current format (email/facebook)
+    const currentFormat = isFacebook ? 'facebook' : 'email';
+    const ratedExamples = await getRatedExamples('response_assistant', currentFormat);
 
     // Get draw schedule context (org-specific if available, else hardcoded fallback)
     const drawScheduleContext = getDrawScheduleContext();
