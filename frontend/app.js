@@ -46,6 +46,70 @@ async function handleApiError(response) {
     throw new Error(error.error || error.message || 'API request failed. Please try again.');
 }
 
+// ==================== STREAMING API HELPER ====================
+/**
+ * Stream a response from /api/generate-stream via SSE.
+ *
+ * @param {Object} body   - Request body (same shape as /api/generate)
+ * @param {Object} opts
+ * @param {Function} opts.onText  - Called with each text chunk (string)
+ * @param {Function} [opts.onKb]  - Called with referenced KB entries array
+ * @param {Function} [opts.onDone]- Called when stream finishes, receives {usage}
+ * @param {Function} [opts.onError]- Called on error with error message string
+ * @returns {Promise<{text: string, referencedKbEntries: Array}>} Full text + KB entries
+ */
+async function fetchStream(body, { onText, onKb, onDone, onError } = {}) {
+    const response = await fetch(`${API_BASE_URL}/api/generate-stream`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+        // Fall back to handleApiError for trial/auth errors
+        await handleApiError(response);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+    let referencedKbEntries = [];
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+                const event = JSON.parse(line.slice(6));
+                if (event.type === 'delta' && event.text) {
+                    fullText += event.text;
+                    if (onText) onText(event.text);
+                } else if (event.type === 'kb' && event.entries) {
+                    referencedKbEntries = event.entries;
+                    if (onKb) onKb(event.entries);
+                } else if (event.type === 'done') {
+                    if (onDone) onDone(event);
+                } else if (event.type === 'error') {
+                    if (onError) onError(event.error);
+                    throw new Error(event.error);
+                }
+            } catch (e) {
+                if (e.message && !e.message.startsWith('{')) throw e;
+            }
+        }
+    }
+
+    return { text: fullText, referencedKbEntries };
+}
+
 // ==================== STRIPE CHECKOUT ====================
 async function startCheckout(plan) {
     if (!currentUser) {
@@ -1742,27 +1806,26 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         const drawScheduleSection = getDrawScheduleContext();
         const fullSystemPrompt = systemPrompt + '\n\nKnowledge base:\n' + (drawScheduleSection ? '\n\n' + drawScheduleSection : '') + feedbackSection;
 
-        const response = await fetch(`${API_BASE_URL}/api/generate`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                system: fullSystemPrompt,
-                inquiry: message,
-                messages: askConversation.map(m => ({ role: m.role, content: m.content })),
-                max_tokens: 4096
-            })
-        });
-
-        // Remove typing indicator
+        // Remove typing indicator and create streaming message div
         const typing = document.getElementById('askTyping');
         if (typing) typing.remove();
 
-        if (!response.ok) {
-            throw new Error('Failed to get response');
-        }
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'ask-msg ask-msg-ai';
+        messagesEl.appendChild(msgDiv);
 
-        const data = await response.json();
-        const aiText = data.content[0].text;
+        const { text: aiText } = await fetchStream({
+            system: fullSystemPrompt,
+            inquiry: message,
+            messages: askConversation.map(m => ({ role: m.role, content: m.content })),
+            max_tokens: 4096
+        }, {
+            onText: (chunk) => {
+                // Render streamed markdown incrementally
+                msgDiv.innerHTML = renderSimpleMarkdown(msgDiv._rawText = (msgDiv._rawText || '') + chunk);
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+        });
 
         askConversation.push({ role: 'assistant', content: aiText });
         saveAskConversation();
@@ -1790,7 +1853,8 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             console.warn('Could not save ask history:', e);
         }
 
-        appendAskMessage('ai', aiText, askHistoryId);
+        // Final render with action buttons
+        appendAskMessageActions(msgDiv, askHistoryId);
 
     } catch (error) {
         const typing = document.getElementById('askTyping');
@@ -1801,6 +1865,47 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         sendBtn.disabled = false;
         input.focus();
     }
+}
+
+/** Render simple markdown (bold, italic, code, line breaks) from raw text */
+function renderSimpleMarkdown(text) {
+    let html = escapeHtml(text);
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+    html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.04);padding:1px 5px;border-radius:4px;font-size:0.84em;">$1</code>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/\n/g, '<br>');
+    return html;
+}
+
+/** Append action buttons (Copy, New chat, rating) to a streaming message div */
+function appendAskMessageActions(msgDiv, historyId) {
+    const actions = document.createElement('div');
+    actions.className = 'ask-msg-actions';
+    let actionsHtml = `<button class="ask-copy-btn" onclick="copyAskMessage(this)">Copy</button>
+        <button class="ask-clear-btn" onclick="clearAskChat()">New chat</button>`;
+    if (historyId) {
+        actionsHtml += `
+            <button class="rating-btn thumbs-up" onclick="rateAskMessage('${historyId}', 'positive', this)" title="Good response">👍</button>
+            <button class="rating-btn thumbs-down" onclick="rateAskMessage('${historyId}', 'negative', this)" title="Needs improvement">👎</button>`;
+    }
+    actions.innerHTML = actionsHtml;
+    msgDiv.appendChild(actions);
+}
+
+/** Append action buttons (Copy, New chat, rating) to an Als streaming message div */
+function appendAlsMessageActions(msgDiv, historyId) {
+    const actions = document.createElement('div');
+    actions.className = 'als-msg-actions';
+    let actionsHtml = `<button onclick="copyAlsMessage(this)">Copy</button>
+        <button onclick="clearAlsChat()">New chat</button>`;
+    if (historyId) {
+        actionsHtml += `
+            <button class="rating-btn thumbs-up" onclick="rateAlsMessage('${historyId}', 'positive', this)" title="Good response">👍</button>
+            <button class="rating-btn thumbs-down" onclick="rateAlsMessage('${historyId}', 'negative', this)" title="Needs improvement">👎</button>`;
+    }
+    actions.innerHTML = actionsHtml;
+    msgDiv.appendChild(actions);
 }
 
 function appendAskMessage(role, text, historyId) {
@@ -2045,26 +2150,25 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         const drawScheduleSection = getDrawScheduleContext();
         const fullSystemPrompt = systemPrompt + '\n\nKnowledge base:\n' + (drawScheduleSection ? '\n\n' + drawScheduleSection : '') + feedbackSection;
 
-        const response = await fetch(`${API_BASE_URL}/api/generate`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                system: fullSystemPrompt,
-                inquiry: message,
-                messages: askConversation.map(m => ({ role: m.role, content: m.content })),
-                max_tokens: 4096
-            })
-        });
-
+        // Remove typing indicator and create streaming message div
         const typing = document.getElementById('alsTyping');
         if (typing) typing.remove();
 
-        if (!response.ok) {
-            throw new Error('Failed to get response');
-        }
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'als-msg als-msg-ai';
+        messagesEl.appendChild(msgDiv);
 
-        const data = await response.json();
-        const aiText = data.content[0].text;
+        const { text: aiText } = await fetchStream({
+            system: fullSystemPrompt,
+            inquiry: message,
+            messages: askConversation.map(m => ({ role: m.role, content: m.content })),
+            max_tokens: 4096
+        }, {
+            onText: (chunk) => {
+                msgDiv.innerHTML = renderSimpleMarkdown(msgDiv._rawText = (msgDiv._rawText || '') + chunk);
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+        });
 
         askConversation.push({ role: 'assistant', content: aiText });
         saveAskConversation();
@@ -2091,7 +2195,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             console.warn('Could not save ask history:', e);
         }
 
-        appendAlsMessage('ai', aiText, askHistoryId);
+        appendAlsMessageActions(msgDiv, askHistoryId);
 
     } catch (error) {
         const typing = document.getElementById('alsTyping');
@@ -5499,20 +5603,27 @@ async function handleGenerate() {
     generateBtn.innerHTML = `<span class="btn-icon">⏳</span> Generating...`;
 
     const responseArea = document.getElementById("responseArea");
+    // Create a streaming container so the user sees text appear in real time
     responseArea.innerHTML = `
-        <div class="loading">
-            <div class="spinner"></div>
-            <div class="loading-text">Analyzing inquiry and generating response...</div>
+        <div class="response-section">
+            <div class="response-header">
+                <div class="response-label">
+                    <span class="response-label-icon">⏳</span>
+                    <span class="response-label-text" id="streamingLabel">Generating...</span>
+                </div>
+            </div>
+            <div class="response-box" id="streamingResponseText"></div>
         </div>
     `;
 
+    const streamTarget = document.getElementById("streamingResponseText");
     const startTime = Date.now();
 
     try {
         const relevantKnowledge = getRelevantKnowledge(customerEmail);
         const result = await generateCustomResponse(
             customerEmail, relevantKnowledge, staffName,
-            { toneValue, lengthValue, includeLinks, includeSteps, agentInstructions }
+            { toneValue, lengthValue, includeLinks, includeSteps, agentInstructions, streamTarget }
         );
 
         const responseText = result.text;
@@ -5787,15 +5898,33 @@ ${customerEmail}
 Sign as: ${staffName}`;
     }
 
+    const streamTarget = options.streamTarget;
+    const requestBody = {
+        system: systemPrompt,
+        inquiry: customerEmail,
+        messages: [{ role: "user", content: userPrompt }],
+        max_tokens: isFacebook ? 200 : 1024
+    };
+
+    // Stream if a target element is provided
+    if (streamTarget) {
+        const { text, referencedKbEntries } = await fetchStream(requestBody, {
+            onText: (chunk) => {
+                streamTarget._rawText = (streamTarget._rawText || '') + chunk;
+                streamTarget.innerHTML = escapeHtmlWithLinks(streamTarget._rawText);
+            },
+            onKb: (entries) => {
+                // KB entries are handled after streaming completes
+            }
+        });
+        return { text, referencedKbEntries };
+    }
+
+    // Non-streaming fallback
     const response = await fetch(`${API_BASE_URL}/api/generate`, {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({
-            system: systemPrompt,
-            inquiry: customerEmail,
-            messages: [{ role: "user", content: userPrompt }],
-            max_tokens: isFacebook ? 200 : 1024
-        })
+        body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -5969,22 +6098,20 @@ INSTRUCTION: ${instruction.trim()}
 
 Please provide the refined response:`;
 
-        const response = await fetch(`${API_BASE_URL}/api/generate`, {
-            method: "POST",
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                system: systemPrompt,
-                messages: [{ role: "user", content: userPrompt }],
-                max_tokens: isFacebook ? 200 : 1024
-            })
+        // Clear and stream into the response box
+        responseBox.innerHTML = '';
+        responseBox._rawText = '';
+
+        const { text: refinedResponse } = await fetchStream({
+            system: systemPrompt,
+            messages: [{ role: "user", content: userPrompt }],
+            max_tokens: isFacebook ? 200 : 1024
+        }, {
+            onText: (chunk) => {
+                responseBox._rawText = (responseBox._rawText || '') + chunk;
+                responseBox.innerHTML = escapeHtmlWithLinks(responseBox._rawText);
+            }
         });
-
-        if (!response.ok) {
-            await handleApiError(response);
-        }
-
-        const data = await response.json();
-        const refinedResponse = data.content[0].text;
 
         // Update current response
         currentResponse = refinedResponse;
@@ -5995,9 +6122,6 @@ Please provide the refined response:`;
             historyEntry.response = refinedResponse;
             saveUserData();
         }
-
-        // Update the display
-        responseBox.innerHTML = escapeHtmlWithLinks(refinedResponse);
 
         // Clear the input
         if (refineInput) refineInput.value = "";
@@ -8121,30 +8245,26 @@ async function generateDraft() {
 
     lastDraftRequest = { topic, details, quoteInfo };
 
-    showDraftMain('loading');
+    // Show output area immediately for streaming
+    showDraftMain('output');
+    document.getElementById('draftOutputBadge').textContent = DRAFT_TYPE_LABELS[currentDraftType];
+    const outputEl = document.getElementById('draftOutputContent');
+    outputEl.innerHTML = '';
+    document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
     try {
         const enhancedSystemPrompt = await buildEnhancedSystemPrompt(currentDraftType);
 
-        const response = await fetch(API_BASE_URL + '/api/generate', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                system: enhancedSystemPrompt,
-                messages: [{ role: 'user', content: userPrompt }],
-                max_tokens: 1024
-            })
+        const { text: generatedContent } = await fetchStream({
+            system: enhancedSystemPrompt,
+            messages: [{ role: 'user', content: userPrompt }],
+            max_tokens: 1024
+        }, {
+            onText: (chunk) => {
+                outputEl._rawText = (outputEl._rawText || '') + chunk;
+                outputEl.innerHTML = escapeHtmlWithLinks(outputEl._rawText);
+            }
         });
-
-        if (!response.ok) await handleApiError(response);
-
-        const data = await response.json();
-        const generatedContent = data.content[0].text;
-
-        showDraftMain('output');
-        document.getElementById('draftOutputBadge').textContent = DRAFT_TYPE_LABELS[currentDraftType];
-        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(generatedContent);
-        document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
         saveDraftToHistory(userPrompt, generatedContent, currentDraftType);
 
@@ -8194,7 +8314,12 @@ async function generateWriteAnything() {
 
     lastDraftRequest = { topic, context, isWriteAnything: true };
 
-    showDraftMain('loading');
+    // Show output area immediately for streaming
+    showDraftMain('output');
+    document.getElementById('draftOutputBadge').textContent = '\u2728 Write Anything';
+    const outputEl = document.getElementById('draftOutputContent');
+    outputEl.innerHTML = '';
+    document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
     try {
         let systemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
@@ -8209,25 +8334,16 @@ async function generateWriteAnything() {
         const ratedExamples = await getRatedExamples('draft_assistant');
         systemPrompt += buildRatedExamplesContext(ratedExamples);
 
-        const response = await fetch(API_BASE_URL + '/api/generate', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                system: systemPrompt,
-                messages: [{ role: 'user', content: userPrompt }],
-                max_tokens: 2048
-            })
+        const { text: generatedContent } = await fetchStream({
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userPrompt }],
+            max_tokens: 2048
+        }, {
+            onText: (chunk) => {
+                outputEl._rawText = (outputEl._rawText || '') + chunk;
+                outputEl.innerHTML = escapeHtmlWithLinks(outputEl._rawText);
+            }
         });
-
-        if (!response.ok) await handleApiError(response);
-
-        const data = await response.json();
-        const generatedContent = data.content[0].text;
-
-        showDraftMain('output');
-        document.getElementById('draftOutputBadge').textContent = '\u2728 Write Anything';
-        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(generatedContent);
-        document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
         saveDraftToHistory(userPrompt, generatedContent, 'write-anything');
 
@@ -8303,41 +8419,29 @@ async function generateEmailDraft() {
 
     lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details, addSubscriptions, addCatchTheAce, addOther };
 
-    // Show loading
-    showDraftMain('loading');
+    // Show output area immediately for streaming
+    showDraftMain('output');
+    document.getElementById('draftOutputBadge').textContent = '📧 ' + EMAIL_TYPE_LABELS[currentEmailType];
+    const outputEl = document.getElementById('draftOutputContent');
+    outputEl.innerHTML = '';
+    document.getElementById('draftCopyHtmlBtn').style.display = 'inline-flex';
 
     try {
-        // Build enhanced system prompt with examples from knowledge base + feedback
         const enhancedSystemPrompt = await buildEnhancedSystemPrompt('email', currentEmailType);
 
-        const response = await fetch(API_BASE_URL + '/api/generate', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                system: enhancedSystemPrompt,
-                messages: [{ role: 'user', content: userPrompt }],
-                max_tokens: 2048
-            })
+        const { text: generatedContent } = await fetchStream({
+            system: enhancedSystemPrompt,
+            messages: [{ role: 'user', content: userPrompt }],
+            max_tokens: 2048
+        }, {
+            onText: (chunk) => {
+                outputEl._rawText = (outputEl._rawText || '') + chunk;
+                outputEl.innerHTML = escapeHtmlWithLinks(outputEl._rawText);
+            }
         });
 
-
-        if (!response.ok) {
-            await handleApiError(response);
-        }
-
-        const data = await response.json();
-        const generatedContent = data.content[0].text;
-
-        // Show output
-        showDraftMain('output');
-        document.getElementById('draftOutputBadge').textContent = '📧 ' + EMAIL_TYPE_LABELS[currentEmailType];
-        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(generatedContent);
-        document.getElementById('draftCopyHtmlBtn').style.display = 'inline-flex';
-
-        // Save to history and show rating UI
         saveDraftToHistory(userPrompt, generatedContent, 'email-' + currentEmailType);
 
-        // Show disclaimer
         const disclaimer = document.getElementById('draftDisclaimer');
         disclaimer.innerHTML = '⚠️ Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
         disclaimer.style.display = 'block';
@@ -8420,11 +8524,12 @@ async function refineDraft(instruction) {
     const currentContent = document.getElementById('draftOutputContent').textContent;
     if (!currentContent) return;
 
-    // Show loading
-    document.getElementById('draftOutputContent').innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><div class="draft-spinner"></div><p style="margin-top: 16px;">Refining your draft...</p></div>';
+    // Clear output and stream directly
+    const outputEl = document.getElementById('draftOutputContent');
+    outputEl.innerHTML = '';
+    outputEl._rawText = '';
 
     try {
-        // Build the enhanced system prompt
         let enhancedSystemPrompt;
         if (lastDraftRequest && lastDraftRequest.isWriteAnything) {
             enhancedSystemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE);
@@ -8434,32 +8539,22 @@ async function refineDraft(instruction) {
             enhancedSystemPrompt = await buildEnhancedSystemPrompt(currentDraftType);
         }
 
-        // Build conversation messages for refinement
         const messages = [
             { role: 'user', content: 'Generate the content as requested.' },
             { role: 'assistant', content: currentContent },
             { role: 'user', content: instruction + '\n\nPlease provide the updated content only, without any explanations or preamble.' }
         ];
 
-        const response = await fetch(API_BASE_URL + '/api/generate', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                system: enhancedSystemPrompt,
-                messages: messages,
-                max_tokens: 2048
-            })
+        await fetchStream({
+            system: enhancedSystemPrompt,
+            messages: messages,
+            max_tokens: 2048
+        }, {
+            onText: (chunk) => {
+                outputEl._rawText = (outputEl._rawText || '') + chunk;
+                outputEl.innerHTML = escapeHtmlWithLinks(outputEl._rawText);
+            }
         });
-
-        if (!response.ok) {
-            await handleApiError(response);
-        }
-
-        const data = await response.json();
-        const refinedContent = data.content[0].text;
-
-        // Update the output
-        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(refinedContent);
 
         showToast('Draft refined!', 'success');
 

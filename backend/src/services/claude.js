@@ -215,13 +215,88 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
 }
 
 /**
- * Stream a response using Claude API
- * Note: Currently returns non-streaming response
+ * Stream a response using Claude API with SSE.
+ * Calls the Anthropic streaming endpoint and yields events to the caller.
+ *
  * @param {Object} options
- * @returns {Promise<Object>} API response
+ * @param {Array} options.messages - Conversation messages
+ * @param {string} options.system - System prompt
+ * @param {number} options.max_tokens - Maximum tokens to generate
+ * @param {Function} options.onText - Called with each text delta chunk
+ * @param {Function} options.onDone - Called with the final message_stop event data (usage, etc.)
+ * @param {Function} options.onError - Called if an error occurs
+ * @returns {Promise<{text: string, usage: Object}>} Full text + usage once stream completes
  */
-async function streamResponse(options) {
-    return generateResponse(options);
+async function streamResponse({ messages, system, max_tokens = 1024, onText, onDone, onError }) {
+    if (!ANTHROPIC_API_KEY) {
+        throw new Error('ANTHROPIC_API_KEY not configured');
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+            model: ANTHROPIC_MODEL,
+            max_tokens,
+            system: system || '',
+            messages,
+            stream: true
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Claude streaming API error:', response.status, errorData);
+        throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+    }
+
+    let fullText = '';
+    let usage = { input_tokens: 0, output_tokens: 0 };
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE lines from buffer
+        const lines = buffer.split('\n');
+        // Keep the last (potentially incomplete) line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6);
+                if (jsonStr === '[DONE]') continue;
+
+                try {
+                    const event = JSON.parse(jsonStr);
+
+                    if (event.type === 'content_block_delta' && event.delta?.text) {
+                        fullText += event.delta.text;
+                        if (onText) onText(event.delta.text);
+                    } else if (event.type === 'message_delta' && event.usage) {
+                        usage.output_tokens = event.usage.output_tokens || 0;
+                    } else if (event.type === 'message_start' && event.message?.usage) {
+                        usage.input_tokens = event.message.usage.input_tokens || 0;
+                    }
+                } catch (e) {
+                    // Skip unparseable lines (event: lines, empty lines, etc.)
+                }
+            }
+        }
+    }
+
+    if (onDone) onDone({ text: fullText, usage });
+    return { text: fullText, usage };
 }
 
 module.exports = {
