@@ -121,6 +121,130 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
 });
 
 /**
+ * POST /api/generate-stream
+ * Stream AI response via Server-Sent Events.
+ * Same KB-picking logic as /generate, but returns chunks via SSE.
+ *
+ * SSE event format:
+ *   data: {"type":"delta","text":"chunk"}        — text chunk
+ *   data: {"type":"kb","entries":[...]}           — referenced KB entries (sent first)
+ *   data: {"type":"done","usage":{...}}           — stream complete
+ *   data: {"type":"error","error":"message"}      — error
+ */
+router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) => {
+    // Set SSE headers
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no'
+    });
+
+    const sendEvent = (data) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+        const { messages, system, inquiry, max_tokens = 1024 } = req.body;
+
+        if (!messages || !Array.isArray(messages)) {
+            sendEvent({ type: 'error', error: 'Messages array required' });
+            return res.end();
+        }
+
+        // Get user's organization for usage logging
+        const orgResult = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [req.userId]
+        );
+
+        const organizationId = orgResult.rows[0]?.organization_id;
+
+        let enhancedSystem = system || '';
+        let referencedKbEntries = [];
+
+        // Server-side KB relevance picking when inquiry is provided
+        if (inquiry && organizationId) {
+            try {
+                const kbResult = await pool.query(
+                    'SELECT id, title, content, category, tags FROM knowledge_base WHERE organization_id = $1 ORDER BY category, title',
+                    [organizationId]
+                );
+
+                if (kbResult.rows.length > 0) {
+                    const relevantEntries = await claudeService.pickRelevantKnowledge(
+                        inquiry,
+                        kbResult.rows,
+                        8
+                    );
+
+                    if (relevantEntries.length > 0) {
+                        referencedKbEntries = relevantEntries.map(entry => ({
+                            id: entry.id,
+                            title: entry.title,
+                            content: entry.content,
+                            category: entry.category
+                        }));
+
+                        const knowledgeContext = relevantEntries
+                            .map(entry => `[${entry.category}] ${entry.title}: ${entry.content}`)
+                            .join('\n\n');
+
+                        if (enhancedSystem.includes('Knowledge base:')) {
+                            enhancedSystem = enhancedSystem.replace(
+                                'Knowledge base:\n',
+                                `Knowledge base:\n\n${knowledgeContext}\n`
+                            );
+                        } else {
+                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}`;
+                        }
+                    }
+                }
+            } catch (kbError) {
+                console.warn('KB relevance picking failed, continuing without:', kbError.message);
+            }
+        }
+
+        // Send KB entries before streaming starts
+        if (referencedKbEntries.length > 0) {
+            sendEvent({ type: 'kb', entries: referencedKbEntries });
+        }
+
+        // Stream the Claude response
+        const startTime = Date.now();
+
+        const { text, usage } = await claudeService.streamResponse({
+            messages,
+            system: enhancedSystem,
+            max_tokens,
+            onText: (chunk) => {
+                sendEvent({ type: 'delta', text: chunk });
+            }
+        });
+
+        const responseTimeMs = Date.now() - startTime;
+
+        // Log usage
+        if (organizationId && usage) {
+            const totalTokens = (usage.input_tokens || 0) + (usage.output_tokens || 0);
+            await pool.query(
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, $4, TRUE, NOW())`,
+                [organizationId, req.userId, totalTokens, responseTimeMs]
+            ).catch(err => console.warn('Usage logging failed:', err.message));
+        }
+
+        sendEvent({ type: 'done', usage: usage || {} });
+        res.end();
+
+    } catch (error) {
+        console.error('Generate-stream error:', error);
+        sendEvent({ type: 'error', error: error.message || 'Failed to generate response' });
+        res.end();
+    }
+});
+
+/**
  * POST /api/analyze
  * Analyze uploaded data (Insights Engine)
  */
