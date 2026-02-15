@@ -1,0 +1,511 @@
+/* ============================================================
+   RULES OF PLAY GENERATOR STYLES
+   ============================================================ */
+
+/* Bento card glow for ROP */
+.rop-glow { background: radial-gradient(circle at 30% 30%, rgba(99,91,255,0.12), transparent 60%); }
+.bento-icon.rop { background: rgba(99,91,255,0.15); color: #635BFF; }
+
+/* Container */
+.rop-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+}
+
+/* Views */
+.rop-view { animation: ropFadeIn 0.2s ease; }
+@keyframes ropFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Page header */
+.rop-page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+.rop-page-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 4px 0 0;
+}
+
+/* List view */
+.rop-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    gap: 16px;
+}
+.rop-list-header .btn-primary {
+    white-space: nowrap;
+}
+
+.rop-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+.rop-empty-state h3 { color: var(--text-primary); margin: 12px 0 8px; }
+.rop-empty-state p { font-size: 0.9rem; }
+
+/* Disclaimer */
+.rop-disclaimer {
+    background: #FFF8E1;
+    border: 1px solid #FFE082;
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    font-size: 0.82rem;
+    color: #5D4037;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+/* Drafts table */
+.rop-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+.rop-table th {
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+}
+.rop-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+}
+.rop-draft-row {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.rop-draft-row:hover {
+    background: var(--bg-alt);
+}
+.rop-draft-name {
+    font-weight: 500;
+}
+.rop-type-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.76rem;
+    font-weight: 500;
+    background: color-mix(in srgb, var(--type-color, #888) 15%, transparent);
+    color: var(--type-color, #888);
+}
+.rop-status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.76rem;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+.rop-status-draft { background: #f0f0f0; color: #666; }
+.rop-status-generated { background: rgba(16,185,129,0.12); color: #059669; }
+.rop-status-finalized { background: rgba(59,130,246,0.12); color: #2563eb; }
+
+.rop-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: 0.4;
+    transition: opacity 0.15s;
+    padding: 4px 8px;
+}
+.rop-delete-btn:hover { opacity: 1; color: var(--danger); }
+
+/* Back button */
+.rop-back-btn {
+    background: none;
+    border: none;
+    color: var(--cta);
+    cursor: pointer;
+    font-size: 0.88rem;
+    padding: 0;
+    margin-bottom: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.rop-back-btn:hover { text-decoration: underline; }
+
+/* Type cards */
+.rop-type-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.rop-type-card {
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--bg-primary);
+}
+.rop-type-card:hover {
+    border-color: var(--cta);
+    box-shadow: var(--shadow-md);
+}
+.rop-type-card.selected {
+    border-color: var(--cta);
+    box-shadow: 0 0 0 3px rgba(99,91,255,0.15);
+}
+.rop-type-card h4 {
+    margin: 12px 0 6px;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+.rop-type-card p {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.rop-type-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+/* Jurisdiction */
+.rop-jurisdiction-row {
+    display: flex;
+    gap: 12px;
+}
+.rop-select {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+}
+.rop-coming-soon {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--bg-alt);
+    border-radius: var(--radius-md);
+    text-align: center;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+.rop-coming-soon .btn-primary { margin-top: 12px; }
+
+.rop-proceed-btn {
+    margin-top: 24px;
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+}
+
+/* Sections */
+.rop-section {
+    margin-bottom: 20px;
+}
+.rop-section-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+/* Form */
+.rop-form-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.rop-form-header-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+.rop-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.rop-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 0.76rem;
+    font-weight: 500;
+    background: color-mix(in srgb, var(--type-color, #888) 15%, transparent);
+    color: var(--type-color, #888);
+}
+.rop-autosave-status {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* Form sections (collapsible) */
+.rop-form-section {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 16px;
+    background: var(--bg-primary);
+    overflow: hidden;
+}
+.rop-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+.rop-section-header:hover { background: var(--bg-alt); }
+.rop-section-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.rop-section-toggle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+.rop-form-section.collapsed .rop-section-body { display: none; }
+.rop-form-section.collapsed .rop-section-toggle { transform: rotate(-90deg); }
+
+.rop-section-body {
+    padding: 4px 20px 20px;
+}
+
+/* Form fields */
+.rop-form-group {
+    margin-bottom: 14px;
+}
+.rop-field-label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+.rop-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 0.88rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.rop-input:focus {
+    outline: none;
+    border-color: var(--cta);
+    box-shadow: 0 0 0 3px rgba(99,91,255,0.1);
+}
+textarea.rop-input { resize: vertical; min-height: 60px; }
+
+.rop-prefilled-field .rop-input {
+    background: var(--bg-alt);
+}
+.rop-prefilled {
+    background: var(--bg-alt);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 14px;
+}
+
+.rop-field-hint {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+
+.rop-toggle-row {
+    margin-bottom: 10px;
+}
+.rop-toggle-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.86rem;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+/* Repeatable groups */
+.rop-subsection {
+    margin-bottom: 14px;
+}
+.rop-repeatable-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+.rop-repeat-field {
+    flex: 1;
+    min-width: 120px;
+}
+.rop-repeat-field label {
+    display: block;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+.rop-repeat-field .rop-input {
+    font-size: 0.84rem;
+    padding: 7px 10px;
+}
+.rop-remove-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 6px;
+    flex-shrink: 0;
+    transition: color 0.15s;
+}
+.rop-remove-btn:hover { color: var(--danger); }
+.rop-add-btn {
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 8px 16px;
+    cursor: pointer;
+    color: var(--cta);
+    font-size: 0.82rem;
+    font-family: inherit;
+    transition: background 0.15s, border-color 0.15s;
+    width: 100%;
+    margin-top: 4px;
+}
+.rop-add-btn:hover { background: var(--bg-alt); border-color: var(--cta); }
+
+/* 50/50 Draw blocks */
+.rop-draw-block {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 12px;
+    background: var(--bg-alt);
+}
+.rop-draw-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.rop-draw-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.rop-draw-fields .rop-repeat-field { min-width: auto; }
+
+/* Upload area */
+.rop-upload-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+#ropUploadStatus {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+/* Output view */
+.rop-output-textarea {
+    width: 100%;
+    min-height: 500px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    resize: vertical;
+    box-sizing: border-box;
+}
+.rop-output-textarea:focus {
+    outline: none;
+    border-color: var(--cta);
+    box-shadow: 0 0 0 3px rgba(99,91,255,0.1);
+}
+
+/* Generating spinner */
+.rop-generating {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-secondary);
+}
+.rop-generating h3 { color: var(--text-primary); margin: 20px 0 8px; }
+.rop-generating p { font-size: 0.88rem; }
+.rop-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--cta);
+    border-radius: 50%;
+    margin: 0 auto;
+    animation: ropSpin 0.8s linear infinite;
+}
+@keyframes ropSpin { to { transform: rotate(360deg); } }
+
+/* Button styles - reuse existing .btn-primary, .btn-secondary from design system */
+.rop-form-actions .btn-secondary {
+    padding: 8px 14px;
+    font-size: 0.82rem;
+}
+.rop-form-actions .btn-primary {
+    padding: 8px 18px;
+    font-size: 0.82rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .rop-type-cards { grid-template-columns: 1fr; }
+    .rop-jurisdiction-row { flex-direction: column; }
+    .rop-form-header { flex-direction: column; align-items: flex-start; }
+    .rop-draw-fields { grid-template-columns: 1fr; }
+    .rop-list-header { flex-direction: column; }
+    .rop-table { font-size: 0.82rem; }
+    .rop-table th:nth-child(3),
+    .rop-table td:nth-child(3),
+    .rop-table th:nth-child(5),
+    .rop-table td:nth-child(5) { display: none; }
+}

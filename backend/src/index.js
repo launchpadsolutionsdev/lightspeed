@@ -24,6 +24,8 @@ const contactRoutes = require('./routes/contact');
 const drawScheduleRoutes = require('./routes/drawSchedules');
 const contentTemplateRoutes = require('./routes/contentTemplates');
 const exportRoutes = require('./routes/export');
+const jurisdictionRoutes = require('./routes/jurisdictions');
+const rulesOfPlayRoutes = require('./routes/rulesOfPlay');
 const pool = require('../config/database');
 
 // Validate required environment variables
@@ -122,6 +124,8 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/draw-schedules', drawScheduleRoutes);
 app.use('/api/content-templates', contentTemplateRoutes);
 app.use('/api/organizations', exportRoutes); // /api/organizations/:orgId/export
+app.use('/api/jurisdictions', jurisdictionRoutes);
+app.use('/api/rules-of-play', rulesOfPlayRoutes);
 
 // 404 handler
 app.use((req, res) => {
