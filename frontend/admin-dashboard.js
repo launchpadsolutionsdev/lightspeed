@@ -86,6 +86,7 @@ function getAdminShell() {
             <button class="admin-tab" data-tab="organizations">Organizations</button>
             <button class="admin-tab" data-tab="costs">Usage & Costs</button>
             <button class="admin-tab" data-tab="activity">Activity Feed</button>
+            <button class="admin-tab" data-tab="audit">Audit Log</button>
         </div>
 
         <div id="adminTabContent" class="admin-tab-content">
@@ -129,6 +130,7 @@ async function loadAdminTab(tab) {
         else if (tab === 'organizations') await renderOrgsTab(container);
         else if (tab === 'costs') await renderCostsTab(container);
         else if (tab === 'activity') await renderActivityTab(container);
+        else if (tab === 'audit') await renderAuditTab(container);
     } catch (error) {
         console.error(`Admin tab error (${tab}):`, error);
         container.innerHTML = `
@@ -1464,6 +1466,70 @@ window.toggleAdminKBForm = toggleAdminKBForm;
 window.addAdminKBEntry = addAdminKBEntry;
 window.deleteAdminKBEntry = deleteAdminKBEntry;
 window.adminImportAllTemplates = adminImportAllTemplates;
+
+// ==================== AUDIT LOG TAB ====================
+async function renderAuditTab(container) {
+    const data = await fetchAdminData('/api/admin/audit-logs?limit=200');
+
+    const ACTION_LABELS = {
+        'ORG_SETTINGS_UPDATED': 'Updated org settings',
+        'MEMBER_INVITED': 'Invited member',
+        'MEMBER_JOINED': 'Member joined',
+        'MEMBER_REMOVED': 'Removed member',
+        'MEMBER_ROLE_CHANGED': 'Changed member role',
+        'KB_ENTRY_CREATED': 'Created KB entry',
+        'KB_ENTRY_UPDATED': 'Updated KB entry',
+        'KB_ENTRY_DELETED': 'Deleted KB entry',
+        'KB_BULK_IMPORTED': 'Bulk imported KB entries',
+        'KB_DOC_UPLOADED': 'Uploaded document to KB',
+        'SUPER_ADMIN_TOGGLED': 'Toggled super admin',
+        'ADMIN_USER_ASSIGNED_TO_ORG': 'Assigned user to org',
+        'ADMIN_USER_ROLE_CHANGED': 'Changed user role (admin)',
+        'ADMIN_USER_REMOVED_FROM_ORG': 'Removed user from org (admin)',
+        'ADMIN_ORG_CREATED': 'Created organization',
+        'ADMIN_ORG_UPDATED': 'Updated organization (admin)',
+        'SUBSCRIPTION_ACTIVATED': 'Subscription activated',
+        'SUBSCRIPTION_CANCELLED': 'Subscription cancelled',
+        'ORG_DATA_EXPORTED': 'Exported org data'
+    };
+
+    const rows = (data.logs || []).map(log => {
+        const actor = log.actor_email || 'System';
+        const label = ACTION_LABELS[log.action] || log.action;
+        const org = log.org_name || '—';
+        const time = new Date(log.created_at).toLocaleString();
+        const changesStr = log.changes ? `<code>${JSON.stringify(log.changes).substring(0, 120)}</code>` : '—';
+        return `<tr>
+            <td>${time}</td>
+            <td>${actor}</td>
+            <td><span class="admin-badge">${label}</span></td>
+            <td>${org}</td>
+            <td>${log.resource_type}${log.resource_id ? ` (${log.resource_id.substring(0, 8)}...)` : ''}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${changesStr}</td>
+        </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="admin-section">
+            <h2>Audit Log</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">Complete trail of all sensitive operations across the platform. Total: ${data.total || 0} events.</p>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Actor</th>
+                            <th>Action</th>
+                            <th>Organization</th>
+                            <th>Resource</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-secondary);">No audit logs yet</td></tr>'}</tbody>
+                </table>
+            </div>
+        </div>`;
+}
 
 // Auto-init on page load
 document.addEventListener('DOMContentLoaded', () => {

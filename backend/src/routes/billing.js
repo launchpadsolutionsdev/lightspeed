@@ -9,6 +9,7 @@ const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const auditLog = require('../services/auditLog');
 
 // Stripe Price IDs
 const PRICES = {
@@ -56,6 +57,7 @@ router.post('/webhook', async (req, res) => {
                          WHERE id = $4`,
                         [session.customer, session.subscription, plan, orgId]
                     );
+                    auditLog.logAction({ orgId, action: 'SUBSCRIPTION_ACTIVATED', resourceType: 'SUBSCRIPTION', changes: { plan, customer: session.customer }, req });
                     console.log(`[Stripe] Organization ${orgId} activated on ${plan} plan`);
                 }
                 break;
@@ -86,6 +88,7 @@ router.post('/webhook', async (req, res) => {
                      WHERE stripe_subscription_id = $1`,
                     [subscription.id]
                 );
+                auditLog.logAction({ action: 'SUBSCRIPTION_CANCELLED', resourceType: 'SUBSCRIPTION', resourceId: subscription.id, req });
                 console.log(`[Stripe] Subscription ${subscription.id} cancelled`);
                 break;
             }

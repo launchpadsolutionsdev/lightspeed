@@ -8,6 +8,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../../config/database');
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
+const auditLog = require('../services/auditLog');
 
 /**
  * GET /api/admin/dashboard
@@ -475,6 +476,7 @@ router.patch('/users/:userId/super-admin', authenticate, requireSuperAdmin, asyn
             [isSuperAdmin, userId]
         );
 
+        auditLog.logAction({ userId: req.userId, action: 'SUPER_ADMIN_TOGGLED', resourceType: 'USER', resourceId: userId, changes: { is_super_admin: isSuperAdmin }, req });
         res.json({ message: 'Super admin status updated' });
 
     } catch (error) {
@@ -665,6 +667,7 @@ router.put('/users/:userId/organization', authenticate, requireSuperAdmin, async
             [userId]
         );
 
+        auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'ADMIN_USER_ASSIGNED_TO_ORG', resourceType: 'MEMBERSHIP', resourceId: userId, changes: { organization_id: organizationId, role }, req });
         res.json({
             message: 'User organization updated',
             membership: updated.rows[0]
@@ -703,6 +706,7 @@ router.patch('/users/:userId/role', authenticate, requireSuperAdmin, async (req,
             [role, userId]
         );
 
+        auditLog.logAction({ userId: req.userId, action: 'ADMIN_USER_ROLE_CHANGED', resourceType: 'MEMBERSHIP', resourceId: userId, changes: { new_role: role }, req });
         res.json({ message: 'User role updated' });
 
     } catch (error) {
@@ -728,6 +732,7 @@ router.delete('/users/:userId/organization', authenticate, requireSuperAdmin, as
             return res.status(404).json({ error: 'User is not assigned to any organization' });
         }
 
+        auditLog.logAction({ userId: req.userId, action: 'ADMIN_USER_REMOVED_FROM_ORG', resourceType: 'MEMBERSHIP', resourceId: userId, req });
         res.json({ message: 'User removed from organization' });
 
     } catch (error) {
@@ -761,6 +766,7 @@ router.post('/organizations', authenticate, requireSuperAdmin, async (req, res) 
             [orgId, trimmedName, slug, trialEndsAt]
         );
 
+        auditLog.logAction({ orgId: orgId, userId: req.userId, action: 'ADMIN_ORG_CREATED', resourceType: 'ORGANIZATION', resourceId: orgId, changes: { name: trimmedName }, req });
         res.status(201).json({ organization: result.rows[0] });
     } catch (error) {
         console.error('Create organization error:', error);
@@ -887,6 +893,7 @@ router.patch('/organizations/:orgId', authenticate, requireSuperAdmin, async (re
             return res.status(404).json({ error: 'Organization not found' });
         }
 
+        auditLog.logAction({ orgId: orgId, userId: req.userId, action: 'ADMIN_ORG_UPDATED', resourceType: 'ORGANIZATION', resourceId: orgId, changes: req.body, req });
         res.json({ organization: result.rows[0] });
     } catch (error) {
         console.error('Update organization error:', error);
@@ -1002,6 +1009,52 @@ router.post('/organizations/:orgId/content-templates/import-all', authenticate, 
     } catch (error) {
         console.error('Import templates error:', error);
         res.status(500).json({ error: 'Failed to import templates' });
+    }
+});
+
+/**
+ * GET /api/admin/audit-logs
+ * View audit logs with filtering
+ */
+router.get('/audit-logs', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { action, org_id, user_id, limit = 100, offset = 0 } = req.query;
+
+        let query = `SELECT al.*, u.email as actor_email, u.first_name as actor_first_name, o.name as org_name
+                     FROM audit_logs al
+                     LEFT JOIN users u ON al.actor_user_id = u.id
+                     LEFT JOIN organizations o ON al.organization_id = o.id
+                     WHERE 1=1`;
+        const params = [];
+        let paramCount = 1;
+
+        if (action) {
+            query += ` AND al.action = $${paramCount++}`;
+            params.push(action);
+        }
+        if (org_id) {
+            query += ` AND al.organization_id = $${paramCount++}`;
+            params.push(org_id);
+        }
+        if (user_id) {
+            query += ` AND al.actor_user_id = $${paramCount++}`;
+            params.push(user_id);
+        }
+
+        query += ` ORDER BY al.created_at DESC LIMIT $${paramCount++} OFFSET $${paramCount}`;
+        params.push(parseInt(limit), parseInt(offset));
+
+        const result = await pool.query(query, params);
+
+        const countResult = await pool.query('SELECT COUNT(*) FROM audit_logs');
+
+        res.json({
+            logs: result.rows,
+            total: parseInt(countResult.rows[0].count)
+        });
+    } catch (error) {
+        console.error('Get audit logs error:', error);
+        res.status(500).json({ error: 'Failed to get audit logs' });
     }
 });
 

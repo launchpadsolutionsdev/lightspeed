@@ -4948,6 +4948,13 @@ async function saveOrgProfile() {
             body: JSON.stringify(payload)
         });
 
+        if (response.status === 409) {
+            showToast('Settings were modified by someone else. Please refresh and try again.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Save Profile';
+            return;
+        }
+
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
             throw new Error(errData.error || 'Failed to save');
@@ -4969,6 +4976,49 @@ async function saveOrgProfile() {
         btn.textContent = 'Save Profile';
     }
 }
+
+// ==================== DATA EXPORT ====================
+async function exportOrganizationData() {
+    if (!currentOrgId) {
+        showToast('No organization found', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('exportOrgDataBtn');
+    btn.disabled = true;
+    btn.textContent = 'Preparing export...';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}/export`, {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || 'Export failed');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const filename = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || `lightspeed-export-${new Date().toISOString().slice(0, 10)}.json`;
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast('Data exported successfully!', 'success');
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast(error.message || 'Failed to export data', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '📥 Export All Data (JSON)';
+    }
+}
+window.exportOrganizationData = exportOrganizationData;
 
 // ==================== CONTENT TEMPLATE MANAGEMENT ====================
 
@@ -6423,9 +6473,11 @@ async function submitRatingFeedback() {
                     const updateResp = await fetch(`${API_BASE_URL}/api/knowledge-base/${entry.id}`, {
                         method: 'PUT',
                         headers: getAuthHeaders(),
-                        body: JSON.stringify({ title: entry.title, content: entry.content, category: entry.category })
+                        body: JSON.stringify({ title: entry.title, content: entry.content, category: entry.category, expected_updated_at: entry.updated_at })
                     });
-                    if (updateResp.ok) kbUpdated = true;
+                    if (updateResp.status === 409) {
+                        showToast(`"${entry.title}" was modified by someone else. Refresh KB and try again.`, 'error');
+                    } else if (updateResp.ok) kbUpdated = true;
                 } catch (err) {
                     console.warn('Failed to update KB entry:', entry.id, err);
                 }

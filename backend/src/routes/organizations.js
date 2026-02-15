@@ -10,6 +10,7 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
 const { authenticate, requireOrganization, requireAdmin, requireOwner } = require('../middleware/auth');
 const { sendInvitationEmail } = require('../services/email');
+const auditLog = require('../services/auditLog');
 
 const FRONTEND_URL = 'https://www.lightspeedutility.ca';
 
@@ -127,12 +128,22 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
             return res.status(400).json({ error: 'No updates provided' });
         }
 
+        // Optimistic concurrency check
+        if (req.body.expected_updated_at) {
+            const current = await pool.query('SELECT updated_at FROM organizations WHERE id = $1', [req.organization.id]);
+            if (current.rows[0]?.updated_at?.toISOString() !== req.body.expected_updated_at) {
+                return res.status(409).json({ error: 'conflict', message: 'Organization was modified by someone else. Please refresh and try again.' });
+            }
+        }
+
+        updates.push(`updated_at = NOW()`);
         values.push(req.organization.id);
         const result = await pool.query(
             `UPDATE organizations SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
             values
         );
 
+        auditLog.logAction({ orgId: req.organization.id, userId: req.userId, action: 'ORG_SETTINGS_UPDATED', resourceType: 'ORGANIZATION', resourceId: req.organization.id, changes: req.body, req });
         res.json({ organization: result.rows[0] });
 
     } catch (error) {
@@ -264,6 +275,7 @@ router.post('/:orgId/invite', authenticate, requireOrganization, requireAdmin, [
             console.error('Failed to send invitation email:', emailError);
         }
 
+        auditLog.logAction({ orgId: req.organization.id, userId: req.userId, action: 'MEMBER_INVITED', resourceType: 'INVITATION', resourceId: inviteId, changes: { email, role, emailSent }, req });
         res.status(201).json({
             message: emailSent ? 'Invitation sent via email' : 'Invitation created - share the link manually',
             inviteLink,
@@ -334,6 +346,7 @@ router.post('/accept-invite', authenticate, async (req, res) => {
         // Get the organization details
         const orgResult = await pool.query('SELECT * FROM organizations WHERE id = $1', [invite.organization_id]);
 
+        auditLog.logAction({ orgId: invite.organization_id, userId: req.userId, action: 'MEMBER_JOINED', resourceType: 'MEMBERSHIP', resourceId: req.userId, changes: { role: invite.role, invited_by: invite.invited_by }, req });
         res.json({
             message: 'Successfully joined organization',
             organization: {
@@ -381,6 +394,7 @@ router.delete('/:orgId/members/:memberId', authenticate, requireOrganization, re
             [memberId, req.organization.id]
         );
 
+        auditLog.logAction({ orgId: req.organization.id, userId: req.userId, action: 'MEMBER_REMOVED', resourceType: 'MEMBERSHIP', resourceId: memberId, changes: { removed_role: targetMember.rows[0].role }, req });
         res.json({ message: 'Member removed' });
 
     } catch (error) {
@@ -421,11 +435,13 @@ router.patch('/:orgId/members/:memberId', authenticate, requireOrganization, req
         }
 
         // Update role
+        const prevRole = memberResult.rows[0].role;
         await pool.query(
             'UPDATE organization_memberships SET role = $1 WHERE user_id = $2 AND organization_id = $3',
             [role, memberId, req.organization.id]
         );
 
+        auditLog.logAction({ orgId: req.organization.id, userId: req.userId, action: 'MEMBER_ROLE_CHANGED', resourceType: 'MEMBERSHIP', resourceId: memberId, changes: { from: prevRole, to: role }, req });
         res.json({ message: 'Role updated' });
 
     } catch (error) {
