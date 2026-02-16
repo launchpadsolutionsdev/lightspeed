@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const { pickRelevantRatedExamples } = require('../services/claude');
 
 /**
  * GET /api/response-history
@@ -251,23 +252,28 @@ router.get('/rated-examples', authenticate, async (req, res) => {
         const organizationId = orgResult.rows[0].organization_id;
         const tool = req.query.tool || 'response_assistant';
         const format = req.query.format || null;
+        const inquiry = req.query.inquiry || null;
 
         // Build optional format filter clause
         const formatClause = format ? ` AND format = $3` : '';
         const positiveParams = format ? [organizationId, tool, format] : [organizationId, tool];
         const negativeParams = format ? [organizationId, tool, format] : [organizationId, tool];
 
-        // Get most recent positive examples (good responses to emulate)
+        // Fetch a larger pool when inquiry is provided (Haiku will filter for relevance)
+        const positiveLimit = inquiry ? 20 : 5;
+        const negativeLimit = inquiry ? 10 : 3;
+
+        // Get pool of positive examples (good responses to emulate)
         const positiveResult = await pool.query(
             `SELECT inquiry, response, format, tone
              FROM response_history
              WHERE organization_id = $1 AND rating = 'positive' AND (tool = $2 OR tool IS NULL)${formatClause}
              ORDER BY rating_at DESC
-             LIMIT 5`,
+             LIMIT ${positiveLimit}`,
             positiveParams
         );
 
-        // Get most recent negative examples with feedback (mistakes to avoid)
+        // Get pool of negative examples with feedback (mistakes to avoid)
         // Join via proper FK (feedback_kb_entry_id) to pull in corrections
         const negativeResult = await pool.query(
             `SELECT rh.inquiry, rh.response, rh.rating_feedback, rh.format, rh.tone,
@@ -277,9 +283,21 @@ router.get('/rated-examples', authenticate, async (req, res) => {
                 ON rh.feedback_kb_entry_id = kb.id
              WHERE rh.organization_id = $1 AND rh.rating = 'negative' AND (rh.tool = $2 OR rh.tool IS NULL)${formatClause.replace('format', 'rh.format')}
              ORDER BY rh.rating_at DESC
-             LIMIT 3`,
+             LIMIT ${negativeLimit}`,
             negativeParams
         );
+
+        // If an inquiry was provided, use Haiku to filter for topical relevance
+        if (inquiry && (positiveResult.rows.length > 5 || negativeResult.rows.length > 3)) {
+            const filtered = await pickRelevantRatedExamples(
+                inquiry,
+                positiveResult.rows,
+                negativeResult.rows,
+                5,
+                3
+            );
+            return res.json(filtered);
+        }
 
         res.json({
             positive: positiveResult.rows,
