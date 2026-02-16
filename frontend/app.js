@@ -1815,8 +1815,8 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         // KB entries are now picked server-side by the Haiku relevance picker
         // when we pass `inquiry` to /api/generate.
 
-        // Inject rated examples from feedback loop
-        const ratedExamples = await getRatedExamples('ask_lightspeed');
+        // Inject rated examples from feedback loop, filtered by topic relevance
+        const ratedExamples = await getRatedExamples('ask_lightspeed', null, message);
         const feedbackSection = buildRatedExamplesContext(ratedExamples);
 
         // Inject draw schedule context for accurate date/prize awareness
@@ -2162,7 +2162,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
         // KB entries are now picked server-side by the Haiku relevance picker
 
-        const ratedExamples = await getRatedExamples('ask_lightspeed');
+        const ratedExamples = await getRatedExamples('ask_lightspeed', null, message);
         const feedbackSection = buildRatedExamplesContext(ratedExamples);
         const drawScheduleSection = getDrawScheduleContext();
         const fullSystemPrompt = systemPrompt + '\n\nKnowledge base:\n' + (drawScheduleSection ? '\n\n' + drawScheduleSection : '') + feedbackSection;
@@ -5817,10 +5817,11 @@ function getRelevantKnowledge(inquiry) {
 
 // Fetch rated examples from backend for AI learning
 // Optional format param ('email' or 'facebook') scopes examples to matching format
-async function getRatedExamples(tool = 'response_assistant', format = null) {
+async function getRatedExamples(tool = 'response_assistant', format = null, inquiry = null) {
     try {
         let url = `${API_BASE_URL}/api/response-history/rated-examples?tool=${tool}`;
         if (format) url += `&format=${encodeURIComponent(format)}`;
+        if (inquiry) url += `&inquiry=${encodeURIComponent(inquiry)}`;
         const response = await fetch(url, {
             headers: getAuthHeaders()
         });
@@ -5874,9 +5875,9 @@ async function generateCustomResponse(customerEmail, knowledge, staffName, optio
     // KB entries are now picked server-side by the Haiku relevance picker.
     // We no longer dump all entries here — the backend handles it when we pass `inquiry`.
 
-    // Fetch rated examples for learning, scoped to the current format (email/facebook)
+    // Fetch rated examples for learning, scoped to the current format and filtered by topic relevance
     const currentFormat = isFacebook ? 'facebook' : 'email';
-    const ratedExamples = await getRatedExamples('response_assistant', currentFormat);
+    const ratedExamples = await getRatedExamples('response_assistant', currentFormat, customerEmail);
 
     // Get draw schedule context (org-specific if available, else hardcoded fallback)
     const drawScheduleContext = getDrawScheduleContext();
@@ -7992,7 +7993,7 @@ function replaceOrgPlaceholders(text) {
 }
 
 // Helper function to build enhanced system prompt with examples from knowledge base
-async function buildEnhancedSystemPrompt(contentType, emailType = null) {
+async function buildEnhancedSystemPrompt(contentType, emailType = null, userInquiry = null) {
     let basePrompt = '';
     let knowledgeBaseType = '';
 
@@ -8071,8 +8072,8 @@ async function buildEnhancedSystemPrompt(contentType, emailType = null) {
         basePrompt += '\n\n' + drawCtx;
     }
 
-    // Inject rated examples from feedback loop
-    const ratedExamples = await getRatedExamples('draft_assistant');
+    // Inject rated examples from feedback loop, filtered by topic relevance
+    const ratedExamples = await getRatedExamples('draft_assistant', null, userInquiry);
     basePrompt += buildRatedExamplesContext(ratedExamples);
 
     // Replace org profile placeholders with actual values
@@ -8332,7 +8333,7 @@ async function generateDraft() {
     document.getElementById('draftCopyHtmlBtn').style.display = 'none';
 
     try {
-        const enhancedSystemPrompt = await buildEnhancedSystemPrompt(currentDraftType);
+        const enhancedSystemPrompt = await buildEnhancedSystemPrompt(currentDraftType, null, topic);
 
         const { text: generatedContent } = await fetchStream({
             system: enhancedSystemPrompt,
@@ -8410,7 +8411,7 @@ async function generateWriteAnything() {
             systemPrompt += '\n\nORGANIZATION KNOWLEDGE BASE (use this information to stay accurate and on-brand):\n' + kbContext;
         }
 
-        const ratedExamples = await getRatedExamples('draft_assistant');
+        const ratedExamples = await getRatedExamples('draft_assistant', null, topic);
         systemPrompt += buildRatedExamplesContext(ratedExamples);
 
         const { text: generatedContent } = await fetchStream({
@@ -8506,7 +8507,7 @@ async function generateEmailDraft() {
     document.getElementById('draftCopyHtmlBtn').style.display = 'inline-flex';
 
     try {
-        const enhancedSystemPrompt = await buildEnhancedSystemPrompt('email', currentEmailType);
+        const enhancedSystemPrompt = await buildEnhancedSystemPrompt('email', currentEmailType, details);
 
         const { text: generatedContent } = await fetchStream({
             system: enhancedSystemPrompt,
@@ -8610,12 +8611,13 @@ async function refineDraft(instruction) {
 
     try {
         let enhancedSystemPrompt;
+        const refineInquiry = lastDraftRequest?.details || lastDraftRequest?.topic || null;
         if (lastDraftRequest && lastDraftRequest.isWriteAnything) {
             enhancedSystemPrompt = replaceOrgPlaceholders(WRITE_ANYTHING_GUIDE) + getLanguageInstruction();
         } else if (lastDraftRequest && lastDraftRequest.isEmail) {
-            enhancedSystemPrompt = await buildEnhancedSystemPrompt('email', lastDraftRequest.emailType);
+            enhancedSystemPrompt = await buildEnhancedSystemPrompt('email', lastDraftRequest.emailType, refineInquiry);
         } else {
-            enhancedSystemPrompt = await buildEnhancedSystemPrompt(currentDraftType);
+            enhancedSystemPrompt = await buildEnhancedSystemPrompt(currentDraftType, null, refineInquiry);
         }
 
         const messages = [
