@@ -493,7 +493,7 @@ All logging uses `console.log/warn/error`. There's no structured logging, no log
 
 **D7. `render.yaml` missing environment variables**
 The following `.env.example` variables are not configured in `render.yaml`:
-- `ANTHROPIC_MODEL` — defaults to `claude-sonnet-4-20250514` in code but should be configurable per environment
+- `ANTHROPIC_MODEL` — defaults to `claude-sonnet-4-6` in code but should be configurable per environment
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_EMAIL`, `FROM_NAME` — email configuration
 - `STRIPE_WEBHOOK_SECRET` — required for webhook signature verification
 *Recommendation:* Add all required env vars to `render.yaml` (as `sync: false` for secrets).
