@@ -83,7 +83,7 @@
 | Setting | Value |
 |---------|-------|
 | Provider | Anthropic |
-| Model | `claude-sonnet-4-20250514` (configurable via `ANTHROPIC_MODEL` env var) |
+| Model | `claude-sonnet-4-6` (configurable via `ANTHROPIC_MODEL` env var) |
 | API | Messages API v1 (`https://api.anthropic.com/v1/messages`) |
 | API version header | `2023-06-01` |
 | Max tokens | 1,024–8,192 depending on tool |
@@ -183,7 +183,7 @@ The backend is a **standard Express REST API**. All routes are under `/api/*`. T
          ↓
 6. Route handler calls claude.generateWithKnowledge():
    - Appends knowledge entries to system prompt
-   - Sends to Anthropic Messages API (claude-sonnet-4-20250514)
+   - Sends to Anthropic Messages API (claude-sonnet-4-6)
          ↓
 7. Response logged to usage_logs table (org_id, user_id, tool, tokens)
          ↓
