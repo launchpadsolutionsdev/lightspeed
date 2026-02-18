@@ -1428,6 +1428,558 @@
             }
         }
 
+        /* ==================== ALS CONVERSATION SIDEBAR ==================== */
+        .als-page-layout {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .als-sidebar {
+            width: 300px;
+            background: #fff;
+            border-right: 1px solid #e3e8ee;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 50;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .als-sidebar.open {
+            transform: translateX(0);
+        }
+
+        .als-sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid #e3e8ee;
+        }
+
+        .als-sidebar-header h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .als-sidebar-new-btn {
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .als-sidebar-new-btn:hover {
+            transform: scale(1.03);
+            box-shadow: 0 2px 8px rgba(233, 30, 140, 0.3);
+        }
+
+        .als-sidebar-search {
+            padding: 12px 16px 8px;
+        }
+
+        .als-sidebar-search input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 0.8rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        .als-sidebar-search input:focus {
+            border-color: var(--gradient-start);
+        }
+
+        .als-sidebar-tabs {
+            display: flex;
+            padding: 8px 16px;
+            gap: 4px;
+        }
+
+        .als-sidebar-tab {
+            flex: 1;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        .als-sidebar-tab:hover {
+            background: var(--bg-alt);
+            color: var(--text-primary);
+        }
+
+        .als-sidebar-tab.active {
+            background: linear-gradient(135deg, rgba(233, 30, 140, 0.1), rgba(245, 166, 35, 0.1));
+            color: var(--gradient-start);
+        }
+
+        .als-sidebar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .als-sidebar-item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-bottom: 2px;
+            position: relative;
+        }
+
+        .als-sidebar-item:hover {
+            background: var(--bg-alt);
+        }
+
+        .als-sidebar-item.active {
+            background: linear-gradient(135deg, rgba(233, 30, 140, 0.08), rgba(245, 166, 35, 0.08));
+            border: 1px solid rgba(233, 30, 140, 0.15);
+        }
+
+        .als-sidebar-item-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+
+        .als-sidebar-item-meta {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .als-sidebar-item-delete {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .als-sidebar-item:hover .als-sidebar-item-delete {
+            display: flex;
+        }
+
+        .als-sidebar-item-delete:hover {
+            background: rgba(220, 38, 38, 0.1);
+            color: #dc2626;
+        }
+
+        /* Team activity items */
+        .als-activity-item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            background: var(--bg-alt);
+        }
+
+        .als-activity-user {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .als-activity-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .als-activity-time {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Shared prompt items */
+        .als-shared-prompt-item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-bottom: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .als-shared-prompt-item:hover {
+            border-color: var(--gradient-start);
+            background: rgba(233, 30, 140, 0.03);
+        }
+
+        .als-shared-prompt-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .als-shared-prompt-meta {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+        }
+
+        .als-sidebar-toggle {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 51;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .als-sidebar-toggle:hover {
+            border-color: var(--gradient-start);
+            background: #fff;
+        }
+
+        .als-sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 49;
+        }
+
+        .als-sidebar-overlay.visible {
+            display: block;
+        }
+
+        .als-sidebar-empty {
+            padding: 24px 16px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        /* ==================== ALS QUICK REFINEMENT BUTTONS ==================== */
+        .als-refinements {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            padding-top: 8px;
+        }
+
+        .als-refine-btn {
+            padding: 4px 12px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.8);
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+
+        .als-refine-btn:hover {
+            border-color: var(--gradient-start);
+            color: var(--gradient-start);
+            background: rgba(233, 30, 140, 0.04);
+            transform: translateY(-1px);
+        }
+
+        /* ==================== ALS KB CITATIONS ==================== */
+        .als-citation {
+            display: inline;
+            font-size: 0.7em;
+            font-weight: 700;
+            color: var(--gradient-start);
+            cursor: pointer;
+            vertical-align: super;
+            padding: 0 1px;
+            transition: color 0.15s;
+        }
+
+        .als-citation:hover {
+            color: var(--gradient-end);
+            text-decoration: underline;
+        }
+
+        .als-sources-panel {
+            margin-top: 12px;
+            padding: 12px 14px;
+            background: var(--bg-alt);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .als-sources-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .als-source-item {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            padding: 4px 0;
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+        }
+
+        .als-source-num {
+            font-weight: 700;
+            color: var(--gradient-start);
+            font-size: 0.72rem;
+            min-width: 18px;
+        }
+
+        .als-source-text {
+            line-height: 1.4;
+        }
+
+        .als-source-category {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-left: 4px;
+        }
+
+        /* ==================== ALS TEACH MODE ==================== */
+        .als-teach-confirm {
+            margin-top: 10px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(99, 91, 255, 0.08));
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .als-teach-confirm-text {
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .als-teach-confirm-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .als-teach-confirm-actions button {
+            padding: 5px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .als-teach-save {
+            background: linear-gradient(135deg, #3B82F6, #635BFF) !important;
+            border-color: transparent !important;
+            color: #fff !important;
+        }
+
+        .als-teach-save:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        /* ==================== ALS CONTEXT INDICATOR ==================== */
+        .als-context-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 14px;
+            background: linear-gradient(135deg, rgba(245, 166, 35, 0.08), rgba(250, 204, 21, 0.08));
+            border: 1px solid rgba(245, 166, 35, 0.2);
+            border-radius: 10px;
+            margin-bottom: 12px;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .als-context-bar-text {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .als-context-bar-text strong {
+            color: var(--text-primary);
+        }
+
+        .als-context-bar button {
+            padding: 5px 14px;
+            border-radius: 6px;
+            border: 1px solid rgba(245, 166, 35, 0.3);
+            background: #fff;
+            font-size: 0.73rem;
+            font-weight: 600;
+            color: #B45309;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .als-context-bar button:hover {
+            background: rgba(245, 166, 35, 0.1);
+        }
+
+        .als-summary-banner {
+            padding: 10px 14px;
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 12px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .als-summary-banner strong {
+            color: var(--text-primary);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ==================== ALS SAVE PROMPT MODAL ==================== */
+        .als-save-prompt-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.4);
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .als-save-prompt-content {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 440px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .als-save-prompt-content h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin: 0 0 16px;
+        }
+
+        .als-save-prompt-content input,
+        .als-save-prompt-content select {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+            font-family: inherit;
+            margin-bottom: 12px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .als-save-prompt-content input:focus,
+        .als-save-prompt-content select:focus {
+            border-color: var(--gradient-start);
+        }
+
+        .als-save-prompt-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .als-save-prompt-actions button {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .als-save-prompt-actions .als-save-btn-primary {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-color: transparent;
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .als-sidebar {
+                width: 280px;
+            }
+        }
+
         /* ==================== MAIN APP ==================== */
         #appWrapper {
             display: none;
@@ -11540,9 +12092,36 @@
             <div class="als-gradient-bg"></div>
             <div class="als-gradient-fade"></div>
 
+            <!-- Sidebar overlay -->
+            <div class="als-sidebar-overlay" id="alsSidebarOverlay"></div>
+
+            <!-- Conversation sidebar -->
+            <div class="als-sidebar" id="alsSidebar">
+                <div class="als-sidebar-header">
+                    <h3>Conversations</h3>
+                    <button class="als-sidebar-new-btn" id="alsSidebarNewBtn">+ New</button>
+                </div>
+                <div class="als-sidebar-search">
+                    <input type="text" id="alsSidebarSearch" placeholder="Search conversations...">
+                </div>
+                <div class="als-sidebar-tabs">
+                    <button class="als-sidebar-tab active" data-tab="my">My Chats</button>
+                    <button class="als-sidebar-tab" data-tab="team">Team</button>
+                    <button class="als-sidebar-tab" data-tab="prompts">Prompts</button>
+                </div>
+                <div class="als-sidebar-list" id="alsSidebarList">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Toggle sidebar button -->
+            <button class="als-sidebar-toggle" id="alsSidebarToggle" title="Conversations">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            </button>
+
             <div class="als-content">
                 <!-- Hero header -->
-                <div class="als-hero">
+                <div class="als-hero" id="alsHero">
                     <div class="als-eyebrow">AI-Powered Assistant</div>
                     <h1 class="als-title">
                         <span class="als-title-bold">Ask Lightspeed anything.</span>
@@ -11573,12 +12152,15 @@
                         <!-- Filled dynamically -->
                     </div>
 
+                    <!-- Context management bar (shown when conversation is long) -->
+                    <div id="alsContextBar" style="display: none;"></div>
+
                     <div class="als-chat-area" id="alsChatArea" style="display: none;">
                         <div class="als-messages" id="alsMessages"></div>
                     </div>
 
                     <div class="als-input-row">
-                        <textarea class="als-input" id="alsInput" placeholder="Ask anything..." rows="1"></textarea>
+                        <textarea class="als-input" id="alsInput" placeholder="Ask anything... (or say 'Remember that...' to teach me)" rows="1"></textarea>
                         <button class="als-send" id="alsSendBtn" title="Send">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="m22 2-10 10"/></svg>
                         </button>
@@ -11587,7 +12169,7 @@
                 </div>
 
                 <!-- Capabilities cards -->
-                <div class="als-capabilities">
+                <div class="als-capabilities" id="alsCapabilities">
                     <div class="als-cap-card">
                         <div class="als-cap-icon als-cap-icon-pink">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>

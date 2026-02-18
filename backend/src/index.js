@@ -26,6 +26,8 @@ const contentTemplateRoutes = require('./routes/contentTemplates');
 const exportRoutes = require('./routes/export');
 const jurisdictionRoutes = require('./routes/jurisdictions');
 const rulesOfPlayRoutes = require('./routes/rulesOfPlay');
+const conversationRoutes = require('./routes/conversations');
+const sharedPromptRoutes = require('./routes/sharedPrompts');
 const pool = require('../config/database');
 
 // Validate required environment variables
@@ -126,6 +128,8 @@ app.use('/api/content-templates', contentTemplateRoutes);
 app.use('/api/organizations', exportRoutes); // /api/organizations/:orgId/export
 app.use('/api/jurisdictions', jurisdictionRoutes);
 app.use('/api/rules-of-play', rulesOfPlayRoutes);
+app.use('/api/conversations', conversationRoutes);
+app.use('/api/shared-prompts', sharedPromptRoutes);
 
 // 404 handler
 app.use((req, res) => {

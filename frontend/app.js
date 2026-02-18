@@ -2021,6 +2021,9 @@ async function rateAskMessage(historyId, rating, button) {
 
 // ==================== ASK LIGHTSPEED DEDICATED PAGE ====================
 let alsListenersSetup = false;
+let alsCurrentConversationId = null;
+let alsKbEntries = []; // KB entries for current response (for citations)
+let alsSidebarTab = 'my';
 
 function initAskLightspeedPage() {
     loadAskConversation();
@@ -2059,8 +2062,267 @@ function initAskLightspeedPage() {
             alsInput.style.height = 'auto';
             alsInput.style.height = Math.min(alsInput.scrollHeight, 120) + 'px';
         });
+
+        // Sidebar toggle
+        document.getElementById('alsSidebarToggle').addEventListener('click', toggleAlsSidebar);
+        document.getElementById('alsSidebarOverlay').addEventListener('click', closeAlsSidebar);
+        document.getElementById('alsSidebarNewBtn').addEventListener('click', () => {
+            clearAlsChat();
+            closeAlsSidebar();
+        });
+
+        // Sidebar search
+        let alsSearchTimeout;
+        document.getElementById('alsSidebarSearch').addEventListener('input', (e) => {
+            clearTimeout(alsSearchTimeout);
+            alsSearchTimeout = setTimeout(() => loadAlsSidebarContent(e.target.value), 300);
+        });
+
+        // Sidebar tabs
+        document.querySelectorAll('.als-sidebar-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.als-sidebar-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                alsSidebarTab = tab.dataset.tab;
+                loadAlsSidebarContent();
+            });
+        });
+    }
+
+    // Load sidebar conversations
+    loadAlsSidebarContent();
+}
+
+// ===== SIDEBAR: Conversations, Team Activity, Shared Prompts =====
+
+function toggleAlsSidebar() {
+    const sidebar = document.getElementById('alsSidebar');
+    const overlay = document.getElementById('alsSidebarOverlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('visible', sidebar.classList.contains('open'));
+}
+
+function closeAlsSidebar() {
+    document.getElementById('alsSidebar').classList.remove('open');
+    document.getElementById('alsSidebarOverlay').classList.remove('visible');
+}
+
+async function loadAlsSidebarContent(search) {
+    const searchVal = search !== undefined ? search : (document.getElementById('alsSidebarSearch')?.value || '');
+    const listEl = document.getElementById('alsSidebarList');
+    if (!listEl) return;
+
+    if (alsSidebarTab === 'my' || alsSidebarTab === 'team') {
+        await loadAlsConversationsList(listEl, searchVal, alsSidebarTab === 'team');
+    } else if (alsSidebarTab === 'prompts') {
+        await loadAlsSharedPrompts(listEl, searchVal);
     }
 }
+
+async function loadAlsConversationsList(container, search, teamView) {
+    try {
+        let url = `${API_BASE_URL}/api/conversations?limit=50`;
+        if (teamView) url += '&team=true';
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+
+        const response = await fetch(url, { headers: getAuthHeaders() });
+        if (!response.ok) {
+            container.innerHTML = '<div class="als-sidebar-empty">Could not load conversations.</div>';
+            return;
+        }
+
+        const data = await response.json();
+        const conversations = data.conversations || [];
+
+        if (conversations.length === 0) {
+            container.innerHTML = `<div class="als-sidebar-empty">
+                ${search ? 'No matching conversations.' : 'No saved conversations yet.<br>Start chatting and your conversations will be saved automatically.'}
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = conversations.map(conv => {
+            const date = new Date(conv.updated_at);
+            const timeAgo = alsGetTimeAgo(date);
+            const msgCount = conv.message_count || 0;
+            const isActive = conv.id === alsCurrentConversationId;
+            const teamLabel = teamView && conv.first_name ? `${escapeHtml(conv.first_name)} · ` : '';
+
+            return `<div class="als-sidebar-item${isActive ? ' active' : ''}" data-conv-id="${conv.id}" onclick="loadAlsConversation('${conv.id}')">
+                <div class="als-sidebar-item-title">${escapeHtml(conv.title || 'Untitled')}</div>
+                <div class="als-sidebar-item-meta">
+                    <span>${teamLabel}${msgCount} msgs</span>
+                    <span>${timeAgo}</span>
+                </div>
+                ${!teamView ? `<button class="als-sidebar-item-delete" onclick="event.stopPropagation(); deleteAlsConversation('${conv.id}')" title="Delete">&#10005;</button>` : ''}
+            </div>`;
+        }).join('');
+    } catch (e) {
+        console.warn('Failed to load conversations:', e);
+        container.innerHTML = '<div class="als-sidebar-empty">Failed to load.</div>';
+    }
+}
+
+async function loadAlsSharedPrompts(container, search) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shared-prompts?sort=popular`, { headers: getAuthHeaders() });
+        if (!response.ok) {
+            container.innerHTML = '<div class="als-sidebar-empty">Could not load prompts.</div>';
+            return;
+        }
+
+        const data = await response.json();
+        let prompts = data.prompts || [];
+
+        if (search) {
+            const s = search.toLowerCase();
+            prompts = prompts.filter(p => p.title.toLowerCase().includes(s) || p.prompt_text.toLowerCase().includes(s));
+        }
+
+        if (prompts.length === 0) {
+            container.innerHTML = `<div class="als-sidebar-empty">
+                ${search ? 'No matching prompts.' : 'No shared prompts yet.<br>Save useful prompts to share with your team.'}
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = prompts.map(p => {
+            const author = p.first_name ? `${p.first_name} ${(p.last_name || '').charAt(0)}.` : 'Unknown';
+            return `<div class="als-shared-prompt-item" onclick="useAlsSharedPrompt('${p.id}', this)" data-prompt="${escapeHtml(p.prompt_text)}">
+                <div class="als-shared-prompt-title">${escapeHtml(p.title)}</div>
+                <div class="als-shared-prompt-meta">${escapeHtml(author)} · Used ${p.usage_count || 0}x · ${escapeHtml(p.category || 'general')}</div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        console.warn('Failed to load shared prompts:', e);
+        container.innerHTML = '<div class="als-sidebar-empty">Failed to load.</div>';
+    }
+}
+
+function alsGetTimeAgo(date) {
+    const now = new Date();
+    const diff = (now - date) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+async function loadAlsConversation(convId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/conversations/${convId}`, { headers: getAuthHeaders() });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const conv = data.conversation;
+
+        alsCurrentConversationId = conv.id;
+        askConversation = conv.messages || [];
+        askTone = conv.tone || 'professional';
+        saveAskConversation();
+
+        // Restore tone pill
+        document.querySelectorAll('.als-tone').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tone === askTone);
+        });
+
+        const messagesEl = document.getElementById('alsMessages');
+        if (messagesEl) messagesEl.innerHTML = '';
+
+        const chatArea = document.getElementById('alsChatArea');
+        chatArea.style.display = 'block';
+        const prompts = document.getElementById('alsPrompts');
+        if (prompts) prompts.style.display = 'none';
+
+        const hero = document.getElementById('alsHero');
+        const caps = document.getElementById('alsCapabilities');
+        if (hero) hero.style.display = 'none';
+        if (caps) caps.style.display = 'none';
+
+        if (conv.summary) {
+            showAlsSummaryBanner(conv.summary);
+        }
+
+        askConversation.forEach(msg => {
+            appendAlsMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.content);
+        });
+
+        updateAlsContextBar();
+
+        document.querySelectorAll('.als-sidebar-item').forEach(el => {
+            el.classList.toggle('active', el.dataset.convId === convId);
+        });
+
+        closeAlsSidebar();
+    } catch (e) {
+        console.warn('Failed to load conversation:', e);
+    }
+}
+
+async function saveAlsConversationToServer() {
+    if (askConversation.length === 0) return;
+
+    try {
+        if (alsCurrentConversationId) {
+            await fetch(`${API_BASE_URL}/api/conversations/${alsCurrentConversationId}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ messages: askConversation, tone: askTone })
+            });
+        } else {
+            const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ messages: askConversation, tone: askTone })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                alsCurrentConversationId = data.conversation.id;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to save conversation to server:', e);
+    }
+}
+
+async function deleteAlsConversation(convId) {
+    try {
+        await fetch(`${API_BASE_URL}/api/conversations/${convId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+
+        if (convId === alsCurrentConversationId) {
+            clearAlsChat();
+        }
+
+        loadAlsSidebarContent();
+    } catch (e) {
+        console.warn('Failed to delete conversation:', e);
+    }
+}
+
+function useAlsSharedPrompt(promptId, el) {
+    const input = document.getElementById('alsInput');
+    const promptText = el.dataset.prompt;
+    // Decode HTML entities
+    const tmp = document.createElement('textarea');
+    tmp.innerHTML = promptText;
+    input.value = tmp.value;
+    input.focus();
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+
+    fetch(`${API_BASE_URL}/api/shared-prompts/${promptId}/use`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+    }).catch(() => {});
+
+    closeAlsSidebar();
+}
+
+// ===== RESTORE CHAT =====
 
 function restoreAlsChat() {
     if (askConversation.length === 0) return;
@@ -2070,17 +2332,22 @@ function restoreAlsChat() {
     if (chatArea) chatArea.style.display = 'block';
     if (prompts) prompts.style.display = 'none';
 
-    // Restore tone pill
+    const hero = document.getElementById('alsHero');
+    const caps = document.getElementById('alsCapabilities');
+    if (hero) hero.style.display = 'none';
+    if (caps) caps.style.display = 'none';
+
     document.querySelectorAll('.als-tone').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tone === askTone);
     });
 
-    // Clear and re-render
     const messagesEl = document.getElementById('alsMessages');
     if (messagesEl) messagesEl.innerHTML = '';
     askConversation.forEach(msg => {
         appendAlsMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.content);
     });
+
+    updateAlsContextBar();
 }
 
 function renderAlsSamplePrompts() {
@@ -2103,6 +2370,8 @@ function fillAlsPrompt(el) {
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
 }
 
+// ===== SEND MESSAGE (with citations, teach mode, context mgmt) =====
+
 async function sendAlsMessage() {
     const input = document.getElementById('alsInput');
     const message = input.value.trim();
@@ -2116,6 +2385,11 @@ async function sendAlsMessage() {
 
     const prompts = document.getElementById('alsPrompts');
     if (prompts) prompts.style.display = 'none';
+
+    const hero = document.getElementById('alsHero');
+    const caps = document.getElementById('alsCapabilities');
+    if (hero) hero.style.display = 'none';
+    if (caps) caps.style.display = 'none';
 
     askConversation.push({ role: 'user', content: message });
     appendAlsMessage('user', message);
@@ -2139,6 +2413,18 @@ async function sendAlsMessage() {
 
         const orgName = currentUser?.organization?.name || 'your organization';
 
+        // Build messages to send — include summary as context if available
+        let messagesToSend = askConversation.map(m => ({ role: m.role, content: m.content }));
+
+        const summaryBanner = document.querySelector('.als-summary-banner');
+        if (summaryBanner && summaryBanner.dataset.summary) {
+            messagesToSend = [
+                { role: 'user', content: `[Context from earlier in our conversation: ${summaryBanner.dataset.summary}]` },
+                { role: 'assistant', content: 'Understood, I have that context. How can I help?' },
+                ...messagesToSend
+            ];
+        }
+
         const systemPrompt = `You are Lightspeed AI, a powerful, full-featured AI assistant built by Launchpad Solutions. You work for ${orgName}.
 
 TONE: Respond in a ${toneDesc} tone.
@@ -2147,6 +2433,8 @@ CORE BEHAVIOR — ALWAYS FOLLOW:
 Before generating any content (emails, posts, documents, strategies, analyses, code, or anything substantial), you MUST first ask 2-3 clarifying questions to understand exactly what the user needs. This includes understanding context, audience, goals, constraints, and preferences. Only after the user answers should you produce the final output. This makes your work dramatically more accurate and tailored.
 
 Exception: If the user's request is a simple factual question, a quick calculation, or a brief answer that doesn't require generation — answer directly without asking clarifying questions.
+
+TEACH MODE: If the user says something like "remember that...", "our policy is...", "when someone asks about X, tell them Y", or similar knowledge-sharing statements, acknowledge what you've learned and confirm you'll remember it. Format your response to clearly state what knowledge was captured.
 
 You are a fully capable AI assistant. You can help with absolutely anything:
 - Drafting emails, social media posts, marketing content, and communications
@@ -2160,14 +2448,11 @@ You are a fully capable AI assistant. You can help with absolutely anything:
 
 Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
-        // KB entries are now picked server-side by the Haiku relevance picker
-
         const ratedExamples = await getRatedExamples('ask_lightspeed', null, message);
         const feedbackSection = buildRatedExamplesContext(ratedExamples);
         const drawScheduleSection = getDrawScheduleContext();
         const fullSystemPrompt = systemPrompt + '\n\nKnowledge base:\n' + (drawScheduleSection ? '\n\n' + drawScheduleSection : '') + feedbackSection;
 
-        // Remove typing indicator and create streaming message div
         const typing = document.getElementById('alsTyping');
         if (typing) typing.remove();
 
@@ -2175,24 +2460,35 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         msgDiv.className = 'als-msg als-msg-ai';
         messagesEl.appendChild(msgDiv);
 
-        const { text: aiText } = await fetchStream({
+        // Reset KB entries for this response
+        alsKbEntries = [];
+
+        const { text: aiText, referencedKbEntries } = await fetchStream({
             system: fullSystemPrompt,
             inquiry: message,
-            messages: askConversation.map(m => ({ role: m.role, content: m.content })),
+            messages: messagesToSend,
             max_tokens: 4096
         }, {
             onText: (chunk) => {
-                msgDiv.innerHTML = renderSimpleMarkdown(msgDiv._rawText = (msgDiv._rawText || '') + chunk);
+                msgDiv._rawText = (msgDiv._rawText || '') + chunk;
+                msgDiv.innerHTML = renderAlsMarkdownWithCitations(msgDiv._rawText, alsKbEntries);
                 chatArea.scrollTop = chatArea.scrollHeight;
+            },
+            onKb: (entries) => {
+                alsKbEntries = entries;
             }
         });
 
         askConversation.push({ role: 'assistant', content: aiText });
         saveAskConversation();
 
+        // Final render with citations
+        msgDiv.innerHTML = renderAlsMarkdownWithCitations(aiText, alsKbEntries);
+
+        // Save to response history
+        const lastUserMsg = askConversation.filter(m => m.role === 'user').slice(-1)[0];
         let askHistoryId = null;
         try {
-            const lastUserMsg = askConversation.filter(m => m.role === 'user').slice(-1)[0];
             const histRes = await fetch(`${API_BASE_URL}/api/response-history`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
@@ -2212,7 +2508,22 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             console.warn('Could not save ask history:', e);
         }
 
-        appendAlsMessageActions(msgDiv, askHistoryId);
+        // Add action buttons + refinement buttons + citation sources
+        appendAlsEnhancedActions(msgDiv, askHistoryId, alsKbEntries);
+
+        // Check for teach mode
+        if (isTeachModeMessage(message)) {
+            appendAlsTeachConfirm(msgDiv, message, aiText);
+        }
+
+        // Save conversation to server
+        await saveAlsConversationToServer();
+
+        // Refresh sidebar list
+        loadAlsSidebarContent();
+
+        // Update context bar
+        updateAlsContextBar();
 
     } catch (error) {
         const typing = document.getElementById('alsTyping');
@@ -2225,6 +2536,320 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
     }
 }
 
+// ===== KB CITATION RENDERING =====
+
+function renderAlsMarkdownWithCitations(text, kbEntries) {
+    let html = renderSimpleMarkdown(text);
+
+    if (kbEntries && kbEntries.length > 0) {
+        html = html.replace(/\[(\d+)\]/g, (match, num) => {
+            const idx = parseInt(num);
+            const entry = kbEntries.find(e => e.citation_index === idx);
+            if (entry) {
+                return `<span class="als-citation" title="${escapeHtml(entry.title)}" onclick="showAlsCitationDetail(${idx})">[${num}]</span>`;
+            }
+            return match;
+        });
+    }
+
+    return html;
+}
+
+function showAlsCitationDetail(citationIndex) {
+    const entry = alsKbEntries.find(e => e.citation_index === citationIndex);
+    if (!entry) return;
+
+    const sourcesPanel = document.querySelector('.als-sources-panel');
+    if (sourcesPanel) {
+        const sourceItem = sourcesPanel.querySelector(`[data-source="${citationIndex}"]`);
+        if (sourceItem) {
+            sourceItem.style.background = 'rgba(233, 30, 140, 0.06)';
+            sourceItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => { sourceItem.style.background = ''; }, 2000);
+        }
+    }
+}
+
+function buildAlsSourcesPanel(kbEntries) {
+    if (!kbEntries || kbEntries.length === 0) return '';
+
+    const sources = kbEntries.map(entry =>
+        `<div class="als-source-item" data-source="${entry.citation_index}">
+            <span class="als-source-num">[${entry.citation_index}]</span>
+            <span class="als-source-text">
+                <strong>${escapeHtml(entry.title)}</strong>
+                <span class="als-source-category">${escapeHtml(entry.category)}</span>
+            </span>
+        </div>`
+    ).join('');
+
+    return `<div class="als-sources-panel">
+        <div class="als-sources-title">Sources</div>
+        ${sources}
+    </div>`;
+}
+
+// ===== ENHANCED ACTION BUTTONS (with refinements) =====
+
+function appendAlsEnhancedActions(msgDiv, historyId, kbEntries) {
+    // Sources panel
+    if (kbEntries && kbEntries.length > 0) {
+        const sourcesHtml = buildAlsSourcesPanel(kbEntries);
+        const sourcesDiv = document.createElement('div');
+        sourcesDiv.innerHTML = sourcesHtml;
+        if (sourcesDiv.firstElementChild) {
+            msgDiv.appendChild(sourcesDiv.firstElementChild);
+        }
+    }
+
+    // Action buttons
+    const actions = document.createElement('div');
+    actions.className = 'als-msg-actions';
+    let actionsHtml = `<button onclick="copyAlsMessage(this)">Copy</button>
+        <button onclick="clearAlsChat()">New chat</button>
+        <button onclick="showAlsSavePromptModal()">Save prompt</button>`;
+    if (historyId) {
+        actionsHtml += `
+            <button class="rating-btn thumbs-up" onclick="rateAlsMessage('${historyId}', 'positive', this)" title="Good response">👍</button>
+            <button class="rating-btn thumbs-down" onclick="rateAlsMessage('${historyId}', 'negative', this)" title="Needs improvement">👎</button>`;
+    }
+    actions.innerHTML = actionsHtml;
+    msgDiv.appendChild(actions);
+
+    // Refinement buttons
+    const refinements = document.createElement('div');
+    refinements.className = 'als-refinements';
+    refinements.innerHTML = `
+        <button class="als-refine-btn" onclick="sendAlsRefinement('Make it shorter and more concise')">Shorter</button>
+        <button class="als-refine-btn" onclick="sendAlsRefinement('Make it longer with more detail')">Longer</button>
+        <button class="als-refine-btn" onclick="sendAlsRefinement('Rewrite in a more formal, professional tone')">More formal</button>
+        <button class="als-refine-btn" onclick="sendAlsRefinement('Rewrite in a more casual, friendly tone')">More casual</button>
+        <button class="als-refine-btn" onclick="sendAlsRefinement('Convert this into bullet points')">Bullet points</button>
+        <button class="als-refine-btn" onclick="sendAlsRefinement('Generate 2 alternative versions with different angles')">Alternatives</button>`;
+    msgDiv.appendChild(refinements);
+}
+
+function sendAlsRefinement(instruction) {
+    const input = document.getElementById('alsInput');
+    input.value = instruction;
+    sendAlsMessage();
+}
+
+// ===== TEACH MODE =====
+
+function isTeachModeMessage(message) {
+    const lc = message.toLowerCase();
+    const teachPatterns = [
+        'remember that', 'remember this', 'our policy is', 'our policy on',
+        'when someone asks about', 'when people ask', 'the answer to',
+        'always tell them', 'never say', 'important: ', 'note that',
+        'for reference,', 'fyi:', 'keep in mind', 'going forward,'
+    ];
+    return teachPatterns.some(p => lc.includes(p));
+}
+
+function appendAlsTeachConfirm(msgDiv, userMessage, aiResponse) {
+    const confirm = document.createElement('div');
+    confirm.className = 'als-teach-confirm';
+    confirm.dataset.teachMsg = userMessage;
+    confirm.innerHTML = `
+        <div class="als-teach-confirm-text">Save this to your organization's knowledge base so Lightspeed always remembers?</div>
+        <div class="als-teach-confirm-actions">
+            <button class="als-teach-save" onclick="saveAlsTeachToKB(this)">Save to Knowledge Base</button>
+            <button onclick="this.closest('.als-teach-confirm').remove()">Dismiss</button>
+        </div>`;
+    msgDiv.appendChild(confirm);
+}
+
+async function saveAlsTeachToKB(btn) {
+    const confirmDiv = btn.closest('.als-teach-confirm');
+    const userMessage = confirmDiv.dataset.teachMsg;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try {
+        const title = userMessage.length > 80 ? userMessage.substring(0, 80) + '...' : userMessage;
+
+        const response = await fetch(`${API_BASE_URL}/api/knowledge-base`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                title: title,
+                content: userMessage,
+                category: 'policies',
+                tags: ['source:teach_mode']
+            })
+        });
+
+        if (response.ok) {
+            confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: #059669; font-weight: 600; padding: 4px 0;">Saved to knowledge base! Lightspeed will remember this.</div>';
+            setTimeout(() => confirmDiv.remove(), 3000);
+        } else {
+            throw new Error('Failed to save');
+        }
+    } catch (e) {
+        console.warn('Failed to save to KB:', e);
+        confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: #dc2626; padding: 4px 0;">Failed to save. Please try again or add manually in Knowledge Base.</div>';
+    }
+}
+
+// ===== CONTEXT WINDOW MANAGEMENT =====
+
+function updateAlsContextBar() {
+    const barEl = document.getElementById('alsContextBar');
+    if (!barEl) return;
+
+    const msgCount = askConversation.length;
+    const CONTEXT_THRESHOLD = 16;
+
+    if (msgCount >= CONTEXT_THRESHOLD) {
+        barEl.style.display = 'block';
+        barEl.innerHTML = `<div class="als-context-bar">
+            <span class="als-context-bar-text"><strong>${msgCount} messages</strong> in this conversation. Summarize older messages to keep responses sharp.</span>
+            <button onclick="summarizeAlsConversation()">Summarize</button>
+        </div>`;
+    } else {
+        barEl.style.display = 'none';
+        barEl.innerHTML = '';
+    }
+}
+
+async function summarizeAlsConversation() {
+    if (!alsCurrentConversationId) {
+        await saveAlsConversationToServer();
+    }
+
+    if (!alsCurrentConversationId) return;
+
+    const barEl = document.getElementById('alsContextBar');
+    if (barEl) {
+        barEl.innerHTML = '<div class="als-context-bar"><span class="als-context-bar-text">Summarizing conversation...</span></div>';
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/conversations/${alsCurrentConversationId}/summarize`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ keepRecent: 6 })
+        });
+
+        if (!response.ok) throw new Error('Failed to summarize');
+
+        const data = await response.json();
+
+        if (data.summarized) {
+            askConversation = data.messages;
+            saveAskConversation();
+
+            const messagesEl = document.getElementById('alsMessages');
+            if (messagesEl) messagesEl.innerHTML = '';
+
+            showAlsSummaryBanner(data.summary);
+
+            askConversation.forEach(msg => {
+                appendAlsMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.content);
+            });
+
+            if (barEl) {
+                barEl.style.display = 'none';
+                barEl.innerHTML = '';
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to summarize:', e);
+        if (barEl) {
+            barEl.innerHTML = '<div class="als-context-bar"><span class="als-context-bar-text">Could not summarize. Try again later.</span></div>';
+        }
+    }
+}
+
+function showAlsSummaryBanner(summary) {
+    const messagesEl = document.getElementById('alsMessages');
+    if (!messagesEl) return;
+
+    const existing = messagesEl.querySelector('.als-summary-banner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.className = 'als-summary-banner';
+    banner.dataset.summary = summary;
+    banner.innerHTML = `<strong>Earlier in this conversation:</strong><br>${escapeHtml(summary)}`;
+    messagesEl.insertBefore(banner, messagesEl.firstChild);
+}
+
+// ===== SHARED PROMPT SAVE MODAL =====
+
+function showAlsSavePromptModal() {
+    const lastUserMsg = askConversation.filter(m => m.role === 'user').slice(-1)[0];
+    if (!lastUserMsg) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'als-save-prompt-modal';
+    modal.id = 'alsSavePromptModal';
+    modal.innerHTML = `
+        <div class="als-save-prompt-content">
+            <h3>Save as Shared Prompt</h3>
+            <input type="text" id="alsSavePromptTitle" placeholder="Give this prompt a name...">
+            <select id="alsSavePromptCategory">
+                <option value="general">General</option>
+                <option value="emails">Emails</option>
+                <option value="social_media">Social Media</option>
+                <option value="customer_service">Customer Service</option>
+                <option value="marketing">Marketing</option>
+                <option value="fundraising">Fundraising</option>
+            </select>
+            <div style="font-size: 0.8rem; color: var(--text-muted); background: var(--bg-alt); border-radius: 8px; padding: 10px; margin-bottom: 8px; max-height: 80px; overflow-y: auto;">${escapeHtml(lastUserMsg.content)}</div>
+            <div class="als-save-prompt-actions">
+                <button onclick="closeAlsSavePromptModal()">Cancel</button>
+                <button class="als-save-btn-primary" onclick="saveAlsSharedPrompt()">Save</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeAlsSavePromptModal();
+    });
+}
+
+function closeAlsSavePromptModal() {
+    const modal = document.getElementById('alsSavePromptModal');
+    if (modal) modal.remove();
+}
+
+async function saveAlsSharedPrompt() {
+    const title = document.getElementById('alsSavePromptTitle').value.trim();
+    const category = document.getElementById('alsSavePromptCategory').value;
+    const lastUserMsg = askConversation.filter(m => m.role === 'user').slice(-1)[0];
+
+    if (!title) {
+        document.getElementById('alsSavePromptTitle').style.borderColor = '#dc2626';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shared-prompts`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                title,
+                prompt_text: lastUserMsg.content,
+                category
+            })
+        });
+
+        if (response.ok) {
+            closeAlsSavePromptModal();
+            if (typeof showToast === 'function') {
+                showToast('Prompt saved! Your team can now use it.', 'success');
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to save shared prompt:', e);
+    }
+}
+
+// ===== MESSAGE RENDERING =====
+
 function appendAlsMessage(role, text, historyId) {
     const messagesEl = document.getElementById('alsMessages');
     const chatArea = document.getElementById('alsChatArea');
@@ -2232,13 +2857,7 @@ function appendAlsMessage(role, text, historyId) {
     msgDiv.className = `als-msg als-msg-${role}`;
 
     if (role === 'ai') {
-        let html = escapeHtml(text);
-        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-        html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.04);padding:1px 5px;border-radius:4px;font-size:0.84em;">$1</code>');
-        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-        html = html.replace(/\n/g, '<br>');
-        msgDiv.innerHTML = html;
+        msgDiv.innerHTML = renderAlsMarkdownWithCitations(text, []);
 
         const actions = document.createElement('div');
         actions.className = 'als-msg-actions';
@@ -2259,11 +2878,31 @@ function appendAlsMessage(role, text, historyId) {
     chatArea.scrollTop = chatArea.scrollHeight;
 }
 
+function appendAlsMessageActions(msgDiv, historyId) {
+    const actions = document.createElement('div');
+    actions.className = 'als-msg-actions';
+    let actionsHtml = `<button onclick="copyAlsMessage(this)">Copy</button>
+        <button onclick="clearAlsChat()">New chat</button>`;
+    if (historyId) {
+        actionsHtml += `
+            <button class="rating-btn thumbs-up" onclick="rateAlsMessage('${historyId}', 'positive', this)" title="Good response">👍</button>
+            <button class="rating-btn thumbs-down" onclick="rateAlsMessage('${historyId}', 'negative', this)" title="Needs improvement">👎</button>`;
+    }
+    actions.innerHTML = actionsHtml;
+    msgDiv.appendChild(actions);
+}
+
 function copyAlsMessage(btn) {
     const msgDiv = btn.closest('.als-msg');
     const clone = msgDiv.cloneNode(true);
     const actions = clone.querySelector('.als-msg-actions');
     if (actions) actions.remove();
+    const refinements = clone.querySelector('.als-refinements');
+    if (refinements) refinements.remove();
+    const sources = clone.querySelector('.als-sources-panel');
+    if (sources) sources.remove();
+    const teach = clone.querySelector('.als-teach-confirm');
+    if (teach) teach.remove();
     const text = clone.textContent.trim();
     navigator.clipboard.writeText(text).then(() => {
         btn.textContent = 'Copied!';
@@ -2273,15 +2912,25 @@ function copyAlsMessage(btn) {
 
 function clearAlsChat() {
     askConversation = [];
+    alsCurrentConversationId = null;
+    alsKbEntries = [];
     saveAskConversation();
     document.getElementById('alsMessages').innerHTML = '';
     document.getElementById('alsChatArea').style.display = 'none';
     document.getElementById('alsPrompts').style.display = 'flex';
+
+    const hero = document.getElementById('alsHero');
+    const caps = document.getElementById('alsCapabilities');
+    if (hero) hero.style.display = '';
+    if (caps) caps.style.display = '';
+
+    const barEl = document.getElementById('alsContextBar');
+    if (barEl) { barEl.style.display = 'none'; barEl.innerHTML = ''; }
+
     renderAlsSamplePrompts();
 }
 
 async function rateAlsMessage(historyId, rating, button) {
-    // Update UI
     const actions = button.closest('.als-msg-actions');
     actions.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('selected'));
     button.classList.add('selected');
@@ -2304,7 +2953,6 @@ async function rateAlsMessage(historyId, rating, button) {
         conf.textContent = '👍 Thanks!';
         actions.appendChild(conf);
     } else {
-        // Get the message text for context
         const msgDiv = button.closest('.als-msg');
         const clone = msgDiv.cloneNode(true);
         const actionsClone = clone.querySelector('.als-msg-actions');
@@ -2316,11 +2964,21 @@ async function rateAlsMessage(historyId, rating, button) {
     }
 }
 
-// Make new page functions globally accessible
+// Make functions globally accessible
 window.fillAlsPrompt = fillAlsPrompt;
 window.copyAlsMessage = copyAlsMessage;
 window.clearAlsChat = clearAlsChat;
 window.rateAlsMessage = rateAlsMessage;
+window.loadAlsConversation = loadAlsConversation;
+window.deleteAlsConversation = deleteAlsConversation;
+window.useAlsSharedPrompt = useAlsSharedPrompt;
+window.sendAlsRefinement = sendAlsRefinement;
+window.saveAlsTeachToKB = saveAlsTeachToKB;
+window.summarizeAlsConversation = summarizeAlsConversation;
+window.showAlsCitationDetail = showAlsCitationDetail;
+window.showAlsSavePromptModal = showAlsSavePromptModal;
+window.closeAlsSavePromptModal = closeAlsSavePromptModal;
+window.saveAlsSharedPrompt = saveAlsSharedPrompt;
 
 // Email/password auth removed - Google OAuth only
 

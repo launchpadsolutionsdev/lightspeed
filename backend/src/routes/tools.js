@@ -59,26 +59,30 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
 
                     if (relevantEntries.length > 0) {
                         // Store the referenced entries to return to the frontend
-                        referencedKbEntries = relevantEntries.map(entry => ({
+                        referencedKbEntries = relevantEntries.map((entry, idx) => ({
                             id: entry.id,
                             title: entry.title,
                             content: entry.content,
-                            category: entry.category
+                            category: entry.category,
+                            citation_index: idx + 1
                         }));
 
+                        // Number KB entries for citation support
                         const knowledgeContext = relevantEntries
-                            .map(entry => `[${entry.category}] ${entry.title}: ${entry.content}`)
+                            .map((entry, idx) => `[Source ${idx + 1}] [${entry.category}] ${entry.title}: ${entry.content}`)
                             .join('\n\n');
+
+                        const citationInstruction = '\n\nCITATION RULES: When your response uses information from the knowledge base sources above, include inline citations using the format [1], [2], etc. corresponding to the source numbers. Only cite when you directly use information from a specific source. Do not cite for general knowledge.';
 
                         // Insert KB entries after the "Knowledge base:" marker in the system prompt.
                         // The marker is placed by the frontend; rated examples may follow it.
                         if (enhancedSystem.includes('Knowledge base:')) {
                             enhancedSystem = enhancedSystem.replace(
                                 'Knowledge base:\n',
-                                `Knowledge base:\n\n${knowledgeContext}\n`
+                                `Knowledge base:\n\n${knowledgeContext}\n${citationInstruction}\n`
                             );
                         } else {
-                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}`;
+                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}${citationInstruction}`;
                         }
                     }
                 }
@@ -179,24 +183,28 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
                     );
 
                     if (relevantEntries.length > 0) {
-                        referencedKbEntries = relevantEntries.map(entry => ({
+                        referencedKbEntries = relevantEntries.map((entry, idx) => ({
                             id: entry.id,
                             title: entry.title,
                             content: entry.content,
-                            category: entry.category
+                            category: entry.category,
+                            citation_index: idx + 1
                         }));
 
+                        // Number KB entries for citation support
                         const knowledgeContext = relevantEntries
-                            .map(entry => `[${entry.category}] ${entry.title}: ${entry.content}`)
+                            .map((entry, idx) => `[Source ${idx + 1}] [${entry.category}] ${entry.title}: ${entry.content}`)
                             .join('\n\n');
+
+                        const citationInstruction = '\n\nCITATION RULES: When your response uses information from the knowledge base sources above, include inline citations using the format [1], [2], etc. corresponding to the source numbers. Only cite when you directly use information from a specific source. Do not cite for general knowledge.';
 
                         if (enhancedSystem.includes('Knowledge base:')) {
                             enhancedSystem = enhancedSystem.replace(
                                 'Knowledge base:\n',
-                                `Knowledge base:\n\n${knowledgeContext}\n`
+                                `Knowledge base:\n\n${knowledgeContext}\n${citationInstruction}\n`
                             );
                         } else {
-                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}`;
+                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}${citationInstruction}`;
                         }
                     }
                 }
