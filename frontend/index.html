@@ -1443,7 +1443,7 @@
             flex-direction: column;
             position: fixed;
             top: 0;
-            left: 0;
+            left: 220px;
             height: 100vh;
             z-index: 50;
             transform: translateX(-100%);
@@ -1666,7 +1666,7 @@
         .als-sidebar-toggle {
             position: fixed;
             top: 12px;
-            left: 12px;
+            left: 232px;
             z-index: 51;
             width: 36px;
             height: 36px;
@@ -1974,9 +1974,14 @@
             color: #fff;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .als-sidebar {
                 width: 280px;
+                left: 0;
+            }
+
+            .als-sidebar-toggle {
+                left: 12px;
             }
         }
 
