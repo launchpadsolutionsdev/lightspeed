@@ -42,12 +42,12 @@ const generateToken = (userId) => {
  */
 router.post('/google', async (req, res) => {
     try {
-        const { credential, email, name, googleId, picture } = req.body;
+        const { credential, accessToken } = req.body;
 
         let userEmail, userName, userGoogleId, userPicture;
 
-        // Verify Google credential if provided
         if (credential) {
+            // Primary flow: verify the Google JWT credential (from One Tap / popup)
             try {
                 const ticket = await googleClient.verifyIdToken({
                     idToken: credential,
@@ -62,8 +62,26 @@ router.post('/google', async (req, res) => {
                 console.error('Google token verification failed:', verifyError);
                 return res.status(401).json({ error: 'Invalid Google credential' });
             }
+        } else if (accessToken) {
+            // Fallback flow: verify access token via Google's userinfo API
+            try {
+                const userinfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                if (!userinfoResponse.ok) {
+                    return res.status(401).json({ error: 'Invalid Google access token' });
+                }
+                const profile = await userinfoResponse.json();
+                userEmail = profile.email;
+                userName = profile.name || profile.given_name || '';
+                userGoogleId = profile.sub;
+                userPicture = profile.picture || null;
+            } catch (fetchError) {
+                console.error('Google userinfo API call failed:', fetchError);
+                return res.status(401).json({ error: 'Failed to verify Google access token' });
+            }
         } else {
-            return res.status(401).json({ error: 'Google credential is required' });
+            return res.status(401).json({ error: 'Google credential or access token is required' });
         }
 
         // Check if user exists

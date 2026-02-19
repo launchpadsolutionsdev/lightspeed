@@ -974,8 +974,8 @@ async function handleGoogleTokenResponse(tokenResponse) {
         const userInfo = await response.json();
 
         if (userInfo.email) {
-            // For token response, we don't have a credential, so we'll use email-based auth
-            await processGoogleUser(userInfo, null);
+            // Pass the access token so the backend can verify it via Google's API
+            await processGoogleUser(userInfo, null, tokenResponse.access_token);
         } else {
             showToast("Failed to get user information from Google", "error");
         }
@@ -985,7 +985,7 @@ async function handleGoogleTokenResponse(tokenResponse) {
     }
 }
 
-async function processGoogleUser(googleUser, credential) {
+async function processGoogleUser(googleUser, credential, accessToken) {
     const email = googleUser.email;
     const name = googleUser.name || googleUser.given_name || email.split('@')[0];
     const picture = googleUser.picture || null;
@@ -995,16 +995,17 @@ async function processGoogleUser(googleUser, credential) {
 
     // Authenticate with backend FIRST
     try {
-        // Build request body - use credential if available, otherwise send user info directly
+        // Build request body - use credential (JWT) if available, otherwise send access token
         const actualCredential = credential || pendingGoogleCredential;
-        const requestBody = actualCredential
-            ? { credential: actualCredential }
-            : {
-                email: email,
-                name: name,
-                googleId: googleUser.sub || null,
-                picture: picture
-            };
+        let requestBody;
+        if (actualCredential) {
+            requestBody = { credential: actualCredential };
+        } else if (accessToken) {
+            requestBody = { accessToken: accessToken };
+        } else {
+            showToast("Authentication failed. Please try again.", "error");
+            return;
+        }
 
         const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
             method: 'POST',
