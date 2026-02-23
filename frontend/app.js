@@ -29,14 +29,6 @@ async function handleApiError(response) {
     const error = await response.json().catch(() => ({}));
 
     // Handle specific error codes
-    if (error.code === 'TRIAL_LIMIT_REACHED') {
-        showUpgradeModal('limit', error.usageCount, error.limit);
-        throw new Error('LIMIT_REACHED');
-    }
-    if (error.code === 'TRIAL_EXPIRED') {
-        showUpgradeModal('expired');
-        throw new Error('TRIAL_EXPIRED');
-    }
     if (error.code === 'AUTH_REQUIRED') {
         showToast('Please sign in to continue', 'error');
         handleLogout();
@@ -176,133 +168,7 @@ function checkPostCheckoutMessage() {
     }
 }
 
-function showUpgradeModal(reason, usageCount, limit) {
-    let modal = document.getElementById('upgradeModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'upgradeModal';
-        modal.className = 'modal-overlay show';
-        modal.innerHTML = `
-            <div class="modal-content upgrade-modal">
-                <div class="upgrade-header">
-                    <div class="upgrade-icon">⚡</div>
-                    <h2 id="upgradeTitle">Upgrade to Continue</h2>
-                    <p id="upgradeMessage"></p>
-                </div>
-                <div class="upgrade-features">
-                    <div class="upgrade-feature">
-                        <span class="feature-icon">✓</span>
-                        <span>Unlimited AI generations</span>
-                    </div>
-                    <div class="upgrade-feature">
-                        <span class="feature-icon">✓</span>
-                        <span>Custom knowledge base</span>
-                    </div>
-                    <div class="upgrade-feature">
-                        <span class="feature-icon">✓</span>
-                        <span>Priority support</span>
-                    </div>
-                </div>
-                <div class="upgrade-pricing">
-                    <div class="upgrade-price">$199<span>/month</span></div>
-                    <p>or $169/month billed annually (save 15%)</p>
-                </div>
-                <div class="upgrade-actions">
-                    <button class="btn-primary btn-upgrade" onclick="startCheckout('monthly')">
-                        Subscribe Monthly — $199/mo
-                    </button>
-                    <button class="btn-primary btn-upgrade" onclick="startCheckout('annual')" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);">
-                        Subscribe Annually — $169/mo
-                    </button>
-                    <button class="btn-secondary" onclick="document.getElementById('upgradeModal').classList.remove('show')">
-                        Maybe Later
-                    </button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-
-        // Add styles
-        const styles = document.createElement('style');
-        styles.textContent = `
-            .upgrade-modal {
-                max-width: 440px;
-                padding: 40px;
-                text-align: center;
-                background: #fff;
-                border-radius: 16px;
-            }
-            .upgrade-header { margin-bottom: 24px; }
-            .upgrade-icon { font-size: 48px; margin-bottom: 16px; }
-            .upgrade-header h2 { margin: 0 0 8px; font-size: 24px; color: #1a1a2e; }
-            .upgrade-header p { margin: 0; color: #4a5568; font-size: 15px; line-height: 1.5; }
-            .upgrade-features {
-                background: #f8fafc;
-                border-radius: 12px;
-                padding: 20px;
-                margin-bottom: 24px;
-                text-align: left;
-            }
-            .upgrade-feature {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 8px 0;
-                color: #2d3748;
-            }
-            .feature-icon {
-                color: #48bb78;
-                font-weight: bold;
-                font-size: 18px;
-            }
-            .upgrade-pricing { margin-bottom: 24px; }
-            .upgrade-price {
-                font-size: 36px;
-                font-weight: 700;
-                color: #0A2540;
-            }
-            .upgrade-price span { font-size: 16px; font-weight: 400; color: #718096; }
-            .upgrade-pricing p { margin: 8px 0 0; color: #718096; font-size: 14px; }
-            .upgrade-actions { display: flex; flex-direction: column; gap: 12px; }
-            .btn-upgrade {
-                background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
-                color: white;
-                border: none;
-                padding: 16px 24px;
-                border-radius: 10px;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-            .btn-upgrade:hover { transform: translateY(-2px); }
-            .btn-secondary {
-                background: transparent;
-                color: #718096;
-                border: none;
-                padding: 12px;
-                font-size: 14px;
-                cursor: pointer;
-            }
-            .btn-secondary:hover { color: #4a5568; }
-        `;
-        document.head.appendChild(styles);
-    }
-
-    // Update content based on reason
-    const title = document.getElementById('upgradeTitle');
-    const message = document.getElementById('upgradeMessage');
-
-    if (reason === 'limit') {
-        title.textContent = 'Trial Limit Reached';
-        message.textContent = `You've used all ${limit} free generations. Upgrade now to unlock unlimited access!`;
-    } else if (reason === 'expired') {
-        title.textContent = 'Trial Expired';
-        message.textContent = 'Your 14-day free trial has ended. Upgrade to continue using Lightspeed.';
-    }
-
-    modal.classList.add('show');
-}
+// showUpgradeModal removed — trial limits temporarily disabled
 
 // ==================== EMPTY STATE HELPER ====================
 function emptyStateHtml(icon, title, text, btnLabel, btnAction) {
@@ -1265,7 +1131,7 @@ function _renderWizardStep1() {
                 <div class="wizard-step-icon">&#127891;</div>
                 <div class="wizard-step-label">Step 1 of 5</div>
                 <h2>Welcome to Lightspeed!</h2>
-                <p>Let's set up your organization to get started with your <strong>14-day free trial</strong>.</p>
+                <p>Let's set up your organization to get started.</p>
             </div>
             <form id="wizardForm1" class="wizard-form">
                 <div class="wizard-field-group">
@@ -1290,7 +1156,7 @@ function _renderWizardStep1() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                     </button>
                 </div>
-                <div class="wizard-footer-note">No credit card required. Full access for 14 days.</div>
+                <div class="wizard-footer-note">No credit card required.</div>
             </form>
         </div>`;
 }
@@ -1452,7 +1318,7 @@ function _renderWizardStep5() {
             </div>
             <div class="wizard-form">
                 <div class="wizard-summary">
-                    <div class="wizard-summary-item"><span class="wizard-summary-check">&#10003;</span> 14-day free trial activated</div>
+                    <div class="wizard-summary-item"><span class="wizard-summary-check">&#10003;</span> Account activated</div>
                     <div class="wizard-summary-item"><span class="wizard-summary-check">&#10003;</span> Organization created</div>
                     ${inviteNote}
                 </div>
@@ -1710,7 +1576,7 @@ function _wizardFinish() {
         showToast('Setting up your subscription...', 'info');
         startCheckout(selectedPlan);
     } else {
-        showToast('Welcome to Lightspeed! Your 14-day trial has started.', 'success');
+        showToast('Welcome to Lightspeed!', 'success');
     }
 }
 

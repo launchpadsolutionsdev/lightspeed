@@ -144,11 +144,8 @@ const checkUsageLimit = async (req, res, next) => {
 
         const org = orgResult.rows[0];
 
-        // Trial accounts: no generation cap, just check expiration
+        // Trial accounts: allow through without limit checks
         if (org.subscription_status === 'trial') {
-            if (org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
-                return res.status(403).json({ error: 'Trial expired', code: 'TRIAL_EXPIRED' });
-            }
             return next();
         }
 
