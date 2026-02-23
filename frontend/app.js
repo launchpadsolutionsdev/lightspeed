@@ -1199,244 +1199,842 @@ async function handleMicrosoftAuthResponse(response, email, name, account) {
     }
 }
 
-// ==================== ORGANIZATION SETUP ====================
+// ==================== ONBOARDING WIZARD (5-Step) ====================
+let _wizardOrgId = null;  // Set after Step 1 creates the org
+let _wizardStep = 1;
+let _wizardInvites = [];  // Track invites sent during wizard
+
 function showOrganizationSetup(user) {
     // Hide other pages
     document.getElementById("landingPage").classList.add("hidden");
     document.getElementById("loginPage").classList.remove("visible");
     document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
 
-    // Create and show organization setup modal
+    _wizardStep = 1;
+    _wizardOrgId = null;
+    _wizardInvites = [];
+
     let modal = document.getElementById("orgSetupModal");
-    if (!modal) {
-        modal = document.createElement("div");
-        modal.id = "orgSetupModal";
-        modal.className = "modal-overlay";
-        modal.innerHTML = `
-            <div class="modal-content org-setup-modal">
-                <div class="org-setup-header">
-                    <div class="org-setup-icon">🚀</div>
-                    <h2>Welcome to Lightspeed!</h2>
-                    <p>Let's set up your organization to get started with your <strong>14-day free trial</strong>.</p>
-                </div>
-                <form id="orgSetupForm" class="org-setup-form">
-                    <div class="form-group">
-                        <label for="orgNameInput">Organization Name</label>
-                        <input type="text" id="orgNameInput" placeholder="e.g., Thunder Bay Regional Health Sciences Foundation" required>
-                        <span class="form-hint">This is typically your nonprofit or charity name</span>
-                    </div>
-                    <button type="submit" class="btn-primary btn-lg">
-                        <span class="btn-icon">✨</span>
-                        Start Free Trial
-                    </button>
-                </form>
-                <div class="org-setup-footer">
-                    <p>No credit card required. Full access for 14 days.</p>
-                </div>
+    if (modal) modal.remove();
+
+    modal = document.createElement("div");
+    modal.id = "orgSetupModal";
+    modal.className = "modal-overlay";
+    modal.innerHTML = `
+        <div class="modal-content wizard-modal">
+            <!-- Progress Bar -->
+            <div class="wizard-progress">
+                <div class="wizard-progress-bar" id="wizardProgressBar" style="width: 20%"></div>
             </div>
-        `;
-        document.body.appendChild(modal);
+            <div class="wizard-steps-indicator" id="wizardStepsIndicator">
+                <span class="wizard-dot active" data-step="1"></span>
+                <span class="wizard-dot" data-step="2"></span>
+                <span class="wizard-dot" data-step="3"></span>
+                <span class="wizard-dot" data-step="4"></span>
+                <span class="wizard-dot" data-step="5"></span>
+            </div>
 
-        // Add styles if not already present
-        if (!document.getElementById("orgSetupStyles")) {
-            const styles = document.createElement("style");
-            styles.id = "orgSetupStyles";
-            styles.textContent = `
-                #orgSetupModal {
-                    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
-                }
-                .org-setup-modal {
-                    max-width: 480px;
-                    padding: 40px;
-                    text-align: center;
-                    background: #ffffff;
-                    border-radius: 16px;
-                }
-                .org-setup-header {
-                    margin-bottom: 32px;
-                }
-                .org-setup-icon {
-                    font-size: 48px;
-                    margin-bottom: 16px;
-                    display: inline-block;
-                    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                }
-                .org-setup-header h2 {
-                    margin: 0 0 12px 0;
-                    font-size: 28px;
-                    font-weight: 700;
-                    color: #1a1a2e;
-                }
-                .org-setup-header p {
-                    margin: 0;
-                    color: #4a5568;
-                    font-size: 16px;
-                    line-height: 1.5;
-                }
-                .org-setup-header p strong {
-                    color: #0A2540;
-                }
-                .org-setup-form .form-group {
-                    text-align: left;
-                    margin-bottom: 24px;
-                }
-                .org-setup-form label {
-                    display: block;
-                    margin-bottom: 8px;
-                    font-weight: 600;
-                    color: #1a1a2e;
-                    font-size: 14px;
-                }
-                .org-setup-form input {
-                    width: 100%;
-                    padding: 14px 16px;
-                    border: 2px solid #e2e8f0;
-                    border-radius: 10px;
-                    font-size: 16px;
-                    transition: all 0.2s;
-                    background: #f8fafc;
-                    color: #1a1a2e;
-                    box-sizing: border-box;
-                }
-                .org-setup-form input::placeholder {
-                    color: #a0aec0;
-                }
-                .org-setup-form input:focus {
-                    outline: none;
-                    border-color: #0A2540;
-                    background: #ffffff;
-                }
-                .form-hint {
-                    display: block;
-                    margin-top: 8px;
-                    font-size: 13px;
-                    color: #718096;
-                }
-                .org-setup-form .btn-lg {
-                    width: 100%;
-                    padding: 16px 24px;
-                    font-size: 18px;
-                    font-weight: 600;
-                    background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
-                    color: white;
-                    border: none;
-                    border-radius: 10px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                }
-                .org-setup-form .btn-lg:hover {
-                    transform: translateY(-2px);
-                }
-                .org-setup-form .btn-lg:disabled {
-                    opacity: 0.7;
-                    cursor: not-allowed;
-                    transform: none;
-                }
-                .org-setup-footer {
-                    margin-top: 24px;
-                    padding-top: 24px;
-                    border-top: 1px solid #e2e8f0;
-                }
-                .org-setup-footer p {
-                    margin: 0;
-                    color: #718096;
-                    font-size: 14px;
-                }
-                .org-setup-footer p::before {
-                    content: "✓ ";
-                    color: #48bb78;
-                    color: #888;
-                    font-size: 14px;
-                }
-            `;
-            document.head.appendChild(styles);
-        }
+            <!-- Step Container -->
+            <div class="wizard-step-container" id="wizardStepContainer">
+                ${_renderWizardStep1()}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 
-        // Handle form submission
-        document.getElementById("orgSetupForm").addEventListener("submit", handleOrgSetup);
+    // Add styles
+    if (!document.getElementById("orgSetupStyles")) {
+        const styles = document.createElement("style");
+        styles.id = "orgSetupStyles";
+        styles.textContent = _getWizardStyles();
+        document.head.appendChild(styles);
     }
+
+    // Bind Step 1 form
+    _bindWizardStep1();
 
     modal.classList.add("show");
 }
 
-async function handleOrgSetup(e) {
-    e.preventDefault();
+/* ---------- Step Renderers ---------- */
 
-    const orgName = document.getElementById("orgNameInput").value.trim();
-    if (!orgName) {
-        showToast("Please enter your organization name", "error");
-        return;
-    }
+function _renderWizardStep1() {
+    return `
+        <div class="wizard-step" id="wizardStep1">
+            <div class="wizard-step-header">
+                <div class="wizard-step-icon">&#127891;</div>
+                <div class="wizard-step-label">Step 1 of 5</div>
+                <h2>Welcome to Lightspeed!</h2>
+                <p>Let's set up your organization to get started with your <strong>14-day free trial</strong>.</p>
+            </div>
+            <form id="wizardForm1" class="wizard-form">
+                <div class="wizard-field-group">
+                    <label for="wizOrgName">Organization Name <span class="required">*</span></label>
+                    <input type="text" id="wizOrgName" placeholder="e.g., Thunder Bay Regional Health Sciences Foundation" required>
+                    <span class="wizard-hint">Your nonprofit or charity name</span>
+                </div>
+                <div class="wizard-field-row">
+                    <div class="wizard-field-group">
+                        <label for="wizWebsite">Website</label>
+                        <input type="url" id="wizWebsite" placeholder="https://www.example.org">
+                    </div>
+                    <div class="wizard-field-group">
+                        <label for="wizLicence">License / RAF Number</label>
+                        <input type="text" id="wizLicence" placeholder="e.g., RAF-12345">
+                    </div>
+                </div>
+                <div class="wizard-actions">
+                    <div></div>
+                    <button type="submit" class="wizard-btn wizard-btn-primary" id="wizBtn1">
+                        Create Organization
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
+                </div>
+                <div class="wizard-footer-note">No credit card required. Full access for 14 days.</div>
+            </form>
+        </div>`;
+}
 
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<span class="btn-icon">⏳</span> Creating...';
-    submitBtn.disabled = true;
+function _renderWizardStep2() {
+    return `
+        <div class="wizard-step" id="wizardStep2">
+            <div class="wizard-step-header">
+                <div class="wizard-step-icon">&#127970;</div>
+                <div class="wizard-step-label">Step 2 of 5</div>
+                <h2>Organization Profile</h2>
+                <p>Help our AI tools generate accurate, on-brand content by filling in your org's key details.</p>
+            </div>
+            <form id="wizardForm2" class="wizard-form">
+                <div class="wizard-field-group">
+                    <label for="wizMission">Mission Statement</label>
+                    <textarea id="wizMission" rows="3" placeholder="e.g., To raise funds for healthcare excellence in Northwestern Ontario..."></textarea>
+                </div>
+                <div class="wizard-field-row">
+                    <div class="wizard-field-group">
+                        <label for="wizSupportEmail">Support Email</label>
+                        <input type="email" id="wizSupportEmail" placeholder="support@example.org">
+                    </div>
+                    <div class="wizard-field-group">
+                        <label for="wizStoreLocation">Ticket Purchase Location</label>
+                        <input type="text" id="wizStoreLocation" placeholder="e.g., 123 Main St, Thunder Bay">
+                    </div>
+                </div>
+                <div class="wizard-field-row">
+                    <div class="wizard-field-group">
+                        <label for="wizCeoName">CEO / President Name</label>
+                        <input type="text" id="wizCeoName" placeholder="e.g., Jane Smith">
+                    </div>
+                    <div class="wizard-field-group">
+                        <label for="wizCeoTitle">Title</label>
+                        <input type="text" id="wizCeoTitle" placeholder="e.g., Executive Director">
+                    </div>
+                </div>
+                <div class="wizard-field-row">
+                    <div class="wizard-field-group">
+                        <label for="wizMediaName">Media Contact Name</label>
+                        <input type="text" id="wizMediaName" placeholder="e.g., John Doe">
+                    </div>
+                    <div class="wizard-field-group">
+                        <label for="wizMediaEmail">Media Contact Email</label>
+                        <input type="email" id="wizMediaEmail" placeholder="media@example.org">
+                    </div>
+                </div>
+                <div class="wizard-actions">
+                    <button type="button" class="wizard-btn wizard-btn-ghost" onclick="_wizardSkip()">Skip for Now</button>
+                    <button type="submit" class="wizard-btn wizard-btn-primary" id="wizBtn2">
+                        Save &amp; Continue
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </form>
+        </div>`;
+}
+
+function _renderWizardStep3() {
+    return `
+        <div class="wizard-step" id="wizardStep3">
+            <div class="wizard-step-header">
+                <div class="wizard-step-icon">&#9881;&#65039;</div>
+                <div class="wizard-step-label">Step 3 of 5</div>
+                <h2>Content Configuration</h2>
+                <p>Set defaults so your AI-generated content is accurate from day one.</p>
+            </div>
+            <form id="wizardForm3" class="wizard-form">
+                <div class="wizard-field-row">
+                    <div class="wizard-field-group">
+                        <label for="wizDrawTime">Default Draw Time</label>
+                        <input type="text" id="wizDrawTime" placeholder="e.g., 11:00 AM">
+                    </div>
+                    <div class="wizard-field-group">
+                        <label for="wizDeadlineTime">Ticket Deadline</label>
+                        <input type="text" id="wizDeadlineTime" placeholder="e.g., 11:59 PM">
+                    </div>
+                </div>
+                <div class="wizard-field-group">
+                    <label for="wizCtaWebsite">Catch the Ace Website URL</label>
+                    <input type="url" id="wizCtaWebsite" placeholder="https://www.example.org/catch-the-ace">
+                </div>
+                <div class="wizard-field-group">
+                    <label for="wizSocialLine">Required Social Media Line</label>
+                    <textarea id="wizSocialLine" rows="2" placeholder="e.g., Lottery License #M000000. Must be 18+ to play."></textarea>
+                    <span class="wizard-hint">This line will be appended to all AI-generated social media posts</span>
+                </div>
+                <div class="wizard-field-group">
+                    <label for="wizBrandTerms">Brand Terminology Rules</label>
+                    <textarea id="wizBrandTerms" rows="3" placeholder="One rule per line, e.g.:\nAlways say &quot;50/50 Raffle&quot; not &quot;fifty-fifty&quot;\nUse &quot;supporters&quot; instead of &quot;customers&quot;"></textarea>
+                    <span class="wizard-hint">AI tools will follow these rules when generating content</span>
+                </div>
+                <div class="wizard-actions">
+                    <button type="button" class="wizard-btn wizard-btn-ghost" onclick="_wizardSkip()">Skip for Now</button>
+                    <button type="submit" class="wizard-btn wizard-btn-primary" id="wizBtn3">
+                        Save &amp; Continue
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </form>
+        </div>`;
+}
+
+function _renderWizardStep4() {
+    return `
+        <div class="wizard-step" id="wizardStep4">
+            <div class="wizard-step-header">
+                <div class="wizard-step-icon">&#128101;</div>
+                <div class="wizard-step-label">Step 4 of 5</div>
+                <h2>Invite Your Team</h2>
+                <p>Collaboration is better together. Invite team members to your organization.</p>
+            </div>
+            <div class="wizard-form">
+                <div class="wizard-invite-form" id="wizardInviteForm">
+                    <div class="wizard-field-row wizard-invite-row">
+                        <div class="wizard-field-group" style="flex:2">
+                            <label for="wizInviteEmail">Email Address</label>
+                            <input type="email" id="wizInviteEmail" placeholder="colleague@example.org">
+                        </div>
+                        <div class="wizard-field-group" style="flex:1">
+                            <label for="wizInviteRole">Role</label>
+                            <select id="wizInviteRole" class="wizard-select">
+                                <option value="member">Member</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="wizard-field-group wizard-invite-btn-wrap">
+                            <label>&nbsp;</label>
+                            <button type="button" class="wizard-btn wizard-btn-secondary" id="wizSendInviteBtn" onclick="_wizardSendInvite()">Send Invite</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-invite-list" id="wizardInviteList"></div>
+                <div class="wizard-actions">
+                    <button type="button" class="wizard-btn wizard-btn-ghost" onclick="_wizardSkip()">Skip for Now</button>
+                    <button type="button" class="wizard-btn wizard-btn-primary" onclick="_wizardGoTo(5)">
+                        Continue
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function _renderWizardStep5() {
+    const inviteCount = _wizardInvites.length;
+    const inviteNote = inviteCount > 0
+        ? `<div class="wizard-summary-item"><span class="wizard-summary-check">&#10003;</span> ${inviteCount} team invite${inviteCount > 1 ? 's' : ''} sent</div>`
+        : '';
+
+    return `
+        <div class="wizard-step wizard-step-final" id="wizardStep5">
+            <div class="wizard-step-header">
+                <div class="wizard-step-icon wizard-confetti">&#127881;</div>
+                <div class="wizard-step-label">Step 5 of 5</div>
+                <h2>You're All Set!</h2>
+                <p>Your organization is ready to go. Here's what's waiting for you:</p>
+            </div>
+            <div class="wizard-form">
+                <div class="wizard-summary">
+                    <div class="wizard-summary-item"><span class="wizard-summary-check">&#10003;</span> 14-day free trial activated</div>
+                    <div class="wizard-summary-item"><span class="wizard-summary-check">&#10003;</span> Organization created</div>
+                    ${inviteNote}
+                </div>
+                <div class="wizard-tools-preview">
+                    <h3>Your Toolkit</h3>
+                    <div class="wizard-tools-grid">
+                        <div class="wizard-tool-card">
+                            <span class="wizard-tool-icon">&#9889;</span>
+                            <div><strong>Response Assistant</strong><br><small>AI-powered customer replies</small></div>
+                        </div>
+                        <div class="wizard-tool-card">
+                            <span class="wizard-tool-icon">&#9997;&#65039;</span>
+                            <div><strong>Draft Assistant</strong><br><small>Social, email &amp; media content</small></div>
+                        </div>
+                        <div class="wizard-tool-card">
+                            <span class="wizard-tool-icon">&#128200;</span>
+                            <div><strong>Insights Engine</strong><br><small>Data analytics dashboards</small></div>
+                        </div>
+                        <div class="wizard-tool-card">
+                            <span class="wizard-tool-icon">&#10024;</span>
+                            <div><strong>Ask Lightspeed</strong><br><small>Your all-in-one AI assistant</small></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-actions wizard-actions-center">
+                    <button type="button" class="wizard-btn wizard-btn-primary wizard-btn-finish" onclick="_wizardFinish()">
+                        Go to Dashboard
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
+                </div>
+                <div class="wizard-footer-note">You can update all of these settings anytime from the Teams page.</div>
+            </div>
+        </div>`;
+}
+
+/* ---------- Step Navigation ---------- */
+
+function _wizardGoTo(step) {
+    _wizardStep = step;
+    const container = document.getElementById('wizardStepContainer');
+    const renderers = {
+        1: _renderWizardStep1,
+        2: _renderWizardStep2,
+        3: _renderWizardStep3,
+        4: _renderWizardStep4,
+        5: _renderWizardStep5
+    };
+    container.innerHTML = renderers[step]();
+
+    // Update progress
+    document.getElementById('wizardProgressBar').style.width = `${step * 20}%`;
+    document.querySelectorAll('.wizard-dot').forEach(dot => {
+        const s = parseInt(dot.dataset.step);
+        dot.classList.toggle('active', s === step);
+        dot.classList.toggle('completed', s < step);
+    });
+
+    // Bind form handlers
+    if (step === 1) _bindWizardStep1();
+    if (step === 2) _bindWizardStep2();
+    if (step === 3) _bindWizardStep3();
+}
+
+function _wizardSkip() {
+    _wizardGoTo(_wizardStep + 1);
+}
+
+function _bindWizardStep1() {
+    document.getElementById('wizardForm1').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const orgName = document.getElementById('wizOrgName').value.trim();
+        if (!orgName) { showToast('Please enter your organization name', 'error'); return; }
+
+        const btn = document.getElementById('wizBtn1');
+        btn.disabled = true;
+        btn.innerHTML = 'Creating...';
+
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${API_BASE_URL}/api/auth/create-organization`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ name: orgName })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                currentUser.organization = data.organization;
+                currentUser.needsOrganization = false;
+                currentUser.settings.orgName = data.organization.name;
+
+                const userIndex = users.findIndex(u => u.id === currentUser.id);
+                if (userIndex >= 0) {
+                    users[userIndex] = currentUser;
+                    localStorage.setItem("lightspeed_users", JSON.stringify(users));
+                }
+
+                _wizardOrgId = data.organization.id;
+
+                // Save optional fields from step 1 (website, licence) if provided
+                const website = document.getElementById('wizWebsite').value.trim();
+                const licence = document.getElementById('wizLicence').value.trim();
+                if (website || licence) {
+                    await _wizardPatchOrg({ websiteUrl: website || undefined, licenceNumber: licence || undefined });
+                }
+
+                _wizardGoTo(2);
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                showToast(errorData.error || 'Failed to create organization', 'error');
+            }
+        } catch (error) {
+            console.error('Wizard step 1 error:', error);
+            showToast('Connection error. Please try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Create Organization <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+        }
+    });
+}
+
+function _bindWizardStep2() {
+    document.getElementById('wizardForm2').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('wizBtn2');
+        btn.disabled = true;
+        btn.innerHTML = 'Saving...';
+
+        try {
+            await _wizardPatchOrg({
+                mission: document.getElementById('wizMission').value.trim() || undefined,
+                supportEmail: document.getElementById('wizSupportEmail').value.trim() || undefined,
+                storeLocation: document.getElementById('wizStoreLocation').value.trim() || undefined,
+                ceoName: document.getElementById('wizCeoName').value.trim() || undefined,
+                ceoTitle: document.getElementById('wizCeoTitle').value.trim() || undefined,
+                mediaContactName: document.getElementById('wizMediaName').value.trim() || undefined,
+                mediaContactEmail: document.getElementById('wizMediaEmail').value.trim() || undefined
+            });
+            _wizardGoTo(3);
+        } catch (error) {
+            showToast('Failed to save profile. You can update this later.', 'error');
+            _wizardGoTo(3);
+        } finally {
+            btn.disabled = false;
+        }
+    });
+}
+
+function _bindWizardStep3() {
+    document.getElementById('wizardForm3').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('wizBtn3');
+        btn.disabled = true;
+        btn.innerHTML = 'Saving...';
+
+        try {
+            const brandTermsRaw = document.getElementById('wizBrandTerms').value.trim();
+            const brandTerminology = brandTermsRaw
+                ? JSON.stringify({ notes: brandTermsRaw.split('\n').map(l => l.trim()).filter(Boolean) })
+                : undefined;
+
+            await _wizardPatchOrg({
+                defaultDrawTime: document.getElementById('wizDrawTime').value.trim() || undefined,
+                ticketDeadlineTime: document.getElementById('wizDeadlineTime').value.trim() || undefined,
+                ctaWebsiteUrl: document.getElementById('wizCtaWebsite').value.trim() || undefined,
+                socialRequiredLine: document.getElementById('wizSocialLine').value.trim() || undefined,
+                brandTerminology
+            });
+            _wizardGoTo(4);
+        } catch (error) {
+            showToast('Failed to save configuration. You can update this later.', 'error');
+            _wizardGoTo(4);
+        } finally {
+            btn.disabled = false;
+        }
+    });
+}
+
+async function _wizardSendInvite() {
+    const emailInput = document.getElementById('wizInviteEmail');
+    const roleSelect = document.getElementById('wizInviteRole');
+    const email = emailInput.value.trim();
+    if (!email) { showToast('Please enter an email address', 'error'); return; }
+
+    const btn = document.getElementById('wizSendInviteBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
 
     try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch(`${API_BASE_URL}/api/auth/create-organization`, {
+        const response = await fetch(`${API_BASE_URL}/api/organizations/${_wizardOrgId}/invite`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ name: orgName })
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ email, role: roleSelect.value })
         });
 
         if (response.ok) {
             const data = await response.json();
+            _wizardInvites.push({ email, role: roleSelect.value, emailSent: data.emailSent });
+            emailInput.value = '';
 
-            // Update current user with organization
-            currentUser.organization = data.organization;
-            currentUser.needsOrganization = false;
-            currentUser.settings.orgName = data.organization.name;
+            // Update invite list display
+            const list = document.getElementById('wizardInviteList');
+            list.innerHTML = _wizardInvites.map(inv => `
+                <div class="wizard-invite-item">
+                    <span class="wizard-invite-email">${inv.email}</span>
+                    <span class="wizard-invite-role">${inv.role}</span>
+                    <span class="wizard-invite-status">${inv.emailSent ? 'Email sent' : 'Link created'}</span>
+                </div>
+            `).join('');
 
-            // Update in users array
-            const userIndex = users.findIndex(u => u.id === currentUser.id);
-            if (userIndex >= 0) {
-                users[userIndex] = currentUser;
-                localStorage.setItem("lightspeed_users", JSON.stringify(users));
-            }
-
-            // Close modal and proceed
-            document.getElementById("orgSetupModal").classList.remove("show");
-
-            // Check if user selected a plan before signing up
-            const selectedPlan = localStorage.getItem('selectedPlan');
-            if (selectedPlan) {
-                localStorage.removeItem('selectedPlan');
-            }
-
-            // Show tool menu (pass false to suppress default toast)
-            loginUser(currentUser, false);
-
-            if (selectedPlan) {
-                // User chose a plan from pricing — send them to checkout
-                showToast('Setting up your subscription...', 'info');
-                await startCheckout(selectedPlan);
-            } else {
-                showToast(`Welcome to Lightspeed! Your 14-day trial has started.`, "success");
-            }
-
+            showToast(`Invitation sent to ${email}`, 'success');
         } else {
-            const errorData = await response.json().catch(() => ({}));
-            showToast(errorData.error || "Failed to create organization", "error");
+            const errData = await response.json().catch(() => ({}));
+            showToast(errData.error || 'Failed to send invitation', 'error');
         }
     } catch (error) {
-        console.error("Org setup error:", error);
-        showToast("Connection error. Please try again.", "error");
+        console.error('Invite error:', error);
+        showToast('Connection error. Please try again.', 'error');
     } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
+        btn.disabled = false;
+        btn.textContent = 'Send Invite';
     }
+}
+
+async function _wizardPatchOrg(fields) {
+    // Remove undefined values
+    const payload = {};
+    for (const [k, v] of Object.entries(fields)) {
+        if (v !== undefined) payload[k] = v;
+    }
+    if (Object.keys(payload).length === 0) return;
+
+    const response = await fetch(`${API_BASE_URL}/api/organizations/${_wizardOrgId}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+        const data = await response.json();
+        currentUser.organization = { ...currentUser.organization, ...data.organization };
+    }
+}
+
+function _wizardFinish() {
+    document.getElementById('orgSetupModal').classList.remove('show');
+
+    // Check if user selected a plan before signing up
+    const selectedPlan = localStorage.getItem('selectedPlan');
+    if (selectedPlan) localStorage.removeItem('selectedPlan');
+
+    loginUser(currentUser, false);
+
+    if (selectedPlan) {
+        showToast('Setting up your subscription...', 'info');
+        startCheckout(selectedPlan);
+    } else {
+        showToast('Welcome to Lightspeed! Your 14-day trial has started.', 'success');
+    }
+}
+
+/* ---------- Wizard Styles ---------- */
+
+function _getWizardStyles() {
+    return `
+    /* Overlay */
+    #orgSetupModal {
+        background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
+    }
+
+    /* Modal container */
+    .wizard-modal {
+        max-width: 620px;
+        width: 95vw;
+        padding: 0;
+        background: #ffffff;
+        border-radius: 16px;
+        overflow: hidden;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    /* Progress bar */
+    .wizard-progress {
+        height: 4px;
+        background: #e2e8f0;
+        border-radius: 4px 4px 0 0;
+        overflow: hidden;
+    }
+    .wizard-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #E91E8C, #F5A623);
+        transition: width 0.4s ease;
+        border-radius: 0 2px 2px 0;
+    }
+
+    /* Step dots */
+    .wizard-steps-indicator {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px 0 0;
+    }
+    .wizard-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        transition: all 0.3s;
+    }
+    .wizard-dot.active {
+        background: linear-gradient(135deg, #E91E8C, #F5A623);
+        transform: scale(1.2);
+    }
+    .wizard-dot.completed {
+        background: #48bb78;
+    }
+
+    /* Step container */
+    .wizard-step-container {
+        padding: 24px 36px 32px;
+    }
+    @media (max-width: 600px) {
+        .wizard-step-container { padding: 20px 20px 24px; }
+    }
+
+    /* Step header */
+    .wizard-step-header {
+        text-align: center;
+        margin-bottom: 28px;
+    }
+    .wizard-step-icon {
+        font-size: 40px;
+        margin-bottom: 8px;
+        display: inline-block;
+    }
+    .wizard-step-label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #a0aec0;
+        margin-bottom: 6px;
+    }
+    .wizard-step-header h2 {
+        margin: 0 0 8px 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+    .wizard-step-header p {
+        margin: 0;
+        color: #4a5568;
+        font-size: 15px;
+        line-height: 1.5;
+    }
+    .wizard-step-header p strong { color: #0A2540; }
+
+    /* Form fields */
+    .wizard-form { text-align: left; }
+    .wizard-field-group {
+        margin-bottom: 18px;
+    }
+    .wizard-field-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        color: #1a1a2e;
+        font-size: 13px;
+    }
+    .wizard-field-group label .required { color: #E91E8C; }
+    .wizard-field-group input,
+    .wizard-field-group textarea,
+    .wizard-field-group select {
+        width: 100%;
+        padding: 12px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 15px;
+        transition: all 0.2s;
+        background: #f8fafc;
+        color: #1a1a2e;
+        box-sizing: border-box;
+        font-family: inherit;
+    }
+    .wizard-field-group input::placeholder,
+    .wizard-field-group textarea::placeholder {
+        color: #a0aec0;
+    }
+    .wizard-field-group input:focus,
+    .wizard-field-group textarea:focus,
+    .wizard-field-group select:focus {
+        outline: none;
+        border-color: #0A2540;
+        background: #fff;
+    }
+    .wizard-field-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+    @media (max-width: 500px) {
+        .wizard-field-row { grid-template-columns: 1fr; }
+    }
+    .wizard-hint {
+        display: block;
+        margin-top: 6px;
+        font-size: 12px;
+        color: #718096;
+    }
+    .wizard-select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23718096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        padding-right: 36px;
+    }
+
+    /* Buttons */
+    .wizard-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 24px;
+        gap: 12px;
+    }
+    .wizard-actions-center {
+        justify-content: center;
+    }
+    .wizard-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .wizard-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+    .wizard-btn-primary {
+        background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
+        color: #fff;
+    }
+    .wizard-btn-primary:hover:not(:disabled) { transform: translateY(-2px); }
+    .wizard-btn-ghost {
+        background: transparent;
+        color: #718096;
+        padding: 12px 16px;
+    }
+    .wizard-btn-ghost:hover { color: #1a1a2e; }
+    .wizard-btn-secondary {
+        background: #0A2540;
+        color: #fff;
+        padding: 12px 18px;
+        font-size: 14px;
+    }
+    .wizard-btn-secondary:hover:not(:disabled) { background: #163a5c; }
+    .wizard-btn-finish {
+        padding: 16px 36px;
+        font-size: 18px;
+    }
+
+    .wizard-footer-note {
+        text-align: center;
+        margin-top: 16px;
+        font-size: 13px;
+        color: #718096;
+    }
+    .wizard-footer-note::before {
+        content: "\\2713  ";
+        color: #48bb78;
+    }
+
+    /* Step 4: Invite list */
+    .wizard-invite-row {
+        align-items: end;
+    }
+    .wizard-invite-btn-wrap {
+        flex: 0 0 auto !important;
+    }
+    .wizard-invite-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 4px;
+    }
+    .wizard-invite-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        background: #f0fdf4;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+    .wizard-invite-email { flex: 1; color: #1a1a2e; font-weight: 500; }
+    .wizard-invite-role {
+        text-transform: capitalize;
+        color: #718096;
+        font-size: 12px;
+        background: #e2e8f0;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+    .wizard-invite-status { color: #48bb78; font-size: 12px; }
+
+    /* Step 5: Summary & tools */
+    .wizard-summary {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+    }
+    .wizard-summary-item {
+        padding: 6px 0;
+        font-size: 15px;
+        color: #2d3748;
+    }
+    .wizard-summary-check {
+        color: #48bb78;
+        font-weight: 700;
+        margin-right: 8px;
+    }
+    .wizard-tools-preview h3 {
+        margin: 0 0 14px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a1a2e;
+        text-align: center;
+    }
+    .wizard-tools-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    @media (max-width: 500px) {
+        .wizard-tools-grid { grid-template-columns: 1fr; }
+    }
+    .wizard-tool-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px;
+        background: #f8fafc;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        transition: border-color 0.2s;
+    }
+    .wizard-tool-card:hover { border-color: #E91E8C; }
+    .wizard-tool-icon {
+        font-size: 28px;
+        flex-shrink: 0;
+        width: 40px;
+        text-align: center;
+    }
+    .wizard-tool-card strong {
+        font-size: 14px;
+        color: #1a1a2e;
+    }
+    .wizard-tool-card small {
+        font-size: 12px;
+        color: #718096;
+    }
+
+    /* Confetti effect on step 5 icon */
+    .wizard-confetti {
+        animation: wizardBounce 0.6s ease;
+    }
+    @keyframes wizardBounce {
+        0% { transform: scale(0.3); opacity: 0; }
+        50% { transform: scale(1.15); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    `;
 }
 
 function parseJwt(token) {
