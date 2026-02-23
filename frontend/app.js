@@ -3727,7 +3727,7 @@ function setupEventListeners() {
         document.getElementById("historyModal").classList.remove("show"));
     document.getElementById("copyHistoryResponse").addEventListener("click", () => {
         if (currentHistoryItem) {
-            navigator.clipboard.writeText(currentHistoryItem.response);
+            navigator.clipboard.writeText(stripCitations(currentHistoryItem.response));
             document.getElementById("copyHistoryResponse").textContent = "✓ Copied!";
             setTimeout(() => {
                 document.getElementById("copyHistoryResponse").textContent = "📋 Copy Response";
@@ -6359,7 +6359,7 @@ async function handleGenerate() {
             { toneValue, lengthValue, includeLinks, includeSteps, agentInstructions, streamTarget }
         );
 
-        const responseText = result.text;
+        const responseText = stripCitations(result.text);
         const referencedKbEntries = result.referencedKbEntries || [];
 
         const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -6645,7 +6645,7 @@ Sign as: ${staffName}`;
         const { text, referencedKbEntries } = await fetchStream(requestBody, {
             onText: (chunk) => {
                 streamTarget._rawText = (streamTarget._rawText || '') + chunk;
-                streamTarget.innerHTML = escapeHtmlWithLinks(streamTarget._rawText);
+                streamTarget.innerHTML = escapeHtmlWithLinks(stripCitations(streamTarget._rawText));
             },
             onKb: (entries) => {
                 // KB entries are handled after streaming completes
@@ -7623,7 +7623,7 @@ function showHistoryDetail(id) {
         <div>
             <div class="form-label">Generated Response</div>
             <div style="background: var(--bg-light); padding: 12px; border-radius: var(--radius-md); font-size: 0.85rem; white-space: pre-wrap;">
-                ${escapeHtml(item.response)}
+                ${escapeHtml(stripCitations(item.response))}
             </div>
         </div>
         <div style="margin-top: 12px; font-size: 0.75rem; color: var(--text-muted);">
@@ -8023,6 +8023,11 @@ function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML.replace(/\n/g, "<br>");
+}
+
+// Strip KB citation markers like [1], [2] from response text
+function stripCitations(text) {
+    return text.replace(/ ?\[\d+\]/g, '');
 }
 
 // Escape HTML then convert URLs to clickable links (safe: escape first, linkify after)
