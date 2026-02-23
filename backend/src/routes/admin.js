@@ -1058,4 +1058,42 @@ router.get('/audit-logs', authenticate, requireSuperAdmin, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/admin/users/:userId/response-history
+ * Get response history for a specific user (super admin only)
+ */
+router.get('/users/:userId/response-history', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { page = 1, limit = 50 } = req.query;
+        const offset = (page - 1) * limit;
+
+        const result = await pool.query(
+            `SELECT rh.id, rh.inquiry, rh.response, rh.format, rh.tone, rh.tool,
+                    rh.rating, rh.rating_feedback, rh.created_at
+             FROM response_history rh
+             WHERE rh.user_id = $1
+             ORDER BY rh.created_at DESC
+             LIMIT $2 OFFSET $3`,
+            [userId, parseInt(limit), parseInt(offset)]
+        );
+
+        const countResult = await pool.query(
+            'SELECT COUNT(*) FROM response_history WHERE user_id = $1',
+            [userId]
+        );
+
+        res.json({
+            entries: result.rows,
+            total: parseInt(countResult.rows[0].count),
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+
+    } catch (error) {
+        console.error('Get user response history error:', error);
+        res.status(500).json({ error: 'Failed to get user response history' });
+    }
+});
+
 module.exports = router;

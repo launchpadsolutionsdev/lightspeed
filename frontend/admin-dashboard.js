@@ -366,7 +366,12 @@ async function renderUsersTab(container) {
                                         ${user.is_super_admin ? '✓' : '—'}
                                     </button>
                                 </td>
-                                <td>
+                                <td style="white-space:nowrap">
+                                    <button class="admin-btn admin-btn-secondary admin-btn-sm"
+                                            onclick="openUserResponseHistory('${user.id}', '${(user.first_name || '').replace(/'/g, "\\'")} ${(user.last_name || '').replace(/'/g, "\\'")}')"
+                                            title="View response history">
+                                        History
+                                    </button>
                                     <button class="admin-btn admin-btn-secondary admin-btn-sm"
                                             onclick="openUserOrgModal('${user.id}', '${(user.first_name || '').replace(/'/g, "\\'")} ${(user.last_name || '').replace(/'/g, "\\'")}', '${user.organization_id || ''}', '${user.role || ''}')">
                                         Edit
@@ -1439,6 +1444,179 @@ async function removeUserFromOrg(userId) {
     }
 }
 
+// ==================== USER RESPONSE HISTORY MODAL ====================
+let userHistoryPage = 1;
+let userHistoryUserId = null;
+let userHistoryUserName = '';
+
+async function openUserResponseHistory(userId, userName) {
+    userHistoryUserId = userId;
+    userHistoryUserName = userName.trim() || 'User';
+    userHistoryPage = 1;
+    await renderUserHistoryModal();
+}
+
+async function renderUserHistoryModal() {
+    let data;
+    try {
+        data = await fetchAdminData(`/api/admin/users/${userHistoryUserId}/response-history?page=${userHistoryPage}&limit=20`);
+    } catch (error) {
+        showToast('Failed to load response history', 'error');
+        return;
+    }
+
+    // Remove existing modal if re-rendering for pagination
+    const existing = document.getElementById('userHistoryModal');
+    if (existing) existing.remove();
+
+    const totalPages = Math.ceil(data.total / 20);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'admin-modal-overlay';
+    overlay.id = 'userHistoryModal';
+    overlay.onclick = (e) => { if (e.target === overlay) closeUserHistoryModal(); };
+
+    overlay.innerHTML = `
+        <div class="admin-modal" style="max-width:900px;max-height:85vh;display:flex;flex-direction:column;">
+            <div class="admin-modal-header">
+                <h3>Response History — ${escapeHtmlAdmin(userHistoryUserName)}</h3>
+                <button class="admin-modal-close" onclick="closeUserHistoryModal()">&times;</button>
+            </div>
+            <div class="admin-modal-body" style="overflow-y:auto;flex:1;padding:0;">
+                ${data.entries.length === 0 ? `
+                    <div style="text-align:center;padding:48px 24px;color:var(--text-secondary);">
+                        No response history found for this user.
+                    </div>
+                ` : `
+                    <table class="admin-table admin-table-full" style="margin:0;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Inquiry</th>
+                                <th>Tool</th>
+                                <th>Rating</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.entries.map(entry => `
+                                <tr>
+                                    <td style="white-space:nowrap;font-size:0.8rem;">${formatDateShort(entry.created_at)}</td>
+                                    <td style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                                        title="${escapeHtmlAdmin(entry.inquiry)}">${escapeHtmlAdmin(truncateText(entry.inquiry, 100))}</td>
+                                    <td><span class="admin-role-badge">${formatToolName(entry.tool || 'response_assistant')}</span></td>
+                                    <td>${entry.rating === 'positive' ? '👍' : entry.rating === 'negative' ? '👎' : '<span class="text-muted">—</span>'}</td>
+                                    <td>
+                                        <button class="admin-btn admin-btn-secondary admin-btn-sm"
+                                                onclick="viewResponseDetail('${entry.id}')">
+                                            View
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `}
+            </div>
+            ${totalPages > 1 ? `
+                <div class="admin-modal-footer" style="justify-content:center;">
+                    <button onclick="userHistoryGoToPage(${userHistoryPage - 1})" class="admin-btn admin-btn-secondary admin-btn-sm" ${userHistoryPage <= 1 ? 'disabled' : ''}>← Prev</button>
+                    <span class="admin-page-info" style="margin:0 12px;">Page ${userHistoryPage} of ${totalPages} (${data.total} total)</span>
+                    <button onclick="userHistoryGoToPage(${userHistoryPage + 1})" class="admin-btn admin-btn-secondary admin-btn-sm" ${userHistoryPage >= totalPages ? 'disabled' : ''}>Next →</button>
+                </div>
+            ` : data.total > 0 ? `
+                <div class="admin-modal-footer" style="justify-content:center;">
+                    <span class="admin-page-info">${data.total} entr${data.total === 1 ? 'y' : 'ies'}</span>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+
+    // Cache the entries for detail view
+    overlay._entries = data.entries;
+}
+
+function userHistoryGoToPage(page) {
+    if (page < 1) return;
+    userHistoryPage = page;
+    renderUserHistoryModal();
+}
+
+function closeUserHistoryModal() {
+    const modal = document.getElementById('userHistoryModal');
+    if (modal) {
+        modal.classList.remove('visible');
+        setTimeout(() => modal.remove(), 200);
+    }
+}
+
+function viewResponseDetail(entryId) {
+    const modal = document.getElementById('userHistoryModal');
+    const entries = modal?._entries || [];
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    // Remove existing detail modal
+    const existing = document.getElementById('responseDetailModal');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'admin-modal-overlay';
+    overlay.id = 'responseDetailModal';
+    overlay.style.zIndex = '10001';
+    overlay.onclick = (e) => { if (e.target === overlay) closeResponseDetailModal(); };
+
+    overlay.innerHTML = `
+        <div class="admin-modal" style="max-width:750px;max-height:85vh;display:flex;flex-direction:column;">
+            <div class="admin-modal-header">
+                <h3>Response Detail</h3>
+                <button class="admin-modal-close" onclick="closeResponseDetailModal()">&times;</button>
+            </div>
+            <div class="admin-modal-body" style="overflow-y:auto;flex:1;">
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;">Customer Inquiry</div>
+                    <div style="background:var(--admin-bg-light, #f8f9fa);padding:12px 16px;border-radius:8px;font-size:0.9rem;white-space:pre-wrap;line-height:1.5;">${escapeHtmlAdmin(entry.inquiry)}</div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;">Generated Response</div>
+                    <div style="background:var(--admin-bg-light, #f8f9fa);padding:12px 16px;border-radius:8px;font-size:0.9rem;white-space:pre-wrap;line-height:1.5;">${escapeHtmlAdmin(entry.response)}</div>
+                </div>
+                <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.8rem;color:var(--text-secondary);">
+                    <div><strong>Date:</strong> ${new Date(entry.created_at).toLocaleString()}</div>
+                    <div><strong>Tool:</strong> ${formatToolName(entry.tool || 'response_assistant')}</div>
+                    ${entry.format ? `<div><strong>Format:</strong> ${entry.format}</div>` : ''}
+                    ${entry.tone ? `<div><strong>Tone:</strong> ${entry.tone}</div>` : ''}
+                    <div><strong>Rating:</strong> ${entry.rating === 'positive' ? '👍 Positive' : entry.rating === 'negative' ? '👎 Negative' : 'Not rated'}</div>
+                    ${entry.rating_feedback ? `<div style="flex-basis:100%;"><strong>Feedback:</strong> ${escapeHtmlAdmin(entry.rating_feedback)}</div>` : ''}
+                </div>
+            </div>
+            <div class="admin-modal-footer">
+                <div></div>
+                <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="closeResponseDetailModal()">Close</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+}
+
+function closeResponseDetailModal() {
+    const modal = document.getElementById('responseDetailModal');
+    if (modal) {
+        modal.classList.remove('visible');
+        setTimeout(() => modal.remove(), 200);
+    }
+}
+
+function truncateText(text, maxLength) {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
 // ==================== GLOBAL EXPORTS ====================
 window.loadAdminDashboard = loadAdminDashboard;
 window.loadAdminTab = loadAdminTab;
@@ -1457,6 +1635,12 @@ window.openUserOrgModal = openUserOrgModal;
 window.closeUserOrgModal = closeUserOrgModal;
 window.saveUserOrgAssignment = saveUserOrgAssignment;
 window.removeUserFromOrg = removeUserFromOrg;
+// User response history exports
+window.openUserResponseHistory = openUserResponseHistory;
+window.closeUserHistoryModal = closeUserHistoryModal;
+window.userHistoryGoToPage = userHistoryGoToPage;
+window.viewResponseDetail = viewResponseDetail;
+window.closeResponseDetailModal = closeResponseDetailModal;
 // Org setup exports
 window.showCreateOrgModal = showCreateOrgModal;
 window.createOrganization = createOrganization;
