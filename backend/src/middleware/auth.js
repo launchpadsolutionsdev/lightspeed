@@ -118,7 +118,7 @@ const requireSuperAdmin = (req, res, next) => {
 
 /**
  * Check AI generation usage limits based on subscription tier
- * Trial: unlimited (time-limited only), Paid: 500/month, Super admin: unlimited
+ * Trial: unlimited, Paid: 500/month, Super admin: unlimited
  */
 const USAGE_LIMITS = {
     active: 500
@@ -131,7 +131,7 @@ const checkUsageLimit = async (req, res, next) => {
 
         // Get user's organization and subscription
         const orgResult = await pool.query(
-            `SELECT o.subscription_status, o.trial_ends_at, om.organization_id
+            `SELECT o.subscription_status, om.organization_id
              FROM organizations o
              JOIN organization_memberships om ON o.id = om.organization_id
              WHERE om.user_id = $1 LIMIT 1`,
@@ -144,11 +144,8 @@ const checkUsageLimit = async (req, res, next) => {
 
         const org = orgResult.rows[0];
 
-        // Trial accounts: no generation cap, just check expiration
+        // Trial accounts: no usage limits
         if (org.subscription_status === 'trial') {
-            if (org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
-                return res.status(403).json({ error: 'Trial expired', code: 'TRIAL_EXPIRED' });
-            }
             return next();
         }
 
