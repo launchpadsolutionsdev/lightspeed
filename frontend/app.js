@@ -29,10 +29,6 @@ async function handleApiError(response) {
     const error = await response.json().catch(() => ({}));
 
     // Handle specific error codes
-    if (error.code === 'TRIAL_LIMIT_REACHED') {
-        showUpgradeModal('limit', error.usageCount, error.limit);
-        throw new Error('LIMIT_REACHED');
-    }
     if (error.code === 'TRIAL_EXPIRED') {
         showUpgradeModal('expired');
         throw new Error('TRIAL_EXPIRED');
@@ -176,7 +172,7 @@ function checkPostCheckoutMessage() {
     }
 }
 
-function showUpgradeModal(reason, usageCount, limit) {
+function showUpgradeModal(reason) {
     let modal = document.getElementById('upgradeModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -293,10 +289,7 @@ function showUpgradeModal(reason, usageCount, limit) {
     const title = document.getElementById('upgradeTitle');
     const message = document.getElementById('upgradeMessage');
 
-    if (reason === 'limit') {
-        title.textContent = 'Trial Limit Reached';
-        message.textContent = `You've used all ${limit} free generations. Upgrade now to unlock unlimited access!`;
-    } else if (reason === 'expired') {
+    if (reason === 'expired') {
         title.textContent = 'Trial Expired';
         message.textContent = 'Your 14-day free trial has ended. Upgrade to continue using Lightspeed.';
     }
@@ -9622,7 +9615,7 @@ async function generateDraft() {
 
     } catch (error) {
         showDraftMain('empty');
-        if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
+        if (!['TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error generating draft: ' + error.message, 'error');
         }
     }
@@ -9695,7 +9688,7 @@ async function generateWriteAnything() {
 
     } catch (error) {
         showDraftMain('empty');
-        if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
+        if (!['TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error generating content: ' + error.message, 'error');
         }
     }
@@ -9791,7 +9784,7 @@ async function generateEmailDraft() {
     } catch (error) {
         console.error('Email draft generation error:', error);
         showDraftMain('empty');
-        if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
+        if (!['TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error generating email draft: ' + error.message, 'error');
         }
     }
@@ -9905,7 +9898,7 @@ async function refineDraft(instruction) {
         console.error('Draft refinement error:', error);
         // Restore original content
         document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(currentContent);
-        if (!['LIMIT_REACHED', 'TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
+        if (!['TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error refining draft: ' + error.message, 'error');
         }
     }
@@ -12525,7 +12518,7 @@ async function ropGenerate() {
         const data = await resp.json();
         ropShowOutput(data.generated_document);
     } catch (err) {
-        if (err.message === 'LIMIT_REACHED' || err.message === 'TRIAL_EXPIRED') {
+        if (err.message === 'TRIAL_EXPIRED') {
             ropShowForm(ropState.currentDraftId);
             return;
         }
