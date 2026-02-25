@@ -1617,6 +1617,19 @@
     opacity: 0.85;
 }
 
+.landing-logos-stat {
+    text-align: center;
+    font-size: 15px;
+    color: #6B7C93;
+    letter-spacing: 0.01em;
+    padding: 4px 0;
+}
+
+.landing-logos-stat strong {
+    color: #0A2540;
+    font-weight: 600;
+}
+
 /* ============================================================
    PRICING SECTION
    ============================================================ */
