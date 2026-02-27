@@ -9,6 +9,7 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
 const { authenticate, checkUsageLimit } = require('../middleware/auth');
 const claudeService = require('../services/claude');
+const shopifyService = require('../services/shopify');
 
 /**
  * POST /api/generate
@@ -88,6 +89,18 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
                 }
             } catch (kbError) {
                 console.warn('KB relevance picking failed, continuing without:', kbError.message);
+            }
+        }
+
+        // Inject Shopify context if the org has a connected store
+        if (inquiry && organizationId) {
+            try {
+                const shopifyContext = await shopifyService.buildContextForInquiry(organizationId, inquiry);
+                if (shopifyContext) {
+                    enhancedSystem += shopifyContext;
+                }
+            } catch (shopifyErr) {
+                console.warn('Shopify context injection failed, continuing without:', shopifyErr.message);
             }
         }
 
@@ -213,6 +226,18 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
             }
         }
 
+        // Inject Shopify context if the org has a connected store
+        if (inquiry && organizationId) {
+            try {
+                const shopifyContext = await shopifyService.buildContextForInquiry(organizationId, inquiry);
+                if (shopifyContext) {
+                    enhancedSystem += shopifyContext;
+                }
+            } catch (shopifyErr) {
+                console.warn('Shopify context injection failed, continuing without:', shopifyErr.message);
+            }
+        }
+
         // Send KB entries before streaming starts
         if (referencedKbEntries.length > 0) {
             sendEvent({ type: 'kb', entries: referencedKbEntries });
@@ -311,6 +336,20 @@ ${JSON.stringify(data, null, 2)}`;
 1. Payment status overview
 2. Outstanding issues
 3. Recommendations for follow-up
+
+Data:
+${JSON.stringify(data, null, 2)}`;
+                break;
+
+            case 'shopify':
+                userPrompt = `Analyze this Shopify store data and provide:
+1. Revenue overview and key metrics (total revenue, average order value, order count)
+2. Top-selling products by revenue and quantity
+3. Customer acquisition and retention insights
+4. Fulfillment performance (fulfilled vs unfulfilled orders)
+5. Sales trends and patterns (daily breakdown if available)
+6. Refund rate analysis
+7. Actionable recommendations to improve store performance
 
 Data:
 ${JSON.stringify(data, null, 2)}`;
@@ -527,6 +566,24 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
             userPrompt += `\n\nAdditional context: ${additionalContext}`;
         }
 
+        // Inject Shopify product context for product-related drafts
+        const orgResult3 = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [req.userId]
+        );
+        const draftOrgId = orgResult3.rows[0]?.organization_id;
+        if (draftOrgId) {
+            try {
+                const productContext = await shopifyService.buildProductContext(draftOrgId, { limit: 15 });
+                if (productContext) {
+                    systemPrompt += productContext;
+                    systemPrompt += '\n\nYou have access to the product catalog above. When writing about products, use accurate names, prices, and details from this catalog.';
+                }
+            } catch (shopifyErr) {
+                // Continue without Shopify context
+            }
+        }
+
         // Call Claude API
         const startTime2 = Date.now();
         const response = await claudeService.generateResponse({
@@ -559,6 +616,51 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
     } catch (error) {
         console.error('Draft error:', error);
         res.status(500).json({ error: error.message || 'Failed to generate draft' });
+    }
+});
+
+/**
+ * GET /api/tools/shopify-analytics
+ * Pull Shopify analytics data for the Insights Engine (instead of Excel upload).
+ */
+router.get('/shopify-analytics', authenticate, async (req, res) => {
+    try {
+        const orgResult = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [req.userId]
+        );
+        const organizationId = orgResult.rows[0]?.organization_id;
+
+        if (!organizationId) {
+            return res.status(403).json({ error: 'No organization found' });
+        }
+
+        const store = await shopifyService.getStoreConnection(organizationId);
+        if (!store) {
+            return res.status(404).json({ error: 'No Shopify store connected' });
+        }
+
+        const { days = 30 } = req.query;
+        const analytics = await shopifyService.getOrderAnalytics(organizationId, { days: parseInt(days) });
+        const productCount = await shopifyService.getProductCount(organizationId);
+        const customerCount = await shopifyService.getCustomerCount(organizationId);
+
+        res.json({
+            analytics,
+            counts: {
+                products: productCount,
+                customers: customerCount
+            },
+            shopDomain: store.shop_domain,
+            lastSync: {
+                products: store.last_products_sync_at,
+                orders: store.last_orders_sync_at
+            }
+        });
+
+    } catch (error) {
+        console.error('Shopify analytics fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch Shopify analytics' });
     }
 });
 

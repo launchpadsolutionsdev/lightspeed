@@ -10450,6 +10450,7 @@
                                 <option value="customers">Customers</option>
                                 <option value="payment-tickets">Payment Tickets</option>
                                 <option value="sellers">Sellers</option>
+                                <option value="shopify">Shopify Store Analytics</option>
                             </select>
                         </div>
                         <div class="data-report-type-description" id="dataReportTypeDescription"></div>
@@ -11564,6 +11565,16 @@
                             <p class="nhub-desc">Fix typos, remove invalid emails, flag role-based addresses, and export a clean verified list.</p>
                             <span class="nhub-tag">Validation</span>
                         </div>
+
+                        <div class="nhub-card nhub-compact" onclick="openNormalizerSubTool('shopify-import')" id="nhubShopifyCard" style="display: none;">
+                            <div class="nhub-glow nhub-glow-green"></div>
+                            <div class="nhub-icon-row">
+                                <div class="nhub-icon nhub-icon-green">🛍️</div>
+                            </div>
+                            <h3 class="nhub-title">Shopify Import</h3>
+                            <p class="nhub-desc">Pull customers directly from your connected Shopify store. Export as a clean Mailchimp-ready list.</p>
+                            <span class="nhub-tag">Shopify</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -12387,6 +12398,62 @@
             <button class="btn-primary" id="saveSettings" style="margin-top: 16px;">
                 Save Settings
             </button>
+
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-color, #ddd);">
+
+            <!-- Shopify Integration Section -->
+            <div id="shopifySettingsSection">
+                <h3 style="margin-bottom: 12px; font-size: 1rem; font-weight: 600;">Shopify Integration</h3>
+
+                <!-- Not Connected State -->
+                <div id="shopifyNotConnected">
+                    <p style="font-size: 0.85rem; color: var(--text-secondary, #888); margin-bottom: 12px;">
+                        Connect your Shopify store to enable AI-powered order lookups, product-aware responses, live analytics, and customer imports.
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label">Store Domain</label>
+                        <input type="text" id="shopifyStoreDomain" placeholder="mystore.myshopify.com" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; font-size: 0.9rem; background: var(--bg-secondary, #fff); color: var(--text-primary, #333);">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Admin API Access Token</label>
+                        <input type="password" id="shopifyAccessToken" placeholder="shpat_xxxxxxxxxxxxxxxx" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; font-size: 0.9rem; background: var(--bg-secondary, #fff); color: var(--text-primary, #333);">
+                        <p style="font-size: 0.7rem; color: var(--text-secondary, #888); margin-top: 4px;">
+                            Create a custom app in Shopify Admin &gt; Settings &gt; Apps &gt; Develop apps. Grant read access to Products, Orders, and Customers.
+                        </p>
+                    </div>
+                    <button class="btn-primary" id="shopifyConnectBtn" style="margin-top: 8px;" onclick="connectShopify()">
+                        Connect Shopify Store
+                    </button>
+                    <div id="shopifyConnectError" style="color: #ef4444; font-size: 0.8rem; margin-top: 8px; display: none;"></div>
+                </div>
+
+                <!-- Connected State -->
+                <div id="shopifyConnected" style="display: none;">
+                    <div style="background: var(--bg-secondary, #f8f9fa); border-radius: 10px; padding: 16px; margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-weight: 600; font-size: 0.9rem;" id="shopifyConnectedDomain">mystore.myshopify.com</span>
+                            <span style="background: #10b981; color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 12px;">Connected</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary, #888);">
+                            <span id="shopifyProductCount">0</span> products &middot;
+                            <span id="shopifyOrderCount">0</span> orders &middot;
+                            <span id="shopifyCustomerCount">0</span> customers
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary, #888); margin-top: 4px;">
+                            Last synced: <span id="shopifyLastSync">Never</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-primary" style="flex: 1; font-size: 0.85rem;" onclick="syncShopifyData()">
+                            Sync Now
+                        </button>
+                        <button class="btn-secondary" style="flex: 1; font-size: 0.85rem; color: #ef4444;" onclick="disconnectShopify()">
+                            Disconnect
+                        </button>
+                    </div>
+                    <div id="shopifySyncStatus" style="font-size: 0.8rem; margin-top: 8px; display: none;"></div>
+                </div>
+            </div>
         </div>
     </div>
 

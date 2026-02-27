@@ -419,6 +419,13 @@ const REPORT_TYPES = {
         description: 'In-depth breakdown of each seller with payment method analysis (Cash, Credit Card, Debit). Shows net sales, transactions, voided sales, and average order value per seller.',
         uploadTitle: 'Upload Sellers Report',
         uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
+    },
+    'shopify': {
+        name: 'Shopify Store Analytics',
+        description: 'Pull live data from your connected Shopify store. See revenue trends, top products, order fulfillment status, customer metrics, and AI-generated insights — no file upload required.',
+        uploadTitle: 'Pull Shopify Data',
+        uploadSubtitle: 'Data will be pulled directly from your connected Shopify store',
+        noUpload: true
     }
 };
 
@@ -4459,6 +4466,14 @@ function setupDataAnalysisListeners() {
                 currentReportType = type;
                 reportTypeDescription.innerHTML = `<h4>${REPORT_TYPES[type].name}</h4><p>${REPORT_TYPES[type].description}</p>`;
                 reportTypeDescription.classList.add('visible');
+
+                // Shopify: skip upload, go straight to data pull
+                if (REPORT_TYPES[type].noUpload) {
+                    uploadStep.classList.remove('active');
+                    handleShopifyAnalytics();
+                    return;
+                }
+
                 // Activate the upload step
                 uploadStep.classList.add('active');
                 document.getElementById("dataUploadTitle").textContent = REPORT_TYPES[currentReportType].uploadTitle;
@@ -10346,6 +10361,9 @@ function openNormalizerSubTool(subTool) {
         document.getElementById('normalizerEmailCleanerView').style.display = 'block';
         setupEmailCleanerListeners();
         pushRoute('/list-normalizer/email-cleaner');
+    } else if (subTool === 'shopify-import') {
+        handleShopifyCustomerImport();
+        // Stay on hub — the import downloads a file directly
     }
 }
 
@@ -12775,3 +12793,477 @@ document.addEventListener("DOMContentLoaded", () => {
             '</div>';
     }
 });
+
+// ==================== SHOPIFY INTEGRATION ====================
+
+let shopifyConnected = false;
+
+/**
+ * Check Shopify connection status and update UI accordingly.
+ * Called when the settings modal is opened.
+ */
+async function checkShopifyStatus() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shopify/status`, {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        shopifyConnected = data.connected;
+
+        const notConnectedEl = document.getElementById('shopifyNotConnected');
+        const connectedEl = document.getElementById('shopifyConnected');
+
+        if (data.connected) {
+            notConnectedEl.style.display = 'none';
+            connectedEl.style.display = 'block';
+
+            document.getElementById('shopifyConnectedDomain').textContent = data.shopDomain;
+            document.getElementById('shopifyProductCount').textContent = data.counts.products || 0;
+            document.getElementById('shopifyOrderCount').textContent = data.counts.orders || 0;
+            document.getElementById('shopifyCustomerCount').textContent = data.counts.customers || 0;
+
+            const lastSync = data.lastSync.orders || data.lastSync.products;
+            document.getElementById('shopifyLastSync').textContent = lastSync
+                ? new Date(lastSync).toLocaleString()
+                : 'Never';
+
+            // Show the Shopify import card in List Normalizer
+            const shopifyCard = document.getElementById('nhubShopifyCard');
+            if (shopifyCard) shopifyCard.style.display = '';
+        } else {
+            notConnectedEl.style.display = 'block';
+            connectedEl.style.display = 'none';
+
+            const shopifyCard = document.getElementById('nhubShopifyCard');
+            if (shopifyCard) shopifyCard.style.display = 'none';
+        }
+    } catch (err) {
+        console.warn('Shopify status check failed:', err.message);
+    }
+}
+
+/**
+ * Connect a Shopify store using manual API token.
+ */
+async function connectShopify() {
+    const shopDomain = document.getElementById('shopifyStoreDomain').value.trim();
+    const accessToken = document.getElementById('shopifyAccessToken').value.trim();
+    const errorEl = document.getElementById('shopifyConnectError');
+    const btn = document.getElementById('shopifyConnectBtn');
+
+    errorEl.style.display = 'none';
+
+    if (!shopDomain || !accessToken) {
+        errorEl.textContent = 'Please enter both your store domain and access token.';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    btn.textContent = 'Connecting...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shopify/connect`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ shopDomain, accessToken })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Connection failed');
+        }
+
+        showToast('Shopify store connected! Starting initial sync...', 'success');
+
+        // Clear form inputs
+        document.getElementById('shopifyStoreDomain').value = '';
+        document.getElementById('shopifyAccessToken').value = '';
+
+        // Refresh status
+        await checkShopifyStatus();
+
+        // Trigger initial sync
+        syncShopifyData();
+
+    } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+    } finally {
+        btn.textContent = 'Connect Shopify Store';
+        btn.disabled = false;
+    }
+}
+
+/**
+ * Trigger a full Shopify data sync.
+ */
+async function syncShopifyData() {
+    const statusEl = document.getElementById('shopifySyncStatus');
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--text-secondary, #888)';
+    statusEl.textContent = 'Syncing products, orders, and customers...';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shopify/sync`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ types: ['products', 'orders', 'customers'] })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Sync failed');
+        }
+
+        const products = data.results.products?.synced || 0;
+        const orders = data.results.orders?.synced || 0;
+        const customers = data.results.customers?.synced || 0;
+
+        statusEl.style.color = '#10b981';
+        statusEl.textContent = `Sync complete: ${products} products, ${orders} orders, ${customers} customers`;
+        showToast('Shopify sync complete!', 'success');
+
+        // Refresh counts
+        await checkShopifyStatus();
+
+    } catch (err) {
+        statusEl.style.color = '#ef4444';
+        statusEl.textContent = `Sync failed: ${err.message}`;
+    }
+}
+
+/**
+ * Disconnect the Shopify store.
+ */
+async function disconnectShopify() {
+    if (!confirm('Are you sure you want to disconnect your Shopify store? Cached data will no longer be used for AI tools.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shopify/disconnect`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Disconnect failed');
+        }
+
+        showToast('Shopify store disconnected', 'success');
+        shopifyConnected = false;
+        await checkShopifyStatus();
+
+    } catch (err) {
+        showToast(`Failed to disconnect: ${err.message}`, 'error');
+    }
+}
+
+/**
+ * Handle Shopify Analytics in the Insights Engine.
+ * Pulls data from the Shopify API instead of requiring a file upload.
+ */
+async function handleShopifyAnalytics() {
+    const combinedSection = document.getElementById('dataCombinedUploadSection');
+    const loadingEl = document.getElementById('dataLoading');
+    const dashboardEl = document.getElementById('dataDashboard');
+
+    // Show loading
+    combinedSection.style.display = 'none';
+    loadingEl.style.display = 'flex';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shopify/analytics?days=30`, {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            if (data.error && data.error.includes('No Shopify store connected')) {
+                throw new Error('No Shopify store connected. Go to Settings to connect your store first.');
+            }
+            throw new Error(data.error || 'Failed to fetch Shopify analytics');
+        }
+
+        const analyticsData = await response.json();
+        renderShopifyDashboard(analyticsData);
+
+    } catch (err) {
+        loadingEl.style.display = 'none';
+        combinedSection.style.display = 'block';
+        showToast(err.message, 'error');
+    }
+}
+
+/**
+ * Render the Shopify analytics dashboard with charts and metrics.
+ */
+function renderShopifyDashboard(data) {
+    const loadingEl = document.getElementById('dataLoading');
+    const dashboardEl = document.getElementById('dataDashboard');
+    const navTabs = document.getElementById('dataNavTabs');
+    const headerActions = document.getElementById('dataHeaderActions');
+
+    loadingEl.style.display = 'none';
+    dashboardEl.style.display = 'block';
+    navTabs.style.display = 'flex';
+    headerActions.style.display = 'flex';
+
+    const s = data.analytics.summary;
+    const totalRevenue = parseFloat(s.total_revenue) || 0;
+    const avgOrderValue = parseFloat(s.avg_order_value) || 0;
+    const totalOrders = parseInt(s.total_orders) || 0;
+    const uniqueCustomers = parseInt(s.unique_customers) || 0;
+    const fulfilledOrders = parseInt(s.fulfilled_orders) || 0;
+    const unfulfilledOrders = parseInt(s.unfulfilled_orders) || 0;
+    const refundedOrders = parseInt(s.refunded_orders) || 0;
+    const refundTotal = parseFloat(s.refund_total) || 0;
+
+    // Set report name
+    const reportNameEl = document.getElementById('dataReportName');
+    if (reportNameEl) reportNameEl.textContent = `Shopify - ${data.shopDomain || 'Store'} (Last 30 Days)`;
+
+    // Fill key metrics
+    const revenueEl = document.getElementById('dataTotalRevenue');
+    const revenueSubEl = document.getElementById('dataRevenueSubtext');
+    if (revenueEl) animateCurrency(revenueEl, totalRevenue, 800);
+    if (revenueSubEl) revenueSubEl.textContent = `from ${totalOrders} orders`;
+
+    // Fill other metric cards if they exist
+    const avgEl = document.getElementById('dataAvgSale');
+    if (avgEl) animateCurrency(avgEl, avgOrderValue, 800);
+
+    const customersEl = document.getElementById('dataUniqueCustomers');
+    if (customersEl) animateNumber(customersEl, uniqueCustomers, 800);
+
+    // Destroy old charts
+    if (typeof dataCharts !== 'undefined') {
+        dataCharts.forEach(chart => chart.destroy());
+        dataCharts.length = 0;
+    }
+
+    // Build the overview page content with Shopify-specific sections
+    const overviewPage = document.getElementById('data-page-overview');
+    if (!overviewPage) return;
+
+    // Find or create the charts container area after the metrics
+    let shopifyChartsArea = document.getElementById('shopifyChartsArea');
+    if (!shopifyChartsArea) {
+        shopifyChartsArea = document.createElement('div');
+        shopifyChartsArea.id = 'shopifyChartsArea';
+        // Insert after the metrics grid
+        const metricsGrid = overviewPage.querySelector('.data-metrics-grid');
+        if (metricsGrid) {
+            metricsGrid.parentNode.insertBefore(shopifyChartsArea, metricsGrid.nextSibling);
+        } else {
+            overviewPage.appendChild(shopifyChartsArea);
+        }
+    }
+
+    shopifyChartsArea.innerHTML = `
+        <div class="data-metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin-top: 16px;">
+            <div class="data-metric-card">
+                <div class="data-metric-label">Fulfilled</div>
+                <div class="data-metric-value" style="color: #10b981;">${fulfilledOrders}</div>
+            </div>
+            <div class="data-metric-card">
+                <div class="data-metric-label">Unfulfilled</div>
+                <div class="data-metric-value" style="color: #f59e0b;">${unfulfilledOrders}</div>
+            </div>
+            <div class="data-metric-card">
+                <div class="data-metric-label">Refunded</div>
+                <div class="data-metric-value" style="color: #ef4444;">${refundedOrders}</div>
+            </div>
+            <div class="data-metric-card">
+                <div class="data-metric-label">Refund Total</div>
+                <div class="data-metric-value" style="color: #ef4444;">$${refundTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+            <div class="data-chart-card" style="background: var(--bg-secondary, #fff); border-radius: 12px; padding: 20px;">
+                <h4 style="margin-bottom: 12px;">Daily Revenue (Last 30 Days)</h4>
+                <div style="height: 250px;"><canvas id="shopifyDailyRevenueChart"></canvas></div>
+            </div>
+            <div class="data-chart-card" style="background: var(--bg-secondary, #fff); border-radius: 12px; padding: 20px;">
+                <h4 style="margin-bottom: 12px;">Top Products by Revenue</h4>
+                <div style="height: 250px;"><canvas id="shopifyTopProductsChart"></canvas></div>
+            </div>
+        </div>
+
+        <div style="background: var(--bg-secondary, #fff); border-radius: 12px; padding: 20px; margin-top: 20px;">
+            <h4 style="margin-bottom: 12px;">AI Insights</h4>
+            <div id="shopifyAiInsights" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-primary, #333);">
+                <div style="text-align: center; padding: 20px; color: var(--text-secondary, #888);">Generating AI insights...</div>
+            </div>
+        </div>
+    `;
+
+    // Render Daily Revenue Chart
+    if (data.analytics.daily && data.analytics.daily.length > 0) {
+        const dailyCtx = document.getElementById('shopifyDailyRevenueChart');
+        if (dailyCtx) {
+            const dailyChart = new Chart(dailyCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.analytics.daily.map(d => {
+                        const date = new Date(d.date);
+                        return date.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+                    }),
+                    datasets: [{
+                        label: 'Revenue ($)',
+                        data: data.analytics.daily.map(d => parseFloat(d.revenue)),
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => '$' + ctx.raw.toLocaleString(undefined, { minimumFractionDigits: 2 }) } } },
+                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } } }
+                }
+            });
+            dataCharts.push(dailyChart);
+        }
+    }
+
+    // Render Top Products Chart
+    if (data.analytics.topProducts && data.analytics.topProducts.length > 0) {
+        const productsCtx = document.getElementById('shopifyTopProductsChart');
+        if (productsCtx) {
+            const topProducts = data.analytics.topProducts.slice(0, 8);
+            const productChart = new Chart(productsCtx, {
+                type: 'bar',
+                data: {
+                    labels: topProducts.map(p => p.product_title.length > 25 ? p.product_title.substring(0, 25) + '...' : p.product_title),
+                    datasets: [{
+                        label: 'Revenue ($)',
+                        data: topProducts.map(p => parseFloat(p.total_revenue)),
+                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => '$' + ctx.raw.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' (' + topProducts[ctx.dataIndex].total_quantity + ' sold)' } } },
+                    scales: { x: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } } }
+                }
+            });
+            dataCharts.push(productChart);
+        }
+    }
+
+    // Generate AI insights
+    generateShopifyInsights(data);
+}
+
+/**
+ * Generate AI-powered insights for Shopify data using the analyze endpoint.
+ */
+async function generateShopifyInsights(data) {
+    const insightsEl = document.getElementById('shopifyAiInsights');
+    if (!insightsEl) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                data: data.analytics,
+                reportType: 'shopify',
+                additionalContext: `Store: ${data.shopDomain}. Products in catalog: ${data.counts.products}. Total customers: ${data.counts.customers}.`
+            })
+        });
+
+        if (!response.ok) {
+            insightsEl.innerHTML = '<p style="color: var(--text-secondary);">Unable to generate AI insights at this time.</p>';
+            return;
+        }
+
+        const result = await response.json();
+        const text = result.content?.[0]?.text || 'No insights generated.';
+        insightsEl.innerHTML = renderSimpleMarkdown(text);
+
+    } catch (err) {
+        insightsEl.innerHTML = '<p style="color: var(--text-secondary);">Unable to generate AI insights at this time.</p>';
+    }
+}
+
+/**
+ * Handle Shopify customer import in the List Normalizer.
+ */
+async function handleShopifyCustomerImport() {
+    try {
+        showToast('Pulling customers from Shopify...', 'success');
+
+        const response = await fetch(`${API_BASE_URL}/api/shopify/customers/export`, {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to export customers');
+        }
+
+        const data = await response.json();
+
+        if (!data.customers || data.customers.length === 0) {
+            showToast('No customers found in Shopify. Try syncing first.', 'error');
+            return;
+        }
+
+        // Format as Mailchimp-ready data
+        const formatted = data.customers
+            .filter(c => c.email)
+            .map(c => ({
+                NAME: `${(c.first_name || '')} ${(c.last_name || '')}`.trim(),
+                EMAIL: (c.email || '').toLowerCase().trim()
+            }))
+            .filter(c => c.NAME && c.EMAIL);
+
+        // Deduplicate by email
+        const seen = new Set();
+        const deduped = formatted.filter(c => {
+            if (seen.has(c.EMAIL)) return false;
+            seen.add(c.EMAIL);
+            return true;
+        });
+
+        // Generate downloadable Excel file
+        const ws = XLSX.utils.json_to_sheet(deduped);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Customers');
+        XLSX.writeFile(wb, 'shopify-customers-mailchimp.xlsx');
+
+        showToast(`Exported ${deduped.length} customers (${data.total - deduped.length} duplicates removed)`, 'success');
+
+    } catch (err) {
+        showToast(`Shopify import failed: ${err.message}`, 'error');
+    }
+}
+
+// Hook: check Shopify status when settings modal opens
+(function hookShopifySettingsCheck() {
+    const settingsToggle = document.getElementById('settingsToggle');
+    const accountBtn = document.getElementById('accountBtn');
+
+    const checkOnOpen = () => { checkShopifyStatus(); };
+
+    if (settingsToggle) settingsToggle.addEventListener('click', checkOnOpen);
+    if (accountBtn) accountBtn.addEventListener('click', checkOnOpen);
+
+    // Also check on page load if logged in
+    if (localStorage.getItem('authToken')) {
+        setTimeout(checkShopifyStatus, 2000);
+    }
+})();
