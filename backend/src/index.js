@@ -28,6 +28,7 @@ const jurisdictionRoutes = require('./routes/jurisdictions');
 const rulesOfPlayRoutes = require('./routes/rulesOfPlay');
 const conversationRoutes = require('./routes/conversations');
 const sharedPromptRoutes = require('./routes/sharedPrompts');
+const shopifyRoutes = require('./routes/shopify');
 const pool = require('../config/database');
 
 // Validate required environment variables
@@ -130,6 +131,7 @@ app.use('/api/jurisdictions', jurisdictionRoutes);
 app.use('/api/rules-of-play', rulesOfPlayRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/shared-prompts', sharedPromptRoutes);
+app.use('/api/shopify', shopifyRoutes);
 
 // 404 handler
 app.use((req, res) => {
