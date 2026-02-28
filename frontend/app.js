@@ -3806,16 +3806,25 @@ async function loadKnowledgeFromBackend(kbType) {
                 };
             });
 
+            // Merge: backend entries take priority, preserve any local-only entries
+            const backendIds = new Set(backendEntries.map(e => e.id));
+
             if (kbType === 'support') {
-                supportKnowledge = backendEntries;
+                const localOnly = customKnowledge.filter(k => !backendIds.has(k.id));
+                supportKnowledge = [...backendEntries, ...localOnly];
                 // Keep customKnowledge as alias for backward compat
                 customKnowledge = supportKnowledge;
             } else if (kbType === 'internal') {
-                internalKnowledge = backendEntries;
+                const localOnly = internalKnowledge.filter(k => !backendIds.has(k.id));
+                internalKnowledge = [...backendEntries, ...localOnly];
             } else {
                 // No type specified — split by kb_type
-                supportKnowledge = backendEntries.filter(e => e.kb_type === 'support');
-                internalKnowledge = backendEntries.filter(e => e.kb_type === 'internal');
+                const supportEntries = backendEntries.filter(e => e.kb_type === 'support');
+                const internalEntries = backendEntries.filter(e => e.kb_type === 'internal');
+                const allBackendIds = new Set(backendEntries.map(e => e.id));
+                const localOnly = customKnowledge.filter(k => !allBackendIds.has(k.id));
+                supportKnowledge = [...supportEntries, ...localOnly];
+                internalKnowledge = internalEntries;
                 customKnowledge = supportKnowledge;
             }
 
