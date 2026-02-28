@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Streaming Responses | What's New | Lightspeed</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../design-system.css?v=20260228">
+    <link rel="stylesheet" href="../landing.css?v=20260228">
+    <link rel="stylesheet" href="../whats-new.css?v=20260228">
+</head>
+<body>
+
+    <nav class="landing-nav">
+        <div class="landing-nav-inner">
+            <a href="../index.html" class="landing-nav-logo">
+                <img src="../launchpad-logo.svg" alt="Lightspeed" height="28">
+            </a>
+            <div class="landing-nav-center">
+                <a href="../index.html#features" class="landing-nav-link">Features</a>
+                <a href="../index.html#pricing" class="landing-nav-link">Pricing</a>
+                <a href="../case-study.html" class="landing-nav-link">Case Studies</a>
+                <a href="../whats-new.html" class="landing-nav-link active">What's New</a>
+                <a href="../index.html#faq" class="landing-nav-link">FAQ</a>
+                <a href="../index.html#contact" class="landing-nav-link">Contact</a>
+            </div>
+            <div class="landing-nav-actions">
+                <a href="../index.html" class="ls-btn ls-btn-primary">Get started &rsaquo;</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="wn-detail">
+
+        <div class="wn-back-wrapper">
+            <a href="../whats-new.html" class="wn-back">&larr; Back to What's New</a>
+        </div>
+
+        <section class="wn-detail-hero">
+            <div class="wn-detail-meta">
+                <span class="wn-card-badge wn-card-badge--ai">AI</span>
+                <span class="wn-detail-date">February 15, 2026</span>
+            </div>
+            <h1 class="wn-detail-title">AI Responses Now Stream in Real Time</h1>
+            <p class="wn-detail-lede">No more waiting for the full response. Every Lightspeed tool now streams AI output as it's generated, so you see results instantly and can start reading while the response is still being composed.</p>
+        </section>
+
+        <div class="wn-detail-divider"><hr></div>
+
+        <section class="wn-detail-body">
+            <p>Speed isn't just about how fast the AI thinks &mdash; it's about how fast you perceive results. Previously, Lightspeed waited for the entire AI response to finish generating before displaying it. For longer responses, this meant staring at a loading spinner for several seconds before seeing anything.</p>
+
+            <p>With real-time streaming, the first words appear almost immediately. The response flows onto the screen word by word, just like watching someone type. You can start reading, evaluating, and planning your next action while the rest of the response is still being generated.</p>
+
+            <h2>What's included</h2>
+            <ul>
+                <li><strong>Universal streaming</strong> &mdash; Streaming is enabled across every AI-powered tool in Lightspeed: Response Assistant, Draft Assistant, Ask Lightspeed, and the Rules of Play Generator</li>
+                <li><strong>Smooth rendering</strong> &mdash; Text appears with natural pacing and proper formatting, including headers, lists, and paragraphs that render correctly as they stream in</li>
+                <li><strong>Instant feedback</strong> &mdash; The response area activates immediately when you click generate, with the first tokens appearing in under a second</li>
+                <li><strong>No configuration needed</strong> &mdash; Streaming is on by default for all users. There's nothing to enable or configure</li>
+            </ul>
+
+            <h2>The technical details</h2>
+            <p>Under the hood, Lightspeed now uses server-sent events (SSE) to maintain a persistent connection between your browser and the AI backend. As the language model generates each token, it's immediately pushed to your browser and rendered in place. This eliminates the buffering delay entirely.</p>
+
+            <p>The streaming implementation handles edge cases gracefully: if your connection is interrupted mid-stream, the partial response is preserved and you can regenerate from where it left off. Formatting, citations, and source references all render correctly during streaming.</p>
+
+            <h3>What's next</h3>
+            <p>We're working on streaming enhancements including the ability to stop generation mid-stream and a progress indicator showing estimated completion for longer responses.</p>
+
+            <div class="wn-detail-cta">
+                <p>Experience the speed difference yourself.</p>
+                <a href="../index.html" class="wn-cta-btn">Get started with Lightspeed</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer style="text-align:center; padding:32px 20px; font-size:13px; color:var(--text-muted); border-top:1px solid var(--border);">
+        &copy; 2026 Launchpad Solutions Inc. All rights reserved.
+    </footer>
+
+</body>
+</html>
