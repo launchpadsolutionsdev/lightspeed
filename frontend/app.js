@@ -4370,24 +4370,17 @@ function setupEventListeners() {
             document.getElementById("settingsModal").classList.remove("show");
     });
 
-    // Knowledge
-    document.getElementById("addKnowledgeBtn").addEventListener("click", addKnowledge);
-    document.getElementById("knowledgeSearchInput").addEventListener("input", (e) => {
-        renderKnowledgeList(e.target.value);
-    });
-    document.querySelectorAll(".filter-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            currentFilter = btn.dataset.filter;
-            renderKnowledgeList();
-        });
-    });
-    document.getElementById("importKnowledgeBtn").addEventListener("click", () =>
+    // Knowledge — event handlers are now inline onclick in the new KB page HTML
+
+    // Legacy bulk import modal (global)
+    const importKnowledgeBtn = document.getElementById("importKnowledgeBtn");
+    if (importKnowledgeBtn) importKnowledgeBtn.addEventListener("click", () =>
         document.getElementById("importModal").classList.add("show"));
-    document.getElementById("closeImportModal").addEventListener("click", () =>
+    const closeImportModal = document.getElementById("closeImportModal");
+    if (closeImportModal) closeImportModal.addEventListener("click", () =>
         document.getElementById("importModal").classList.remove("show"));
-    document.getElementById("parseImportBtn").addEventListener("click", parseAndImportKnowledge);
+    const parseImportBtn = document.getElementById("parseImportBtn");
+    if (parseImportBtn) parseImportBtn.addEventListener("click", parseAndImportKnowledge);
 
     // Feedback
     document.getElementById("submitFeedbackBtn").addEventListener("click", submitFeedback);
