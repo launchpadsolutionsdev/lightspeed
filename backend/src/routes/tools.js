@@ -162,7 +162,11 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
     };
 
     try {
-        const { messages, system, inquiry, max_tokens = 1024 } = req.body;
+        const { messages, system, inquiry, max_tokens = 1024, model } = req.body;
+
+        // Whitelist allowed models to prevent abuse
+        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
+        const selectedModel = model && ALLOWED_MODELS.includes(model) ? model : undefined;
 
         if (!messages || !Array.isArray(messages)) {
             sendEvent({ type: 'error', error: 'Messages array required' });
@@ -250,6 +254,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
             messages,
             system: enhancedSystem,
             max_tokens,
+            model: selectedModel,
             onText: (chunk) => {
                 sendEvent({ type: 'delta', text: chunk });
             }
