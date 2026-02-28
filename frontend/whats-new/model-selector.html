@@ -173,7 +173,7 @@
     <script>
         (function() {
             var API = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-                ? "http://localhost:3001" : "https://lightspeed-api.onrender.com";
+                ? "http://localhost:3001" : "https://lightspeed-backend.onrender.com";
             fetch(API + "/health", { mode: "cors" })
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
