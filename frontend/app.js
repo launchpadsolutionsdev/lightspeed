@@ -2994,19 +2994,28 @@ async function saveAlsConversationToServer() {
 }
 
 async function deleteAlsConversation(convId) {
+    // Optimistic: remove from local list and update UI immediately
+    const removed = alsConversations.find(c => c.id === convId);
+    alsConversations = alsConversations.filter(c => c.id !== convId);
+
+    if (convId === alsCurrentConversationId) {
+        clearAlsChat();
+    }
+    loadAlsSidebarContent();
+    showToast("Conversation deleted", "success");
+
+    // Delete from backend
     try {
         await fetch(`${API_BASE_URL}/api/conversations/${convId}`, {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
-
-        if (convId === alsCurrentConversationId) {
-            clearAlsChat();
-        }
-
-        loadAlsSidebarContent();
     } catch (e) {
-        console.warn('Failed to delete conversation:', e);
+        if (removed) {
+            alsConversations.push(removed);
+            loadAlsSidebarContent();
+            showToast("Failed to delete — restored", "error");
+        }
     }
 }
 
@@ -8090,21 +8099,34 @@ function useFavorite(id) {
 }
 
 async function deleteFavorite(id) {
-    if (confirm("Delete this favorite?")) {
-        // Delete from backend
-        try {
-            await fetch(`${API_BASE_URL}/api/favorites/${id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
-        } catch (error) {
-            console.warn('Failed to delete favorite from backend:', error);
-        }
+    // Optimistic delete: remove from UI immediately
+    const card = document.querySelector(`.favorite-card[onclick*="'${id}'"]`);
+    if (card) {
+        card.classList.add('fade-out-delete');
+    }
 
-        favorites = favorites.filter(f => f.id !== id);
-        saveUserData();
-        renderFavorites();
-        showToast("Favorite deleted", "success");
+    const removed = favorites.find(f => f.id === id);
+    favorites = favorites.filter(f => f.id !== id);
+    saveUserData();
+    showToast("Favorite deleted", "success");
+
+    // Re-render after fade animation completes
+    setTimeout(() => renderFavorites(), 260);
+
+    // Delete from backend (fire-and-forget)
+    try {
+        await fetch(`${API_BASE_URL}/api/favorites/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+    } catch (error) {
+        // Restore on failure
+        if (removed) {
+            favorites.push(removed);
+            saveUserData();
+            renderFavorites();
+            showToast("Failed to delete — restored", "error");
+        }
     }
 }
 
@@ -8496,23 +8518,33 @@ async function addKnowledge() {
 }
 
 async function deleteKnowledge(id) {
-    if (confirm("Delete this knowledge entry?")) {
-        // Delete from backend API
-        try {
-            await fetch(`${API_BASE_URL}/api/knowledge-base/${id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
-        } catch (error) {
-            console.warn('Backend KB delete error:', error);
-        }
+    // Optimistic delete: remove from UI immediately
+    const item = document.querySelector(`.knowledge-item button[onclick*="'${id}'"]`);
+    const card = item ? item.closest('.knowledge-item') : null;
+    if (card) card.classList.add('fade-out-delete');
 
-        // Always remove locally too
-        customKnowledge = customKnowledge.filter(k => k.id !== id);
-        saveUserData();
-        updateKnowledgeStats();
-        renderKnowledgeList();
-        showToast("Knowledge entry deleted", "success");
+    const removed = customKnowledge.find(k => k.id === id);
+    customKnowledge = customKnowledge.filter(k => k.id !== id);
+    saveUserData();
+    updateKnowledgeStats();
+    showToast("Knowledge entry deleted", "success");
+
+    setTimeout(() => renderKnowledgeList(), 260);
+
+    // Delete from backend (fire-and-forget)
+    try {
+        await fetch(`${API_BASE_URL}/api/knowledge-base/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+    } catch (error) {
+        if (removed) {
+            customKnowledge.push(removed);
+            saveUserData();
+            updateKnowledgeStats();
+            renderKnowledgeList();
+            showToast("Failed to delete — restored", "error");
+        }
     }
 }
 
@@ -13340,6 +13372,220 @@ async function handleShopifyCustomerImport() {
         showToast(`Shopify import failed: ${err.message}`, 'error');
     }
 }
+
+// ==================== SKELETON LOADING HELPERS ====================
+function skeletonCards(count) {
+    return Array.from({ length: count }, () =>
+        '<div class="skeleton-card">' +
+            '<div class="skeleton skeleton-title"></div>' +
+            '<div class="skeleton skeleton-text"></div>' +
+            '<div class="skeleton skeleton-text"></div>' +
+            '<div class="skeleton skeleton-text-sm"></div>' +
+        '</div>'
+    ).join('');
+}
+
+function skeletonRows(count) {
+    return Array.from({ length: count }, () =>
+        '<div class="skeleton-row">' +
+            '<div class="skeleton skeleton-avatar"></div>' +
+            '<div class="skeleton-row-content">' +
+                '<div class="skeleton skeleton-text" style="width:40%"></div>' +
+                '<div class="skeleton skeleton-text-sm" style="width:70%"></div>' +
+            '</div>' +
+        '</div>'
+    ).join('');
+}
+
+// Show skeleton loaders when switching to data-heavy pages
+(function patchSwitchPageWithSkeletons() {
+    const _origSwitchPage = switchPage;
+    switchPage = function(pageId) {
+        // Show skeletons before data loads
+        if (pageId === 'knowledge') {
+            const container = document.getElementById('knowledgeList');
+            if (container && container.children.length === 0) {
+                container.innerHTML = skeletonRows(5);
+            }
+        } else if (pageId === 'favorites') {
+            const grid = document.getElementById('favoritesGrid');
+            if (grid && grid.children.length === 0) {
+                grid.innerHTML = skeletonCards(3);
+            }
+        } else if (pageId === 'teams') {
+            const list = document.getElementById('membersList');
+            if (list && list.children.length === 0) {
+                list.innerHTML = skeletonRows(4);
+            }
+        }
+        _origSwitchPage(pageId);
+    };
+})();
+
+// ==================== COMMAND PALETTE (Cmd+K) ====================
+(function initCommandPalette() {
+    var COMMANDS = [
+        { id: 'dashboard', label: 'Dashboard', desc: 'Go to your dashboard', icon: '🏠', group: 'Navigate', action: function() { showToolMenu(); } },
+        { id: 'response', label: 'Response Assistant', desc: 'Generate customer responses', icon: '⚡', group: 'Tools', action: function() { openTool('customer-response'); switchPage('response'); } },
+        { id: 'draft', label: 'Draft Assistant', desc: 'Create marketing content', icon: '✏️', group: 'Tools', action: function() { openTool('draft-assistant'); } },
+        { id: 'data', label: 'Insights Engine', desc: 'Analyze data and charts', icon: '📊', group: 'Tools', action: function() { openTool('data-analysis'); } },
+        { id: 'normalizer', label: 'List Normalizer', desc: 'Clean and format lists', icon: '📋', group: 'Tools', action: function() { openTool('list-normalizer'); } },
+        { id: 'ask', label: 'Ask Lightspeed', desc: 'Chat with your AI assistant', icon: '💬', group: 'Tools', action: function() { openTool('ask-lightspeed'); } },
+        { id: 'rop', label: 'Rules of Play', desc: 'Generate rules of play documents', icon: '📜', group: 'Tools', action: function() { openTool('rules-of-play'); } },
+        { id: 'kb', label: 'Knowledge Base', desc: 'Manage your knowledge entries', icon: '📚', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('knowledge'); } },
+        { id: 'favorites', label: 'Favorites', desc: 'View saved responses', icon: '⭐', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('favorites'); } },
+        { id: 'templates', label: 'Templates', desc: 'Browse content templates', icon: '📄', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('templates'); } },
+        { id: 'analytics', label: 'Analytics', desc: 'View usage analytics', icon: '📈', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('analytics'); } },
+        { id: 'teams', label: 'Team Management', desc: 'Manage your team', icon: '👥', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('teams'); } },
+        { id: 'bulk', label: 'Bulk Processing', desc: 'Process multiple inquiries at once', icon: '📦', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('bulk'); } },
+    ];
+
+    var overlay = null;
+    var activeIndex = 0;
+    var filteredCommands = COMMANDS;
+
+    function createPalette() {
+        if (overlay) return overlay;
+        overlay = document.createElement('div');
+        overlay.className = 'cmdk-overlay';
+        overlay.innerHTML =
+            '<div class="cmdk-dialog">' +
+                '<div class="cmdk-input-wrapper">' +
+                    '<svg class="cmdk-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+                    '<input class="cmdk-input" id="cmdkInput" placeholder="Type a command..." autocomplete="off">' +
+                    '<span class="cmdk-kbd">esc</span>' +
+                '</div>' +
+                '<div class="cmdk-results" id="cmdkResults"></div>' +
+            '</div>';
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) closePalette();
+        });
+        document.body.appendChild(overlay);
+
+        var input = document.getElementById('cmdkInput');
+        input.addEventListener('input', function() {
+            filterCommands(input.value);
+        });
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeIndex = Math.min(activeIndex + 1, filteredCommands.length - 1);
+                renderResults();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeIndex = Math.max(activeIndex - 1, 0);
+                renderResults();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (filteredCommands[activeIndex]) {
+                    filteredCommands[activeIndex].action();
+                    closePalette();
+                }
+            } else if (e.key === 'Escape') {
+                closePalette();
+            }
+        });
+
+        return overlay;
+    }
+
+    function filterCommands(query) {
+        var q = query.toLowerCase().trim();
+        if (!q) {
+            filteredCommands = COMMANDS;
+        } else {
+            filteredCommands = COMMANDS.filter(function(cmd) {
+                return cmd.label.toLowerCase().includes(q) ||
+                       cmd.desc.toLowerCase().includes(q) ||
+                       cmd.group.toLowerCase().includes(q);
+            });
+        }
+        activeIndex = 0;
+        renderResults();
+    }
+
+    function renderResults() {
+        var container = document.getElementById('cmdkResults');
+        if (!container) return;
+
+        if (filteredCommands.length === 0) {
+            container.innerHTML = '<div class="cmdk-empty">No results found</div>';
+            return;
+        }
+
+        var groups = {};
+        filteredCommands.forEach(function(cmd, i) {
+            if (!groups[cmd.group]) groups[cmd.group] = [];
+            groups[cmd.group].push({ cmd: cmd, index: i });
+        });
+
+        var html = '';
+        Object.keys(groups).forEach(function(group) {
+            html += '<div class="cmdk-group-label">' + group + '</div>';
+            groups[group].forEach(function(item) {
+                html += '<div class="cmdk-item' + (item.index === activeIndex ? ' active' : '') + '" data-index="' + item.index + '">' +
+                    '<div class="cmdk-item-icon">' + item.cmd.icon + '</div>' +
+                    '<div class="cmdk-item-text">' +
+                        '<div class="cmdk-item-label">' + item.cmd.label + '</div>' +
+                        '<div class="cmdk-item-desc">' + item.cmd.desc + '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+        });
+        container.innerHTML = html;
+
+        container.querySelectorAll('.cmdk-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                var idx = parseInt(el.dataset.index);
+                if (filteredCommands[idx]) {
+                    filteredCommands[idx].action();
+                    closePalette();
+                }
+            });
+            el.addEventListener('mouseenter', function() {
+                activeIndex = parseInt(el.dataset.index);
+                container.querySelectorAll('.cmdk-item').forEach(function(item) {
+                    item.classList.toggle('active', parseInt(item.dataset.index) === activeIndex);
+                });
+            });
+        });
+
+        // Scroll active item into view
+        var activeEl = container.querySelector('.cmdk-item.active');
+        if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+    }
+
+    function openPalette() {
+        if (!currentUser) return; // Only works when logged in
+        createPalette();
+        var input = document.getElementById('cmdkInput');
+        input.value = '';
+        filteredCommands = COMMANDS;
+        activeIndex = 0;
+        renderResults();
+        overlay.classList.add('visible');
+        setTimeout(function() { input.focus(); }, 50);
+    }
+
+    function closePalette() {
+        if (overlay) overlay.classList.remove('visible');
+    }
+
+    // Global keyboard shortcut: Cmd+K / Ctrl+K
+    document.addEventListener('keydown', function(e) {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            e.preventDefault();
+            if (overlay && overlay.classList.contains('visible')) {
+                closePalette();
+            } else {
+                openPalette();
+            }
+        }
+    });
+
+    // Expose globally so other code can trigger it
+    window.openCommandPalette = openPalette;
+})();
 
 // Hook: check Shopify status when settings modal opens
 (function hookShopifySettingsCheck() {
