@@ -1,23 +1,6 @@
 // Lightspeed by Launchpad Solutions v3.0
 // Multi-Tool Platform with Customer Response & Data Analysis
 
-// ==================== DARK MODE ====================
-(function() {
-    const saved = localStorage.getItem('dark_mode');
-    if (saved === 'true' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.body.classList.add('dark');
-    }
-})();
-
-function initDarkMode() {
-    const toggle = document.getElementById('darkModeToggle');
-    if (!toggle) return;
-    toggle.addEventListener('click', function() {
-        const isDark = document.body.classList.toggle('dark');
-        localStorage.setItem('dark_mode', isDark);
-    });
-}
-
 // ==================== STICKY CTA & BACK TO TOP ====================
 function initScrollUI() {
     var stickyCta = document.getElementById('stickyCta');
@@ -865,8 +848,7 @@ function setupAuthEventListeners() {
         });
     });
 
-    // Dark mode + scroll UI
-    initDarkMode();
+    // Scroll UI (sticky CTA + back to top)
     initScrollUI();
 
     // Pricing toggle (monthly / annual)
