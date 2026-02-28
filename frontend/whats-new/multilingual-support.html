@@ -113,14 +113,15 @@
                     <h4>Resources</h4>
                     <a href="../whats-new.html">What&rsquo;s New</a>
                     <a href="../help.html">Help Center</a>
+                    <a href="../status.html">System Status</a>
                 </div>
             </div>
             <div class="landing-footer-bottom">
                 <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Canada.</span>
-                <span class="landing-footer-status">
-                    <span class="status-dot"></span>
-                    All systems operational
-                </span>
+                <a href="../status.html" class="landing-footer-status" id="footerStatus">
+                    <span class="status-dot" id="footerDot"></span>
+                    <span id="footerStatusText">All systems operational</span>
+                </a>
             </div>
         </div>
     </footer>
@@ -165,6 +166,30 @@
                 chatTooltip.classList.toggle('show');
             });
         }
+    </script>
+
+    <!-- Live Status Check -->
+    <script>
+        (function() {
+            var API = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+                ? "http://localhost:3001" : "https://lightspeed-api.onrender.com";
+            fetch(API + "/health", { mode: "cors" })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    var dot = document.getElementById("footerDot");
+                    var txt = document.getElementById("footerStatusText");
+                    if (!dot || !txt) return;
+                    var labels = { operational: "All systems operational", degraded: "Service disruption", down: "System outage" };
+                    dot.className = "status-dot status-dot-" + d.status;
+                    txt.textContent = labels[d.status] || "All systems operational";
+                })
+                .catch(function() {
+                    var dot = document.getElementById("footerDot");
+                    var txt = document.getElementById("footerStatusText");
+                    if (dot) dot.className = "status-dot status-dot-down";
+                    if (txt) txt.textContent = "System outage";
+                });
+        })();
     </script>
 </body>
 </html>

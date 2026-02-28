@@ -104,12 +104,57 @@ app.use('/api/auth', authLimiter);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
+    const health = {
+        status: 'operational',
+        timestamp: new Date().toISOString(),
+        services: {}
+    };
+
+    // Check Database
+    const dbStart = Date.now();
     try {
         await pool.query('SELECT 1');
-        res.json({ status: 'ok', timestamp: new Date().toISOString(), database: 'connected' });
+        health.services.database = { status: 'operational', latency: Date.now() - dbStart };
     } catch (error) {
-        res.status(503).json({ status: 'degraded', timestamp: new Date().toISOString(), database: 'disconnected' });
+        health.services.database = { status: 'down', latency: null };
+        health.status = 'degraded';
     }
+
+    // Check Anthropic API
+    const aiStart = Date.now();
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch('https://api.anthropic.com/v1/models', {
+            method: 'GET',
+            headers: {
+                'x-api-key': process.env.ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+        health.services.ai = {
+            status: response.ok ? 'operational' : 'degraded',
+            latency: Date.now() - aiStart
+        };
+        if (!response.ok) health.status = 'degraded';
+    } catch (error) {
+        health.services.ai = { status: 'down', latency: null };
+        health.status = 'degraded';
+    }
+
+    // Platform is implicitly operational if this response is being sent
+    health.services.platform = { status: 'operational', latency: null };
+
+    // Overall status is "down" only if all services are down
+    const statuses = Object.values(health.services).map(s => s.status);
+    if (statuses.every(s => s === 'down')) {
+        health.status = 'down';
+    }
+
+    const statusCode = health.status === 'operational' ? 200 : 503;
+    res.status(statusCode).json(health);
 });
 
 // API Routes

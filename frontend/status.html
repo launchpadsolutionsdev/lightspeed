@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Status | Lightspeed by Launchpad</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="design-system.css?v=20260228">
+    <link rel="stylesheet" href="landing.css?v=20260228">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="landing-nav">
+        <div class="landing-nav-inner">
+            <a href="index.html" class="landing-nav-logo">
+                <img src="launchpad-logo.svg" alt="Lightspeed" height="28">
+                <span>Lightspeed</span>
+            </a>
+            <div class="landing-nav-center">
+                <a href="index.html#features" class="landing-nav-link">Features</a>
+                <a href="index.html#pricing" class="landing-nav-link">Pricing</a>
+                <a href="case-study.html" class="landing-nav-link">Case Studies</a>
+                <a href="whats-new.html" class="landing-nav-link">What's New</a>
+                <a href="about.html" class="landing-nav-link">About</a>
+                <a href="faq.html" class="landing-nav-link">FAQ</a>
+                <a href="index.html#contact" class="landing-nav-link">Contact</a>
+            </div>
+            <div class="landing-nav-actions">
+                <a href="index.html" class="landing-nav-signin">Sign in</a>
+                <a href="index.html" class="landing-nav-cta">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="status-page">
+
+        <!-- Hero -->
+        <section class="status-hero">
+            <div class="status-hero-inner">
+                <div class="status-hero-eyebrow">System Status</div>
+                <h1 class="status-hero-title">Service Health</h1>
+                <p class="status-hero-subtitle">Real-time status of Lightspeed platform services. This page auto-refreshes every 30 seconds.</p>
+                <div class="status-overall" id="statusOverall">
+                    <span class="status-badge status-badge-loading">
+                        <span class="status-badge-dot"></span>
+                        Checking...
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services Grid -->
+        <section class="status-services">
+            <div class="status-services-inner">
+                <div class="status-grid">
+
+                    <!-- Platform -->
+                    <div class="status-card" id="statusPlatform">
+                        <div class="status-card-header">
+                            <div class="status-card-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            </div>
+                            <div class="status-card-dot status-dot-loading"></div>
+                        </div>
+                        <h3 class="status-card-name">Platform</h3>
+                        <p class="status-card-desc">Core infrastructure, API, and web application hosted on Render.</p>
+                        <div class="status-card-meta">
+                            <span class="status-card-status">Checking...</span>
+                            <span class="status-card-latency"></span>
+                        </div>
+                    </div>
+
+                    <!-- Database -->
+                    <div class="status-card" id="statusDatabase">
+                        <div class="status-card-header">
+                            <div class="status-card-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                            </div>
+                            <div class="status-card-dot status-dot-loading"></div>
+                        </div>
+                        <h3 class="status-card-name">Database</h3>
+                        <p class="status-card-desc">PostgreSQL data storage, user accounts, and knowledge base.</p>
+                        <div class="status-card-meta">
+                            <span class="status-card-status">Checking...</span>
+                            <span class="status-card-latency"></span>
+                        </div>
+                    </div>
+
+                    <!-- AI Engine -->
+                    <div class="status-card" id="statusAI">
+                        <div class="status-card-header">
+                            <div class="status-card-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v1a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-1a3 3 0 0 1 3-3V6a4 4 0 0 1 4-4z"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                            </div>
+                            <div class="status-card-dot status-dot-loading"></div>
+                        </div>
+                        <h3 class="status-card-name">AI Engine</h3>
+                        <p class="status-card-desc">Anthropic Claude API powering AI-generated responses and analysis.</p>
+                        <div class="status-card-meta">
+                            <span class="status-card-status">Checking...</span>
+                            <span class="status-card-latency"></span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Last checked -->
+                <div class="status-last-checked" id="statusLastChecked">
+                    Last checked: &mdash;
+                </div>
+            </div>
+        </section>
+
+        <!-- Info -->
+        <section class="status-info">
+            <div class="status-info-inner">
+                <div class="status-info-card">
+                    <h3>How this works</h3>
+                    <p>This page checks the health of each Lightspeed service in real time. The backend verifies database connectivity and Anthropic API availability, while platform status is determined by whether the health endpoint responds at all.</p>
+                    <ul>
+                        <li><strong>Operational</strong> &mdash; Service is responding normally</li>
+                        <li><strong>Degraded</strong> &mdash; Service is reachable but experiencing issues</li>
+                        <li><strong>Down</strong> &mdash; Service is unreachable or returning errors</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="landing-footer-inner">
+            <div class="landing-footer-top">
+                <div class="landing-footer-brand">
+                    <div class="landing-footer-brand-logo">
+                        <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                        <span>Lightspeed</span>
+                    </div>
+                    <p class="landing-footer-brand-desc">AI-powered productivity tools built for nonprofit teams and charitable gaming operators.</p>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Product</h4>
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#pricing">Pricing</a>
+                    <a href="integrations.html">Integrations</a>
+                    <a href="faq.html">FAQ</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Company</h4>
+                    <a href="about.html">About</a>
+                    <a href="security.html">Security</a>
+                    <a href="case-study.html">Case Studies</a>
+                    <a href="index.html#contact">Contact</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Resources</h4>
+                    <a href="whats-new.html">What&rsquo;s New</a>
+                    <a href="help.html">Help Center</a>
+                    <a href="status.html">System Status</a>
+                </div>
+            </div>
+            <div class="landing-footer-bottom">
+                <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Canada.</span>
+                <a href="status.html" class="landing-footer-status" id="footerStatus">
+                    <span class="status-dot" id="footerDot"></span>
+                    <span id="footerStatusText">All systems operational</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-banner" id="cookieBanner">
+        <span class="cookie-banner-text">We use cookies to improve your experience. By continuing to use this site you agree to our <a href="index.html">Privacy Policy</a>.</span>
+        <div class="cookie-banner-actions">
+            <button class="cookie-btn" onclick="dismissCookieBanner(false)">Decline</button>
+            <button class="cookie-btn cookie-btn-accept" onclick="dismissCookieBanner(true)">Accept</button>
+        </div>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget-tooltip" id="chatTooltip">
+        <button class="chat-widget-tooltip-close" onclick="document.getElementById('chatTooltip').classList.remove('show')">&times;</button>
+        <div class="chat-widget-tooltip-header">Need help?</div>
+        <div class="chat-widget-tooltip-body">Have a question about Lightspeed? We&rsquo;d love to hear from you.</div>
+        <a class="chat-widget-tooltip-cta" href="index.html#contact">Send us a message &rarr;</a>
+    </div>
+    <button class="chat-widget-btn" id="chatWidgetBtn" aria-label="Chat with us">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
+
+    <script>
+        // Cookie banner
+        function dismissCookieBanner(accepted) {
+            localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
+            var banner = document.getElementById('cookieBanner');
+            if (banner) banner.classList.remove('show');
+        }
+        if (!localStorage.getItem('cookie_consent')) {
+            setTimeout(function() {
+                var banner = document.getElementById('cookieBanner');
+                if (banner) banner.classList.add('show');
+            }, 1500);
+        }
+        var chatBtn = document.getElementById('chatWidgetBtn');
+        var chatTooltip = document.getElementById('chatTooltip');
+        if (chatBtn && chatTooltip) {
+            chatBtn.addEventListener('click', function() {
+                chatTooltip.classList.toggle('show');
+            });
+        }
+
+        // Status page logic
+        var API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3001'
+            : 'https://lightspeed-api.onrender.com';
+
+        var STATUS_LABELS = {
+            operational: 'Operational',
+            degraded: 'Degraded',
+            down: 'Down'
+        };
+
+        function updateServiceCard(cardId, service) {
+            var card = document.getElementById(cardId);
+            if (!card) return;
+            var dot = card.querySelector('.status-card-dot');
+            var statusEl = card.querySelector('.status-card-status');
+            var latencyEl = card.querySelector('.status-card-latency');
+
+            dot.className = 'status-card-dot status-dot-' + service.status;
+            statusEl.textContent = STATUS_LABELS[service.status] || service.status;
+            latencyEl.textContent = service.latency !== null ? service.latency + 'ms' : '';
+        }
+
+        function updateOverallBadge(status) {
+            var overall = document.getElementById('statusOverall');
+            if (!overall) return;
+            var labels = {
+                operational: 'All Systems Operational',
+                degraded: 'Service Disruption',
+                down: 'Major Outage'
+            };
+            overall.innerHTML = '<span class="status-badge status-badge-' + status + '">' +
+                '<span class="status-badge-dot"></span>' +
+                (labels[status] || status) +
+                '</span>';
+        }
+
+        function updateFooterStatus(status) {
+            var dot = document.getElementById('footerDot');
+            var text = document.getElementById('footerStatusText');
+            if (!dot || !text) return;
+            dot.className = 'status-dot status-dot-' + status;
+            var labels = {
+                operational: 'All systems operational',
+                degraded: 'Service disruption',
+                down: 'System outage'
+            };
+            text.textContent = labels[status] || 'All systems operational';
+        }
+
+        function checkHealth() {
+            fetch(API_URL + '/health', { mode: 'cors' })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    updateOverallBadge(data.status);
+                    updateFooterStatus(data.status);
+                    if (data.services.platform) updateServiceCard('statusPlatform', data.services.platform);
+                    if (data.services.database) updateServiceCard('statusDatabase', data.services.database);
+                    if (data.services.ai) updateServiceCard('statusAI', data.services.ai);
+
+                    var lastChecked = document.getElementById('statusLastChecked');
+                    if (lastChecked) {
+                        lastChecked.textContent = 'Last checked: ' + new Date().toLocaleTimeString();
+                    }
+                })
+                .catch(function() {
+                    // If fetch itself fails, Render/platform is down
+                    updateOverallBadge('down');
+                    updateFooterStatus('down');
+                    updateServiceCard('statusPlatform', { status: 'down', latency: null });
+                    updateServiceCard('statusDatabase', { status: 'down', latency: null });
+                    updateServiceCard('statusAI', { status: 'down', latency: null });
+
+                    var lastChecked = document.getElementById('statusLastChecked');
+                    if (lastChecked) {
+                        lastChecked.textContent = 'Last checked: ' + new Date().toLocaleTimeString() + ' (unreachable)';
+                    }
+                });
+        }
+
+        // Initial check and 30s interval
+        checkHealth();
+        setInterval(checkHealth, 30000);
+    </script>
+</body>
+</html>
