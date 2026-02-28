@@ -21,6 +21,66 @@
 }
 
 /* ============================================================
+   ANNOUNCEMENT BANNER
+   ============================================================ */
+.landing-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 101;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--text-primary);
+    color: #fff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 400;
+    transition: background 0.15s ease;
+}
+
+.landing-banner:hover {
+    background: #122d4d;
+}
+
+.landing-banner-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--brand-gradient);
+    color: #fff;
+    line-height: 1.2;
+}
+
+.landing-banner-text {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.landing-banner-arrow {
+    color: rgba(255, 255, 255, 0.5);
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.landing-banner:hover .landing-banner-arrow {
+    transform: translateX(3px);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.landing-banner:hover .landing-banner-text {
+    color: #fff;
+}
+
+/* When banner is present, push nav down */
+.landing-banner + .landing-nav {
+    top: 40px;
+}
+
+/* ============================================================
    NAVBAR
    ============================================================ */
 .landing-nav {
@@ -163,7 +223,7 @@
 .landing-hero {
     position: relative;
     min-height: 100vh;
-    padding: 100px 40px 32px;
+    padding: 140px 40px 32px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -2307,8 +2367,24 @@
         display: flex;
     }
 
+    .landing-banner {
+        height: 36px;
+        font-size: 12px;
+        gap: 6px;
+        padding: 0 16px;
+    }
+
+    .landing-banner-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+
+    .landing-banner + .landing-nav {
+        top: 36px;
+    }
+
     .landing-hero {
-        padding: 80px 24px 24px;
+        padding: 116px 24px 24px;
         min-height: auto;
     }
 
