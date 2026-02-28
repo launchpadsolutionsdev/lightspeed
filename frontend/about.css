@@ -5,15 +5,18 @@
     padding-top: 64px; /* nav height */
 }
 
-/* ---- Hero ---- */
+/* ---- Hero (two-column) ---- */
 .about-hero {
     padding: 100px 40px 80px;
-    text-align: center;
 }
 
 .about-hero-inner {
-    max-width: 700px;
+    max-width: var(--max-width);
     margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+    align-items: center;
 }
 
 .about-hero-eyebrow {
@@ -38,8 +41,106 @@
     font-size: 18px;
     line-height: 1.7;
     color: var(--text-secondary);
-    max-width: 560px;
-    margin: 0 auto;
+}
+
+/* ---- Hero Mockup ---- */
+.about-mockup-panel {
+    background: #F6F8FB;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 24px 80px rgba(10, 37, 64, 0.12), 0 2px 6px rgba(10, 37, 64, 0.05);
+    font-family: var(--font-family);
+}
+
+.about-mockup-toolbar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.about-mockup-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.about-mockup-greeting {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0A2540;
+    margin-bottom: 2px;
+}
+
+.about-mockup-sub {
+    font-size: 12px;
+    color: #6B7C93;
+    margin-bottom: 16px;
+}
+
+.about-mockup-tools {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.about-mockup-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #E3E8EE;
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.about-mockup-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.about-mockup-card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #0A2540;
+    margin-bottom: 2px;
+}
+
+.about-mockup-card-desc {
+    font-size: 10px;
+    color: #6B7C93;
+    line-height: 1.3;
+}
+
+.about-mockup-ask {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #E3E8EE;
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+
+.about-mockup-ask-icon {
+    font-size: 14px;
+}
+
+.about-mockup-ask-text {
+    font-size: 12px;
+    color: #9CA3AF;
+    flex: 1;
+}
+
+.about-mockup-ask-send {
+    color: #D1D5DB;
+    display: flex;
 }
 
 /* ---- Mission & Vision ---- */
@@ -167,7 +268,6 @@
 }
 
 .about-values-header {
-    text-align: center;
     margin-bottom: 56px;
 }
 
@@ -185,6 +285,13 @@
     font-weight: 600;
     letter-spacing: -0.02em;
     color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.about-values-subtitle {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-secondary);
 }
 
 .about-values-grid {
@@ -198,7 +305,6 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 32px 24px;
-    text-align: center;
 }
 
 .about-value-icon {
@@ -210,7 +316,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 20px;
+    margin-bottom: 20px;
     color: var(--text-primary);
 }
 
@@ -323,8 +429,12 @@
 /* ---- CTA ---- */
 .about-cta {
     padding: 80px 40px;
-    text-align: center;
     background: #fff;
+}
+
+.about-cta-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
 }
 
 .about-cta-title {
@@ -344,6 +454,15 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 1024px) {
+    .about-hero-inner {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .about-hero-mockup {
+        max-width: 500px;
+    }
+
     .about-values-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -378,16 +497,11 @@
     .about-founder-inner {
         grid-template-columns: 1fr;
         gap: 40px;
-        text-align: center;
     }
 
     .about-founder-image-wrapper {
         width: 220px;
         height: 220px;
-    }
-
-    .about-founder-bio p {
-        text-align: left;
     }
 
     .about-values {
@@ -421,5 +535,9 @@
 
     .about-cta-title {
         font-size: 24px;
+    }
+
+    .about-mockup-tools {
+        grid-template-columns: 1fr;
     }
 }
