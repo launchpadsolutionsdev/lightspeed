@@ -5,7 +5,6 @@
 
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const auditLog = require('../services/auditLog');
@@ -41,22 +40,22 @@ router.get('/', authenticate, async (req, res) => {
  * POST /api/response-rules
  * Create a new response rule.
  */
-router.post('/', authenticate, [
-    body('rule_text').notEmpty().withMessage('Rule text is required'),
-    body('rule_type').optional().isIn(['always', 'never', 'formatting', 'general'])
-], async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
         const organizationId = req.organizationId;
         if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
 
         const { rule_text, rule_type = 'general' } = req.body;
+        const VALID_TYPES = ['always', 'never', 'formatting', 'general'];
+
+        if (!rule_text || !rule_text.trim()) {
+            return res.status(400).json({ error: 'Rule text is required' });
+        }
+        if (!VALID_TYPES.includes(rule_type)) {
+            return res.status(400).json({ error: 'Invalid rule type. Must be: ' + VALID_TYPES.join(', ') });
+        }
 
         // Set sort_order to max + 1 so new rules go to the end
         const maxOrder = await pool.query(
@@ -135,24 +134,23 @@ router.put('/reorder', authenticate, async (req, res) => {
  * PUT /api/response-rules/:id
  * Update a rule's text, type, or active status.
  */
-router.put('/:id', authenticate, [
-    body('rule_text').optional().notEmpty().withMessage('Rule text cannot be empty'),
-    body('rule_type').optional().isIn(['always', 'never', 'formatting', 'general']),
-    body('is_active').optional().isBoolean()
-], async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
         const organizationId = req.organizationId;
         if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
 
+        const VALID_TYPES = ['always', 'never', 'formatting', 'general'];
         const { id } = req.params;
         const { rule_text, rule_type, is_active } = req.body;
+
+        if (rule_text !== undefined && !rule_text.trim()) {
+            return res.status(400).json({ error: 'Rule text cannot be empty' });
+        }
+        if (rule_type !== undefined && !VALID_TYPES.includes(rule_type)) {
+            return res.status(400).json({ error: 'Invalid rule type' });
+        }
 
         // Build dynamic SET clause
         const sets = [];
