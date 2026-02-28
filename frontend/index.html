@@ -10228,6 +10228,9 @@
                             <button class="kb-tab" data-kb-type="internal" onclick="switchKbTab('internal')">
                                 Internal / Operations
                             </button>
+                            <button class="kb-tab" data-kb-type="rules" onclick="switchKbTab('rules')">
+                                Response Rules
+                            </button>
                         </div>
                         <p class="kb-tab-desc" id="kbTabDesc">Powers the Response Assistant. Add FAQs, policies, ticket responses, and draw rules.</p>
                     </div>
@@ -10296,6 +10299,25 @@
                                 <button class="btn-primary" id="kbFormSaveBtn" onclick="saveKbEntry()">Save Entry</button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Response Rules panel (visible only on rules tab) -->
+                    <div id="responseRulesPanel" style="display:none;">
+                        <div class="rules-add-form" id="rulesAddForm">
+                            <div class="form-group" style="flex:1;margin-bottom:0">
+                                <textarea id="ruleTextInput" rows="2" placeholder="e.g., Never tell the customer to 'feel free to reach out'..." style="width:100%;resize:vertical"></textarea>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:flex-end">
+                                <select id="ruleTypeSelect" style="min-width:120px">
+                                    <option value="general">General</option>
+                                    <option value="always">Always</option>
+                                    <option value="never">Never</option>
+                                    <option value="formatting">Formatting</option>
+                                </select>
+                                <button class="btn-primary btn-sm" onclick="addResponseRule()">Add Rule</button>
+                            </div>
+                        </div>
+                        <div class="rules-list" id="rulesList"></div>
                     </div>
 
                     <!-- Entries list -->
