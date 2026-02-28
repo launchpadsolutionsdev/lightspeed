@@ -8456,6 +8456,11 @@ function renderKbEntries() {
         return true;
     });
 
+    // Newest entries first
+    filtered.sort(function(a, b) {
+        return new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0);
+    });
+
     if (filtered.length === 0) {
         var msg = search || catFilter !== 'all'
             ? 'No matching entries found. Try adjusting your search or filter.'
