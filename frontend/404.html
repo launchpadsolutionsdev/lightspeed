@@ -1,15 +1,121 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Lightspeed</title>
-    <script>
-        // SPA redirect: save the path and redirect to index.html
-        // Render serves this 404.html when no file matches the route
-        sessionStorage.setItem('spa_redirect', window.location.pathname + window.location.search);
-        window.location.replace('/');
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found | Lightspeed by Launchpad</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/design-system.css?v=20260228">
+    <link rel="stylesheet" href="/landing.css?v=20260228">
+    <style>
+        .error-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 24px;
+        }
+        .error-code {
+            font-size: 120px;
+            font-weight: 800;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--cta), #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+        }
+        .error-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .error-desc {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 440px;
+            margin: 0 auto 32px;
+        }
+        .error-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .error-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .error-btn-primary {
+            background: var(--cta);
+            color: #fff;
+        }
+        .error-btn-primary:hover {
+            background: var(--cta-hover);
+            transform: translateY(-1px);
+        }
+        .error-btn-secondary {
+            background: var(--bg-alt);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .error-btn-secondary:hover {
+            border-color: var(--text-muted);
+            transform: translateY(-1px);
+        }
+        .error-links {
+            margin-top: 48px;
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .error-links a {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+        .error-links a:hover {
+            color: var(--cta);
+        }
+        .error-illustration {
+            font-size: 64px;
+            margin-bottom: 24px;
+        }
+    </style>
 </head>
 <body>
+    <div class="error-page">
+        <div class="error-illustration">&#128640;</div>
+        <div class="error-code">404</div>
+        <h1 class="error-title">This page took off without us</h1>
+        <p class="error-desc">The page you&rsquo;re looking for doesn&rsquo;t exist or has been moved. Let&rsquo;s get you back on track.</p>
+        <div class="error-actions">
+            <a href="/index.html" class="error-btn error-btn-primary">Back to homepage &rsaquo;</a>
+            <a href="/index.html#contact" class="error-btn error-btn-secondary">Contact support</a>
+        </div>
+        <div class="error-links">
+            <a href="/about.html">About</a>
+            <a href="/faq.html">FAQ</a>
+            <a href="/whats-new.html">What&rsquo;s New</a>
+            <a href="/case-study.html">Case Studies</a>
+            <a href="/help.html">Help Center</a>
+        </div>
+    </div>
 </body>
 </html>

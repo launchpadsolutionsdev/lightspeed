@@ -109,13 +109,59 @@
                 <div class="landing-footer-col">
                     <h4>Resources</h4>
                     <a href="../whats-new.html">What&rsquo;s New</a>
+                    <a href="../help.html">Help Center</a>
                 </div>
             </div>
             <div class="landing-footer-bottom">
                 <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Canada.</span>
+                <span class="landing-footer-status">
+                    <span class="status-dot"></span>
+                    All systems operational
+                </span>
             </div>
         </div>
     </footer>
 
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-banner" id="cookieBanner">
+        <span class="cookie-banner-text">We use cookies to improve your experience. By continuing to use this site you agree to our <a href="../index.html">Privacy Policy</a>.</span>
+        <div class="cookie-banner-actions">
+            <button class="cookie-btn" onclick="dismissCookieBanner(false)">Decline</button>
+            <button class="cookie-btn cookie-btn-accept" onclick="dismissCookieBanner(true)">Accept</button>
+        </div>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget-tooltip" id="chatTooltip">
+        <button class="chat-widget-tooltip-close" onclick="document.getElementById('chatTooltip').classList.remove('show')">&times;</button>
+        <div class="chat-widget-tooltip-header">Need help?</div>
+        <div class="chat-widget-tooltip-body">Have a question about Lightspeed? We&rsquo;d love to hear from you.</div>
+        <a class="chat-widget-tooltip-cta" href="../index.html#contact">Send us a message &rarr;</a>
+    </div>
+    <button class="chat-widget-btn" id="chatWidgetBtn" aria-label="Chat with us">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
+
+    <script>
+        function dismissCookieBanner(accepted) {
+            localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
+            var banner = document.getElementById('cookieBanner');
+            if (banner) banner.classList.remove('show');
+        }
+        if (!localStorage.getItem('cookie_consent')) {
+            setTimeout(function() {
+                var banner = document.getElementById('cookieBanner');
+                if (banner) banner.classList.add('show');
+            }, 1500);
+        }
+        var chatBtn = document.getElementById('chatWidgetBtn');
+        var chatTooltip = document.getElementById('chatTooltip');
+        if (chatBtn && chatTooltip) {
+            chatBtn.addEventListener('click', function() {
+                chatTooltip.classList.toggle('show');
+            });
+        }
+    </script>
 </body>
 </html>

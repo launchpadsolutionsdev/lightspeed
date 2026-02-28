@@ -1,6 +1,13 @@
 // Lightspeed by Launchpad Solutions v3.0
 // Multi-Tool Platform with Customer Response & Data Analysis
 
+// ==================== COOKIE CONSENT ====================
+function dismissCookieBanner(accepted) {
+    localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
+    const banner = document.getElementById('cookieBanner');
+    if (banner) banner.classList.remove('show');
+}
+
 // ==================== DOMAIN REDIRECT ====================
 // Ensure consistent domain to prevent localStorage issues
 // Redirect www to non-www for consistent localStorage
@@ -800,6 +807,47 @@ function setupAuthEventListeners() {
             }
         });
     });
+
+    // Pricing toggle (monthly / annual)
+    const pricingToggle = document.getElementById('pricingToggle');
+    if (pricingToggle) {
+        const labels = document.querySelectorAll('.pricing-toggle-label');
+        const amounts = document.querySelectorAll('.landing-pricing-amount[data-monthly]');
+        // Set initial state
+        if (labels.length) labels[0].classList.add('active');
+
+        pricingToggle.addEventListener('click', () => {
+            const isAnnual = pricingToggle.classList.toggle('active');
+            labels.forEach(l => {
+                l.classList.toggle('active', isAnnual ? l.dataset.period === 'annual' : l.dataset.period === 'monthly');
+            });
+            amounts.forEach(el => {
+                const price = isAnnual ? el.dataset.annual : el.dataset.monthly;
+                el.textContent = '$' + price;
+            });
+            // Show "billed annually" note
+            document.querySelectorAll('.landing-pricing-period').forEach(p => {
+                p.textContent = isAnnual ? '/ mo, billed annually' : '/ month';
+            });
+        });
+    }
+
+    // Cookie consent banner
+    if (!localStorage.getItem('cookie_consent')) {
+        const banner = document.getElementById('cookieBanner');
+        if (banner) {
+            setTimeout(() => banner.classList.add('show'), 1500);
+        }
+    }
+
+    // Chat widget
+    const chatBtn = document.getElementById('chatWidgetBtn');
+    const chatTooltip = document.getElementById('chatTooltip');
+    if (chatBtn && chatTooltip) {
+        chatBtn.addEventListener('click', () => {
+            chatTooltip.classList.toggle('show');
+        });
+    }
 
     // Contact form submission
     const contactForm = document.getElementById('landingContactForm');

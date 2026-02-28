@@ -1735,6 +1735,75 @@
     color: var(--text-secondary);
     line-height: 1.6;
     max-width: 480px;
+    margin-bottom: 24px;
+}
+
+/* Pricing Toggle */
+.pricing-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pricing-toggle-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+    cursor: pointer;
+}
+
+.pricing-toggle-label.active {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.pricing-toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--border);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    padding: 0;
+}
+
+.pricing-toggle-switch.active {
+    background: var(--cta);
+}
+
+.pricing-toggle-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.pricing-toggle-switch.active .pricing-toggle-knob {
+    transform: translateX(20px);
+}
+
+.pricing-toggle-save {
+    font-size: 12px;
+    font-weight: 600;
+    color: #16a34a;
+    background: #dcfce7;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+}
+
+.landing-pricing-billed-note {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
 }
 
 .landing-pricing-grid {
@@ -2159,6 +2228,280 @@
 }
 
 /* ============================================================
+   COMPARISON TABLE
+   ============================================================ */
+.landing-compare-section {
+    padding: 100px 40px;
+    background: var(--bg-primary);
+}
+
+.landing-compare-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+}
+
+.landing-compare-header {
+    margin-bottom: 48px;
+}
+
+.landing-compare-tag {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cta);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.landing-compare-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+}
+
+.landing-compare-subtitle {
+    font-size: 17px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 540px;
+}
+
+.landing-compare-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.landing-compare-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 15px;
+}
+
+.landing-compare-table thead th {
+    padding: 16px 20px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+}
+
+.landing-compare-table thead th:first-child {
+    text-align: left;
+}
+
+.landing-compare-table tbody td {
+    padding: 14px 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.landing-compare-table tbody td:first-child {
+    text-align: left;
+}
+
+.compare-feature {
+    font-weight: 500;
+    color: var(--text-primary) !important;
+    white-space: nowrap;
+}
+
+.compare-col-highlight {
+    background: rgba(27, 107, 245, 0.04);
+}
+
+.compare-logo-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    color: var(--cta);
+    font-size: 15px;
+}
+
+.compare-yes {
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.compare-no {
+    color: var(--text-muted);
+}
+
+.compare-partial {
+    color: #d97706;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ============================================================
+   COOKIE CONSENT BANNER
+   ============================================================ */
+.cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 10000;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.08);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+.cookie-banner.show {
+    transform: translateY(0);
+}
+
+.cookie-banner-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.cookie-banner-text a {
+    color: var(--cta);
+    text-decoration: underline;
+}
+
+.cookie-banner-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cookie-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+
+.cookie-btn:hover {
+    background: var(--bg-alt);
+}
+
+.cookie-btn-accept {
+    background: var(--cta);
+    color: #fff;
+    border-color: var(--cta);
+}
+
+.cookie-btn-accept:hover {
+    background: var(--cta-hover);
+}
+
+/* ============================================================
+   LIVE CHAT WIDGET
+   ============================================================ */
+.chat-widget-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--cta);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(27, 107, 245, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    z-index: 9998;
+}
+
+.chat-widget-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 24px rgba(27, 107, 245, 0.4);
+}
+
+.chat-widget-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+.chat-widget-tooltip {
+    position: fixed;
+    bottom: 88px;
+    right: 24px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    max-width: 280px;
+    display: none;
+}
+
+.chat-widget-tooltip.show {
+    display: block;
+    animation: chatFadeIn 0.2s ease;
+}
+
+@keyframes chatFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-widget-tooltip-header {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.chat-widget-tooltip-body {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.chat-widget-tooltip-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cta);
+    text-decoration: none;
+}
+
+.chat-widget-tooltip-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px;
+}
+
+/* ============================================================
    POWERED BY ANTHROPIC STRIP
    ============================================================ */
 .landing-anthropic-strip {
@@ -2347,6 +2690,22 @@
 .landing-footer-copyright {
     font-size: 13px;
     color: var(--text-muted);
+}
+
+.landing-footer-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    display: inline-block;
 }
 
 .landing-footer-social {
@@ -2606,19 +2965,37 @@
 
     .landing-pricing-section,
     .landing-faq-section,
-    .landing-contact-section {
+    .landing-contact-section,
+    .landing-compare-section {
         padding: 72px 24px;
     }
 
     .landing-pricing-title,
     .landing-faq-title,
-    .landing-contact-title {
+    .landing-contact-title,
+    .landing-compare-title {
         font-size: 28px;
     }
 
     .landing-pricing-grid {
         grid-template-columns: 1fr;
         max-width: 400px;
+    }
+
+    .landing-compare-table {
+        font-size: 13px;
+    }
+
+    .landing-compare-table thead th,
+    .landing-compare-table tbody td {
+        padding: 10px 12px;
+    }
+
+    .cookie-banner {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+        padding: 16px 20px;
     }
 
     .landing-faq-inner,
