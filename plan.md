@@ -1,81 +1,118 @@
-# What's New Page — Implementation Plan
+# Plan: System Status Page
 
 ## Overview
-Add a "What's New" page accessible from the landing page navigation bar. The page follows Anthropic's announcement style: a clean, chronological list of feature releases, each linking to a dedicated detail page with a media-release-style writeup.
+
+Create a real-time system status page at `status.html` that checks three backend services (Database, Anthropic AI API, and the Render-hosted backend itself) and displays their health with colored indicators. The existing hardcoded green dot in the footer becomes a live indicator linked to the status page.
+
+---
 
 ## Architecture
 
-Since Lightspeed is a vanilla JS/HTML/CSS static site (no framework, no build step), we follow the same pattern as `case-study.html`:
+### How It Works
 
-### New Files
-1. **`frontend/whats-new.html`** — The index/listing page showing all announcements
-2. **`frontend/whats-new.css`** — Styles for both the listing and detail pages
-3. **`frontend/whats-new/shopify-integration.html`** — Detail page for Shopify integration
-4. **`frontend/whats-new/ask-lightspeed-upgrade.html`** — Detail page for Ask Lightspeed major upgrade
-5. **`frontend/whats-new/rules-of-play.html`** — Detail page for Rules of Play Generator
-6. **`frontend/whats-new/multilingual-support.html`** — Detail page for French & Spanish language support
-7. **`frontend/whats-new/streaming-responses.html`** — Detail page for streaming AI responses
-8. **`frontend/whats-new/microsoft-auth.html`** — Detail page for Microsoft 365 sign-in
-9. **`frontend/whats-new/draft-assistant-redesign.html`** — Detail page for Draft Assistant writing studio
-10. **`frontend/whats-new/agent-instructions.html`** — Detail page for Agent Instructions & Instruction Chips
-11. **`frontend/whats-new/onboarding-wizard.html`** — Detail page for 5-step onboarding wizard
+```
+[status.html]  ──fetch──▶  GET /health  (backend on Render)
+                                │
+                          ┌─────┴─────┐
+                          │  Check DB  │  → SELECT 1
+                          │  Check AI  │  → GET /v1/models (Anthropic)
+                          └─────┬─────┘
+                                │
+                          JSON response:
+                          {
+                            status: "operational" | "degraded" | "down",
+                            services: {
+                              platform: { status, latency },
+                              database: { status, latency },
+                              ai:       { status, latency }
+                            }
+                          }
+```
 
-### Modified Files
-1. **`frontend/index.html`** — Add "What's New" link to landing nav bar
-2. **`frontend/case-study.html`** — Add "What's New" link to its nav bar for consistency
+- **Platform (Render):** If the `/health` endpoint responds at all, Render is up. If the fetch fails entirely (network error / timeout), the frontend knows Render is down → **RED**.
+- **Database:** Backend runs `SELECT 1` against Postgres and reports connected/disconnected.
+- **AI API (Anthropic):** Backend makes a lightweight call to Anthropic's API to verify the key works and the service is reachable. If it fails → **YELLOW** (service interruption, not a full outage).
 
-## Feature Releases to Highlight (9 major features, chronological)
+### Status Colors
+- **Green** = operational (service responding normally)
+- **Yellow** = degraded (service responding but with errors or high latency)
+- **Red** = down (service unreachable or erroring)
 
-| # | Date | Title | Category |
-|---|------|-------|----------|
-| 1 | Feb 10, 2026 | Microsoft 365 Sign-In | Platform |
-| 2 | Feb 10, 2026 | Agent Instructions & Quick Chips | AI |
-| 3 | Feb 13, 2026 | Draft Assistant Writing Studio | Tools |
-| 4 | Feb 15, 2026 | Multilingual Support: French & Spanish | AI |
-| 5 | Feb 15, 2026 | Real-Time Streaming Responses | AI |
-| 6 | Feb 15, 2026 | Rules of Play Generator | Tools |
-| 7 | Feb 17, 2026 | Ask Lightspeed Major Upgrade | Tools |
-| 8 | Feb 23, 2026 | 5-Step Onboarding Wizard | Platform |
-| 9 | Feb 27, 2026 | Shopify Integration | Integrations |
+---
 
-## Design Approach (Anthropic-inspired)
+## Changes
 
-### Listing Page (`whats-new.html`)
-- **Nav bar**: Same as landing page with "What's New" link highlighted as active
-- **Hero section**: Clean header with title "What's New" and a subtitle
-- **Feed**: Reverse-chronological list of announcement cards
-- Each card shows:
-  - **Date** (formatted like "February 15, 2026")
-  - **Category badge** (e.g., "AI", "Tools", "Platform", "Integrations")
-  - **Title** (clickable, links to detail page)
-  - **One-line summary**
-- Clean, minimal design with generous whitespace (Stripe/Anthropic aesthetic)
+### 1. Backend: Enhance `GET /health` endpoint
 
-### Detail Pages (`whats-new/*.html`)
-Each detail page follows a "media release" format:
-- **Back link**: "← Back to What's New"
-- **Hero**: Category badge + date + headline title
-- **Body**:
-  - Opening paragraph (the "lede" — what it is, why it matters)
-  - "What's included" / "Key features" section with bullet points
-  - "How it works" section with usage details
-  - "What's next" closing paragraph
-- **Footer CTA**: "Try it now" button linking to the app
-- Same nav bar as the listing page
+**File:** `backend/src/index.js` (lines 106-113)
 
-### Visual Style
-- Matches existing design system (Inter font, CSS variables from design-system.css)
-- Cards with subtle borders and hover lift (consistent with landing page)
-- Category badges use brand gradient colors
-- Generous padding, max-width 860px for readability
-- Responsive at 768px breakpoint
+Replace the current basic health check with a comprehensive one that checks:
+- Database connectivity (SELECT 1 with latency measurement)
+- Anthropic API reachability (GET /v1/models with 5s timeout)
+- Platform status (implicit — if the response is sent, Render is up)
 
-## Implementation Steps
+The endpoint remains unauthenticated and outside `/api/` so it's publicly accessible.
 
-1. Create `frontend/whats-new/` directory for detail pages
-2. Create `frontend/whats-new.css` with all styles
-3. Create `frontend/whats-new.html` listing page
-4. Create all 9 detail pages in `frontend/whats-new/`
-5. Add "What's New" link to nav in `frontend/index.html`
-6. Add "What's New" link to nav in `frontend/case-study.html`
-7. Test navigation flow between all pages
+---
+
+### 2. Frontend: Create `status.html`
+
+**File:** `frontend/status.html` (new file)
+
+A standalone page following the same pattern as `about.html`, `security.html`, etc:
+
+- Same nav bar, same footer, same design-system.css + landing.css imports
+- **Hero section:** "System Status" heading with an overall status badge (green/yellow/red pill)
+- **Services grid:** Three cards:
+  - **Platform** — "Core infrastructure and API"
+  - **Database** — "Data storage and retrieval"
+  - **AI Engine** — "AI-powered response generation"
+- Each card shows: colored dot, service name, status text, latency in ms
+- **Auto-refresh:** Polls `/health` every 30 seconds, updates in real-time with smooth CSS transitions
+- **Fallback:** If the fetch itself fails (Render is down), all services show RED and overall status shows "Major Outage"
+- **Last checked timestamp** at the bottom
+
+---
+
+### 3. CSS: Add status page styles
+
+**File:** `frontend/landing.css` (append at the end)
+
+- `.status-hero` — overall status banner
+- `.status-grid` — responsive 3-column grid for service cards
+- `.status-card` — individual card with dot, name, status, latency
+- `.status-badge` — overall status pill
+- `.status-dot-operational` / `.status-dot-degraded` / `.status-dot-down` — color classes
+- Smooth transitions for color changes
+- Mobile responsive breakpoints
+
+---
+
+### 4. Frontend: Update footer across all 23 HTML pages
+
+Two changes per file:
+
+1. **Add "System Status" link** in the Resources column (after Help Center)
+2. **Make the footer status dot live:** Wrap in a link to `status.html`, add an ID for JS targeting
+3. **Add ~15-line inline script** that fetches `/health` on page load and updates the footer dot color + text
+
+For files in subdirectories (e.g., `whats-new/*.html`), paths are adjusted to `../status.html`.
+
+---
+
+## Files Summary
+
+| File | Action |
+|------|--------|
+| `backend/src/index.js` | Modify — enhance `/health` endpoint with DB + Anthropic checks |
+| `frontend/status.html` | **Create** — new status page |
+| `frontend/landing.css` | Modify — add status page styles + dot color classes |
+| 23 HTML files with footers | Modify — add Status link + live footer dot |
+
+---
+
+## Out of Scope
+
+- **Historical uptime tracking** — This is real-time only. Historical data would require logging health checks to a DB table over time.
+- **Incident management** — No admin UI for posting incident updates. Consider BetterStack/Instatus later.
+- **Email/SMS alerts** — Page is for user-facing visibility only.
