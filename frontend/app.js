@@ -8567,7 +8567,7 @@ var responseRules = [];
 async function loadResponseRules() {
     try {
         var resp = await fetch(API_BASE_URL + '/api/response-rules', {
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
         });
         if (!resp.ok) {
             var errBody = await resp.json().catch(function() { return {}; });
@@ -8626,7 +8626,7 @@ async function addResponseRule() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + localStorage.getItem('token')
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
             },
             body: JSON.stringify({ rule_text: text, rule_type: type })
         });
@@ -8650,7 +8650,7 @@ async function deleteResponseRule(id) {
     try {
         var resp = await fetch(API_BASE_URL + '/api/response-rules/' + id, {
             method: 'DELETE',
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
         });
         if (!resp.ok) throw new Error('Failed to delete rule');
         responseRules = responseRules.filter(function(r) { return r.id !== id; });
@@ -8668,7 +8668,7 @@ async function toggleRuleActive(id, active) {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + localStorage.getItem('token')
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
             },
             body: JSON.stringify({ is_active: active })
         });
@@ -8698,7 +8698,7 @@ async function updateResponseRule(id, fields) {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + localStorage.getItem('token')
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
             },
             body: JSON.stringify(fields)
         });
@@ -8733,7 +8733,7 @@ async function moveRule(id, direction) {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + localStorage.getItem('token')
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
             },
             body: JSON.stringify({ order: order })
         });
