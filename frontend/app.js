@@ -887,15 +887,6 @@ function setupAuthEventListeners() {
         }
     }
 
-    // Chat widget
-    const chatBtn = document.getElementById('chatWidgetBtn');
-    const chatTooltip = document.getElementById('chatTooltip');
-    if (chatBtn && chatTooltip) {
-        chatBtn.addEventListener('click', () => {
-            chatTooltip.classList.toggle('show');
-        });
-    }
-
     // Contact form submission
     const contactForm = document.getElementById('landingContactForm');
     if (contactForm) {
@@ -2197,27 +2188,6 @@ function showToolMenu() {
         document.getElementById("menuUserName").textContent = currentUser.name;
         document.getElementById("menuUserEmail").textContent = currentUser.email;
 
-        // Add Admin Dashboard button for super admins
-        const toolMenuUser = document.querySelector('.tool-menu-user');
-        const existingAdminBtn = document.getElementById('menuAdminBtn');
-
-        if (currentUser.isSuperAdmin && !existingAdminBtn && toolMenuUser) {
-            const adminBtn = document.createElement('button');
-            adminBtn.id = 'menuAdminBtn';
-            adminBtn.className = 'tool-menu-admin-btn';
-            adminBtn.innerHTML = '🛡️ Admin Dashboard';
-            adminBtn.style.cssText = 'background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 12px; font-size: 14px;';
-            adminBtn.onclick = function() {
-                openTool('customer-response');
-                switchPage('admin');
-                if (typeof window.loadAdminDashboard === 'function') {
-                    window.loadAdminDashboard();
-                }
-            };
-            toolMenuUser.insertBefore(adminBtn, toolMenuUser.firstChild);
-        } else if (!currentUser.isSuperAdmin && existingAdminBtn) {
-            existingAdminBtn.remove();
-        }
     }
 
     // Fetch subscription status and show billing button if subscribed
