@@ -2159,6 +2159,109 @@
 }
 
 /* ============================================================
+   POWERED BY ANTHROPIC STRIP
+   ============================================================ */
+.landing-anthropic-strip {
+    padding: 80px 40px;
+    background: var(--text-primary);
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+}
+
+.landing-anthropic-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 32px;
+}
+
+.anthropic-badge {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.anthropic-headline {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    color: #fff;
+}
+
+.anthropic-text {
+    max-width: 680px;
+}
+
+.anthropic-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.65);
+    margin-bottom: 12px;
+}
+
+.anthropic-body:last-child {
+    margin-bottom: 0;
+}
+
+.anthropic-body strong {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+
+.anthropic-pillars {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    margin-top: 16px;
+    width: 100%;
+    max-width: 780px;
+}
+
+.anthropic-pillar {
+    text-align: center;
+    padding: 24px 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.anthropic-pillar-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.anthropic-pillar h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 6px;
+}
+
+.anthropic-pillar p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* ============================================================
    FOOTER
    ============================================================ */
 .landing-footer {
@@ -2536,6 +2639,20 @@
 
     .landing-logos-row img {
         height: 24px;
+    }
+
+    .landing-anthropic-strip {
+        padding: 56px 24px;
+    }
+
+    .anthropic-headline {
+        font-size: 22px;
+    }
+
+    .anthropic-pillars {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        max-width: 360px;
     }
 
     .landing-footer-top {
