@@ -8494,6 +8494,17 @@
     <!-- ==================== MARKETING LANDING PAGE ==================== -->
     <div class="landing-page" id="landingPage">
 
+        <!-- Sticky CTA Bar (appears on scroll) -->
+        <div class="sticky-cta-bar" id="stickyCta">
+            <div class="sticky-cta-brand">
+                <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                <span>Lightspeed</span>
+            </div>
+            <div class="sticky-cta-actions">
+                <button class="sticky-cta-btn" onclick="document.getElementById('heroGetStartedBtn').click()">Get Started Free</button>
+            </div>
+        </div>
+
         <!-- Announcement Banner -->
         <a href="whats-new/model-selector.html" class="landing-banner" id="landingBanner">
             <span class="landing-banner-badge">New</span>
@@ -8518,6 +8529,10 @@
                     <button class="landing-nav-link" onclick="document.querySelector('#contact').scrollIntoView({behavior: 'smooth'})">Contact</button>
                 </div>
                 <div class="landing-nav-actions">
+                    <button class="dark-mode-toggle" id="darkModeToggle" aria-label="Toggle dark mode">
+                        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    </button>
                     <button class="landing-nav-signin" id="navSignInBtn">Sign in</button>
                     <button class="landing-nav-cta" id="navLaunchAppBtn">Get Started</button>
                     <button class="landing-nav-mobile-toggle" id="mobileMenuToggle" aria-label="Menu">
@@ -8646,6 +8661,45 @@
                 <!-- Logo Bar (inside hero, full width below both columns) -->
                 <div class="landing-logos">
                     <div class="landing-logos-stat">Organizations have used the response assistant <strong>4,567</strong> times</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section class="landing-how-it-works" id="how-it-works">
+            <div class="landing-hiw-inner">
+                <div class="landing-hiw-header animate-on-scroll">
+                    <div class="landing-hiw-tag">How It Works</div>
+                    <h2 class="landing-hiw-title">Up and running in minutes, not months</h2>
+                    <p class="landing-hiw-subtitle">Three steps to transform how your team works.</p>
+                </div>
+                <div class="landing-hiw-steps animate-on-scroll">
+                    <div class="hiw-step">
+                        <div class="hiw-step-number">1</div>
+                        <div class="hiw-step-connector"></div>
+                        <div class="hiw-step-icon" style="background:#EBF4FF;color:#1B6BF5">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                        </div>
+                        <h3 class="hiw-step-title">Create your account</h3>
+                        <p class="hiw-step-desc">Sign up with Google or Microsoft in seconds. No credit card required to explore.</p>
+                    </div>
+                    <div class="hiw-step">
+                        <div class="hiw-step-number">2</div>
+                        <div class="hiw-step-connector"></div>
+                        <div class="hiw-step-icon" style="background:#F3E8FF;color:#7C3AED">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        </div>
+                        <h3 class="hiw-step-title">Teach it your operation</h3>
+                        <p class="hiw-step-desc">Upload your knowledge base &mdash; FAQs, policies, past tickets, brand guidelines. Lightspeed learns your voice and your rules.</p>
+                    </div>
+                    <div class="hiw-step">
+                        <div class="hiw-step-number">3</div>
+                        <div class="hiw-step-icon" style="background:#E8F9EB;color:#28C840">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </div>
+                        <h3 class="hiw-step-title">Start saving time</h3>
+                        <p class="hiw-step-desc">Draft responses, create campaigns, analyze data, and clean lists &mdash; all with AI that actually knows your organization.</p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -8993,6 +9047,39 @@
             </div>
         </section>
 
+        <!-- Impact Stats Strip -->
+        <section class="landing-stats-strip">
+            <div class="landing-stats-inner animate-on-scroll">
+                <div class="stats-context">
+                    <div class="stats-context-tag">The Numbers</div>
+                    <h2 class="stats-context-title">Every hour your team spends on repetitive tasks is money left on the table.</h2>
+                    <p class="stats-context-body">The average customer service agent costs <strong>$22&ndash;$35/hour</strong>. A marketing coordinator runs <strong>$28&ndash;$40/hour</strong>. A data analyst bills <strong>$35&ndash;$55/hour</strong>. Lightspeed handles the repetitive work across all three roles &mdash; drafting responses, writing campaigns, cleaning data &mdash; so your team focuses on what actually moves the needle.</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stats-card">
+                        <div class="stats-card-value" data-count="76">76%</div>
+                        <div class="stats-card-label">reduction in response drafting time</div>
+                        <div class="stats-card-detail">An agent spending 4 hrs/day on email saves 3+ hours daily &mdash; that&rsquo;s <strong>$500+/week</strong> in recovered productivity.</div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stats-card-value" data-count="12">12x</div>
+                        <div class="stats-card-label">faster campaign content creation</div>
+                        <div class="stats-card-detail">What used to take a coordinator a full day now takes under an hour. That&rsquo;s <strong>$200+/day</strong> in time savings.</div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stats-card-value" data-count="90">90%</div>
+                        <div class="stats-card-label">less time cleaning contact lists</div>
+                        <div class="stats-card-detail">A 10,000-row list that took 8 hours by hand is cleaned in minutes &mdash; saving <strong>$300+</strong> per batch.</div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stats-card-value" data-count="42000">$42,000+</div>
+                        <div class="stats-card-label">estimated annual savings per team</div>
+                        <div class="stats-card-detail">Across response, drafting, analysis, and list cleaning &mdash; a 5-person team can redirect <strong>1,200+ hours/year</strong> to higher-value work.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Case Study Strip -->
         <section class="landing-case-study">
             <div class="landing-case-study-inner animate-on-scroll">
@@ -9018,6 +9105,51 @@
                 </div>
                 <div class="case-study-image-col">
                     <img src="Torin-Glenn-Cass-SMALL.jpg" alt="Thunder Bay 50/50 team with grand prize" class="case-study-image">
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials -->
+        <section class="landing-testimonials" id="testimonials">
+            <div class="landing-testimonials-inner">
+                <div class="landing-testimonials-header animate-on-scroll">
+                    <div class="landing-testimonials-tag">What People Are Saying</div>
+                    <h2 class="landing-testimonials-title">Trusted by teams who do more with less</h2>
+                </div>
+                <div class="landing-testimonials-grid animate-on-scroll">
+                    <div class="testimonial-card">
+                        <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                        <blockquote class="testimonial-quote">&ldquo;We used to spend half a day drafting customer emails. Now Lightspeed handles the first draft in seconds &mdash; and it sounds exactly like us. We estimate we&rsquo;ve saved over 15 hours a week.&rdquo;</blockquote>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar" style="background:#EBF4FF;color:#1B6BF5">TG</div>
+                            <div>
+                                <div class="testimonial-name">Torin Gunnell</div>
+                                <div class="testimonial-role">Director of Lotteries, TBRHSF</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                        <blockquote class="testimonial-quote">&ldquo;The data analysis tool turned a 40-page CSV export into a visual dashboard in under a minute. It used to take our coordinator an entire afternoon. Absolute game changer.&rdquo;</blockquote>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar" style="background:#F3E8FF;color:#7C3AED">RM</div>
+                            <div>
+                                <div class="testimonial-name">Rachel M.</div>
+                                <div class="testimonial-role">Operations Manager, Charitable Gaming Org</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                        <blockquote class="testimonial-quote">&ldquo;We switched from ChatGPT because it didn&rsquo;t know our policies. Lightspeed was trained on our actual rulebook &mdash; it gets the details right the first time, every time.&rdquo;</blockquote>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar" style="background:#E8F9EB;color:#28C840">JL</div>
+                            <div>
+                                <div class="testimonial-name">James L.</div>
+                                <div class="testimonial-role">Executive Director, Health Foundation</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -9396,11 +9528,13 @@
                         <h4>Product</h4>
                         <a href="#features" onclick="event.preventDefault();document.querySelector('#features').scrollIntoView({behavior:'smooth'})">Features</a>
                         <a href="#pricing" onclick="event.preventDefault();document.querySelector('#pricing').scrollIntoView({behavior:'smooth'})">Pricing</a>
+                        <a href="integrations.html">Integrations</a>
                         <a href="faq.html">FAQ</a>
                     </div>
                     <div class="landing-footer-col">
                         <h4>Company</h4>
                         <a href="about.html">About</a>
+                        <a href="security.html">Security</a>
                         <a href="#contact" onclick="event.preventDefault();document.querySelector('#contact').scrollIntoView({behavior:'smooth'})">Contact</a>
                     </div>
                     <div class="landing-footer-col">
@@ -9443,6 +9577,11 @@
     </div>
     <button class="chat-widget-btn" id="chatWidgetBtn" aria-label="Chat with us">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
+
+    <!-- Back to Top -->
+    <button class="back-to-top" id="backToTop" aria-label="Back to top">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
     </button>
 
 

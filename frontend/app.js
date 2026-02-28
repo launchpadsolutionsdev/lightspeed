@@ -1,6 +1,63 @@
 // Lightspeed by Launchpad Solutions v3.0
 // Multi-Tool Platform with Customer Response & Data Analysis
 
+// ==================== DARK MODE ====================
+(function() {
+    const saved = localStorage.getItem('dark_mode');
+    if (saved === 'true' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.body.classList.add('dark');
+    }
+})();
+
+function initDarkMode() {
+    const toggle = document.getElementById('darkModeToggle');
+    if (!toggle) return;
+    toggle.addEventListener('click', function() {
+        const isDark = document.body.classList.toggle('dark');
+        localStorage.setItem('dark_mode', isDark);
+    });
+}
+
+// ==================== STICKY CTA & BACK TO TOP ====================
+function initScrollUI() {
+    var stickyCta = document.getElementById('stickyCta');
+    var backToTop = document.getElementById('backToTop');
+    var hero = document.querySelector('.landing-hero');
+
+    if (!hero) return;
+
+    function onScroll() {
+        var scrollY = window.scrollY || window.pageYOffset;
+        var heroBottom = hero.offsetTop + hero.offsetHeight;
+
+        // Show sticky CTA after scrolling past hero
+        if (stickyCta) {
+            if (scrollY > heroBottom) {
+                stickyCta.classList.add('show');
+            } else {
+                stickyCta.classList.remove('show');
+            }
+        }
+
+        // Show back-to-top after 600px
+        if (backToTop) {
+            if (scrollY > 600) {
+                backToTop.classList.add('show');
+            } else {
+                backToTop.classList.remove('show');
+            }
+        }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    if (backToTop) {
+        backToTop.addEventListener('click', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+}
+
 // ==================== COOKIE CONSENT ====================
 function dismissCookieBanner(accepted) {
     localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
@@ -807,6 +864,10 @@ function setupAuthEventListeners() {
             }
         });
     });
+
+    // Dark mode + scroll UI
+    initDarkMode();
+    initScrollUI();
 
     // Pricing toggle (monthly / annual)
     const pricingToggle = document.getElementById('pricingToggle');
