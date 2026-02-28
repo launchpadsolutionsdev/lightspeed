@@ -8781,6 +8781,190 @@ async function moveKbEntry(id, targetType) {
     }
 }
 
+// ---- Duplicate finder & merge ----
+async function findDuplicateKbEntries() {
+    showToast('Scanning for duplicates...', 'info');
+    try {
+        var resp = await fetch(API_BASE_URL + '/api/knowledge-base/duplicates?type=' + activeKbTab, {
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to fetch duplicates');
+        var data = await resp.json();
+        var groups = data.groups || [];
+
+        if (groups.length === 0) {
+            showToast('No duplicate entries found!', 'success');
+            return;
+        }
+
+        showDuplicatesModal(groups);
+    } catch (error) {
+        console.error('Find duplicates error:', error);
+        showToast('Failed to scan for duplicates.', 'error');
+    }
+}
+
+function showDuplicatesModal(groups) {
+    // Remove any existing modal
+    document.getElementById('kbDuplicatesModal')?.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'kbDuplicatesModal';
+    overlay.className = 'feedback-modal-overlay';
+    overlay.onclick = function(e) { if (e.target === overlay) closeDuplicatesModal(); };
+
+    var groupsHtml = groups.map(function(group, gi) {
+        var entriesHtml = group.entries.map(function(entry, ei) {
+            var tagsStr = (entry.tags || []).filter(function(t) { return t.startsWith('source:'); }).join(', ');
+            var dateStr = entry.updated_at ? new Date(entry.updated_at).toLocaleDateString() : '';
+            return '<div class="dup-entry" data-group="' + gi + '" data-entry-id="' + entry.id + '">' +
+                '<div class="dup-entry-header">' +
+                    '<strong>' + escapeHtml(entry.title) + '</strong>' +
+                    '<span class="kb-entry-tag">' + escapeHtml(entry.category) + '</span>' +
+                    (tagsStr ? '<span class="kb-entry-tag kb-entry-tag-feedback">' + escapeHtml(tagsStr) + '</span>' : '') +
+                    (dateStr ? '<span style="color:var(--text-tertiary);font-size:0.8rem;margin-left:auto;">' + dateStr + '</span>' : '') +
+                '</div>' +
+                '<div class="dup-entry-content">' + escapeHtml((entry.content || '').substring(0, 300)) +
+                    (entry.content && entry.content.length > 300 ? '...' : '') + '</div>' +
+            '</div>';
+        }).join('');
+
+        return '<div class="dup-group" data-group-index="' + gi + '">' +
+            '<div class="dup-group-header">' +
+                '<span class="dup-group-label">Group ' + (gi + 1) + ' — ' + group.entries.length + ' similar entries</span>' +
+                '<button class="btn-primary btn-sm" onclick="openMergeEditor(' + gi + ')">Merge</button>' +
+            '</div>' +
+            entriesHtml +
+        '</div>';
+    }).join('');
+
+    overlay.innerHTML = '<div class="feedback-modal" style="max-width:800px;max-height:85vh;">' +
+        '<div class="feedback-modal-header">' +
+            '<h3>Duplicate Entries (' + groups.length + ' group' + (groups.length > 1 ? 's' : '') + ')</h3>' +
+            '<button class="feedback-modal-close" onclick="closeDuplicatesModal()">&times;</button>' +
+        '</div>' +
+        '<div class="feedback-modal-body" style="overflow-y:auto;max-height:65vh;">' +
+            groupsHtml +
+        '</div>' +
+        '<div class="feedback-modal-footer">' +
+            '<button class="feedback-btn-cancel" onclick="closeDuplicatesModal()">Close</button>' +
+        '</div>' +
+    '</div>';
+
+    // Store groups data on the modal for the merge editor to use
+    overlay._dupGroups = groups;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function() { overlay.classList.add('visible'); });
+}
+
+function closeDuplicatesModal() {
+    var modal = document.getElementById('kbDuplicatesModal');
+    if (modal) {
+        modal.classList.remove('visible');
+        setTimeout(function() { modal.remove(); }, 200);
+    }
+}
+
+function openMergeEditor(groupIndex) {
+    var modal = document.getElementById('kbDuplicatesModal');
+    if (!modal || !modal._dupGroups) return;
+    var group = modal._dupGroups[groupIndex];
+    if (!group || group.entries.length < 2) return;
+
+    // Default: keep the newest entry (index 0, already sorted), merge content from both
+    var keepEntry = group.entries[0];
+    var deleteEntry = group.entries[1];
+
+    // Build a merged title (use the longest one) and combined content
+    var mergedTitle = keepEntry.title.length >= deleteEntry.title.length ? keepEntry.title : deleteEntry.title;
+
+    // Pre-populate merged content: if contents are identical, use one; otherwise combine
+    var mergedContent;
+    if (keepEntry.content.trim() === deleteEntry.content.trim()) {
+        mergedContent = keepEntry.content;
+    } else {
+        mergedContent = keepEntry.content + '\n\n---\n\n' + deleteEntry.content;
+    }
+
+    // Replace the modal body with the merge editor
+    var body = modal.querySelector('.feedback-modal-body');
+    body.innerHTML = '<div class="merge-editor">' +
+        '<p style="margin-bottom:0.75rem;color:var(--text-secondary);">Review the merged entry below. The second entry will be deleted after merging.</p>' +
+        '<div class="merge-side-by-side" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">' +
+            '<div class="merge-preview">' +
+                '<div style="font-weight:600;margin-bottom:0.25rem;color:var(--text-accent);">Keeping (newest)</div>' +
+                '<div class="dup-entry-header"><strong>' + escapeHtml(keepEntry.title) + '</strong></div>' +
+                '<div class="dup-entry-content" style="max-height:200px;overflow-y:auto;">' + escapeHtml(keepEntry.content) + '</div>' +
+            '</div>' +
+            '<div class="merge-preview">' +
+                '<div style="font-weight:600;margin-bottom:0.25rem;color:var(--text-tertiary);">Deleting (older)</div>' +
+                '<div class="dup-entry-header"><strong>' + escapeHtml(deleteEntry.title) + '</strong></div>' +
+                '<div class="dup-entry-content" style="max-height:200px;overflow-y:auto;">' + escapeHtml(deleteEntry.content) + '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label class="form-label">Merged Title</label>' +
+            '<input type="text" id="mergeTitleInput" value="' + escapeHtml(mergedTitle) + '" style="width:100%;">' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label class="form-label">Merged Content</label>' +
+            '<textarea id="mergeContentInput" rows="8" style="width:100%;">' + escapeHtml(mergedContent) + '</textarea>' +
+        '</div>' +
+    '</div>';
+
+    // Replace footer with merge actions
+    var footer = modal.querySelector('.feedback-modal-footer');
+    footer.innerHTML = '<button class="feedback-btn-cancel" onclick="closeDuplicatesModal()">Cancel</button>' +
+        '<button class="btn-primary" id="mergeConfirmBtn" onclick="confirmMerge(\'' + keepEntry.id + '\',\'' + deleteEntry.id + '\')">Merge Entries</button>';
+
+    // Update header
+    var header = modal.querySelector('.feedback-modal-header h3');
+    if (header) header.textContent = 'Merge Entries';
+}
+
+async function confirmMerge(keepId, deleteId) {
+    var titleInput = document.getElementById('mergeTitleInput');
+    var contentInput = document.getElementById('mergeContentInput');
+    if (!titleInput || !contentInput) return;
+
+    var mergedTitle = titleInput.value.trim();
+    var mergedContent = contentInput.value.trim();
+    if (!mergedContent) {
+        showToast('Merged content cannot be empty.', 'error');
+        return;
+    }
+
+    var btn = document.getElementById('mergeConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Merging...';
+
+    try {
+        var resp = await fetch(API_BASE_URL + '/api/knowledge-base/merge', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                keepId: keepId,
+                deleteId: deleteId,
+                mergedTitle: mergedTitle,
+                mergedContent: mergedContent
+            })
+        });
+
+        if (!resp.ok) throw new Error('Merge failed');
+
+        closeDuplicatesModal();
+        showToast('Entries merged successfully!', 'success');
+
+        // Reload KB to reflect changes
+        await loadKnowledgeFromBackend();
+    } catch (error) {
+        console.error('Merge error:', error);
+        showToast('Failed to merge entries.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Merge Entries';
+    }
+}
+
 function openKbImportModal() {
     document.getElementById('kbImportModal').style.display = '';
     document.getElementById('kbImportContent').value = '';
