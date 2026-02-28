@@ -229,12 +229,29 @@
     margin-bottom: 12px;
 }
 
+.about-founder-name-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
 .about-founder-name {
     font-size: 32px;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--text-primary);
-    margin-bottom: 4px;
+}
+
+.about-founder-linkedin {
+    color: #0A66C2;
+    display: flex;
+    align-items: center;
+    transition: opacity 0.15s;
+}
+
+.about-founder-linkedin:hover {
+    opacity: 0.7;
 }
 
 .about-founder-role {
