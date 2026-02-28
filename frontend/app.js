@@ -8437,26 +8437,46 @@ function switchKbTab(type) {
 
     var descEl = document.getElementById('kbTabDesc');
     if (descEl) {
-        descEl.textContent = type === 'support'
-            ? 'Powers the Response Assistant. Add FAQs, policies, ticket responses, and draw rules.'
-            : 'Powers Draft Assistant and Ask Lightspeed. Add brand guidelines, campaign history, procedures, and reference material.';
+        if (type === 'rules') {
+            descEl.textContent = 'Persistent instructions the Response Assistant must follow on every reply. E.g., "Never say X" or "Always start with Y".';
+        } else {
+            descEl.textContent = type === 'support'
+                ? 'Powers the Response Assistant. Add FAQs, policies, ticket responses, and draw rules.'
+                : 'Powers Draft Assistant and Ask Lightspeed. Add brand guidelines, campaign history, procedures, and reference material.';
+        }
     }
 
-    // Update category filter dropdown
-    var catFilter = document.getElementById('kbCategoryFilter');
-    if (catFilter) {
-        var cats = KB_CATEGORIES[type] || KB_CATEGORIES.support;
-        catFilter.innerHTML = '<option value="all">All Categories</option>' +
-            cats.map(function(c) { return '<option value="' + c.value + '">' + c.label + '</option>'; }).join('');
+    // Toggle visibility: KB content vs Response Rules panel
+    var kbContent = document.querySelectorAll('.kb-stats, .kb-toolbar, .kb-form-card, .kb-entries');
+    var rulesPanel = document.getElementById('responseRulesPanel');
+    var addEntryBtn = document.getElementById('kbAddEntryBtn');
+
+    if (type === 'rules') {
+        kbContent.forEach(function(el) { el.style.display = 'none'; });
+        if (rulesPanel) rulesPanel.style.display = '';
+        if (addEntryBtn) addEntryBtn.style.display = 'none';
+        loadResponseRules();
+    } else {
+        kbContent.forEach(function(el) { el.style.display = ''; });
+        if (rulesPanel) rulesPanel.style.display = 'none';
+        if (addEntryBtn) addEntryBtn.style.display = '';
+
+        // Update category filter dropdown
+        var catFilter = document.getElementById('kbCategoryFilter');
+        if (catFilter) {
+            var cats = KB_CATEGORIES[type] || KB_CATEGORIES.support;
+            catFilter.innerHTML = '<option value="all">All Categories</option>' +
+                cats.map(function(c) { return '<option value="' + c.value + '">' + c.label + '</option>'; }).join('');
+        }
+
+        // Show/hide lottery field in the form
+        var lotteryGroup = document.getElementById('kbFormLotteryGroup');
+        if (lotteryGroup) lotteryGroup.style.display = type === 'support' ? '' : 'none';
+
+        closeKbForm();
+        updateKnowledgeStats();
+        renderKbEntries();
     }
-
-    // Show/hide lottery field in the form
-    var lotteryGroup = document.getElementById('kbFormLotteryGroup');
-    if (lotteryGroup) lotteryGroup.style.display = type === 'support' ? '' : 'none';
-
-    closeKbForm();
-    updateKnowledgeStats();
-    renderKbEntries();
 }
 
 function getActiveKbEntries() {
@@ -8539,6 +8559,184 @@ function renderKbEntries() {
 function kbLoadMore() {
     kbDisplayLimit += 50;
     renderKbEntries();
+}
+
+// ── Response Rules ──────────────────────────────────────────────────
+var responseRules = [];
+
+async function loadResponseRules() {
+    try {
+        var resp = await fetch(API_BASE_URL + '/api/response-rules', {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        if (!resp.ok) throw new Error('Failed to load rules');
+        var data = await resp.json();
+        responseRules = data.rules || [];
+        renderResponseRules();
+    } catch (err) {
+        console.error('Load response rules error:', err);
+        showToast('Failed to load response rules', 'error');
+    }
+}
+
+function renderResponseRules() {
+    var container = document.getElementById('rulesList');
+    if (!container) return;
+
+    if (responseRules.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding:2rem"><div class="empty-state-icon">&#9881;</div>' +
+            '<p class="empty-state-title">No response rules yet</p>' +
+            '<p class="empty-state-text">Add rules above to control how the Response Assistant writes every reply. ' +
+            'For example: "Never tell the customer to contact us" or "Always start with Hi there."</p></div>';
+        return;
+    }
+
+    var typeLabels = { always: 'Always', never: 'Never', formatting: 'Formatting', general: 'General' };
+
+    container.innerHTML = responseRules.map(function(rule, idx) {
+        var typeClass = 'rule-type-' + (rule.rule_type || 'general');
+        var inactiveClass = rule.is_active ? '' : ' inactive';
+        return '<div class="rule-item' + inactiveClass + '" data-rule-id="' + rule.id + '">' +
+            '<span class="rule-order">' + (idx + 1) + '.</span>' +
+            '<div class="rule-move-btns">' +
+                (idx > 0 ? '<button onclick="moveRule(\'' + rule.id + '\',\'up\')" title="Move up">&#9650;</button>' : '<button disabled>&#9650;</button>') +
+                (idx < responseRules.length - 1 ? '<button onclick="moveRule(\'' + rule.id + '\',\'down\')" title="Move down">&#9660;</button>' : '<button disabled>&#9660;</button>') +
+            '</div>' +
+            '<span class="rule-type-chip ' + typeClass + '">' + escapeHtml(typeLabels[rule.rule_type] || 'General') + '</span>' +
+            '<span class="rule-text">' + escapeHtml(rule.rule_text) + '</span>' +
+            '<div class="rule-actions" onclick="event.stopPropagation()">' +
+                '<button onclick="toggleRuleActive(\'' + rule.id + '\',' + !rule.is_active + ')">' + (rule.is_active ? 'Disable' : 'Enable') + '</button>' +
+                '<button onclick="editResponseRule(\'' + rule.id + '\')">Edit</button>' +
+                '<button class="rule-btn-delete" onclick="deleteResponseRule(\'' + rule.id + '\')">Delete</button>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+}
+
+async function addResponseRule() {
+    var text = document.getElementById('ruleTextInput').value.trim();
+    var type = document.getElementById('ruleTypeSelect').value;
+    if (!text) { showToast('Rule text is required', 'error'); return; }
+
+    try {
+        var resp = await fetch(API_BASE_URL + '/api/response-rules', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify({ rule_text: text, rule_type: type })
+        });
+        if (!resp.ok) throw new Error('Failed to create rule');
+        var data = await resp.json();
+        responseRules.push(data.rule);
+        renderResponseRules();
+        document.getElementById('ruleTextInput').value = '';
+        showToast('Rule added');
+    } catch (err) {
+        console.error('Add rule error:', err);
+        showToast('Failed to add rule', 'error');
+    }
+}
+
+async function deleteResponseRule(id) {
+    if (!confirm('Delete this response rule?')) return;
+    try {
+        var resp = await fetch(API_BASE_URL + '/api/response-rules/' + id, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        if (!resp.ok) throw new Error('Failed to delete rule');
+        responseRules = responseRules.filter(function(r) { return r.id !== id; });
+        renderResponseRules();
+        showToast('Rule deleted');
+    } catch (err) {
+        console.error('Delete rule error:', err);
+        showToast('Failed to delete rule', 'error');
+    }
+}
+
+async function toggleRuleActive(id, active) {
+    try {
+        var resp = await fetch(API_BASE_URL + '/api/response-rules/' + id, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify({ is_active: active })
+        });
+        if (!resp.ok) throw new Error('Failed to update rule');
+        var data = await resp.json();
+        var idx = responseRules.findIndex(function(r) { return r.id === id; });
+        if (idx >= 0) responseRules[idx] = data.rule;
+        renderResponseRules();
+        showToast(active ? 'Rule enabled' : 'Rule disabled');
+    } catch (err) {
+        console.error('Toggle rule error:', err);
+        showToast('Failed to update rule', 'error');
+    }
+}
+
+function editResponseRule(id) {
+    var rule = responseRules.find(function(r) { return r.id === id; });
+    if (!rule) return;
+    var newText = prompt('Edit rule text:', rule.rule_text);
+    if (newText === null || newText.trim() === '') return;
+    updateResponseRule(id, { rule_text: newText.trim() });
+}
+
+async function updateResponseRule(id, fields) {
+    try {
+        var resp = await fetch(API_BASE_URL + '/api/response-rules/' + id, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify(fields)
+        });
+        if (!resp.ok) throw new Error('Failed to update rule');
+        var data = await resp.json();
+        var idx = responseRules.findIndex(function(r) { return r.id === id; });
+        if (idx >= 0) responseRules[idx] = data.rule;
+        renderResponseRules();
+        showToast('Rule updated');
+    } catch (err) {
+        console.error('Update rule error:', err);
+        showToast('Failed to update rule', 'error');
+    }
+}
+
+async function moveRule(id, direction) {
+    var idx = responseRules.findIndex(function(r) { return r.id === id; });
+    if (idx < 0) return;
+    var swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= responseRules.length) return;
+
+    // Swap locally
+    var temp = responseRules[idx];
+    responseRules[idx] = responseRules[swapIdx];
+    responseRules[swapIdx] = temp;
+    renderResponseRules();
+
+    // Persist new order
+    var order = responseRules.map(function(r) { return r.id; });
+    try {
+        var resp = await fetch(API_BASE_URL + '/api/response-rules/reorder', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify({ order: order })
+        });
+        if (!resp.ok) throw new Error('Failed to reorder');
+    } catch (err) {
+        console.error('Reorder rules error:', err);
+        showToast('Failed to save new order', 'error');
+        loadResponseRules(); // Reload to get correct server order
+    }
 }
 
 function toggleKbEntry(el) {

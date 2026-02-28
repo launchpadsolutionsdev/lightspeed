@@ -518,6 +518,45 @@ h1, h2, h3, h4, h5, h6 {
 }
 .kb-entry-tag-feedback { background: #fef3c7; color: #92400e; }
 
+/* Response Rules */
+.rules-add-form {
+    display: flex; gap: 0.75rem; align-items: flex-start;
+    padding: 1rem; background: var(--bg-alt); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 1rem;
+}
+.rules-list { display: flex; flex-direction: column; gap: 0; }
+.rule-item {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    padding: 0.75rem 1rem; border: 1px solid var(--border);
+    border-bottom: none; background: var(--bg-primary);
+    transition: var(--transition);
+}
+.rule-item:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.rule-item:last-child { border-bottom: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); }
+.rule-item:only-child { border-radius: var(--radius); border-bottom: 1px solid var(--border); }
+.rule-item:hover { background: var(--bg-alt); }
+.rule-item.inactive { opacity: 0.5; }
+.rule-order { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); min-width: 20px; padding-top: 2px; }
+.rule-type-chip {
+    display: inline-block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 3px; letter-spacing: 0.5px; white-space: nowrap;
+}
+.rule-type-always { background: #d1fae5; color: #065f46; }
+.rule-type-never { background: #fee2e2; color: #991b1b; }
+.rule-type-formatting { background: #dbeafe; color: #1e40af; }
+.rule-type-general { background: var(--bg-alt); color: var(--text-secondary); border: 1px solid var(--border); }
+.rule-text { flex: 1; font-size: 0.875rem; line-height: 1.5; color: var(--text-primary); word-break: break-word; }
+.rule-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.rule-actions button {
+    padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 11px; font-weight: 500; background: var(--bg-primary); color: var(--text-secondary);
+    cursor: pointer; transition: var(--transition); white-space: nowrap;
+}
+.rule-actions button:hover { border-color: var(--text-muted); color: var(--text-primary); }
+.rule-actions .rule-btn-delete:hover { border-color: var(--danger); color: var(--danger); }
+.rule-move-btns { display: flex; flex-direction: column; gap: 2px; }
+.rule-move-btns button { padding: 1px 6px; font-size: 10px; line-height: 1; }
+
 /* Duplicate finder / merge modal */
 .dup-group { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; overflow: hidden; }
 .dup-group-header {

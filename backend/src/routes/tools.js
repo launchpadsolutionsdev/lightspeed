@@ -35,6 +35,37 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
         let enhancedSystem = system || '';
         let referencedKbEntries = [];
 
+        // Inject org-level response rules into system prompt
+        if (organizationId) {
+            try {
+                const rulesResult = await pool.query(
+                    `SELECT rule_text, rule_type FROM response_rules
+                     WHERE organization_id = $1 AND is_active = TRUE
+                     ORDER BY sort_order, created_at`,
+                    [organizationId]
+                );
+                if (rulesResult.rows.length > 0) {
+                    const typeLabels = { always: 'ALWAYS', never: 'NEVER', formatting: 'FORMATTING', general: 'RULE' };
+                    const rulesBlock = rulesResult.rows
+                        .map((r, i) => `${i + 1}. [${typeLabels[r.rule_type] || 'RULE'}] ${r.rule_text}`)
+                        .join('\n');
+                    const rulesSection = `\n\nORGANIZATION RESPONSE RULES (you MUST follow these):\n${rulesBlock}\n`;
+
+                    // Insert before "Knowledge base:" marker if present, otherwise append
+                    if (enhancedSystem.includes('Knowledge base:')) {
+                        enhancedSystem = enhancedSystem.replace(
+                            'Knowledge base:',
+                            `${rulesSection}\nKnowledge base:`
+                        );
+                    } else {
+                        enhancedSystem += rulesSection;
+                    }
+                }
+            } catch (rulesErr) {
+                console.warn('Response rules injection failed, continuing without:', rulesErr.message);
+            }
+        }
+
         // Server-side KB relevance picking when inquiry is provided
         if (inquiry && organizationId) {
             try {
@@ -180,6 +211,36 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
 
         let enhancedSystem = system || '';
         let referencedKbEntries = [];
+
+        // Inject org-level response rules into system prompt
+        if (organizationId) {
+            try {
+                const rulesResult = await pool.query(
+                    `SELECT rule_text, rule_type FROM response_rules
+                     WHERE organization_id = $1 AND is_active = TRUE
+                     ORDER BY sort_order, created_at`,
+                    [organizationId]
+                );
+                if (rulesResult.rows.length > 0) {
+                    const typeLabels = { always: 'ALWAYS', never: 'NEVER', formatting: 'FORMATTING', general: 'RULE' };
+                    const rulesBlock = rulesResult.rows
+                        .map((r, i) => `${i + 1}. [${typeLabels[r.rule_type] || 'RULE'}] ${r.rule_text}`)
+                        .join('\n');
+                    const rulesSection = `\n\nORGANIZATION RESPONSE RULES (you MUST follow these):\n${rulesBlock}\n`;
+
+                    if (enhancedSystem.includes('Knowledge base:')) {
+                        enhancedSystem = enhancedSystem.replace(
+                            'Knowledge base:',
+                            `${rulesSection}\nKnowledge base:`
+                        );
+                    } else {
+                        enhancedSystem += rulesSection;
+                    }
+                }
+            } catch (rulesErr) {
+                console.warn('Response rules injection failed, continuing without:', rulesErr.message);
+            }
+        }
 
         // Server-side KB relevance picking when inquiry is provided
         if (inquiry && organizationId) {
