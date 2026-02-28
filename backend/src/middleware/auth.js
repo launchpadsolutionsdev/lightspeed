@@ -33,6 +33,15 @@ const authenticate = async (req, res, next) => {
 
         req.userId = decoded.userId;
         req.user = userResult.rows[0];
+
+        // Cache organization_id on the request so route handlers don't
+        // each need a separate SELECT on organization_memberships.
+        const orgRow = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [decoded.userId]
+        );
+        req.organizationId = orgRow.rows[0]?.organization_id || null;
+
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') {

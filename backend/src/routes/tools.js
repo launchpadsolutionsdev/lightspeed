@@ -30,13 +30,7 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
             return res.status(400).json({ error: 'Messages array required' });
         }
 
-        // Get user's organization for usage logging
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        const organizationId = orgResult.rows[0]?.organization_id;
+        const organizationId = req.organizationId;
 
         let enhancedSystem = system || '';
         let referencedKbEntries = [];
@@ -54,7 +48,7 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
                 }
 
                 const kbResult = await pool.query(
-                    `SELECT id, title, content, category, tags FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
+                    `SELECT id, title, content, category, tags, updated_at FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
                     [organizationId]
                 );
 
@@ -73,6 +67,7 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
                             title: entry.title,
                             content: entry.content,
                             category: entry.category,
+                            updated_at: entry.updated_at?.toISOString() || null,
                             citation_index: idx + 1
                         }));
 
@@ -181,13 +176,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
             return res.end();
         }
 
-        // Get user's organization for usage logging
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        const organizationId = orgResult.rows[0]?.organization_id;
+        const organizationId = req.organizationId;
 
         let enhancedSystem = system || '';
         let referencedKbEntries = [];
@@ -204,7 +193,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
                 }
 
                 const kbResult = await pool.query(
-                    `SELECT id, title, content, category, tags FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
+                    `SELECT id, title, content, category, tags, updated_at FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
                     [organizationId]
                 );
 
@@ -221,6 +210,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
                             title: entry.title,
                             content: entry.content,
                             category: entry.category,
+                            updated_at: entry.updated_at?.toISOString() || null,
                             citation_index: idx + 1
                         }));
 
@@ -307,16 +297,14 @@ router.post('/analyze', authenticate, checkUsageLimit, async (req, res) => {
             return res.status(400).json({ error: 'Data required for analysis' });
         }
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            `SELECT o.*, om.organization_id
-             FROM organizations o
-             JOIN organization_memberships om ON o.id = om.organization_id
-             WHERE om.user_id = $1 LIMIT 1`,
-            [req.userId]
-        );
+        const organizationId = req.organizationId;
 
-        const organization = orgResult.rows[0];
+        // Fetch org details for brand voice
+        let organization = null;
+        if (organizationId) {
+            const orgResult = await pool.query('SELECT * FROM organizations WHERE id = $1', [organizationId]);
+            organization = orgResult.rows[0] || null;
+        }
         const brandVoice = organization?.brand_voice || '';
 
         // Build analysis prompt based on report type
@@ -394,12 +382,12 @@ ${JSON.stringify(data, null, 2)}`;
         const responseTimeMs = Date.now() - startTime;
 
         // Log usage
-        if (organization?.organization_id && response.usage) {
+        if (organizationId && response.usage) {
             const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
             await pool.query(
                 `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
                  VALUES (gen_random_uuid(), $1, $2, 'insights_engine', $3, $4, TRUE, NOW())`,
-                [organization.organization_id, req.userId, totalTokens, responseTimeMs]
+                [organizationId, req.userId, totalTokens, responseTimeMs]
             );
         }
 
@@ -481,15 +469,8 @@ Return ONLY the JavaScript function body. No explanation, no markdown, no \`\`\`
         });
         const responseTimeMs = Date.now() - startTime;
 
-        // Get organization for logging
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        const organizationId = orgResult.rows[0]?.organization_id;
-
         // Log usage
+        const organizationId = req.organizationId;
         if (organizationId && response.usage) {
             const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
             await pool.query(
@@ -515,12 +496,7 @@ router.post('/normalize/log', authenticate, async (req, res) => {
     try {
         const { originalCount, cleanCount, removedCount, fileName } = req.body;
 
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        const organizationId = orgResult.rows[0]?.organization_id;
+        const organizationId = req.organizationId;
 
         if (organizationId) {
             await pool.query(
@@ -549,16 +525,14 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
             return res.status(400).json({ error: 'Prompt required' });
         }
 
-        // Get user's organization for brand voice
-        const orgResult = await pool.query(
-            `SELECT o.brand_voice
-             FROM organizations o
-             JOIN organization_memberships om ON o.id = om.organization_id
-             WHERE om.user_id = $1 LIMIT 1`,
-            [req.userId]
-        );
+        const organizationId = req.organizationId;
 
-        const brandVoice = orgResult.rows[0]?.brand_voice || '';
+        // Fetch brand voice for the org
+        let brandVoice = '';
+        if (organizationId) {
+            const orgResult = await pool.query('SELECT brand_voice FROM organizations WHERE id = $1', [organizationId]);
+            brandVoice = orgResult.rows[0]?.brand_voice || '';
+        }
 
         let systemPrompt = `You are a professional content writer for a nonprofit organization.`;
 
@@ -585,18 +559,13 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
         }
 
         // Server-side KB injection for Draft Assistant — uses internal KB
-        const orgResult3 = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-        const draftOrgId = orgResult3.rows[0]?.organization_id;
-        if (draftOrgId) {
+        if (organizationId) {
             try {
                 const kbResult = await pool.query(
                     `SELECT id, title, content, category, tags FROM knowledge_base
                      WHERE organization_id = $1 AND kb_type = 'internal'
                      ORDER BY category, title`,
-                    [draftOrgId]
+                    [organizationId]
                 );
                 if (kbResult.rows.length > 0) {
                     const relevantEntries = await claudeService.pickRelevantKnowledge(
@@ -617,7 +586,7 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
 
             // Inject Shopify product context for product-related drafts
             try {
-                const productContext = await shopifyService.buildProductContext(draftOrgId, { limit: 15 });
+                const productContext = await shopifyService.buildProductContext(organizationId, { limit: 15 });
                 if (productContext) {
                     systemPrompt += productContext;
                     systemPrompt += '\n\nYou have access to the product catalog above. When writing about products, use accurate names, prices, and details from this catalog.';
@@ -635,14 +604,6 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
             max_tokens: 2048
         });
         const responseTimeMs2 = Date.now() - startTime2;
-
-        // Get organization for logging
-        const orgResult2 = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        const organizationId = orgResult2.rows[0]?.organization_id;
 
         // Log usage
         if (organizationId && response.usage) {
@@ -668,11 +629,7 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
  */
 router.get('/shopify-analytics', authenticate, async (req, res) => {
     try {
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-        const organizationId = orgResult.rows[0]?.organization_id;
+        const organizationId = req.organizationId;
 
         if (!organizationId) {
             return res.status(403).json({ error: 'No organization found' });

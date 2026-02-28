@@ -425,6 +425,7 @@ let customKnowledge = []; // Legacy alias — points to supportKnowledge for bac
 let supportKnowledge = [];
 let internalKnowledge = [];
 let activeKbTab = 'support'; // 'support' or 'internal'
+let kbDisplayLimit = 50; // How many entries to show before "Load More"
 let orgDrawSchedule = null; // Active draw schedule from database
 let orgContentTemplates = []; // Per-org content templates from database
 let feedbackList = [];
@@ -3780,15 +3781,28 @@ function loadUserData(user) {
 
 async function loadKnowledgeFromBackend(kbType) {
     try {
-        const url = kbType
-            ? `${API_BASE_URL}/api/knowledge-base?type=${kbType}`
-            : `${API_BASE_URL}/api/knowledge-base`;
+        // Fetch all pages from the paginated endpoint
+        let allRawEntries = [];
+        let page = 1;
+        const perPage = 200;
+        while (true) {
+            const url = kbType
+                ? `${API_BASE_URL}/api/knowledge-base?type=${kbType}&page=${page}&limit=${perPage}`
+                : `${API_BASE_URL}/api/knowledge-base?page=${page}&limit=${perPage}`;
 
-        const response = await fetch(url, { headers: getAuthHeaders() });
+            const response = await fetch(url, { headers: getAuthHeaders() });
+            if (!response.ok) break;
 
-        if (response.ok) {
             const data = await response.json();
-            const backendEntries = (data.entries || []).map(entry => {
+            allRawEntries = allRawEntries.concat(data.entries || []);
+
+            // Stop when we've fetched everything
+            if (!data.pagination || page >= data.pagination.totalPages) break;
+            page++;
+        }
+
+        if (allRawEntries.length > 0 || page === 1) {
+            const backendEntries = allRawEntries.map(entry => {
                 const tags = entry.tags || [];
                 const lotteryTag = tags.find(t => t.startsWith('lottery:'));
                 const keywordTags = tags.filter(t => t.startsWith('keyword:')).map(t => t.replace('keyword:', ''));
@@ -3802,7 +3816,8 @@ async function loadKnowledgeFromBackend(kbType) {
                     keywords: keywordTags.length > 0 ? keywordTags : [],
                     response: entry.content,
                     tags: tags,
-                    dateAdded: entry.created_at
+                    dateAdded: entry.created_at,
+                    updated_at: entry.updated_at
                 };
             });
 
@@ -7075,9 +7090,8 @@ async function handleGenerate() {
     const startTime = Date.now();
 
     try {
-        const relevantKnowledge = getRelevantKnowledge(customerEmail);
         const result = await generateCustomResponse(
-            customerEmail, relevantKnowledge, staffName,
+            customerEmail, staffName,
             { toneValue, lengthValue, includeLinks, includeSteps, agentInstructions, streamTarget }
         );
 
@@ -7166,34 +7180,9 @@ function showError(message) {
     `;
 }
 
-function getAllKnowledge() {
-    // Return support KB entries for the Response Assistant.
-    // The hardcoded KNOWLEDGE_BASE templates are shown in the UI as reference
-    // material but are NOT injected into AI prompts.
-    return [...supportKnowledge];
-}
-
-// Rank knowledge entries by relevance to the customer inquiry
-function getRelevantKnowledge(inquiry) {
-    const allKnowledge = getAllKnowledge();
-    const queryWords = inquiry.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-
-    // Score each entry by how many query words match its keywords or question
-    const scored = allKnowledge.map(entry => {
-        const entryText = `${entry.question} ${entry.keywords.join(' ')} ${entry.response}`.toLowerCase();
-        let score = 0;
-        for (const word of queryWords) {
-            if (entryText.includes(word)) score++;
-        }
-        // Boost custom entries slightly so user-added knowledge is prioritized
-        if (entry.id && entry.id.toString().startsWith('custom')) score += 2;
-        return { entry, score };
-    });
-
-    // Sort by relevance score (highest first), then take top 30
-    scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, 30).map(s => s.entry);
-}
+// NOTE: getAllKnowledge() and getRelevantKnowledge() were removed.
+// KB relevance picking is now handled server-side by the Haiku picker
+// in tools.js/claude.js.
 
 // Fetch rated examples from backend for AI learning
 // Optional format param ('email' or 'facebook') scopes examples to matching format
@@ -7242,7 +7231,7 @@ function buildRatedExamplesContext(ratedExamples) {
     return context;
 }
 
-async function generateCustomResponse(customerEmail, knowledge, staffName, options) {
+async function generateCustomResponse(customerEmail, staffName, options) {
     const { toneValue, lengthValue, includeLinks, includeSteps, agentInstructions } = options;
     const isFacebook = inquiryType === "facebook";
 
@@ -7252,8 +7241,7 @@ async function generateCustomResponse(customerEmail, knowledge, staffName, optio
                        lengthValue < 33 ? "brief and concise" :
                        lengthValue > 66 ? "detailed and thorough" : "moderate length";
 
-    // KB entries are now picked server-side by the Haiku relevance picker.
-    // We no longer dump all entries here — the backend handles it when we pass `inquiry`.
+    // KB entries are picked server-side by the Haiku relevance picker.
 
     // Fetch rated examples for learning, scoped to the current format and filtered by topic relevance
     const currentFormat = isFacebook ? 'facebook' : 'email';
@@ -7867,7 +7855,7 @@ async function submitRatingFeedback() {
                 if (editDiv && editDiv.style.display !== 'none' && textarea) {
                     const newContent = textarea.value.trim();
                     if (newContent && newContent !== kbEntries[i].content) {
-                        editedEntries.push({ id: kbEntries[i].id, title: kbEntries[i].title, content: newContent, category: kbEntries[i].category });
+                        editedEntries.push({ id: kbEntries[i].id, title: kbEntries[i].title, content: newContent, category: kbEntries[i].category, updated_at: kbEntries[i].updated_at || null });
                     }
                 }
             }
@@ -7899,7 +7887,7 @@ async function submitRatingFeedback() {
                 const category = document.getElementById('feedbackKBCategory')?.value || 'faqs';
                 const title = inquiryText ? inquiryText.substring(0, 255) : 'Feedback correction';
 
-                const kbResponse = await fetch(`${API_BASE_URL}/api/knowledge-base/from-feedback`, {
+                let kbResponse = await fetch(`${API_BASE_URL}/api/knowledge-base/from-feedback`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
@@ -7910,7 +7898,43 @@ async function submitRatingFeedback() {
                     })
                 });
 
-                if (kbResponse.ok) kbUpdated = true;
+                // Handle duplicate detection — ask user whether to update existing or create new
+                if (kbResponse.status === 409) {
+                    const dupData = await kbResponse.json();
+                    if (dupData.error === 'duplicate_found' && dupData.duplicates && dupData.duplicates.length > 0) {
+                        const dupTitle = dupData.duplicates[0].title;
+                        const dupId = dupData.duplicates[0].id;
+                        const userChoice = confirm(
+                            `A similar KB entry already exists:\n"${dupTitle}"\n\nClick OK to update the existing entry, or Cancel to create a new one.`
+                        );
+                        if (userChoice) {
+                            // Update the existing entry instead
+                            const updateResp = await fetch(`${API_BASE_URL}/api/knowledge-base/${dupId}`, {
+                                method: 'PUT',
+                                headers: getAuthHeaders(),
+                                body: JSON.stringify({ content: newInfo, category: category })
+                            });
+                            if (updateResp.ok) kbUpdated = true;
+                        } else {
+                            // Force-create despite duplicate
+                            kbResponse = await fetch(`${API_BASE_URL}/api/knowledge-base/from-feedback`, {
+                                method: 'POST',
+                                headers: getAuthHeaders(),
+                                body: JSON.stringify({
+                                    responseHistoryId: backendId,
+                                    title: title,
+                                    content: newInfo,
+                                    category: category,
+                                    force: true
+                                })
+                            });
+                            if (kbResponse.ok) kbUpdated = true;
+                        }
+                    }
+                } else if (kbResponse.ok) {
+                    kbUpdated = true;
+                }
+
                 if (feedback) {
                     feedback += '\n' + newInfo;
                 } else {
@@ -8015,7 +8039,6 @@ async function handleBulkFile(file) {
     bulkResults = [];
 
     const staffName = document.getElementById("staffName").value || "Bella";
-    const allKnowledge = getAllKnowledge();
 
     for (let i = 0; i < inquiries.length; i++) {
         const progress = ((i + 1) / inquiries.length * 100).toFixed(0);
@@ -8024,7 +8047,7 @@ async function handleBulkFile(file) {
 
         try {
             const result = await generateCustomResponse(
-                inquiries[i], allKnowledge, staffName,
+                inquiries[i], staffName,
                 { toneValue: 50, lengthValue: 50, includeLinks: true, includeSteps: false }
             );
             bulkResults.push({ inquiry: inquiries[i], response: result.text, error: null });
@@ -8407,6 +8430,7 @@ var KB_CATEGORIES = {
 
 function switchKbTab(type) {
     activeKbTab = type;
+    kbDisplayLimit = 50; // Reset pagination on tab switch
     document.querySelectorAll('.kb-tab').forEach(function(t) {
         t.classList.toggle('active', t.dataset.kbType === type);
     });
@@ -8476,7 +8500,9 @@ function renderKbEntries() {
     var otherType = activeKbTab === 'support' ? 'internal' : 'support';
     var otherLabel = activeKbTab === 'support' ? 'Internal' : 'Support';
 
-    container.innerHTML = filtered.slice(0, 100).map(function(k) {
+    var visibleEntries = filtered.slice(0, kbDisplayLimit);
+
+    var html = visibleEntries.map(function(k) {
         var lotteryLabel = k.lottery === '5050' ? '50/50' : k.lottery === 'cta' ? 'CTA' : (activeKbTab === 'support' ? 'Both' : '');
         var feedbackTag = (k.tags && k.tags.includes('source:feedback')) ? '<span class="kb-entry-tag kb-entry-tag-feedback">From feedback</span>' : '';
         return '<div class="kb-entry" data-id="' + k.id + '" onclick="toggleKbEntry(this)">' +
@@ -8499,6 +8525,20 @@ function renderKbEntries() {
             '<div class="kb-entry-full"><div class="kb-entry-full-content">' + escapeHtml(k.response || '') + '</div></div>' +
         '</div>';
     }).join('');
+
+    // Show "Load More" button when there are more entries to display
+    if (filtered.length > kbDisplayLimit) {
+        html += '<div style="text-align:center;padding:1rem;">' +
+            '<button class="empty-state-btn" onclick="kbLoadMore()" style="margin:0 auto;">Load More (' + (filtered.length - kbDisplayLimit) + ' remaining)</button>' +
+            '</div>';
+    }
+
+    container.innerHTML = html;
+}
+
+function kbLoadMore() {
+    kbDisplayLimit += 50;
+    renderKbEntries();
 }
 
 function toggleKbEntry(el) {
@@ -8577,15 +8617,30 @@ async function saveKbEntry() {
             var tags = [...keywords.map(function(k) { return 'keyword:' + k; })];
             if (lottery) tags.push('lottery:' + lottery);
 
+            // Include expected_updated_at for optimistic concurrency control
+            var entries = getActiveKbEntries();
+            var existing = entries.find(function(e) { return e.id === id; });
+            var updateBody = { title: title, content: content, category: category, tags: tags };
+            if (existing && existing.updated_at) {
+                updateBody.expected_updated_at = existing.updated_at;
+            }
+
             var resp = await fetch(API_BASE_URL + '/api/knowledge-base/' + id, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ title: title, content: content, category: category, tags: tags })
+                body: JSON.stringify(updateBody)
             });
 
+            if (resp.status === 409) {
+                showToast('This entry was modified by someone else. Refreshing...', 'error');
+                await loadKnowledgeFromBackend();
+                return;
+            }
             if (!resp.ok) throw new Error('Update failed');
 
-            // Update in local array
+            var updatedData = await resp.json();
+
+            // Update in local array, including the new updated_at from the server
             var entries = getActiveKbEntries();
             var idx = entries.findIndex(function(e) { return e.id === id; });
             if (idx !== -1) {
@@ -8595,6 +8650,9 @@ async function saveKbEntry() {
                 entries[idx].keywords = keywords;
                 entries[idx].lottery = lottery;
                 entries[idx].tags = tags;
+                if (updatedData.entry) {
+                    entries[idx].updated_at = updatedData.entry.updated_at;
+                }
             }
             showToast('Entry updated!', 'success');
         } else {

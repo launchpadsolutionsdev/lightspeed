@@ -29,38 +29,50 @@ const upload = multer({
 
 /**
  * GET /api/knowledge-base
- * Get all knowledge entries for user's organization
- * Query params: ?type=support|internal (optional, returns all if omitted)
+ * Get knowledge entries for user's organization with pagination.
+ * Query params:
+ *   ?type=support|internal (optional, returns all if omitted)
+ *   ?page=1&limit=50       (optional, defaults to page 1, 50 per page)
  */
 router.get('/', authenticate, async (req, res) => {
     try {
         const { type } = req.query;
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
 
-        const organizationId = orgResult.rows[0].organization_id;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+        const offset = (page - 1) * limit;
 
-        let sql = 'SELECT * FROM knowledge_base WHERE organization_id = $1';
+        let where = 'WHERE organization_id = $1';
         const params = [organizationId];
+        let paramCount = 2;
 
         if (type && ['support', 'internal'].includes(type)) {
-            sql += ' AND kb_type = $2';
+            where += ` AND kb_type = $${paramCount++}`;
             params.push(type);
         }
 
-        sql += ' ORDER BY category, title';
+        // Get total count for pagination metadata
+        const countResult = await pool.query(
+            `SELECT COUNT(*) FROM knowledge_base ${where}`, params
+        );
+        const total = parseInt(countResult.rows[0].count);
 
-        const result = await pool.query(sql, params);
+        // Fetch page
+        const dataParams = [...params, limit, offset];
+        const result = await pool.query(
+            `SELECT * FROM knowledge_base ${where} ORDER BY category, title LIMIT $${paramCount++} OFFSET $${paramCount}`,
+            dataParams
+        );
 
-        res.json({ entries: result.rows });
+        res.json({
+            entries: result.rows,
+            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+        });
 
     } catch (error) {
         console.error('Get knowledge base error:', error);
@@ -70,51 +82,60 @@ router.get('/', authenticate, async (req, res) => {
 
 /**
  * GET /api/knowledge-base/search
- * Search knowledge entries
+ * Search knowledge entries with pagination.
+ * Query params: ?q=term&category=faqs&type=support&page=1&limit=50
  */
 router.get('/search', authenticate, async (req, res) => {
     try {
         const { q, category } = req.query;
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
 
-        const organizationId = orgResult.rows[0].organization_id;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+        const offset = (page - 1) * limit;
 
         const { type } = req.query;
-        let query = `SELECT * FROM knowledge_base WHERE organization_id = $1`;
+        let where = `WHERE organization_id = $1`;
         const params = [organizationId];
         let paramCount = 2;
 
         if (type && ['support', 'internal'].includes(type)) {
-            query += ` AND kb_type = $${paramCount}`;
+            where += ` AND kb_type = $${paramCount}`;
             params.push(type);
             paramCount++;
         }
 
         if (q) {
-            query += ` AND (title ILIKE $${paramCount} OR content ILIKE $${paramCount})`;
+            where += ` AND (title ILIKE $${paramCount} OR content ILIKE $${paramCount})`;
             params.push(`%${q}%`);
             paramCount++;
         }
 
         if (category && category !== 'all') {
-            query += ` AND category = $${paramCount}`;
+            where += ` AND category = $${paramCount}`;
             params.push(category);
+            paramCount++;
         }
 
-        query += ` ORDER BY category, title`;
+        // Count
+        const countResult = await pool.query(`SELECT COUNT(*) FROM knowledge_base ${where}`, params);
+        const total = parseInt(countResult.rows[0].count);
 
-        const result = await pool.query(query, params);
+        // Fetch page
+        const dataParams = [...params, limit, offset];
+        const result = await pool.query(
+            `SELECT * FROM knowledge_base ${where} ORDER BY category, title LIMIT $${paramCount++} OFFSET $${paramCount}`,
+            dataParams
+        );
 
-        res.json({ entries: result.rows });
+        res.json({
+            entries: result.rows,
+            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+        });
 
     } catch (error) {
         console.error('Search knowledge base error:', error);
@@ -142,17 +163,10 @@ router.post('/', authenticate, [
         // Validate kb_type
         const validKbType = ['support', 'internal'].includes(kb_type) ? kb_type : 'support';
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
-
-        const organizationId = orgResult.rows[0].organization_id;
         const entryId = uuidv4();
 
         // Combine keywords and lottery into tags for storage
@@ -186,17 +200,10 @@ router.get('/:id', authenticate, async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
-
-        const organizationId = orgResult.rows[0].organization_id;
 
         const result = await pool.query(
             'SELECT * FROM knowledge_base WHERE id = $1 AND organization_id = $2',
@@ -233,17 +240,10 @@ router.put('/:id', authenticate, [
         const { id } = req.params;
         const { title, content, category, tags, kb_type } = req.body;
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
-
-        const organizationId = orgResult.rows[0].organization_id;
 
         // Build update query
         const updates = [];
@@ -311,17 +311,10 @@ router.delete('/:id', authenticate, async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
-
-        const organizationId = orgResult.rows[0].organization_id;
 
         const result = await pool.query(
             'DELETE FROM knowledge_base WHERE id = $1 AND organization_id = $2 RETURNING id, title',
@@ -348,23 +341,38 @@ router.delete('/:id', authenticate, async (req, res) => {
  */
 router.post('/from-feedback', authenticate, async (req, res) => {
     try {
-        const { responseHistoryId, title, content, category } = req.body;
+        const { responseHistoryId, title, content, category, force } = req.body;
 
         if (!title || !content) {
             return res.status(400).json({ error: 'Title and content are required' });
         }
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
 
-        const organizationId = orgResult.rows[0].organization_id;
+        // --- Duplicate detection ---
+        // Skip if the caller explicitly wants to force-create (e.g. user chose "Create anyway")
+        if (!force) {
+            // Check for existing entries with similar titles in the same org.
+            const duplicateCheck = await pool.query(
+                `SELECT id, title, content FROM knowledge_base
+                 WHERE organization_id = $1 AND kb_type = 'support' AND title ILIKE $2
+                 LIMIT 5`,
+                [organizationId, `%${title.substring(0, 100)}%`]
+            );
+
+            if (duplicateCheck.rows.length > 0) {
+                // Return the potential duplicates so the frontend can let the user decide
+                return res.status(409).json({
+                    error: 'duplicate_found',
+                    message: 'Similar knowledge base entries already exist.',
+                    duplicates: duplicateCheck.rows.map(d => ({ id: d.id, title: d.title, content: d.content.substring(0, 200) }))
+                });
+            }
+        }
+
         const entryId = uuidv4();
 
         // Auto-extract keywords from the title (words > 3 chars)
@@ -418,17 +426,10 @@ router.post('/import', authenticate, async (req, res) => {
             return res.status(400).json({ error: 'Entries array required' });
         }
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
-
-        const organizationId = orgResult.rows[0].organization_id;
 
         const imported = [];
         const errors = [];
@@ -472,17 +473,10 @@ router.post('/import', authenticate, async (req, res) => {
  */
 router.get('/export/all', authenticate, async (req, res) => {
     try {
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
-
-        const organizationId = orgResult.rows[0].organization_id;
 
         const { type } = req.query;
         let sql = `SELECT title, content, category, tags, kb_type FROM knowledge_base WHERE organization_id = $1`;
@@ -517,17 +511,10 @@ router.post('/upload-doc', authenticate, upload.single('document'), async (req, 
             return res.status(400).json({ error: 'No .docx file uploaded' });
         }
 
-        // Get user's organization
-        const orgResult = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [req.userId]
-        );
-
-        if (orgResult.rows.length === 0) {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
             return res.status(400).json({ error: 'No organization found' });
         }
-
-        const organizationId = orgResult.rows[0].organization_id;
 
         // Parse the Word document
         const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
