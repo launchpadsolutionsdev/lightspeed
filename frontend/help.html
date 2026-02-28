@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help Center | Lightspeed by Launchpad</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="design-system.css?v=20260228">
+    <link rel="stylesheet" href="landing.css?v=20260228">
+    <style>
+        .help-page { padding-top: 100px; }
+
+        .help-hero {
+            padding: 60px 40px 40px;
+            text-align: center;
+        }
+        .help-hero-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .help-hero-eyebrow {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--cta);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+        .help-hero-title {
+            font-size: 40px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+        .help-hero-subtitle {
+            font-size: 17px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 520px;
+            margin: 0 auto 32px;
+        }
+        .help-search {
+            max-width: 480px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .help-search-input {
+            width: 100%;
+            padding: 14px 20px 14px 44px;
+            font-size: 15px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.15s ease;
+        }
+        .help-search-input:focus {
+            border-color: var(--cta);
+        }
+        .help-search-input::placeholder {
+            color: var(--text-muted);
+        }
+        .help-search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        /* Categories */
+        .help-categories {
+            padding: 40px 40px 80px;
+        }
+        .help-categories-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .help-category-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            transition: var(--transition);
+        }
+        .help-category-card:hover {
+            border-color: var(--text-muted);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        .help-category-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 16px;
+        }
+        .help-category-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .help-category-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .help-category-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .help-category-links li {
+            padding: 6px 0;
+            border-top: 1px solid var(--border);
+        }
+        .help-category-links li:first-child {
+            border-top: none;
+        }
+        .help-category-links a {
+            font-size: 14px;
+            color: var(--cta);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .help-category-links a:hover {
+            text-decoration: underline;
+        }
+        .help-category-links a::after {
+            content: '\203A';
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        /* Quick answers */
+        .help-quick {
+            padding: 60px 40px;
+            background: var(--bg-alt);
+        }
+        .help-quick-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .help-quick-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 32px;
+        }
+        .help-quick-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .help-quick-item {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px 24px;
+        }
+        .help-quick-q {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .help-quick-a {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Contact strip */
+        .help-contact-strip {
+            padding: 60px 40px;
+            text-align: center;
+        }
+        .help-contact-strip-inner {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .help-contact-strip h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .help-contact-strip p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .help-categories-inner {
+                grid-template-columns: 1fr;
+            }
+            .help-quick-grid {
+                grid-template-columns: 1fr;
+            }
+            .help-hero-title {
+                font-size: 28px;
+            }
+            .help-hero, .help-categories, .help-quick, .help-contact-strip {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="landing-nav">
+        <div class="landing-nav-inner">
+            <a href="index.html" class="landing-nav-logo">
+                <img src="launchpad-logo.svg" alt="Lightspeed" height="28">
+                <span>Lightspeed</span>
+            </a>
+            <div class="landing-nav-center">
+                <a href="index.html#features" class="landing-nav-link">Features</a>
+                <a href="index.html#pricing" class="landing-nav-link">Pricing</a>
+                <a href="case-study.html" class="landing-nav-link">Case Studies</a>
+                <a href="whats-new.html" class="landing-nav-link">What's New</a>
+                <a href="about.html" class="landing-nav-link">About</a>
+                <a href="faq.html" class="landing-nav-link">FAQ</a>
+                <a href="index.html#contact" class="landing-nav-link">Contact</a>
+            </div>
+            <div class="landing-nav-actions">
+                <a href="index.html" class="landing-nav-signin">Sign in</a>
+                <a href="index.html" class="landing-nav-cta">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="help-page">
+
+        <!-- Hero / Search -->
+        <section class="help-hero">
+            <div class="help-hero-inner">
+                <div class="help-hero-eyebrow">Help Center</div>
+                <h1 class="help-hero-title">How can we help?</h1>
+                <p class="help-hero-subtitle">Search our guides or browse by topic to find answers fast.</p>
+                <div class="help-search">
+                    <svg class="help-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" class="help-search-input" placeholder="Search for help articles..." id="helpSearchInput">
+                </div>
+            </div>
+        </section>
+
+        <!-- Categories -->
+        <section class="help-categories">
+            <div class="help-categories-inner">
+
+                <div class="help-category-card">
+                    <div class="help-category-icon" style="background:#EBF4FF;color:#1B6BF5">&#9889;</div>
+                    <div class="help-category-name">Getting Started</div>
+                    <p class="help-category-desc">Everything you need to set up your account and start using Lightspeed.</p>
+                    <ul class="help-category-links">
+                        <li><a href="faq.html">Creating your account</a></li>
+                        <li><a href="faq.html">Onboarding walkthrough</a></li>
+                        <li><a href="faq.html">Setting up your knowledge base</a></li>
+                    </ul>
+                </div>
+
+                <div class="help-category-card">
+                    <div class="help-category-icon" style="background:#FFF0E6;color:#F47B3A">&#128172;</div>
+                    <div class="help-category-name">Response Assistant</div>
+                    <p class="help-category-desc">Learn how to use AI-powered customer service replies for your team.</p>
+                    <ul class="help-category-links">
+                        <li><a href="faq.html">Submitting your first inquiry</a></li>
+                        <li><a href="faq.html">Customizing response tone</a></li>
+                        <li><a href="faq.html">Training on your past tickets</a></li>
+                    </ul>
+                </div>
+
+                <div class="help-category-card">
+                    <div class="help-category-icon" style="background:#F3E8FF;color:#7C3AED">&#9997;&#65039;</div>
+                    <div class="help-category-name">Draft Assistant</div>
+                    <p class="help-category-desc">Create on-brand marketing content, emails, and communications.</p>
+                    <ul class="help-category-links">
+                        <li><a href="faq.html">Writing your first draft</a></li>
+                        <li><a href="faq.html">Using templates</a></li>
+                        <li><a href="faq.html">Brand voice settings</a></li>
+                    </ul>
+                </div>
+
+                <div class="help-category-card">
+                    <div class="help-category-icon" style="background:#E8F9EB;color:#28C840">&#128200;</div>
+                    <div class="help-category-name">Insights Engine</div>
+                    <p class="help-category-desc">Turn raw data exports into visual dashboards and reports.</p>
+                    <ul class="help-category-links">
+                        <li><a href="faq.html">Uploading data files</a></li>
+                        <li><a href="faq.html">Understanding your dashboards</a></li>
+                        <li><a href="faq.html">Exporting reports</a></li>
+                    </ul>
+                </div>
+
+                <div class="help-category-card">
+                    <div class="help-category-icon" style="background:#FFF8E1;color:#D97706">&#128221;</div>
+                    <div class="help-category-name">List Normalizer</div>
+                    <p class="help-category-desc">Clean and format contact lists for your email platforms.</p>
+                    <ul class="help-category-links">
+                        <li><a href="faq.html">Uploading a contact list</a></li>
+                        <li><a href="faq.html">Field mapping</a></li>
+                        <li><a href="faq.html">Exporting to Mailchimp / Constant Contact</a></li>
+                    </ul>
+                </div>
+
+                <div class="help-category-card">
+                    <div class="help-category-icon" style="background:#FEE2E2;color:#DC2626">&#128274;</div>
+                    <div class="help-category-name">Account &amp; Billing</div>
+                    <p class="help-category-desc">Manage your subscription, users, and account settings.</p>
+                    <ul class="help-category-links">
+                        <li><a href="faq.html">Managing team members</a></li>
+                        <li><a href="faq.html">Changing your plan</a></li>
+                        <li><a href="faq.html">Billing &amp; invoices</a></li>
+                    </ul>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Quick Answers -->
+        <section class="help-quick">
+            <div class="help-quick-inner">
+                <h2 class="help-quick-title">Quick answers</h2>
+                <div class="help-quick-grid">
+                    <div class="help-quick-item">
+                        <div class="help-quick-q">How do I reset my password?</div>
+                        <div class="help-quick-a">Lightspeed uses Google or Microsoft sign-in, so there&rsquo;s no separate password to reset. Just sign in with your Google or Microsoft account.</div>
+                    </div>
+                    <div class="help-quick-item">
+                        <div class="help-quick-q">Can I add more users to my plan?</div>
+                        <div class="help-quick-a">Yes. Upgrade to the Professional plan for up to 5 users, or Enterprise for 10+. Contact us for custom team sizes.</div>
+                    </div>
+                    <div class="help-quick-item">
+                        <div class="help-quick-q">What file formats does Insights Engine support?</div>
+                        <div class="help-quick-a">Insights Engine works with CSV and Excel (.xlsx) files. Export your data from your raffle provider and upload it directly.</div>
+                    </div>
+                    <div class="help-quick-item">
+                        <div class="help-quick-q">Is my data shared with other organizations?</div>
+                        <div class="help-quick-a">Never. Each organization&rsquo;s knowledge base is fully isolated and encrypted. Your data is never used to train models for other accounts.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact strip -->
+        <section class="help-contact-strip">
+            <div class="help-contact-strip-inner">
+                <h2>Still need help?</h2>
+                <p>Our team is here to help. Reach out and we&rsquo;ll get back to you as soon as possible.</p>
+                <a href="index.html#contact" class="ls-btn ls-btn-primary">Contact us &rsaquo;</a>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="landing-footer-inner">
+            <div class="landing-footer-top">
+                <div class="landing-footer-brand">
+                    <div class="landing-footer-brand-logo">
+                        <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                        <span>Lightspeed</span>
+                    </div>
+                    <p class="landing-footer-brand-desc">AI-powered productivity tools built for nonprofit teams and charitable gaming operators.</p>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Product</h4>
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#pricing">Pricing</a>
+                    <a href="faq.html">FAQ</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Company</h4>
+                    <a href="about.html">About</a>
+                    <a href="case-study.html">Case Studies</a>
+                    <a href="index.html#contact">Contact</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Resources</h4>
+                    <a href="whats-new.html">What&rsquo;s New</a>
+                    <a href="help.html">Help Center</a>
+                </div>
+            </div>
+            <div class="landing-footer-bottom">
+                <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Canada.</span>
+                <span class="landing-footer-status">
+                    <span class="status-dot"></span>
+                    All systems operational
+                </span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Simple search filter for help articles
+        const searchInput = document.getElementById('helpSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+                document.querySelectorAll('.help-category-card').forEach(card => {
+                    const text = card.textContent.toLowerCase();
+                    card.style.display = query && !text.includes(query) ? 'none' : '';
+                });
+                document.querySelectorAll('.help-quick-item').forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = query && !text.includes(query) ? 'none' : '';
+                });
+            });
+        }
+    </script>
+
+</body>
+</html>

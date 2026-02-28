@@ -9142,12 +9142,20 @@
                     <div class="landing-pricing-tag">Pricing</div>
                     <h2 class="landing-pricing-title">Simple pricing for every team</h2>
                     <p class="landing-pricing-subtitle">Unlimited generations on every plan. Scale when you&rsquo;re ready.</p>
+                    <div class="pricing-toggle">
+                        <span class="pricing-toggle-label" data-period="monthly">Monthly</span>
+                        <button class="pricing-toggle-switch" id="pricingToggle" aria-label="Toggle annual pricing">
+                            <span class="pricing-toggle-knob"></span>
+                        </button>
+                        <span class="pricing-toggle-label" data-period="annual">Annual</span>
+                        <span class="pricing-toggle-save">Save 20%</span>
+                    </div>
                 </div>
                 <div class="landing-pricing-grid animate-on-scroll">
                 <div class="landing-pricing-card">
                     <div class="landing-pricing-name">Starter</div>
                     <div class="landing-pricing-price">
-                        <span class="landing-pricing-amount">$129</span>
+                        <span class="landing-pricing-amount" data-monthly="129" data-annual="103">$129</span>
                         <span class="landing-pricing-period">/ month</span>
                     </div>
                     <p class="landing-pricing-desc">Everything you need to get started. One seat, full power.</p>
@@ -9162,7 +9170,7 @@
                     <div class="landing-pricing-badge">Most Popular</div>
                     <div class="landing-pricing-name">Professional</div>
                     <div class="landing-pricing-price">
-                        <span class="landing-pricing-amount">$399</span>
+                        <span class="landing-pricing-amount" data-monthly="399" data-annual="319">$399</span>
                         <span class="landing-pricing-period">/ month</span>
                     </div>
                     <p class="landing-pricing-desc">For growing teams that need full access. Up to 5 users.</p>
@@ -9177,7 +9185,7 @@
                 <div class="landing-pricing-card">
                     <div class="landing-pricing-name">Enterprise</div>
                     <div class="landing-pricing-price">
-                        <span class="landing-pricing-amount">$799</span>
+                        <span class="landing-pricing-amount" data-monthly="799" data-annual="639">$799</span>
                         <span class="landing-pricing-period">/ month</span>
                     </div>
                     <p class="landing-pricing-desc">Built for larger organizations. 10+ users with dedicated support.</p>
@@ -9189,6 +9197,93 @@
                     </ul>
                     <button class="landing-pricing-btn" onclick="document.getElementById('heroGetStartedBtn').click()">Get started</button>
                 </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comparison Table -->
+        <section class="landing-compare-section" id="compare">
+            <div class="landing-compare-inner">
+                <div class="landing-compare-header animate-on-scroll">
+                    <div class="landing-compare-tag">Why Lightspeed</div>
+                    <h2 class="landing-compare-title">See how Lightspeed stacks up</h2>
+                    <p class="landing-compare-subtitle">Purpose-built for nonprofits and charitable gaming &mdash; not another generic AI chatbot.</p>
+                </div>
+                <div class="landing-compare-table-wrap animate-on-scroll">
+                    <table class="landing-compare-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th class="compare-col-highlight">
+                                    <span class="compare-logo-pill">Lightspeed</span>
+                                </th>
+                                <th>ChatGPT / Gemini</th>
+                                <th>Doing it manually</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="compare-feature">Knows your organization</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">&#10003;</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                                <td><span class="compare-yes">&#10003;</span></td>
+                            </tr>
+                            <tr>
+                                <td class="compare-feature">Learns &amp; improves over time</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">&#10003;</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                            </tr>
+                            <tr>
+                                <td class="compare-feature">Built for nonprofit / lottery ops</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">&#10003;</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                            </tr>
+                            <tr>
+                                <td class="compare-feature">Customer service automation</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">&#10003;</span></td>
+                                <td><span class="compare-partial">Partial</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                            </tr>
+                            <tr>
+                                <td class="compare-feature">Data analytics dashboards</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">&#10003;</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                                <td><span class="compare-partial">Spreadsheets</span></td>
+                            </tr>
+                            <tr>
+                                <td class="compare-feature">Contact list cleaning</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">&#10003;</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                                <td><span class="compare-partial">Manual</span></td>
+                            </tr>
+                            <tr>
+                                <td class="compare-feature">On-brand content drafting</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">&#10003;</span></td>
+                                <td><span class="compare-partial">Generic</span></td>
+                                <td><span class="compare-yes">&#10003;</span></td>
+                            </tr>
+                            <tr>
+                                <td class="compare-feature">No prompt engineering required</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">&#10003;</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                                <td><span class="compare-yes">&#10003;</span></td>
+                            </tr>
+                            <tr>
+                                <td class="compare-feature">Permanent memory</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">&#10003;</span></td>
+                                <td><span class="compare-no">&mdash;</span></td>
+                                <td><span class="compare-partial">Tribal knowledge</span></td>
+                            </tr>
+                            <tr>
+                                <td class="compare-feature">Time to value</td>
+                                <td class="compare-col-highlight"><span class="compare-yes">Minutes</span></td>
+                                <td><span class="compare-partial">Hours of setup</span></td>
+                                <td><span class="compare-no">Days / weeks</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -9309,6 +9404,11 @@
                         <a href="#contact" onclick="event.preventDefault();document.querySelector('#contact').scrollIntoView({behavior:'smooth'})">Contact</a>
                     </div>
                     <div class="landing-footer-col">
+                        <h4>Resources</h4>
+                        <a href="whats-new.html">What&rsquo;s New</a>
+                        <a href="help.html">Help Center</a>
+                    </div>
+                    <div class="landing-footer-col">
                         <h4>Legal</h4>
                         <a href="javascript:void(0)" onclick="showLegalModal('privacy')">Privacy Policy</a>
                         <a href="javascript:void(0)" onclick="showLegalModal('terms')">Terms of Service</a>
@@ -9316,10 +9416,34 @@
                 </div>
                 <div class="landing-footer-bottom">
                     <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Canada.</span>
+                    <span class="landing-footer-status">
+                        <span class="status-dot"></span>
+                        All systems operational
+                    </span>
                 </div>
             </div>
         </footer>
     </div>
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-banner" id="cookieBanner">
+        <span class="cookie-banner-text">We use cookies to improve your experience. By continuing to use this site you agree to our <a href="javascript:void(0)" onclick="showLegalModal('privacy')">Privacy Policy</a>.</span>
+        <div class="cookie-banner-actions">
+            <button class="cookie-btn" onclick="dismissCookieBanner(false)">Decline</button>
+            <button class="cookie-btn cookie-btn-accept" onclick="dismissCookieBanner(true)">Accept</button>
+        </div>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget-tooltip" id="chatTooltip">
+        <button class="chat-widget-tooltip-close" onclick="document.getElementById('chatTooltip').classList.remove('show')">&times;</button>
+        <div class="chat-widget-tooltip-header">Need help?</div>
+        <div class="chat-widget-tooltip-body">Have a question about Lightspeed? We&rsquo;d love to hear from you.</div>
+        <a class="chat-widget-tooltip-cta" href="#contact" onclick="event.preventDefault();document.getElementById('chatTooltip').classList.remove('show');document.querySelector('#contact').scrollIntoView({behavior:'smooth'})">Send us a message &rarr;</a>
+    </div>
+    <button class="chat-widget-btn" id="chatWidgetBtn" aria-label="Chat with us">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
 
 
     <!-- ==================== LOGIN PAGE ==================== -->
