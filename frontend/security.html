@@ -15,7 +15,6 @@
 
         .security-hero {
             padding: 60px 40px 40px;
-            text-align: center;
         }
         .security-hero-inner {
             max-width: var(--max-width);
@@ -42,20 +41,17 @@
             color: var(--text-secondary);
             line-height: 1.6;
             max-width: 560px;
-            margin: 0 auto;
         }
 
         /* Badges strip */
         .security-badges {
             padding: 32px 40px;
-            text-align: center;
         }
         .security-badges-inner {
             max-width: var(--max-width);
             margin: 0 auto;
             display: flex;
-            justify-content: center;
-            gap: 32px;
+            gap: 20px;
             flex-wrap: wrap;
         }
         .security-badge {
@@ -75,9 +71,6 @@
             align-items: center;
             justify-content: center;
             font-size: 18px;
-        }
-        .security-badge-text {
-            text-align: left;
         }
         .security-badge-label {
             font-size: 14px;
@@ -179,8 +172,6 @@
         }
         .security-partner-inner {
             max-width: 720px;
-            margin: 0 auto;
-            text-align: center;
         }
         .security-partner-icon {
             margin-bottom: 20px;
@@ -202,7 +193,6 @@
         /* CTA */
         .security-cta {
             padding: 60px 40px;
-            text-align: center;
             background: var(--bg-alt);
         }
         .security-cta h2 {
@@ -229,7 +219,6 @@
             }
             .security-badges-inner {
                 flex-direction: column;
-                align-items: center;
             }
             .security-hero, .security-badges, .security-pillars, .security-commitments, .security-partner, .security-cta {
                 padding-left: 24px;
@@ -270,7 +259,7 @@
             <div class="security-hero-inner">
                 <div class="security-hero-eyebrow">Security &amp; Trust</div>
                 <h1 class="security-hero-title">Your data is our responsibility</h1>
-                <p class="security-hero-subtitle">Built on the most safety-focused AI infrastructure in the industry. We take data privacy, security, and compliance seriously &mdash; because your organizations depend on it.</p>
+                <p class="security-hero-subtitle">We take data privacy and security seriously. Lightspeed is built on Anthropic&rsquo;s infrastructure with strict access controls, audit logging, and tenant isolation baked in from day one.</p>
             </div>
         </section>
 
@@ -280,29 +269,29 @@
                 <div class="security-badge">
                     <div class="security-badge-icon" style="background:#EBF4FF;color:#1B6BF5">&#128274;</div>
                     <div class="security-badge-text">
-                        <div class="security-badge-label">SOC 2 Compliant</div>
-                        <div class="security-badge-sub">via Anthropic infrastructure</div>
+                        <div class="security-badge-label">SOC 2 Infrastructure</div>
+                        <div class="security-badge-sub">via Anthropic</div>
                     </div>
                 </div>
                 <div class="security-badge">
                     <div class="security-badge-icon" style="background:#E8F9EB;color:#28C840">&#128737;&#65039;</div>
                     <div class="security-badge-text">
-                        <div class="security-badge-label">End-to-End Encryption</div>
-                        <div class="security-badge-sub">TLS 1.3 + AES-256</div>
+                        <div class="security-badge-label">Encrypted in Transit</div>
+                        <div class="security-badge-sub">HTTPS / TLS</div>
                     </div>
                 </div>
                 <div class="security-badge">
-                    <div class="security-badge-icon" style="background:#F3E8FF;color:#7C3AED">&#127758;</div>
+                    <div class="security-badge-icon" style="background:#F3E8FF;color:#7C3AED">&#128101;</div>
                     <div class="security-badge-text">
-                        <div class="security-badge-label">GDPR Ready</div>
-                        <div class="security-badge-sub">Data residency controls</div>
+                        <div class="security-badge-label">Tenant Isolation</div>
+                        <div class="security-badge-sub">Per-organization data boundaries</div>
                     </div>
                 </div>
                 <div class="security-badge">
-                    <div class="security-badge-icon" style="background:#FFF0E6;color:#F47B3A">&#128994;</div>
+                    <div class="security-badge-icon" style="background:#FFF0E6;color:#F47B3A">&#128203;</div>
                     <div class="security-badge-text">
-                        <div class="security-badge-label">99.9% Uptime</div>
-                        <div class="security-badge-sub">Enterprise SLA</div>
+                        <div class="security-badge-label">Full Audit Logging</div>
+                        <div class="security-badge-sub">Every action recorded</div>
                     </div>
                 </div>
             </div>
@@ -316,21 +305,21 @@
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                     </div>
                     <h3>Data Privacy</h3>
-                    <p>Your organization&rsquo;s data is never used to train AI models. Each knowledge base is fully isolated and encrypted at rest. Conversations are ephemeral &mdash; they&rsquo;re not stored beyond your active session unless you choose to save them.</p>
+                    <p>Your organization&rsquo;s data is never used to train AI models &mdash; per Anthropic&rsquo;s API terms, data sent through the Claude API is not used for model training. Each organization&rsquo;s knowledge base is isolated at the application level, and all traffic between your browser and our servers is encrypted via HTTPS.</p>
                 </div>
                 <div class="security-pillar">
                     <div class="security-pillar-icon" style="background:#F3E8FF;color:#7C3AED">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     </div>
                     <h3>Infrastructure Security</h3>
-                    <p>Lightspeed runs on SOC 2 compliant infrastructure through Anthropic. All data in transit is encrypted with TLS 1.3, and data at rest uses AES-256 encryption. Regular penetration testing and security audits ensure ongoing protection.</p>
+                    <p>AI processing runs through Anthropic&rsquo;s SOC 2 compliant infrastructure. All data in transit is encrypted over HTTPS. We use role-based access controls to restrict who can access what, and every sensitive action is recorded in our audit log.</p>
                 </div>
                 <div class="security-pillar">
                     <div class="security-pillar-icon" style="background:#E8F9EB;color:#28C840">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
                     </div>
                     <h3>Access Control</h3>
-                    <p>Authentication through Google and Microsoft SSO with industry-standard OAuth 2.0. Role-based permissions let you control who sees what. All access is logged and auditable.</p>
+                    <p>Authentication through Google and Microsoft SSO with industry-standard OAuth 2.0. Role-based permissions (owner, admin, member) let you control who can manage settings, invite users, and access tools. All access is logged and auditable.</p>
                 </div>
             </div>
         </section>
@@ -344,35 +333,35 @@
                         <span class="security-commit-check">&#10003;</span>
                         <div class="security-commit-text">
                             <h4>No model training on your data</h4>
-                            <p>Your uploads, conversations, and knowledge base content are never used to train AI models &mdash; not ours, not Anthropic&rsquo;s.</p>
+                            <p>Under Anthropic&rsquo;s API terms, data sent through the Claude API is not used for model training. We do not train our own models on your content.</p>
                         </div>
                     </div>
                     <div class="security-commit-item">
                         <span class="security-commit-check">&#10003;</span>
                         <div class="security-commit-text">
                             <h4>Tenant isolation</h4>
-                            <p>Each organization&rsquo;s data is logically isolated. No cross-tenant access is possible, even at the infrastructure level.</p>
+                            <p>Each organization&rsquo;s data is logically isolated at the application level. All database queries are scoped to your organization &mdash; no cross-tenant access is possible through the application.</p>
                         </div>
                     </div>
                     <div class="security-commit-item">
                         <span class="security-commit-check">&#10003;</span>
                         <div class="security-commit-text">
-                            <h4>Data deletion on request</h4>
-                            <p>You can request complete deletion of your account and all associated data at any time. We honor requests within 30 days.</p>
+                            <h4>Data export</h4>
+                            <p>Organization admins can export all of their organization&rsquo;s data at any time. For account deletion requests, contact our team directly.</p>
                         </div>
                     </div>
                     <div class="security-commit-item">
                         <span class="security-commit-check">&#10003;</span>
                         <div class="security-commit-text">
-                            <h4>Encrypted knowledge base</h4>
-                            <p>Your uploaded documents, policies, and training data are encrypted at rest using AES-256 and in transit using TLS 1.3.</p>
+                            <h4>Comprehensive audit logging</h4>
+                            <p>Every sensitive action &mdash; member invitations, role changes, settings updates, data exports &mdash; is recorded with timestamps, user IDs, and IP addresses.</p>
                         </div>
                     </div>
                     <div class="security-commit-item">
                         <span class="security-commit-check">&#10003;</span>
                         <div class="security-commit-text">
                             <h4>No third-party data sharing</h4>
-                            <p>We never sell, share, or provide your data to third parties. Period. Your data stays between you and Lightspeed.</p>
+                            <p>We never sell or share your data with third parties. The only external services that process your data are Anthropic (AI) and Stripe (billing).</p>
                         </div>
                     </div>
                     <div class="security-commit-item">
@@ -393,8 +382,8 @@
                     <svg width="48" height="48" viewBox="0 0 256 176" fill="currentColor"><path d="M147.5 0L256 176H199L147.5 81.6L96 176H39L147.5 0Z"/><path d="M96 0H39L0 72h57L96 0Z"/></svg>
                 </div>
                 <h2>Built on Anthropic&rsquo;s Claude</h2>
-                <p>We chose Anthropic because they are the most principled, safety-focused AI company in the world. Founded on the belief that AI should be safe, honest, and beneficial, Anthropic&rsquo;s infrastructure meets the highest standards of enterprise security.</p>
-                <p>Your conversations with Lightspeed are processed through Claude&rsquo;s API with zero data retention by Anthropic. No training. No logging. No exceptions.</p>
+                <p>We chose Anthropic because they share our values around safety and responsibility. Founded on the belief that AI should be safe, honest, and beneficial, Anthropic maintains SOC 2 compliant infrastructure and a clear commitment to data privacy.</p>
+                <p>Under Anthropic&rsquo;s API usage policy, data sent through the Claude API is not used for model training and is subject to a 30-day retention window for trust and safety purposes. We believe they are the right partner for an industry built on trust.</p>
             </div>
         </section>
 
