@@ -9875,14 +9875,14 @@
                         <span class="sidebar-btn-icon">&#128202;</span>
                         <span class="sidebar-btn-label">Analytics</span>
                     </button>
-                    <button class="sidebar-btn" data-page="knowledge">
-                        <span class="sidebar-btn-icon">&#128218;</span>
-                        <span class="sidebar-btn-label">Knowledge</span>
-                    </button>
                 </div>
 
                 <div class="sidebar-group">
                     <div class="sidebar-group-label">Manage</div>
+                    <button class="sidebar-btn" data-page="knowledge">
+                        <span class="sidebar-btn-icon">&#128218;</span>
+                        <span class="sidebar-btn-label">Knowledge Base</span>
+                    </button>
                     <button class="sidebar-btn" id="teamsNavBtn" data-page="teams">
                         <span class="sidebar-btn-icon">&#128101;</span>
                         <span class="sidebar-btn-label">Teams</span>
@@ -10212,105 +10212,107 @@
 
             <!-- Knowledge Page -->
             <div class="page" id="page-knowledge">
-                <div class="knowledge-grid">
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-icon icon-knowledge">📚</div>
-                            <div>
-                                <div class="card-title">Knowledge Base</div>
-                                <div class="card-description">Browse and search existing entries</div>
-                            </div>
+                <div class="kb-page">
+                    <!-- Header with tabs -->
+                    <div class="kb-page-header">
+                        <div class="kb-page-title-row">
+                            <h2 class="kb-page-title">Knowledge Base</h2>
+                            <button class="btn-primary" id="kbAddEntryBtn" onclick="openKbAddForm()">
+                                <span class="btn-icon">+</span> Add Entry
+                            </button>
                         </div>
-
-                        <div class="knowledge-stats">
-                            <div class="knowledge-stat">
-                                <div class="knowledge-stat-value" id="statTotal">0</div>
-                                <div class="knowledge-stat-label">Total Entries</div>
-                            </div>
-                            <div class="knowledge-stat">
-                                <div class="knowledge-stat-value" id="stat5050">0</div>
-                                <div class="knowledge-stat-label">50/50</div>
-                            </div>
-                            <div class="knowledge-stat">
-                                <div class="knowledge-stat-value" id="statCta">0</div>
-                                <div class="knowledge-stat-label">CTA</div>
-                            </div>
+                        <div class="kb-tabs">
+                            <button class="kb-tab active" data-kb-type="support" onclick="switchKbTab('support')">
+                                Customer Support
+                            </button>
+                            <button class="kb-tab" data-kb-type="internal" onclick="switchKbTab('internal')">
+                                Internal / Operations
+                            </button>
                         </div>
-
-                        <div class="filter-buttons">
-                            <button class="filter-btn active" data-filter="all">All</button>
-                            <button class="filter-btn" data-filter="5050">50/50</button>
-                            <button class="filter-btn" data-filter="cta">CTA</button>
-                            <button class="filter-btn" data-filter="custom">Custom</button>
-                        </div>
-
-                        <div class="form-group">
-                            <input type="text" id="knowledgeSearchInput" placeholder="Search knowledge base...">
-                        </div>
-
-                        <div class="knowledge-list" id="knowledgeList"></div>
+                        <p class="kb-tab-desc" id="kbTabDesc">Powers the Response Assistant. Add FAQs, policies, ticket responses, and draw rules.</p>
                     </div>
 
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-icon icon-input">➕</div>
-                            <div>
-                                <div class="card-title">Add Knowledge</div>
-                                <div class="card-description">Teach the AI new responses</div>
+                    <!-- Stats -->
+                    <div class="kb-stats" id="kbStats">
+                        <div class="kb-stat"><span class="kb-stat-value" id="kbStatTotal">0</span> entries</div>
+                    </div>
+
+                    <!-- Toolbar: search + category filter -->
+                    <div class="kb-toolbar">
+                        <input type="text" class="kb-search" id="kbSearchInput" placeholder="Search entries..." oninput="renderKbEntries()">
+                        <select class="kb-category-filter" id="kbCategoryFilter" onchange="renderKbEntries()">
+                            <option value="all">All Categories</option>
+                        </select>
+                        <div class="kb-toolbar-actions">
+                            <button class="btn-secondary btn-sm" id="kbImportBtn" onclick="openKbImportModal()">
+                                <span class="btn-icon">&#128229;</span> Import
+                            </button>
+                            <button class="btn-secondary btn-sm" id="kbUploadDocBtn" onclick="document.getElementById('kbDocUploadInput').click()">
+                                <span class="btn-icon">&#128196;</span> Upload Doc
+                            </button>
+                            <input type="file" id="kbDocUploadInput" accept=".docx" style="display:none" onchange="uploadKbDoc(this)">
+                        </div>
+                    </div>
+
+                    <!-- Add/Edit Form (hidden by default) -->
+                    <div class="kb-form-card" id="kbFormCard" style="display:none;">
+                        <div class="kb-form-header">
+                            <h3 id="kbFormTitle">Add New Entry</h3>
+                            <button class="btn-icon-only" onclick="closeKbForm()" title="Close">&times;</button>
+                        </div>
+                        <div class="kb-form-body">
+                            <input type="hidden" id="kbFormId" value="">
+                            <div class="kb-form-row">
+                                <div class="form-group" style="flex:1">
+                                    <label class="form-label">Title / Question</label>
+                                    <input type="text" id="kbFormTitleInput" placeholder="e.g., How do I cancel my subscription?">
+                                </div>
+                                <div class="form-group" style="width:180px">
+                                    <label class="form-label">Category</label>
+                                    <select id="kbFormCategory"></select>
+                                </div>
+                            </div>
+                            <div class="form-group" id="kbFormLotteryGroup">
+                                <label class="form-label">Lottery Type</label>
+                                <select id="kbFormLottery">
+                                    <option value="both">Both 50/50 and CTA</option>
+                                    <option value="5050">50/50 Only</option>
+                                    <option value="cta">CTA Only</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Content / Response</label>
+                                <textarea id="kbFormContent" rows="5" placeholder="The information or response template..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Keywords (comma-separated, optional)</label>
+                                <input type="text" id="kbFormKeywords" placeholder="e.g., cancel, subscription, refund">
+                            </div>
+                            <div class="kb-form-actions">
+                                <button class="btn-secondary" onclick="closeKbForm()">Cancel</button>
+                                <button class="btn-primary" id="kbFormSaveBtn" onclick="saveKbEntry()">Save Entry</button>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Lottery Type</label>
-                            <select id="knowledgeLottery">
-                                <option value="both">Both 50/50 and CTA</option>
-                                <option value="5050">50/50 Only</option>
-                                <option value="cta">CTA Only</option>
-                            </select>
-                        </div>
+                    <!-- Entries list -->
+                    <div class="kb-entries" id="kbEntries"></div>
 
-                        <div class="form-group">
-                            <label class="form-label">Category</label>
-                            <select id="knowledgeCategory">
-                                <option value="general">General</option>
-                                <option value="tickets">Tickets</option>
-                                <option value="payment">Payment</option>
-                                <option value="technical">Technical</option>
-                                <option value="winners">Winners</option>
-                                <option value="subscription">Subscription</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Question/Topic</label>
-                            <input type="text" id="knowledgeQuestion" placeholder="e.g., How do I cancel my subscription?">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Keywords (comma-separated)</label>
-                            <input type="text" id="knowledgeKeywords" placeholder="e.g., cancel, subscription, stop">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Response Template</label>
-                            <textarea id="knowledgeResponse" placeholder="The response the AI should give..."></textarea>
-                        </div>
-
-                        <button class="btn-primary" id="addKnowledgeBtn">
-                            <span class="btn-icon">➕</span>
-                            Add to Knowledge Base
-                        </button>
-
-                        <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="btn-secondary" id="importKnowledgeBtn">
-                                <span class="btn-icon">📥</span>
-                                Bulk Import
-                            </button>
-                            <button class="btn-secondary" id="uploadDocBtn" onclick="document.getElementById('docUploadInput').click()">
-                                <span class="btn-icon">📄</span>
-                                Upload Word Doc
-                            </button>
-                            <input type="file" id="docUploadInput" accept=".docx" style="display:none" onchange="uploadKnowledgeDoc(this)">
+                    <!-- Import Modal -->
+                    <div class="kb-modal-overlay" id="kbImportModal" style="display:none;" onclick="if(event.target===this)closeKbImportModal()">
+                        <div class="kb-modal">
+                            <div class="kb-modal-header">
+                                <h3>Bulk Import</h3>
+                                <button class="btn-icon-only" onclick="closeKbImportModal()">&times;</button>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Paste Q&A content</label>
+                                <textarea id="kbImportContent" rows="10" placeholder="Paste FAQ content here. Use **bold** or lines ending with ? for questions, with answers below each."></textarea>
+                            </div>
+                            <div class="kb-form-actions">
+                                <button class="btn-secondary" onclick="closeKbImportModal()">Cancel</button>
+                                <button class="btn-primary" onclick="parseAndImportKb()">Import</button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -30,9 +30,12 @@ const upload = multer({
 /**
  * GET /api/knowledge-base
  * Get all knowledge entries for user's organization
+ * Query params: ?type=support|internal (optional, returns all if omitted)
  */
 router.get('/', authenticate, async (req, res) => {
     try {
+        const { type } = req.query;
+
         // Get user's organization
         const orgResult = await pool.query(
             'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
@@ -45,12 +48,17 @@ router.get('/', authenticate, async (req, res) => {
 
         const organizationId = orgResult.rows[0].organization_id;
 
-        const result = await pool.query(
-            `SELECT * FROM knowledge_base
-             WHERE organization_id = $1
-             ORDER BY category, title`,
-            [organizationId]
-        );
+        let sql = 'SELECT * FROM knowledge_base WHERE organization_id = $1';
+        const params = [organizationId];
+
+        if (type && ['support', 'internal'].includes(type)) {
+            sql += ' AND kb_type = $2';
+            params.push(type);
+        }
+
+        sql += ' ORDER BY category, title';
+
+        const result = await pool.query(sql, params);
 
         res.json({ entries: result.rows });
 
@@ -80,9 +88,16 @@ router.get('/search', authenticate, async (req, res) => {
 
         const organizationId = orgResult.rows[0].organization_id;
 
+        const { type } = req.query;
         let query = `SELECT * FROM knowledge_base WHERE organization_id = $1`;
         const params = [organizationId];
         let paramCount = 2;
+
+        if (type && ['support', 'internal'].includes(type)) {
+            query += ` AND kb_type = $${paramCount}`;
+            params.push(type);
+            paramCount++;
+        }
 
         if (q) {
             query += ` AND (title ILIKE $${paramCount} OR content ILIKE $${paramCount})`;
@@ -122,7 +137,10 @@ router.post('/', authenticate, [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { title, content, category, tags, lottery, keywords } = req.body;
+        const { title, content, category, tags, lottery, keywords, kb_type } = req.body;
+
+        // Validate kb_type
+        const validKbType = ['support', 'internal'].includes(kb_type) ? kb_type : 'support';
 
         // Get user's organization
         const orgResult = await pool.query(
@@ -145,10 +163,10 @@ router.post('/', authenticate, [
         }
 
         const result = await pool.query(
-            `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, created_by, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, kb_type, created_by, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
              RETURNING *`,
-            [entryId, organizationId, title, content, category, combinedTags, req.userId]
+            [entryId, organizationId, title, content, category, combinedTags, validKbType, req.userId]
         );
 
         auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'KB_ENTRY_CREATED', resourceType: 'KNOWLEDGE_BASE', resourceId: entryId, changes: { title, category }, req });
@@ -213,7 +231,7 @@ router.put('/:id', authenticate, [
         }
 
         const { id } = req.params;
-        const { title, content, category, tags } = req.body;
+        const { title, content, category, tags, kb_type } = req.body;
 
         // Get user's organization
         const orgResult = await pool.query(
@@ -247,6 +265,10 @@ router.put('/:id', authenticate, [
         if (tags !== undefined) {
             updates.push(`tags = $${paramCount++}`);
             values.push(tags);
+        }
+        if (kb_type !== undefined && ['support', 'internal'].includes(kb_type)) {
+            updates.push(`kb_type = $${paramCount++}`);
+            values.push(kb_type);
         }
 
         // Optimistic concurrency check
@@ -356,8 +378,8 @@ router.post('/from-feedback', authenticate, async (req, res) => {
         const tags = ['source:feedback', ...autoKeywords];
 
         const result = await pool.query(
-            `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, created_by, source_response_id, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, kb_type, created_by, source_response_id, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, 'support', $7, $8, NOW(), NOW())
              RETURNING *`,
             [entryId, organizationId, title, content, category || 'faqs', tags, req.userId, responseHistoryId || null]
         );
@@ -389,7 +411,8 @@ router.post('/from-feedback', authenticate, async (req, res) => {
  */
 router.post('/import', authenticate, async (req, res) => {
     try {
-        const { entries } = req.body;
+        const { entries, kb_type } = req.body;
+        const validKbType = ['support', 'internal'].includes(kb_type) ? kb_type : 'support';
 
         if (!Array.isArray(entries) || entries.length === 0) {
             return res.status(400).json({ error: 'Entries array required' });
@@ -419,10 +442,10 @@ router.post('/import', authenticate, async (req, res) => {
 
                 const entryId = uuidv4();
                 const result = await pool.query(
-                    `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, created_by, created_at, updated_at)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+                    `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, kb_type, created_by, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
                      RETURNING *`,
-                    [entryId, organizationId, entry.title, entry.content, entry.category, entry.tags || [], req.userId]
+                    [entryId, organizationId, entry.title, entry.content, entry.category, entry.tags || [], validKbType, req.userId]
                 );
                 imported.push(result.rows[0]);
             } catch (err) {
@@ -461,13 +484,18 @@ router.get('/export/all', authenticate, async (req, res) => {
 
         const organizationId = orgResult.rows[0].organization_id;
 
-        const result = await pool.query(
-            `SELECT title, content, category, tags
-             FROM knowledge_base
-             WHERE organization_id = $1
-             ORDER BY category, title`,
-            [organizationId]
-        );
+        const { type } = req.query;
+        let sql = `SELECT title, content, category, tags, kb_type FROM knowledge_base WHERE organization_id = $1`;
+        const params = [organizationId];
+
+        if (type && ['support', 'internal'].includes(type)) {
+            sql += ' AND kb_type = $2';
+            params.push(type);
+        }
+
+        sql += ' ORDER BY category, title';
+
+        const result = await pool.query(sql, params);
 
         res.json({ entries: result.rows });
 
@@ -542,15 +570,16 @@ router.post('/upload-doc', authenticate, upload.single('document'), async (req, 
 
         // Insert all entries into the knowledge base
         const category = req.body.category || 'general';
+        const kbType = ['support', 'internal'].includes(req.body.kb_type) ? req.body.kb_type : 'support';
         const imported = [];
 
         for (const entry of entries) {
             const entryId = uuidv4();
             const dbResult = await pool.query(
-                `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, created_by, created_at, updated_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+                `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, kb_type, created_by, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
                  RETURNING *`,
-                [entryId, organizationId, entry.title, entry.content, category, ['imported', 'docx'], req.userId]
+                [entryId, organizationId, entry.title, entry.content, category, ['imported', 'docx'], kbType, req.userId]
             );
             imported.push(dbResult.rows[0]);
         }

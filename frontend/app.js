@@ -421,7 +421,10 @@ const LANGUAGE_INSTRUCTIONS = {
 function getLanguageInstruction() {
     return LANGUAGE_INSTRUCTIONS[responseLanguage] || '';
 }
-let customKnowledge = [];
+let customKnowledge = []; // Legacy alias — points to supportKnowledge for backward compat
+let supportKnowledge = [];
+let internalKnowledge = [];
+let activeKbTab = 'support'; // 'support' or 'internal'
 let orgDrawSchedule = null; // Active draw schedule from database
 let orgContentTemplates = []; // Per-org content templates from database
 let feedbackList = [];
@@ -2530,6 +2533,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         const { text: aiText } = await fetchStream({
             system: fullSystemPrompt,
             inquiry: message,
+            kb_type: 'all',
             messages: askConversation.map(m => ({ role: m.role, content: m.content })),
             max_tokens: 4096,
             model: alsModel
@@ -3185,6 +3189,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         const { text: aiText, referencedKbEntries } = await fetchStream({
             system: fullSystemPrompt,
             inquiry: message,
+            kb_type: 'all',
             messages: messagesToSend,
             max_tokens: 4096,
             model: alsModel
@@ -3723,7 +3728,6 @@ function loginUser(user, showMessage = true) {
 
     // Initialize pages
     updateKnowledgeStats();
-    renderKnowledgeList();
     updateAnalytics();
     renderFavorites();
 
@@ -3759,34 +3763,39 @@ function loadUserData(user) {
     orgName = user.settings.orgName || "";
     responseLanguage = user.settings.responseLanguage || "en";
     customKnowledge = user.data.customKnowledge || [];
+    supportKnowledge = [];
+    internalKnowledge = [];
     feedbackList = user.data.feedbackList || [];
     responseHistory = user.data.responseHistory || [];
     favorites = user.data.favorites || [];
 
     // Load data from backend and merge with local
-    loadKnowledgeFromBackend();
+    loadKnowledgeFromBackend('support');
+    loadKnowledgeFromBackend('internal');
     loadDrawScheduleFromBackend();
     loadContentTemplatesFromBackend();
     loadFavoritesFromBackend();
     loadResponseHistoryFromBackend();
 }
 
-async function loadKnowledgeFromBackend() {
+async function loadKnowledgeFromBackend(kbType) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/knowledge-base`, {
-            headers: getAuthHeaders()
-        });
+        const url = kbType
+            ? `${API_BASE_URL}/api/knowledge-base?type=${kbType}`
+            : `${API_BASE_URL}/api/knowledge-base`;
+
+        const response = await fetch(url, { headers: getAuthHeaders() });
 
         if (response.ok) {
             const data = await response.json();
             const backendEntries = (data.entries || []).map(entry => {
-                // Extract lottery and keywords from tags
                 const tags = entry.tags || [];
                 const lotteryTag = tags.find(t => t.startsWith('lottery:'));
                 const keywordTags = tags.filter(t => t.startsWith('keyword:')).map(t => t.replace('keyword:', ''));
 
                 return {
                     id: entry.id,
+                    kb_type: entry.kb_type || 'support',
                     lottery: lotteryTag ? lotteryTag.replace('lottery:', '') : 'both',
                     category: entry.category,
                     question: entry.title,
@@ -3797,18 +3806,25 @@ async function loadKnowledgeFromBackend() {
                 };
             });
 
-            // Merge: backend entries take priority, add any local-only entries
-            const backendIds = new Set(backendEntries.map(e => e.id));
-            const localOnly = customKnowledge.filter(k => !backendIds.has(k.id));
-            customKnowledge = [...backendEntries, ...localOnly];
+            if (kbType === 'support') {
+                supportKnowledge = backendEntries;
+                // Keep customKnowledge as alias for backward compat
+                customKnowledge = supportKnowledge;
+            } else if (kbType === 'internal') {
+                internalKnowledge = backendEntries;
+            } else {
+                // No type specified — split by kb_type
+                supportKnowledge = backendEntries.filter(e => e.kb_type === 'support');
+                internalKnowledge = backendEntries.filter(e => e.kb_type === 'internal');
+                customKnowledge = supportKnowledge;
+            }
 
-            // Update localStorage to stay in sync
             saveUserData();
             updateKnowledgeStats();
-            renderKnowledgeList();
+            renderKbEntries();
         }
     } catch (error) {
-        console.warn('Could not load KB from backend, using localStorage:', error);
+        console.warn('Could not load KB from backend:', error);
     }
 }
 
@@ -6158,7 +6174,7 @@ function switchPage(pageId) {
     // Refresh page-specific data
     if (pageId === "knowledge") {
         updateKnowledgeStats();
-        renderKnowledgeList();
+        switchKbTab(activeKbTab);
     } else if (pageId === "analytics") {
         updateAnalytics();
     } else if (pageId === "favorites") {
@@ -7149,11 +7165,10 @@ function showError(message) {
 }
 
 function getAllKnowledge() {
-    // Only return org-specific (database-backed) knowledge for AI prompts.
+    // Return support KB entries for the Response Assistant.
     // The hardcoded KNOWLEDGE_BASE templates are shown in the UI as reference
-    // material but are NOT injected into AI prompts — this prevents one client's
-    // domain knowledge from leaking into another client's AI-generated responses.
-    return [...customKnowledge];
+    // material but are NOT injected into AI prompts.
+    return [...supportKnowledge];
 }
 
 // Rank knowledge entries by relevance to the customer inquiry
@@ -8353,282 +8368,381 @@ function showHistoryDetail(id) {
 
 // ==================== KNOWLEDGE BASE ====================
 function updateKnowledgeStats() {
-    const statTotal = document.getElementById("statTotal");
-    const stat5050 = document.getElementById("stat5050");
-    const statCta = document.getElementById("statCta");
+    const statEl = document.getElementById("kbStatTotal");
+    if (!statEl) return;
 
-    // Guard against missing elements
-    if (!statTotal || !stat5050 || !statCta) {
-        return;
-    }
+    const entries = activeKbTab === 'support' ? supportKnowledge : internalKnowledge;
+    statEl.textContent = entries.length;
+}
 
-    // Count org-specific entries (these power the AI)
-    let orgCount = customKnowledge.length;
-    let total5050 = 0, totalCta = 0;
+// Legacy alias — still called from some older code paths
+function renderKnowledgeList() { renderKbEntries(); }
 
-    // Count templates (reference only, not used in AI prompts)
-    if (typeof KNOWLEDGE_BASE !== 'undefined') {
-        total5050 = KNOWLEDGE_BASE["5050"].length;
-        totalCta = KNOWLEDGE_BASE["cta"].length;
-    }
+// KB category presets per type
+var KB_CATEGORIES = {
+    support: [
+        { value: 'general', label: 'General' },
+        { value: 'faqs', label: 'FAQs' },
+        { value: 'policies', label: 'Policies' },
+        { value: 'draw_rules', label: 'Draw Rules' },
+        { value: 'products', label: 'Products' },
+        { value: 'support', label: 'Support' },
+        { value: 'tickets', label: 'Tickets' },
+        { value: 'payment', label: 'Payment' },
+        { value: 'technical', label: 'Technical' },
+        { value: 'winners', label: 'Winners' },
+        { value: 'subscription', label: 'Subscription' }
+    ],
+    internal: [
+        { value: 'general', label: 'General' },
+        { value: 'brand_voice', label: 'Brand Voice' },
+        { value: 'campaigns', label: 'Campaigns' },
+        { value: 'procedures', label: 'Procedures' },
+        { value: 'reference', label: 'Reference' },
+        { value: 'guidelines', label: 'Guidelines' }
+    ]
+};
 
-    customKnowledge.forEach(k => {
-        if (k.lottery === "5050") total5050++;
-        else if (k.lottery === "cta") totalCta++;
-        else { total5050++; totalCta++; }
+function switchKbTab(type) {
+    activeKbTab = type;
+    document.querySelectorAll('.kb-tab').forEach(function(t) {
+        t.classList.toggle('active', t.dataset.kbType === type);
     });
 
-    statTotal.textContent = orgCount;
-    stat5050.textContent = total5050;
-    statCta.textContent = totalCta;
+    var descEl = document.getElementById('kbTabDesc');
+    if (descEl) {
+        descEl.textContent = type === 'support'
+            ? 'Powers the Response Assistant. Add FAQs, policies, ticket responses, and draw rules.'
+            : 'Powers Draft Assistant and Ask Lightspeed. Add brand guidelines, campaign history, procedures, and reference material.';
+    }
+
+    // Update category filter dropdown
+    var catFilter = document.getElementById('kbCategoryFilter');
+    if (catFilter) {
+        var cats = KB_CATEGORIES[type] || KB_CATEGORIES.support;
+        catFilter.innerHTML = '<option value="all">All Categories</option>' +
+            cats.map(function(c) { return '<option value="' + c.value + '">' + c.label + '</option>'; }).join('');
+    }
+
+    // Show/hide lottery field in the form
+    var lotteryGroup = document.getElementById('kbFormLotteryGroup');
+    if (lotteryGroup) lotteryGroup.style.display = type === 'support' ? '' : 'none';
+
+    closeKbForm();
+    updateKnowledgeStats();
+    renderKbEntries();
 }
 
-function renderKnowledgeList(searchQuery = "") {
-    const container = document.getElementById("knowledgeList");
-
-    // Guard against missing element
-    if (!container) {
-        return;
-    }
-
-    let items = [];
-
-    // Get all items based on filter
-    if (currentFilter === "custom") {
-        items = customKnowledge.map(k => ({ ...k, isCustom: true }));
-    } else {
-        if (typeof KNOWLEDGE_BASE !== 'undefined') {
-            if (currentFilter === "all" || currentFilter === "5050") {
-                items.push(...KNOWLEDGE_BASE["5050"].map(k => ({ ...k, lottery: "5050", isCustom: false })));
-            }
-            if (currentFilter === "all" || currentFilter === "cta") {
-                items.push(...KNOWLEDGE_BASE["cta"].map(k => ({ ...k, lottery: "cta", isCustom: false })));
-            }
-        }
-        if (currentFilter === "all") {
-            items.push(...customKnowledge.map(k => ({ ...k, isCustom: true })));
-        }
-    }
-
-    // Filter by search
-    if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        items = items.filter(k =>
-            k.question.toLowerCase().includes(query) ||
-            k.keywords.some(kw => kw.toLowerCase().includes(query)) ||
-            k.response.toLowerCase().includes(query)
-        );
-    }
-
-    if (items.length === 0) {
-        container.innerHTML = searchQuery
-            ? `<div class="empty-state"><div class="empty-state-icon">🔍</div><p class="empty-state-title">No matching entries found</p><p class="empty-state-text">Try a different search term.</p></div>`
-            : emptyStateHtml('📚', 'No knowledge entries yet', 'Add entries to help Lightspeed generate more accurate responses.', 'Add Entry', "document.getElementById('addKnowledgeBtn')?.click()");
-        return;
-    }
-
-    container.innerHTML = items.slice(0, 50).map((k, i) => `
-        <div class="knowledge-item${k.isCustom ? '' : ' knowledge-item-template'}">
-            <div class="knowledge-item-content">
-                <div class="knowledge-item-question">${escapeHtml(k.question)}</div>
-                <div class="knowledge-item-preview">${escapeHtml(k.response.substring(0, 120))}...</div>
-                <div class="knowledge-item-meta">
-                    <span class="knowledge-tag">${k.lottery === "5050" ? "50/50" : k.lottery === "cta" ? "CTA" : "Both"}</span>
-                    ${k.isCustom
-                        ? '<span class="knowledge-tag" style="background: #dcfce7;">Your KB</span>'
-                        : '<span class="knowledge-tag" style="background: #fef3c7; color: #92400e;">Template</span>'}
-                    ${k.isCustom && k.tags && k.tags.includes('source:feedback') ? '<span class="knowledge-tag" style="background: #fef3c7; color: #92400e; font-weight: 600;">From feedback</span>' : ''}
-                    ${k.category ? `<span>${k.category}</span>` : ''}
-                </div>
-            </div>
-            ${k.isCustom ? `
-                <div class="knowledge-item-actions">
-                    <button class="btn-icon-only delete" onclick="deleteKnowledge('${k.id}')" title="Delete">🗑️</button>
-                </div>
-            ` : ''}
-        </div>
-    `).join('');
+function getActiveKbEntries() {
+    return activeKbTab === 'support' ? supportKnowledge : internalKnowledge;
 }
 
-async function addKnowledge() {
-    const lottery = document.getElementById("knowledgeLottery").value;
-    const category = document.getElementById("knowledgeCategory").value;
-    const question = document.getElementById("knowledgeQuestion").value.trim();
-    const keywords = document.getElementById("knowledgeKeywords").value.split(",").map(k => k.trim().toLowerCase()).filter(k => k);
-    const response = document.getElementById("knowledgeResponse").value.trim();
+function renderKbEntries() {
+    var container = document.getElementById('kbEntries');
+    if (!container) return;
 
-    if (!question || !response) {
-        showToast("Please fill in the question and response fields.", "error");
+    var entries = getActiveKbEntries();
+    var search = (document.getElementById('kbSearchInput')?.value || '').toLowerCase();
+    var catFilter = document.getElementById('kbCategoryFilter')?.value || 'all';
+
+    var filtered = entries.filter(function(k) {
+        if (catFilter !== 'all' && k.category !== catFilter) return false;
+        if (search) {
+            var text = ((k.question || '') + ' ' + (k.response || '') + ' ' + (k.keywords || []).join(' ')).toLowerCase();
+            if (!text.includes(search)) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        var msg = search || catFilter !== 'all'
+            ? 'No matching entries found. Try adjusting your search or filter.'
+            : (activeKbTab === 'support'
+                ? 'No customer support entries yet. Add FAQs, policies, and common responses to power the Response Assistant.'
+                : 'No internal entries yet. Add brand guidelines, procedures, and reference material to power Draft Assistant and Ask Lightspeed.');
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#128218;</div><p class="empty-state-title">' +
+            (search ? 'No results' : 'No entries yet') + '</p><p class="empty-state-text">' + msg + '</p>' +
+            (!search ? '<button class="empty-state-btn" onclick="openKbAddForm()">+ Add Entry</button>' : '') + '</div>';
         return;
     }
 
-    const computedKeywords = keywords.length > 0 ? keywords : question.toLowerCase().split(" ").filter(w => w.length > 3);
+    var otherType = activeKbTab === 'support' ? 'internal' : 'support';
+    var otherLabel = activeKbTab === 'support' ? 'Internal' : 'Support';
 
-    const newEntry = {
-        id: `custom-${Date.now()}`,
-        lottery: lottery,
-        category: category,
-        question: question,
-        keywords: computedKeywords,
-        response: response,
-        dateAdded: new Date().toISOString()
-    };
+    container.innerHTML = filtered.slice(0, 100).map(function(k) {
+        var lotteryLabel = k.lottery === '5050' ? '50/50' : k.lottery === 'cta' ? 'CTA' : (activeKbTab === 'support' ? 'Both' : '');
+        var feedbackTag = (k.tags && k.tags.includes('source:feedback')) ? '<span class="kb-entry-tag kb-entry-tag-feedback">From feedback</span>' : '';
+        return '<div class="kb-entry" data-id="' + k.id + '" onclick="toggleKbEntry(this)">' +
+            '<div class="kb-entry-top">' +
+                '<div style="flex:1;min-width:0">' +
+                    '<p class="kb-entry-title">' + escapeHtml(k.question || '') + '</p>' +
+                    '<p class="kb-entry-preview">' + escapeHtml((k.response || '').substring(0, 150)) + '</p>' +
+                '</div>' +
+                '<div class="kb-entry-actions" onclick="event.stopPropagation()">' +
+                    '<button onclick="editKbEntry(\'' + k.id + '\')" title="Edit">Edit</button>' +
+                    '<button onclick="moveKbEntry(\'' + k.id + '\',\'' + otherType + '\')" title="Move to ' + otherLabel + ' KB">Move</button>' +
+                    '<button class="kb-btn-delete" onclick="deleteKbEntry(\'' + k.id + '\')" title="Delete">Delete</button>' +
+                '</div>' +
+            '</div>' +
+            '<div class="kb-entry-meta">' +
+                (k.category ? '<span class="kb-entry-tag">' + escapeHtml(k.category) + '</span>' : '') +
+                (lotteryLabel ? '<span class="kb-entry-tag">' + lotteryLabel + '</span>' : '') +
+                feedbackTag +
+            '</div>' +
+            '<div class="kb-entry-full"><div class="kb-entry-full-content">' + escapeHtml(k.response || '') + '</div></div>' +
+        '</div>';
+    }).join('');
+}
 
-    // Save to backend API
+function toggleKbEntry(el) {
+    el.classList.toggle('expanded');
+}
+
+function openKbAddForm() {
+    document.getElementById('kbFormCard').style.display = '';
+    document.getElementById('kbFormTitle').textContent = 'Add New Entry';
+    document.getElementById('kbFormId').value = '';
+    document.getElementById('kbFormTitleInput').value = '';
+    document.getElementById('kbFormContent').value = '';
+    document.getElementById('kbFormKeywords').value = '';
+    document.getElementById('kbFormLottery') && (document.getElementById('kbFormLottery').value = 'both');
+    document.getElementById('kbFormSaveBtn').textContent = 'Save Entry';
+
+    // Populate category dropdown
+    var catSelect = document.getElementById('kbFormCategory');
+    var cats = KB_CATEGORIES[activeKbTab] || KB_CATEGORIES.support;
+    catSelect.innerHTML = cats.map(function(c) { return '<option value="' + c.value + '">' + c.label + '</option>'; }).join('');
+
+    document.getElementById('kbFormLotteryGroup').style.display = activeKbTab === 'support' ? '' : 'none';
+    document.getElementById('kbFormTitleInput').focus();
+}
+
+function closeKbForm() {
+    var card = document.getElementById('kbFormCard');
+    if (card) card.style.display = 'none';
+}
+
+function editKbEntry(id) {
+    var entries = getActiveKbEntries();
+    var entry = entries.find(function(e) { return e.id === id; });
+    if (!entry) return;
+
+    openKbAddForm();
+    document.getElementById('kbFormTitle').textContent = 'Edit Entry';
+    document.getElementById('kbFormId').value = id;
+    document.getElementById('kbFormTitleInput').value = entry.question || '';
+    document.getElementById('kbFormContent').value = entry.response || '';
+    document.getElementById('kbFormKeywords').value = (entry.keywords || []).join(', ');
+    document.getElementById('kbFormSaveBtn').textContent = 'Update Entry';
+
+    // Set category
+    var catSelect = document.getElementById('kbFormCategory');
+    if (catSelect) catSelect.value = entry.category || 'general';
+
+    // Set lottery
+    if (activeKbTab === 'support') {
+        var lotSelect = document.getElementById('kbFormLottery');
+        if (lotSelect) lotSelect.value = entry.lottery || 'both';
+    }
+}
+
+async function saveKbEntry() {
+    var id = document.getElementById('kbFormId').value;
+    var title = document.getElementById('kbFormTitleInput').value.trim();
+    var content = document.getElementById('kbFormContent').value.trim();
+    var category = document.getElementById('kbFormCategory').value;
+    var keywordsRaw = document.getElementById('kbFormKeywords').value;
+    var keywords = keywordsRaw ? keywordsRaw.split(',').map(function(k) { return k.trim().toLowerCase(); }).filter(Boolean) : [];
+    var lottery = activeKbTab === 'support' ? (document.getElementById('kbFormLottery')?.value || 'both') : null;
+
+    if (!title || !content) {
+        showToast('Please fill in the title and content fields.', 'error');
+        return;
+    }
+
+    var saveBtn = document.getElementById('kbFormSaveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
     try {
-        const apiResponse = await fetch(`${API_BASE_URL}/api/knowledge-base`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                title: question,
-                content: response,
-                category: category,
-                lottery: lottery,
-                keywords: computedKeywords
-            })
-        });
+        if (id) {
+            // UPDATE existing entry
+            var tags = [...keywords.map(function(k) { return 'keyword:' + k; })];
+            if (lottery) tags.push('lottery:' + lottery);
 
-        if (apiResponse.ok) {
-            const data = await apiResponse.json();
-            // Use the backend-generated ID
-            newEntry.id = data.entry.id;
+            var resp = await fetch(API_BASE_URL + '/api/knowledge-base/' + id, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ title: title, content: content, category: category, tags: tags })
+            });
+
+            if (!resp.ok) throw new Error('Update failed');
+
+            // Update in local array
+            var entries = getActiveKbEntries();
+            var idx = entries.findIndex(function(e) { return e.id === id; });
+            if (idx !== -1) {
+                entries[idx].question = title;
+                entries[idx].response = content;
+                entries[idx].category = category;
+                entries[idx].keywords = keywords;
+                entries[idx].lottery = lottery;
+                entries[idx].tags = tags;
+            }
+            showToast('Entry updated!', 'success');
         } else {
-            console.warn('Backend KB save failed, using localStorage fallback');
+            // CREATE new entry
+            var resp = await fetch(API_BASE_URL + '/api/knowledge-base', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    title: title,
+                    content: content,
+                    category: category,
+                    kb_type: activeKbTab,
+                    lottery: lottery,
+                    keywords: keywords
+                })
+            });
+
+            if (!resp.ok) throw new Error('Create failed');
+
+            var data = await resp.json();
+            var newEntry = {
+                id: data.entry.id,
+                kb_type: activeKbTab,
+                lottery: lottery || 'both',
+                category: category,
+                question: title,
+                keywords: keywords,
+                response: content,
+                tags: data.entry.tags || [],
+                dateAdded: data.entry.created_at
+            };
+
+            if (activeKbTab === 'support') {
+                supportKnowledge.push(newEntry);
+                customKnowledge = supportKnowledge;
+            } else {
+                internalKnowledge.push(newEntry);
+            }
+            showToast('Entry added!', 'success');
         }
+
+        closeKbForm();
+        saveUserData();
+        updateKnowledgeStats();
+        renderKbEntries();
     } catch (error) {
-        console.warn('Backend KB save error, using localStorage fallback:', error);
+        console.error('KB save error:', error);
+        showToast('Failed to save entry. Please try again.', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = id ? 'Update Entry' : 'Save Entry';
     }
-
-    // Always save locally too (fallback + immediate UI update)
-    customKnowledge.push(newEntry);
-    saveUserData();
-
-    // Clear form
-    document.getElementById("knowledgeQuestion").value = "";
-    document.getElementById("knowledgeKeywords").value = "";
-    document.getElementById("knowledgeResponse").value = "";
-
-    updateKnowledgeStats();
-    renderKnowledgeList();
-
-    const btn = document.getElementById("addKnowledgeBtn");
-    btn.innerHTML = `<span class="btn-icon">✓</span> Added!`;
-    showToast("Knowledge entry added!", "success");
-    setTimeout(() => btn.innerHTML = `<span class="btn-icon">➕</span> Add to Knowledge Base`, 1500);
 }
 
-async function deleteKnowledge(id) {
-    // Optimistic delete: remove from UI immediately
-    const item = document.querySelector(`.knowledge-item button[onclick*="'${id}'"]`);
-    const card = item ? item.closest('.knowledge-item') : null;
-    if (card) card.classList.add('fade-out-delete');
+async function deleteKbEntry(id) {
+    var entries = getActiveKbEntries();
+    var entryEl = document.querySelector('.kb-entry[data-id="' + id + '"]');
+    if (entryEl) entryEl.classList.add('fade-out-delete');
 
-    const removed = customKnowledge.find(k => k.id === id);
-    customKnowledge = customKnowledge.filter(k => k.id !== id);
+    var removed = entries.find(function(e) { return e.id === id; });
+    var arr = activeKbTab === 'support' ? supportKnowledge : internalKnowledge;
+    var newArr = arr.filter(function(e) { return e.id !== id; });
+
+    if (activeKbTab === 'support') {
+        supportKnowledge = newArr;
+        customKnowledge = supportKnowledge;
+    } else {
+        internalKnowledge = newArr;
+    }
+
     saveUserData();
     updateKnowledgeStats();
-    showToast("Knowledge entry deleted", "success");
+    showToast('Entry deleted', 'success');
 
-    setTimeout(() => renderKnowledgeList(), 260);
+    setTimeout(function() { renderKbEntries(); }, 260);
 
-    // Delete from backend (fire-and-forget)
     try {
-        await fetch(`${API_BASE_URL}/api/knowledge-base/${id}`, {
+        var resp = await fetch(API_BASE_URL + '/api/knowledge-base/' + id, {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
+        if (!resp.ok) throw new Error('Delete failed');
     } catch (error) {
+        // Restore on failure
         if (removed) {
-            customKnowledge.push(removed);
+            if (activeKbTab === 'support') {
+                supportKnowledge.push(removed);
+                customKnowledge = supportKnowledge;
+            } else {
+                internalKnowledge.push(removed);
+            }
             saveUserData();
             updateKnowledgeStats();
-            renderKnowledgeList();
-            showToast("Failed to delete — restored", "error");
+            renderKbEntries();
+            showToast('Failed to delete — restored', 'error');
         }
     }
 }
 
-async function uploadKnowledgeDoc(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const btn = document.getElementById('uploadDocBtn');
-    btn.innerHTML = '<span class="btn-icon">⏳</span> Uploading...';
-    btn.disabled = true;
-
+async function moveKbEntry(id, targetType) {
     try {
-        const formData = new FormData();
-        formData.append('document', file);
-        formData.append('category', document.getElementById('knowledgeCategory').value || 'general');
-
-        const response = await fetch(`${API_BASE_URL}/api/knowledge-base/upload-doc`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('lightspeed_token')}`
-            },
-            body: formData
+        var resp = await fetch(API_BASE_URL + '/api/knowledge-base/' + id, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ kb_type: targetType })
         });
+        if (!resp.ok) throw new Error('Move failed');
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Upload failed');
+        // Move between local arrays
+        var sourceArr = activeKbTab === 'support' ? supportKnowledge : internalKnowledge;
+        var targetArr = targetType === 'support' ? supportKnowledge : internalKnowledge;
+        var idx = sourceArr.findIndex(function(e) { return e.id === id; });
+        if (idx !== -1) {
+            var entry = sourceArr.splice(idx, 1)[0];
+            entry.kb_type = targetType;
+            targetArr.push(entry);
+            customKnowledge = supportKnowledge;
         }
 
-        const data = await response.json();
-
-        // Add imported entries to local customKnowledge array
-        if (data.entries) {
-            data.entries.forEach(entry => {
-                customKnowledge.push({
-                    id: entry.id,
-                    question: entry.title,
-                    keywords: entry.tags || [],
-                    response: entry.content,
-                    category: entry.category,
-                    isCustom: true
-                });
-            });
-            saveUserData();
-            updateKnowledgeStats();
-            renderKnowledgeList();
-        }
-
-        showToast(data.message || `Imported ${data.imported} entries`, 'success');
+        saveUserData();
+        updateKnowledgeStats();
+        renderKbEntries();
+        showToast('Moved to ' + (targetType === 'support' ? 'Customer Support' : 'Internal') + ' KB', 'success');
     } catch (error) {
-        console.error('Doc upload error:', error);
-        showToast('Error uploading document: ' + error.message, 'error');
-    } finally {
-        btn.innerHTML = '<span class="btn-icon">📄</span> Upload Word Doc';
-        btn.disabled = false;
-        input.value = '';
+        showToast('Failed to move entry', 'error');
     }
 }
 
-function parseAndImportKnowledge() {
-    const content = document.getElementById("importContent").value.trim();
-    if (!content) {
-        showToast("Please paste some content to import.", "error");
-        return;
-    }
+function openKbImportModal() {
+    document.getElementById('kbImportModal').style.display = '';
+    document.getElementById('kbImportContent').value = '';
+    document.getElementById('kbImportContent').focus();
+}
 
-    // Simple parsing: look for Q&A patterns
-    const pairs = [];
-    const lines = content.split('\n');
-    let currentQuestion = null;
-    let currentResponse = [];
+function closeKbImportModal() {
+    document.getElementById('kbImportModal').style.display = 'none';
+}
 
-    for (const line of lines) {
-        const trimmed = line.trim();
+async function parseAndImportKb() {
+    var content = document.getElementById('kbImportContent').value.trim();
+    if (!content) { showToast('Please paste some content to import.', 'error'); return; }
+
+    var pairs = [];
+    var lines = content.split('\n');
+    var currentQuestion = null;
+    var currentResponse = [];
+
+    for (var i = 0; i < lines.length; i++) {
+        var trimmed = lines[i].trim();
         if (!trimmed) continue;
 
-        // Check if this looks like a question/header (bold markers, ends with ?, starts with Q:, etc.)
         if (trimmed.startsWith('**') || trimmed.endsWith('?') || trimmed.startsWith('Q:') ||
             (trimmed.length < 100 && trimmed.includes(':'))) {
             if (currentQuestion && currentResponse.length > 0) {
-                pairs.push({
-                    question: currentQuestion.replace(/\*\*/g, '').replace(/^Q:\s*/i, ''),
-                    response: currentResponse.join('\n').trim()
-                });
+                pairs.push({ question: currentQuestion.replace(/\*\*/g, '').replace(/^Q:\s*/i, ''), response: currentResponse.join('\n').trim() });
             }
             currentQuestion = trimmed;
             currentResponse = [];
@@ -8636,64 +8750,86 @@ function parseAndImportKnowledge() {
             currentResponse.push(trimmed);
         }
     }
-
-    // Don't forget the last one
     if (currentQuestion && currentResponse.length > 0) {
-        pairs.push({
-            question: currentQuestion.replace(/\*\*/g, '').replace(/^Q:\s*/i, ''),
-            response: currentResponse.join('\n').trim()
-        });
+        pairs.push({ question: currentQuestion.replace(/\*\*/g, '').replace(/^Q:\s*/i, ''), response: currentResponse.join('\n').trim() });
     }
 
     if (pairs.length === 0) {
-        showToast("Could not parse any Q&A pairs from the content. Try formatting with clear question/answer sections.", "error");
+        showToast('Could not parse any Q&A pairs. Try formatting with clear question/answer sections.', 'error');
         return;
     }
 
-    // Add to knowledge base locally
-    const newEntries = pairs.map(pair => ({
-        id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        lottery: "both",
-        category: "general",
-        question: pair.question,
-        keywords: pair.question.toLowerCase().split(" ").filter(w => w.length > 3),
-        response: pair.response,
-        dateAdded: new Date().toISOString()
-    }));
-
-    newEntries.forEach(entry => customKnowledge.push(entry));
-    saveUserData();
-
-    // Also sync to backend via bulk import
     try {
-        const importEntries = newEntries.map(entry => ({
-            title: entry.question,
-            content: entry.response,
-            category: entry.category,
-            tags: [`lottery:${entry.lottery}`, ...entry.keywords.map(k => `keyword:${k}`)]
-        }));
+        var importEntries = pairs.map(function(p) {
+            return { title: p.question, content: p.response, category: 'general', tags: [] };
+        });
 
-        fetch(`${API_BASE_URL}/api/knowledge-base/import`, {
+        var resp = await fetch(API_BASE_URL + '/api/knowledge-base/import', {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ entries: importEntries })
-        }).then(resp => {
-            if (resp.ok) {
-                // Reload from backend to get server-generated IDs
-                loadKnowledgeFromBackend();
-            }
-        }).catch(err => console.warn('Backend import failed:', err));
+            body: JSON.stringify({ entries: importEntries, kb_type: activeKbTab })
+        });
+
+        if (resp.ok) {
+            await loadKnowledgeFromBackend(activeKbTab);
+            showToast('Imported ' + pairs.length + ' entries!', 'success');
+        } else {
+            showToast('Import failed', 'error');
+        }
     } catch (error) {
-        console.warn('Backend KB import error:', error);
+        showToast('Import error: ' + error.message, 'error');
     }
 
-    document.getElementById("importModal").classList.remove("show");
-    document.getElementById("importContent").value = "";
+    closeKbImportModal();
+}
 
-    updateKnowledgeStats();
-    renderKnowledgeList();
+async function uploadKbDoc(input) {
+    var file = input.files[0];
+    if (!file) return;
 
-    showToast(`Imported ${pairs.length} knowledge entries!`, "success");
+    try {
+        var formData = new FormData();
+        formData.append('document', file);
+        formData.append('category', 'general');
+        formData.append('kb_type', activeKbTab);
+
+        var resp = await fetch(API_BASE_URL + '/api/knowledge-base/upload-doc', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('lightspeed_token') },
+            body: formData
+        });
+
+        if (!resp.ok) throw new Error((await resp.json()).error || 'Upload failed');
+
+        var data = await resp.json();
+        await loadKnowledgeFromBackend(activeKbTab);
+        showToast(data.message || 'Imported ' + data.imported + ' entries', 'success');
+    } catch (error) {
+        showToast('Error uploading: ' + error.message, 'error');
+    } finally {
+        input.value = '';
+    }
+}
+
+// Legacy addKnowledge — redirects to new KB system
+async function addKnowledge() {
+    activeKbTab = 'support';
+    openKbAddForm();
+}
+
+// Legacy deleteKnowledge — redirects to new KB system
+async function deleteKnowledge(id) {
+    await deleteKbEntry(id);
+}
+
+// Legacy uploadKnowledgeDoc — redirects to new KB system
+async function uploadKnowledgeDoc(input) {
+    await uploadKbDoc(input);
+}
+
+// Legacy parseAndImportKnowledge — redirects to new KB system
+function parseAndImportKnowledge() {
+    openKbImportModal();
 }
 
 // ==================== FEEDBACK ====================
@@ -9449,9 +9585,13 @@ async function buildEnhancedSystemPrompt(contentType, emailType = null, userInqu
         }
     }
 
-    // Inject org-specific knowledge base entries (custom KB from database)
-    if (typeof customKnowledge !== 'undefined' && customKnowledge.length > 0) {
-        const kbContext = customKnowledge.slice(0, 15).map(k =>
+    // Inject internal KB entries for Draft Assistant (brand voice, campaigns, procedures)
+    // Server-side picking via /api/draft also injects relevant entries, but this provides
+    // a baseline of internal context even before server-side picking kicks in.
+    const draftKb = (typeof internalKnowledge !== 'undefined' && internalKnowledge.length > 0)
+        ? internalKnowledge : customKnowledge;
+    if (draftKb && draftKb.length > 0) {
+        const kbContext = draftKb.slice(0, 15).map(k =>
             `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
         ).join('\n\n---\n\n');
         basePrompt += '\n\nORGANIZATION KNOWLEDGE BASE (use this information to stay accurate and on-brand):\n' + kbContext;
@@ -12741,6 +12881,7 @@ const ROUTES = {
     '/response-assistant/templates':  { view: 'tool', tool: 'customer-response', page: 'templates' },
     '/response-assistant/analytics':  { view: 'tool', tool: 'customer-response', page: 'analytics' },
     '/response-assistant/knowledge':  { view: 'tool', tool: 'customer-response', page: 'knowledge' },
+    '/knowledge':                      { view: 'tool', tool: 'customer-response', page: 'knowledge' },
     '/response-assistant/teams':      { view: 'tool', tool: 'customer-response', page: 'teams' },
     '/response-assistant/admin':      { view: 'tool', tool: 'customer-response', page: 'admin' },
     '/response-assistant/feedback':   { view: 'tool', tool: 'customer-response', page: 'feedback' },
@@ -12771,7 +12912,7 @@ const PAGE_ROUTES = {
     'response':  '/response-assistant/generator',
     'templates': '/response-assistant/templates',
     'analytics': '/response-assistant/analytics',
-    'knowledge': '/response-assistant/knowledge',
+    'knowledge': '/knowledge',
     'teams':     '/response-assistant/teams',
     'admin':     '/response-assistant/admin',
     'feedback':  '/response-assistant/feedback',
@@ -13403,9 +13544,9 @@ function skeletonRows(count) {
     switchPage = function(pageId) {
         // Show skeletons before data loads
         if (pageId === 'knowledge') {
-            const container = document.getElementById('knowledgeList');
+            const container = document.getElementById('kbEntriesList');
             if (container && container.children.length === 0) {
-                container.innerHTML = skeletonRows(5);
+                container.innerHTML = skeletonCards(4);
             }
         } else if (pageId === 'favorites') {
             const grid = document.getElementById('favoritesGrid');
@@ -13432,7 +13573,8 @@ function skeletonRows(count) {
         { id: 'normalizer', label: 'List Normalizer', desc: 'Clean and format lists', icon: '📋', group: 'Tools', action: function() { openTool('list-normalizer'); } },
         { id: 'ask', label: 'Ask Lightspeed', desc: 'Chat with your AI assistant', icon: '💬', group: 'Tools', action: function() { openTool('ask-lightspeed'); } },
         { id: 'rop', label: 'Rules of Play', desc: 'Generate rules of play documents', icon: '📜', group: 'Tools', action: function() { openTool('rules-of-play'); } },
-        { id: 'kb', label: 'Knowledge Base', desc: 'Manage your knowledge entries', icon: '📚', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('knowledge'); } },
+        { id: 'kb-support', label: 'Support Knowledge Base', desc: 'Manage customer support KB entries', icon: '📚', group: 'Navigate', action: function() { switchPage('knowledge'); switchKbTab('support'); } },
+        { id: 'kb-internal', label: 'Internal Knowledge Base', desc: 'Manage internal/operations KB entries', icon: '📖', group: 'Navigate', action: function() { switchPage('knowledge'); switchKbTab('internal'); } },
         { id: 'favorites', label: 'Favorites', desc: 'View saved responses', icon: '⭐', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('favorites'); } },
         { id: 'templates', label: 'Templates', desc: 'Browse content templates', icon: '📄', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('templates'); } },
         { id: 'analytics', label: 'Analytics', desc: 'View usage analytics', icon: '📈', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('analytics'); } },
