@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security &amp; Trust | Lightspeed by Launchpad</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="design-system.css?v=20260228">
+    <link rel="stylesheet" href="landing.css?v=20260228">
+    <style>
+        .security-page { padding-top: 100px; }
+
+        .security-hero {
+            padding: 60px 40px 40px;
+            text-align: center;
+        }
+        .security-hero-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .security-hero-eyebrow {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--cta);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+        .security-hero-title {
+            font-size: 40px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+        .security-hero-subtitle {
+            font-size: 17px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 560px;
+            margin: 0 auto;
+        }
+
+        /* Badges strip */
+        .security-badges {
+            padding: 32px 40px;
+            text-align: center;
+        }
+        .security-badges-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+        .security-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-primary);
+        }
+        .security-badge-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .security-badge-text {
+            text-align: left;
+        }
+        .security-badge-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .security-badge-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Pillars */
+        .security-pillars {
+            padding: 60px 40px 80px;
+        }
+        .security-pillars-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .security-pillar {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+        }
+        .security-pillar-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .security-pillar h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .security-pillar p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* Commitments */
+        .security-commitments {
+            padding: 60px 40px;
+            background: var(--bg-alt);
+        }
+        .security-commitments-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .security-commitments h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 32px;
+        }
+        .security-commit-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .security-commit-item {
+            display: flex;
+            gap: 12px;
+            padding: 16px 20px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+        .security-commit-check {
+            color: #16a34a;
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .security-commit-text h4 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .security-commit-text p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Anthropic partnership */
+        .security-partner {
+            padding: 60px 40px;
+        }
+        .security-partner-inner {
+            max-width: 720px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .security-partner-icon {
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+        }
+        .security-partner h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+        .security-partner p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+
+        /* CTA */
+        .security-cta {
+            padding: 60px 40px;
+            text-align: center;
+            background: var(--bg-alt);
+        }
+        .security-cta h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .security-cta p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .security-pillars-inner {
+                grid-template-columns: 1fr;
+            }
+            .security-commit-list {
+                grid-template-columns: 1fr;
+            }
+            .security-hero-title {
+                font-size: 28px;
+            }
+            .security-badges-inner {
+                flex-direction: column;
+                align-items: center;
+            }
+            .security-hero, .security-badges, .security-pillars, .security-commitments, .security-partner, .security-cta {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="landing-nav">
+        <div class="landing-nav-inner">
+            <a href="index.html" class="landing-nav-logo">
+                <img src="launchpad-logo.svg" alt="Lightspeed" height="28">
+                <span>Lightspeed</span>
+            </a>
+            <div class="landing-nav-center">
+                <a href="index.html#features" class="landing-nav-link">Features</a>
+                <a href="index.html#pricing" class="landing-nav-link">Pricing</a>
+                <a href="case-study.html" class="landing-nav-link">Case Studies</a>
+                <a href="whats-new.html" class="landing-nav-link">What's New</a>
+                <a href="about.html" class="landing-nav-link">About</a>
+                <a href="faq.html" class="landing-nav-link">FAQ</a>
+                <a href="index.html#contact" class="landing-nav-link">Contact</a>
+            </div>
+            <div class="landing-nav-actions">
+                <a href="index.html" class="landing-nav-signin">Sign in</a>
+                <a href="index.html" class="landing-nav-cta">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="security-page">
+
+        <!-- Hero -->
+        <section class="security-hero">
+            <div class="security-hero-inner">
+                <div class="security-hero-eyebrow">Security &amp; Trust</div>
+                <h1 class="security-hero-title">Your data is our responsibility</h1>
+                <p class="security-hero-subtitle">Built on the most safety-focused AI infrastructure in the industry. We take data privacy, security, and compliance seriously &mdash; because your organizations depend on it.</p>
+            </div>
+        </section>
+
+        <!-- Trust Badges -->
+        <section class="security-badges">
+            <div class="security-badges-inner">
+                <div class="security-badge">
+                    <div class="security-badge-icon" style="background:#EBF4FF;color:#1B6BF5">&#128274;</div>
+                    <div class="security-badge-text">
+                        <div class="security-badge-label">SOC 2 Compliant</div>
+                        <div class="security-badge-sub">via Anthropic infrastructure</div>
+                    </div>
+                </div>
+                <div class="security-badge">
+                    <div class="security-badge-icon" style="background:#E8F9EB;color:#28C840">&#128737;&#65039;</div>
+                    <div class="security-badge-text">
+                        <div class="security-badge-label">End-to-End Encryption</div>
+                        <div class="security-badge-sub">TLS 1.3 + AES-256</div>
+                    </div>
+                </div>
+                <div class="security-badge">
+                    <div class="security-badge-icon" style="background:#F3E8FF;color:#7C3AED">&#127758;</div>
+                    <div class="security-badge-text">
+                        <div class="security-badge-label">GDPR Ready</div>
+                        <div class="security-badge-sub">Data residency controls</div>
+                    </div>
+                </div>
+                <div class="security-badge">
+                    <div class="security-badge-icon" style="background:#FFF0E6;color:#F47B3A">&#128994;</div>
+                    <div class="security-badge-text">
+                        <div class="security-badge-label">99.9% Uptime</div>
+                        <div class="security-badge-sub">Enterprise SLA</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pillars -->
+        <section class="security-pillars">
+            <div class="security-pillars-inner">
+                <div class="security-pillar">
+                    <div class="security-pillar-icon" style="background:#EBF4FF;color:#1B6BF5">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <h3>Data Privacy</h3>
+                    <p>Your organization&rsquo;s data is never used to train AI models. Each knowledge base is fully isolated and encrypted at rest. Conversations are ephemeral &mdash; they&rsquo;re not stored beyond your active session unless you choose to save them.</p>
+                </div>
+                <div class="security-pillar">
+                    <div class="security-pillar-icon" style="background:#F3E8FF;color:#7C3AED">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h3>Infrastructure Security</h3>
+                    <p>Lightspeed runs on SOC 2 compliant infrastructure through Anthropic. All data in transit is encrypted with TLS 1.3, and data at rest uses AES-256 encryption. Regular penetration testing and security audits ensure ongoing protection.</p>
+                </div>
+                <div class="security-pillar">
+                    <div class="security-pillar-icon" style="background:#E8F9EB;color:#28C840">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                    </div>
+                    <h3>Access Control</h3>
+                    <p>Authentication through Google and Microsoft SSO with industry-standard OAuth 2.0. Role-based permissions let you control who sees what. All access is logged and auditable.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Commitments -->
+        <section class="security-commitments">
+            <div class="security-commitments-inner">
+                <h2>Our security commitments</h2>
+                <div class="security-commit-list">
+                    <div class="security-commit-item">
+                        <span class="security-commit-check">&#10003;</span>
+                        <div class="security-commit-text">
+                            <h4>No model training on your data</h4>
+                            <p>Your uploads, conversations, and knowledge base content are never used to train AI models &mdash; not ours, not Anthropic&rsquo;s.</p>
+                        </div>
+                    </div>
+                    <div class="security-commit-item">
+                        <span class="security-commit-check">&#10003;</span>
+                        <div class="security-commit-text">
+                            <h4>Tenant isolation</h4>
+                            <p>Each organization&rsquo;s data is logically isolated. No cross-tenant access is possible, even at the infrastructure level.</p>
+                        </div>
+                    </div>
+                    <div class="security-commit-item">
+                        <span class="security-commit-check">&#10003;</span>
+                        <div class="security-commit-text">
+                            <h4>Data deletion on request</h4>
+                            <p>You can request complete deletion of your account and all associated data at any time. We honor requests within 30 days.</p>
+                        </div>
+                    </div>
+                    <div class="security-commit-item">
+                        <span class="security-commit-check">&#10003;</span>
+                        <div class="security-commit-text">
+                            <h4>Encrypted knowledge base</h4>
+                            <p>Your uploaded documents, policies, and training data are encrypted at rest using AES-256 and in transit using TLS 1.3.</p>
+                        </div>
+                    </div>
+                    <div class="security-commit-item">
+                        <span class="security-commit-check">&#10003;</span>
+                        <div class="security-commit-text">
+                            <h4>No third-party data sharing</h4>
+                            <p>We never sell, share, or provide your data to third parties. Period. Your data stays between you and Lightspeed.</p>
+                        </div>
+                    </div>
+                    <div class="security-commit-item">
+                        <span class="security-commit-check">&#10003;</span>
+                        <div class="security-commit-text">
+                            <h4>Incident transparency</h4>
+                            <p>In the event of a security incident, we commit to prompt disclosure and clear communication with affected customers.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Anthropic Partnership -->
+        <section class="security-partner">
+            <div class="security-partner-inner">
+                <div class="security-partner-icon">
+                    <svg width="48" height="48" viewBox="0 0 256 176" fill="currentColor"><path d="M147.5 0L256 176H199L147.5 81.6L96 176H39L147.5 0Z"/><path d="M96 0H39L0 72h57L96 0Z"/></svg>
+                </div>
+                <h2>Built on Anthropic&rsquo;s Claude</h2>
+                <p>We chose Anthropic because they are the most principled, safety-focused AI company in the world. Founded on the belief that AI should be safe, honest, and beneficial, Anthropic&rsquo;s infrastructure meets the highest standards of enterprise security.</p>
+                <p>Your conversations with Lightspeed are processed through Claude&rsquo;s API with zero data retention by Anthropic. No training. No logging. No exceptions.</p>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="security-cta">
+            <h2>Questions about security?</h2>
+            <p>We&rsquo;re happy to discuss our security practices in detail.</p>
+            <a href="index.html#contact" class="ls-btn ls-btn-primary">Contact our team &rsaquo;</a>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="landing-footer-inner">
+            <div class="landing-footer-top">
+                <div class="landing-footer-brand">
+                    <div class="landing-footer-brand-logo">
+                        <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                        <span>Lightspeed</span>
+                    </div>
+                    <p class="landing-footer-brand-desc">AI-powered productivity tools built for nonprofit teams and charitable gaming operators.</p>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Product</h4>
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#pricing">Pricing</a>
+                    <a href="integrations.html">Integrations</a>
+                    <a href="faq.html">FAQ</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Company</h4>
+                    <a href="about.html">About</a>
+                    <a href="security.html">Security</a>
+                    <a href="case-study.html">Case Studies</a>
+                    <a href="index.html#contact">Contact</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Resources</h4>
+                    <a href="whats-new.html">What&rsquo;s New</a>
+                    <a href="help.html">Help Center</a>
+                </div>
+            </div>
+            <div class="landing-footer-bottom">
+                <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Canada.</span>
+                <span class="landing-footer-status">
+                    <span class="status-dot"></span>
+                    All systems operational
+                </span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-banner" id="cookieBanner">
+        <span class="cookie-banner-text">We use cookies to improve your experience. By continuing to use this site you agree to our <a href="index.html">Privacy Policy</a>.</span>
+        <div class="cookie-banner-actions">
+            <button class="cookie-btn" onclick="dismissCookieBanner(false)">Decline</button>
+            <button class="cookie-btn cookie-btn-accept" onclick="dismissCookieBanner(true)">Accept</button>
+        </div>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget-tooltip" id="chatTooltip">
+        <button class="chat-widget-tooltip-close" onclick="document.getElementById('chatTooltip').classList.remove('show')">&times;</button>
+        <div class="chat-widget-tooltip-header">Need help?</div>
+        <div class="chat-widget-tooltip-body">Have a question about Lightspeed? We&rsquo;d love to hear from you.</div>
+        <a class="chat-widget-tooltip-cta" href="index.html#contact">Send us a message &rarr;</a>
+    </div>
+    <button class="chat-widget-btn" id="chatWidgetBtn" aria-label="Chat with us">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
+
+    <script>
+        function dismissCookieBanner(accepted) {
+            localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
+            var banner = document.getElementById('cookieBanner');
+            if (banner) banner.classList.remove('show');
+        }
+        if (!localStorage.getItem('cookie_consent')) {
+            setTimeout(function() {
+                var banner = document.getElementById('cookieBanner');
+                if (banner) banner.classList.add('show');
+            }, 1500);
+        }
+        var chatBtn = document.getElementById('chatWidgetBtn');
+        var chatTooltip = document.getElementById('chatTooltip');
+        if (chatBtn && chatTooltip) {
+            chatBtn.addEventListener('click', function() {
+                chatTooltip.classList.toggle('show');
+            });
+        }
+    </script>
+
+</body>
+</html>

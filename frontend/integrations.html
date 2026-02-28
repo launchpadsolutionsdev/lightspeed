@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrations | Lightspeed by Launchpad</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="design-system.css?v=20260228">
+    <link rel="stylesheet" href="landing.css?v=20260228">
+    <style>
+        .integ-page { padding-top: 100px; }
+
+        .integ-hero {
+            padding: 60px 40px 40px;
+            text-align: center;
+        }
+        .integ-hero-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .integ-hero-eyebrow {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--cta);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+        .integ-hero-title {
+            font-size: 40px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+        .integ-hero-subtitle {
+            font-size: 17px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 540px;
+            margin: 0 auto;
+        }
+
+        /* Integration cards */
+        .integ-section {
+            padding: 40px 40px 80px;
+        }
+        .integ-section-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .integ-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+        .integ-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            transition: var(--transition);
+        }
+        .integ-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--text-muted);
+        }
+        .integ-card-featured {
+            border-color: var(--cta);
+            box-shadow: 0 0 0 1px var(--cta);
+        }
+        .integ-card-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--cta);
+            background: rgba(99, 91, 255, 0.08);
+            padding: 3px 8px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .integ-card-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        .integ-card-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .integ-card-desc {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .integ-card-features {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px;
+        }
+        .integ-card-features li {
+            font-size: 14px;
+            color: var(--text-secondary);
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .integ-card-features li svg {
+            color: #16a34a;
+            flex-shrink: 0;
+        }
+        .integ-card-status {
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .integ-status-live {
+            color: #16a34a;
+        }
+        .integ-status-live::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        /* How integrations work */
+        .integ-how {
+            padding: 60px 40px;
+            background: var(--bg-alt);
+        }
+        .integ-how-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            text-align: center;
+        }
+        .integ-how-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .integ-how-subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            max-width: 520px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .integ-how-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+            text-align: center;
+        }
+        .integ-how-step-num {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--cta);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .integ-how-step h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .integ-how-step p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* CTA strip */
+        .integ-cta-strip {
+            padding: 60px 40px;
+            text-align: center;
+        }
+        .integ-cta-strip h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .integ-cta-strip p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .integ-grid {
+                grid-template-columns: 1fr;
+                max-width: 480px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .integ-how-steps {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin: 0 auto;
+                gap: 24px;
+            }
+            .integ-hero-title {
+                font-size: 28px;
+            }
+            .integ-hero, .integ-section, .integ-how, .integ-cta-strip {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="landing-nav">
+        <div class="landing-nav-inner">
+            <a href="index.html" class="landing-nav-logo">
+                <img src="launchpad-logo.svg" alt="Lightspeed" height="28">
+                <span>Lightspeed</span>
+            </a>
+            <div class="landing-nav-center">
+                <a href="index.html#features" class="landing-nav-link">Features</a>
+                <a href="index.html#pricing" class="landing-nav-link">Pricing</a>
+                <a href="case-study.html" class="landing-nav-link">Case Studies</a>
+                <a href="whats-new.html" class="landing-nav-link">What's New</a>
+                <a href="about.html" class="landing-nav-link">About</a>
+                <a href="faq.html" class="landing-nav-link">FAQ</a>
+                <a href="index.html#contact" class="landing-nav-link">Contact</a>
+            </div>
+            <div class="landing-nav-actions">
+                <a href="index.html" class="landing-nav-signin">Sign in</a>
+                <a href="index.html" class="landing-nav-cta">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="integ-page">
+
+        <!-- Hero -->
+        <section class="integ-hero">
+            <div class="integ-hero-inner">
+                <div class="integ-hero-eyebrow">Integrations</div>
+                <h1 class="integ-hero-title">Built to work with your stack</h1>
+                <p class="integ-hero-subtitle">Lightspeed connects to the platforms your team already relies on &mdash; pulling in real data, pushing out results.</p>
+            </div>
+        </section>
+
+        <!-- Integration Cards -->
+        <section class="integ-section">
+            <div class="integ-section-inner">
+                <div class="integ-grid">
+
+                    <!-- Shopify -->
+                    <div class="integ-card integ-card-featured">
+                        <span class="integ-card-badge">Featured</span>
+                        <div class="integ-card-icon" style="background:#E8F5E9;color:#5C8A3C">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M15.34 3.27c-.08-.03-.15-.02-.21.04-.05.05-1.12 1.08-1.12 1.08s-.73-.77-.8-.84c-.19-.19-.56-.14-.56-.14L12 3.56c-.03-.12-.08-.22-.14-.32-.3-.51-.73-.73-1.24-.73h-.03c-.04 0-.07 0-.11.01-.02-.02-.04-.04-.06-.06-.22-.24-.51-.35-.84-.33-.66.04-1.31.49-1.84 1.27-.37.55-.66 1.24-.74 1.78l-1.53.47s-.45.14-.47.16c-.14.05-.15.06-.17.19L3.7 14.38l8.46 1.46 4.16-1.03s-1-6.71-1.02-6.82c-.01-.06-.05-.09-.1-.11l.14-2.61zm-3.04.77s-.85.26-1.79.55c.17-.66.49-1.32.89-1.75.15-.16.36-.34.6-.44.25.51.31 1.23.3 1.64zm-1.43-1.7c.2 0 .36.04.5.13-.22.12-.44.3-.64.53-.54.58-.95 1.48-1.12 2.35l-1.49.46c.21-.93.98-3.37 2.72-3.47h.03zM11.9 7.3c.04.64-.77.79-.77.79S10.1 7.3 10.68 6c.22-.49.64-.78.89-.85.16.27.31.66.33 1.15v1z"/></svg>
+                        </div>
+                        <div class="integ-card-name">Shopify</div>
+                        <p class="integ-card-desc">Connect your Shopify store to analyze sales data, automate customer responses about orders, and generate marketing content based on your product catalog.</p>
+                        <ul class="integ-card-features">
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Order &amp; sales data sync</li>
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Product catalog integration</li>
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Customer inquiry automation</li>
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Revenue analytics dashboards</li>
+                        </ul>
+                        <span class="integ-card-status integ-status-live">Live</span>
+                    </div>
+
+                    <!-- Bump Dashboard -->
+                    <div class="integ-card">
+                        <div class="integ-card-icon" style="background:#FFF0E6;color:#F47B3A">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                        </div>
+                        <div class="integ-card-name">Bump Dashboard</div>
+                        <p class="integ-card-desc">Lightspeed pulls raffle draw data, ticket sales metrics, and jackpot history directly from Bump to power your Insights Engine dashboards and automate winner communications.</p>
+                        <ul class="integ-card-features">
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Draw &amp; ticket data import</li>
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Jackpot trend analysis</li>
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Winner notification drafting</li>
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Revenue reporting</li>
+                        </ul>
+                        <span class="integ-card-status integ-status-live">Live</span>
+                    </div>
+
+                    <!-- Anthropic (Claude) -->
+                    <div class="integ-card">
+                        <div class="integ-card-icon" style="background:#F3E8FF;color:#7C3AED">
+                            <svg width="28" height="28" viewBox="0 0 256 176" fill="currentColor"><path d="M147.5 0L256 176H199L147.5 81.6L96 176H39L147.5 0Z"/><path d="M96 0H39L0 72h57L96 0Z"/></svg>
+                        </div>
+                        <div class="integ-card-name">Anthropic (Claude)</div>
+                        <p class="integ-card-desc">Lightspeed is proudly powered by Claude, Anthropic&rsquo;s AI assistant. Every tool &mdash; from Response Assistant to Insights Engine &mdash; runs on the most safety-focused AI in the industry.</p>
+                        <ul class="integ-card-features">
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Multiple model options (Opus, Sonnet, Haiku)</li>
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Data never used for training</li>
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> SOC 2 compliant infrastructure</li>
+                            <li><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> End-to-end encryption</li>
+                        </ul>
+                        <span class="integ-card-status integ-status-live">Core Platform</span>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- How Integrations Work -->
+        <section class="integ-how">
+            <div class="integ-how-inner">
+                <h2 class="integ-how-title">How integrations work</h2>
+                <p class="integ-how-subtitle">We handle the technical setup so your team can focus on results.</p>
+                <div class="integ-how-steps">
+                    <div class="integ-how-step">
+                        <div class="integ-how-step-num">1</div>
+                        <h3>Connect your account</h3>
+                        <p>Authorize the integration with a few clicks. No API keys or developer setup needed.</p>
+                    </div>
+                    <div class="integ-how-step">
+                        <div class="integ-how-step-num">2</div>
+                        <h3>Data syncs automatically</h3>
+                        <p>Lightspeed pulls the data it needs &mdash; sales, tickets, products, contacts &mdash; and keeps it up to date.</p>
+                    </div>
+                    <div class="integ-how-step">
+                        <div class="integ-how-step-num">3</div>
+                        <h3>Insights &amp; actions flow</h3>
+                        <p>Use your integrated data across all four tools: respond, draft, analyze, and clean &mdash; with full context.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="integ-cta-strip">
+            <h2>Need an integration we don&rsquo;t have?</h2>
+            <p>We&rsquo;re always building. Let us know what platforms your team uses.</p>
+            <a href="index.html#contact" class="ls-btn ls-btn-primary">Request an integration &rsaquo;</a>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="landing-footer-inner">
+            <div class="landing-footer-top">
+                <div class="landing-footer-brand">
+                    <div class="landing-footer-brand-logo">
+                        <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                        <span>Lightspeed</span>
+                    </div>
+                    <p class="landing-footer-brand-desc">AI-powered productivity tools built for nonprofit teams and charitable gaming operators.</p>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Product</h4>
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#pricing">Pricing</a>
+                    <a href="integrations.html">Integrations</a>
+                    <a href="faq.html">FAQ</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Company</h4>
+                    <a href="about.html">About</a>
+                    <a href="security.html">Security</a>
+                    <a href="case-study.html">Case Studies</a>
+                    <a href="index.html#contact">Contact</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Resources</h4>
+                    <a href="whats-new.html">What&rsquo;s New</a>
+                    <a href="help.html">Help Center</a>
+                </div>
+            </div>
+            <div class="landing-footer-bottom">
+                <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Canada.</span>
+                <span class="landing-footer-status">
+                    <span class="status-dot"></span>
+                    All systems operational
+                </span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-banner" id="cookieBanner">
+        <span class="cookie-banner-text">We use cookies to improve your experience. By continuing to use this site you agree to our <a href="index.html">Privacy Policy</a>.</span>
+        <div class="cookie-banner-actions">
+            <button class="cookie-btn" onclick="dismissCookieBanner(false)">Decline</button>
+            <button class="cookie-btn cookie-btn-accept" onclick="dismissCookieBanner(true)">Accept</button>
+        </div>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget-tooltip" id="chatTooltip">
+        <button class="chat-widget-tooltip-close" onclick="document.getElementById('chatTooltip').classList.remove('show')">&times;</button>
+        <div class="chat-widget-tooltip-header">Need help?</div>
+        <div class="chat-widget-tooltip-body">Have a question about Lightspeed? We&rsquo;d love to hear from you.</div>
+        <a class="chat-widget-tooltip-cta" href="index.html#contact">Send us a message &rarr;</a>
+    </div>
+    <button class="chat-widget-btn" id="chatWidgetBtn" aria-label="Chat with us">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
+
+    <script>
+        function dismissCookieBanner(accepted) {
+            localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
+            var banner = document.getElementById('cookieBanner');
+            if (banner) banner.classList.remove('show');
+        }
+        if (!localStorage.getItem('cookie_consent')) {
+            setTimeout(function() {
+                var banner = document.getElementById('cookieBanner');
+                if (banner) banner.classList.add('show');
+            }, 1500);
+        }
+        var chatBtn = document.getElementById('chatWidgetBtn');
+        var chatTooltip = document.getElementById('chatTooltip');
+        if (chatBtn && chatTooltip) {
+            chatBtn.addEventListener('click', function() {
+                chatTooltip.classList.toggle('show');
+            });
+        }
+    </script>
+
+</body>
+</html>
