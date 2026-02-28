@@ -8569,13 +8569,16 @@ async function loadResponseRules() {
         var resp = await fetch(API_BASE_URL + '/api/response-rules', {
             headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
         });
-        if (!resp.ok) throw new Error('Failed to load rules');
+        if (!resp.ok) {
+            var errBody = await resp.json().catch(function() { return {}; });
+            throw new Error(errBody.error || 'Server error ' + resp.status);
+        }
         var data = await resp.json();
         responseRules = data.rules || [];
         renderResponseRules();
     } catch (err) {
         console.error('Load response rules error:', err);
-        showToast('Failed to load response rules', 'error');
+        showToast('Failed to load response rules: ' + err.message, 'error');
     }
 }
 
@@ -8627,7 +8630,10 @@ async function addResponseRule() {
             },
             body: JSON.stringify({ rule_text: text, rule_type: type })
         });
-        if (!resp.ok) throw new Error('Failed to create rule');
+        if (!resp.ok) {
+            var errBody = await resp.json().catch(function() { return {}; });
+            throw new Error(errBody.error || (errBody.errors && errBody.errors[0] && errBody.errors[0].msg) || 'Server error ' + resp.status);
+        }
         var data = await resp.json();
         responseRules.push(data.rule);
         renderResponseRules();
@@ -8635,7 +8641,7 @@ async function addResponseRule() {
         showToast('Rule added');
     } catch (err) {
         console.error('Add rule error:', err);
-        showToast('Failed to add rule', 'error');
+        showToast('Failed to add rule: ' + err.message, 'error');
     }
 }
 
