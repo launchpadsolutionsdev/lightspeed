@@ -325,7 +325,7 @@ async function pickRelevantRatedExamples(inquiry, positiveExamples, negativeExam
  * @param {Function} options.onError - Called if an error occurs
  * @returns {Promise<{text: string, usage: Object}>} Full text + usage once stream completes
  */
-async function streamResponse({ messages, system, max_tokens = 1024, onText, onDone, onError }) {
+async function streamResponse({ messages, system, max_tokens = 1024, model, onText, onDone, onError }) {
     if (!ANTHROPIC_API_KEY) {
         throw new Error('ANTHROPIC_API_KEY not configured');
     }
@@ -338,7 +338,7 @@ async function streamResponse({ messages, system, max_tokens = 1024, onText, onD
             'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-            model: ANTHROPIC_MODEL,
+            model: model || ANTHROPIC_MODEL,
             max_tokens,
             system: system || '',
             messages,

@@ -2242,12 +2242,14 @@ const ASK_SAMPLE_PROMPTS = [
 
 let askConversation = [];
 let askTone = 'professional';
+let alsModel = 'claude-sonnet-4-6';
 let askListenersSetup = false;
 
 function saveAskConversation() {
     try {
         localStorage.setItem('lightspeed_ask_conversation', JSON.stringify(askConversation));
         localStorage.setItem('lightspeed_ask_tone', askTone);
+        localStorage.setItem('lightspeed_als_model', alsModel);
     } catch (e) {
         // localStorage full or unavailable — silently fail
     }
@@ -2262,6 +2264,10 @@ function loadAskConversation() {
         }
         if (savedTone) {
             askTone = savedTone;
+        }
+        const savedModel = localStorage.getItem('lightspeed_als_model');
+        if (savedModel) {
+            alsModel = savedModel;
         }
     } catch (e) {
         askConversation = [];
@@ -2434,7 +2440,8 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             system: fullSystemPrompt,
             inquiry: message,
             messages: askConversation.map(m => ({ role: m.role, content: m.content })),
-            max_tokens: 4096
+            max_tokens: 4096,
+            model: alsModel
         }, {
             onText: (chunk) => {
                 // Render streamed markdown incrementally
@@ -2642,6 +2649,16 @@ function initAskLightspeedPage() {
                 document.querySelectorAll('.als-tone').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 askTone = btn.dataset.tone;
+                saveAskConversation();
+            });
+        });
+
+        // Model pills
+        document.querySelectorAll('.als-model').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.als-model').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                alsModel = btn.dataset.model;
                 saveAskConversation();
             });
         });
@@ -2939,6 +2956,9 @@ function restoreAlsChat() {
     document.querySelectorAll('.als-tone').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tone === askTone);
     });
+    document.querySelectorAll('.als-model').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.model === alsModel);
+    });
 
     const messagesEl = document.getElementById('alsMessages');
     if (messagesEl) messagesEl.innerHTML = '';
@@ -3066,7 +3086,8 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             system: fullSystemPrompt,
             inquiry: message,
             messages: messagesToSend,
-            max_tokens: 4096
+            max_tokens: 4096,
+            model: alsModel
         }, {
             onText: (chunk) => {
                 msgDiv._rawText = (msgDiv._rawText || '') + chunk;

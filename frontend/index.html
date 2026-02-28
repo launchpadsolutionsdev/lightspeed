@@ -1163,6 +1163,77 @@
             color: #fff;
         }
 
+        /* Model selector row */
+        .als-model-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 20px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .als-model-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+
+        .als-model-pills {
+            display: flex;
+            gap: 6px;
+        }
+
+        .als-model {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 6px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            line-height: 1.3;
+        }
+
+        .als-model:hover {
+            border-color: rgba(0, 0, 0, 0.2);
+            background: var(--bg-alt);
+        }
+
+        .als-model.active {
+            background: var(--text-primary);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .als-model-name {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .als-model.active .als-model-name {
+            color: #fff;
+        }
+
+        .als-model-desc {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .als-model.active .als-model-desc {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
         /* Prompts */
         .als-prompts {
             display: flex;
@@ -1420,6 +1491,25 @@
             .als-tone {
                 flex: 1;
                 text-align: center;
+            }
+
+            .als-model-row {
+                flex-wrap: wrap;
+                padding: 8px 16px 10px;
+            }
+
+            .als-model-pills {
+                width: 100%;
+            }
+
+            .als-model {
+                flex: 1;
+                align-items: center;
+                padding: 5px 8px;
+            }
+
+            .als-model-desc {
+                display: none;
             }
 
             .als-gradient-fade {
@@ -12163,6 +12253,26 @@
                             <button class="als-tone active" data-tone="professional">Professional</button>
                             <button class="als-tone" data-tone="friendly">Friendly</button>
                             <button class="als-tone" data-tone="casual">Casual</button>
+                        </div>
+                    </div>
+                    <div class="als-model-row">
+                        <div class="als-model-label">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M16 14H8a4 4 0 0 0-4 4v2h16v-2a4 4 0 0 0-4-4z"/></svg>
+                            Model
+                        </div>
+                        <div class="als-model-pills" id="alsModelPills">
+                            <button class="als-model active" data-model="claude-sonnet-4-6">
+                                <span class="als-model-name">Sonnet 4.6</span>
+                                <span class="als-model-desc">Fast &amp; capable</span>
+                            </button>
+                            <button class="als-model" data-model="claude-opus-4-6">
+                                <span class="als-model-name">Opus 4.6</span>
+                                <span class="als-model-desc">Best for complex tasks</span>
+                            </button>
+                            <button class="als-model" data-model="claude-haiku-4-5-20251001">
+                                <span class="als-model-name">Haiku 4.5</span>
+                                <span class="als-model-desc">Quick &amp; lightweight</span>
+                            </button>
                         </div>
                     </div>
 
