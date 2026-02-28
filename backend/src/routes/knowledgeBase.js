@@ -193,6 +193,160 @@ router.post('/', authenticate, [
 });
 
 /**
+ * GET /api/knowledge-base/duplicates
+ * Find groups of entries with similar titles within the org.
+ * Returns an array of groups, where each group has 2+ entries that look alike.
+ * Query params: ?type=support|internal (optional)
+ */
+router.get('/duplicates', authenticate, async (req, res) => {
+    try {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
+            return res.status(400).json({ error: 'No organization found' });
+        }
+
+        const { type } = req.query;
+        let typeFilter = '';
+        const params = [organizationId];
+
+        if (type && ['support', 'internal'].includes(type)) {
+            typeFilter = ' AND a.kb_type = $2';
+            params.push(type);
+        }
+
+        // Self-join: find pairs where titles match case-insensitively or share
+        // the same first 40 characters (catches near-duplicates).
+        const result = await pool.query(
+            `SELECT a.id AS id_a, a.title AS title_a, a.content AS content_a, a.category AS category_a,
+                    a.tags AS tags_a, a.kb_type AS kb_type_a, a.created_at AS created_at_a, a.updated_at AS updated_at_a,
+                    b.id AS id_b, b.title AS title_b, b.content AS content_b, b.category AS category_b,
+                    b.tags AS tags_b, b.kb_type AS kb_type_b, b.created_at AS created_at_b, b.updated_at AS updated_at_b
+             FROM knowledge_base a
+             JOIN knowledge_base b ON a.organization_id = b.organization_id
+                AND a.kb_type = b.kb_type
+                AND a.id < b.id
+                AND (
+                    LOWER(a.title) = LOWER(b.title)
+                    OR LOWER(LEFT(a.title, 40)) = LOWER(LEFT(b.title, 40))
+                )
+             WHERE a.organization_id = $1${typeFilter}
+             ORDER BY a.title`,
+            params
+        );
+
+        // Group pairs into clusters (some entries may appear in multiple pairs)
+        const entryMap = new Map();
+        const groups = [];
+
+        for (const row of result.rows) {
+            const a = { id: row.id_a, title: row.title_a, content: row.content_a, category: row.category_a, tags: row.tags_a, kb_type: row.kb_type_a, created_at: row.created_at_a, updated_at: row.updated_at_a };
+            const b = { id: row.id_b, title: row.title_b, content: row.content_b, category: row.category_b, tags: row.tags_b, kb_type: row.kb_type_b, created_at: row.created_at_b, updated_at: row.updated_at_b };
+            entryMap.set(a.id, a);
+            entryMap.set(b.id, b);
+
+            // Find if either entry is already in a group
+            let foundGroup = null;
+            for (const g of groups) {
+                if (g.ids.has(a.id) || g.ids.has(b.id)) {
+                    foundGroup = g;
+                    break;
+                }
+            }
+            if (foundGroup) {
+                foundGroup.ids.add(a.id);
+                foundGroup.ids.add(b.id);
+            } else {
+                groups.push({ ids: new Set([a.id, b.id]) });
+            }
+        }
+
+        // Convert to response format
+        const responseGroups = groups.map(g => {
+            const entries = [...g.ids].map(id => entryMap.get(id));
+            entries.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+            return { entries };
+        });
+
+        res.json({ groups: responseGroups });
+
+    } catch (error) {
+        console.error('Find duplicates error:', error);
+        res.status(500).json({ error: 'Failed to find duplicates' });
+    }
+});
+
+/**
+ * POST /api/knowledge-base/merge
+ * Merge two KB entries: keep the target, delete the source.
+ * The target's content is updated to the provided merged content.
+ * Tags from both entries are combined (deduplicated).
+ */
+router.post('/merge', authenticate, async (req, res) => {
+    try {
+        const { keepId, deleteId, mergedTitle, mergedContent } = req.body;
+
+        if (!keepId || !deleteId || !mergedContent) {
+            return res.status(400).json({ error: 'keepId, deleteId, and mergedContent are required' });
+        }
+
+        const organizationId = req.organizationId;
+        if (!organizationId) {
+            return res.status(400).json({ error: 'No organization found' });
+        }
+
+        // Fetch both entries
+        const bothResult = await pool.query(
+            `SELECT * FROM knowledge_base WHERE id IN ($1, $2) AND organization_id = $3`,
+            [keepId, deleteId, organizationId]
+        );
+
+        if (bothResult.rows.length < 2) {
+            return res.status(404).json({ error: 'One or both entries not found' });
+        }
+
+        const keepEntry = bothResult.rows.find(r => r.id === keepId);
+        const deleteEntry = bothResult.rows.find(r => r.id === deleteId);
+
+        // Merge tags: combine and deduplicate
+        const mergedTags = [...new Set([...(keepEntry.tags || []), ...(deleteEntry.tags || [])])];
+
+        // Update the kept entry with merged content and combined tags
+        const updated = await pool.query(
+            `UPDATE knowledge_base SET title = $1, content = $2, tags = $3, updated_at = NOW()
+             WHERE id = $4 AND organization_id = $5 RETURNING *`,
+            [mergedTitle || keepEntry.title, mergedContent, mergedTags, keepId, organizationId]
+        );
+
+        // Reassign any response_history FK references from the deleted entry
+        await pool.query(
+            `UPDATE response_history SET feedback_kb_entry_id = $1
+             WHERE feedback_kb_entry_id = $2 AND organization_id = $3`,
+            [keepId, deleteId, organizationId]
+        );
+
+        // Delete the source entry
+        await pool.query(
+            `DELETE FROM knowledge_base WHERE id = $1 AND organization_id = $2`,
+            [deleteId, organizationId]
+        );
+
+        auditLog.logAction({
+            orgId: organizationId, userId: req.userId,
+            action: 'KB_ENTRIES_MERGED', resourceType: 'KNOWLEDGE_BASE',
+            resourceId: keepId,
+            changes: { kept: keepEntry.title, deleted: deleteEntry.title, deletedId: deleteId },
+            req
+        });
+
+        res.json({ entry: updated.rows[0], deletedId: deleteId });
+
+    } catch (error) {
+        console.error('Merge KB entries error:', error);
+        res.status(500).json({ error: 'Failed to merge entries' });
+    }
+});
+
+/**
  * GET /api/knowledge-base/:id
  * Get single knowledge entry
  */
