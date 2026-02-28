@@ -24,7 +24,7 @@ const shopifyService = require('../services/shopify');
  */
 router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
     try {
-        const { messages, system, inquiry, max_tokens = 1024 } = req.body;
+        const { messages, system, inquiry, max_tokens = 1024, kb_type } = req.body;
 
         if (!messages || !Array.isArray(messages)) {
             return res.status(400).json({ error: 'Messages array required' });
@@ -44,9 +44,17 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
         // Server-side KB relevance picking when inquiry is provided
         if (inquiry && organizationId) {
             try {
-                // Fetch all KB entries for this organization
+                // Determine which KB types to query based on the calling tool
+                // 'all' = Ask Lightspeed (both KBs), 'support' = Response Assistant, 'internal' = Draft Assistant
+                let kbFilter = "AND kb_type = 'support'";
+                if (kb_type === 'all') {
+                    kbFilter = ''; // query both
+                } else if (kb_type === 'internal') {
+                    kbFilter = "AND kb_type = 'internal'";
+                }
+
                 const kbResult = await pool.query(
-                    'SELECT id, title, content, category, tags FROM knowledge_base WHERE organization_id = $1 ORDER BY category, title',
+                    `SELECT id, title, content, category, tags FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
                     [organizationId]
                 );
 
@@ -162,7 +170,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
     };
 
     try {
-        const { messages, system, inquiry, max_tokens = 1024, model } = req.body;
+        const { messages, system, inquiry, max_tokens = 1024, model, kb_type } = req.body;
 
         // Whitelist allowed models to prevent abuse
         const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
@@ -187,8 +195,16 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
         // Server-side KB relevance picking when inquiry is provided
         if (inquiry && organizationId) {
             try {
+                // Determine which KB types to query based on the calling tool
+                let kbFilter = "AND kb_type = 'support'";
+                if (kb_type === 'all') {
+                    kbFilter = '';
+                } else if (kb_type === 'internal') {
+                    kbFilter = "AND kb_type = 'internal'";
+                }
+
                 const kbResult = await pool.query(
-                    'SELECT id, title, content, category, tags FROM knowledge_base WHERE organization_id = $1 ORDER BY category, title',
+                    `SELECT id, title, content, category, tags FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
                     [organizationId]
                 );
 
@@ -568,13 +584,38 @@ router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
             userPrompt += `\n\nAdditional context: ${additionalContext}`;
         }
 
-        // Inject Shopify product context for product-related drafts
+        // Server-side KB injection for Draft Assistant — uses internal KB
         const orgResult3 = await pool.query(
             'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
             [req.userId]
         );
         const draftOrgId = orgResult3.rows[0]?.organization_id;
         if (draftOrgId) {
+            try {
+                const kbResult = await pool.query(
+                    `SELECT id, title, content, category, tags FROM knowledge_base
+                     WHERE organization_id = $1 AND kb_type = 'internal'
+                     ORDER BY category, title`,
+                    [draftOrgId]
+                );
+                if (kbResult.rows.length > 0) {
+                    const relevantEntries = await claudeService.pickRelevantKnowledge(
+                        prompt,
+                        kbResult.rows,
+                        8
+                    );
+                    if (relevantEntries.length > 0) {
+                        const kbContext = relevantEntries
+                            .map(entry => `[${entry.category}] ${entry.title}: ${entry.content}`)
+                            .join('\n\n');
+                        systemPrompt += `\n\nInternal knowledge base:\n${kbContext}`;
+                    }
+                }
+            } catch (kbErr) {
+                console.warn('Draft KB injection failed, continuing without:', kbErr.message);
+            }
+
+            // Inject Shopify product context for product-related drafts
             try {
                 const productContext = await shopifyService.buildProductContext(draftOrgId, { limit: 15 });
                 if (productContext) {
