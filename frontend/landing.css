@@ -32,16 +32,18 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: var(--text-primary);
+    background: linear-gradient(90deg, #0F3460 0%, #5B1A6E 30%, #E91E8C 55%, #F47B3A 80%, #F5C623 100%);
+    background-size: 150% 100%;
+    background-position: 0% 50%;
     color: #fff;
     text-decoration: none;
     font-size: 14px;
     font-weight: 400;
-    transition: background 0.15s ease;
+    transition: background-position 0.4s ease;
 }
 
 .landing-banner:hover {
-    background: #122d4d;
+    background-position: 50% 50%;
 }
 
 .landing-banner-badge {
@@ -52,9 +54,12 @@
     letter-spacing: 0.06em;
     padding: 2px 8px;
     border-radius: var(--radius-pill);
-    background: var(--brand-gradient);
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     color: #fff;
     line-height: 1.2;
+    border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .landing-banner-text {
