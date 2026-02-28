@@ -3159,20 +3159,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
 // ===== KB CITATION RENDERING =====
 
 function renderAlsMarkdownWithCitations(text, kbEntries) {
-    let html = renderSimpleMarkdown(text);
-
-    if (kbEntries && kbEntries.length > 0) {
-        html = html.replace(/\[(\d+)\]/g, (match, num) => {
-            const idx = parseInt(num);
-            const entry = kbEntries.find(e => e.citation_index === idx);
-            if (entry) {
-                return `<span class="als-citation" title="${escapeHtml(entry.title)}" onclick="showAlsCitationDetail(${idx})">[${num}]</span>`;
-            }
-            return match;
-        });
-    }
-
-    return html;
+    return renderSimpleMarkdown(text);
 }
 
 function showAlsCitationDetail(citationIndex) {
@@ -3212,16 +3199,6 @@ function buildAlsSourcesPanel(kbEntries) {
 // ===== ENHANCED ACTION BUTTONS (with refinements) =====
 
 function appendAlsEnhancedActions(msgDiv, historyId, kbEntries) {
-    // Sources panel
-    if (kbEntries && kbEntries.length > 0) {
-        const sourcesHtml = buildAlsSourcesPanel(kbEntries);
-        const sourcesDiv = document.createElement('div');
-        sourcesDiv.innerHTML = sourcesHtml;
-        if (sourcesDiv.firstElementChild) {
-            msgDiv.appendChild(sourcesDiv.firstElementChild);
-        }
-    }
-
     // Action buttons
     const actions = document.createElement('div');
     actions.className = 'als-msg-actions';

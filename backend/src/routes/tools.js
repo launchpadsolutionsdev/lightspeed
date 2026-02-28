@@ -208,20 +208,17 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
                             citation_index: idx + 1
                         }));
 
-                        // Number KB entries for citation support
                         const knowledgeContext = relevantEntries
-                            .map((entry, idx) => `[Source ${idx + 1}] [${entry.category}] ${entry.title}: ${entry.content}`)
+                            .map((entry) => `[${entry.category}] ${entry.title}: ${entry.content}`)
                             .join('\n\n');
-
-                        const citationInstruction = '\n\nCITATION RULES: When your response uses information from the knowledge base sources above, include inline citations using the format [1], [2], etc. corresponding to the source numbers. Only cite when you directly use information from a specific source. Do not cite for general knowledge.';
 
                         if (enhancedSystem.includes('Knowledge base:')) {
                             enhancedSystem = enhancedSystem.replace(
                                 'Knowledge base:\n',
-                                `Knowledge base:\n\n${knowledgeContext}\n${citationInstruction}\n`
+                                `Knowledge base:\n\n${knowledgeContext}\n`
                             );
                         } else {
-                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}${citationInstruction}`;
+                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}`;
                         }
                     }
                 }
