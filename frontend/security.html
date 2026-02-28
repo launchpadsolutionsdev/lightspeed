@@ -13,13 +13,19 @@
     <style>
         .security-page { padding-top: 100px; }
 
+        /* Hero — 2-column with badges */
         .security-hero {
-            padding: 60px 40px 40px;
+            padding: 80px 40px 60px;
         }
         .security-hero-inner {
             max-width: var(--max-width);
             margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 48px;
+            align-items: start;
         }
+        .security-hero-text {}
         .security-hero-eyebrow {
             font-size: 13px;
             font-weight: 600;
@@ -34,43 +40,36 @@
             color: var(--text-primary);
             line-height: 1.2;
             letter-spacing: -0.02em;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
         .security-hero-subtitle {
             font-size: 17px;
             color: var(--text-secondary);
             line-height: 1.6;
-            max-width: 560px;
         }
-
-        /* Badges strip */
-        .security-badges {
-            padding: 32px 40px;
-        }
-        .security-badges-inner {
-            max-width: var(--max-width);
-            margin: 0 auto;
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
+        .security-hero-badges {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
         }
         .security-badge {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 12px 20px;
+            gap: 12px;
+            padding: 16px 20px;
             border: 1px solid var(--border);
-            border-radius: 10px;
-            background: var(--bg-primary);
+            border-radius: 12px;
+            background: var(--bg-alt);
         }
         .security-badge-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
+            flex-shrink: 0;
         }
         .security-badge-label {
             font-size: 14px;
@@ -80,6 +79,7 @@
         .security-badge-sub {
             font-size: 12px;
             color: var(--text-muted);
+            margin-top: 2px;
         }
 
         /* Pillars */
@@ -166,48 +166,14 @@
             line-height: 1.6;
         }
 
-        /* Anthropic partnership */
-        .security-partner {
-            padding: 60px 40px;
-        }
-        .security-partner-inner {
-            max-width: 720px;
-        }
-        .security-partner-icon {
-            margin-bottom: 20px;
-            color: var(--text-secondary);
-        }
-        .security-partner h2 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 16px;
-        }
-        .security-partner p {
-            font-size: 16px;
-            color: var(--text-secondary);
-            line-height: 1.7;
-            margin-bottom: 12px;
-        }
-
-        /* CTA */
-        .security-cta {
-            padding: 60px 40px;
-            background: var(--bg-alt);
-        }
-        .security-cta h2 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-        }
-        .security-cta p {
-            font-size: 16px;
-            color: var(--text-secondary);
-            margin-bottom: 24px;
-        }
-
         @media (max-width: 768px) {
+            .security-hero-inner {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+            .security-hero-badges {
+                grid-template-columns: 1fr;
+            }
             .security-pillars-inner {
                 grid-template-columns: 1fr;
             }
@@ -217,10 +183,7 @@
             .security-hero-title {
                 font-size: 28px;
             }
-            .security-badges-inner {
-                flex-direction: column;
-            }
-            .security-hero, .security-badges, .security-pillars, .security-commitments, .security-partner, .security-cta {
+            .security-hero, .security-pillars, .security-commitments {
                 padding-left: 24px;
                 padding-right: 24px;
             }
@@ -254,44 +217,42 @@
 
     <main class="security-page">
 
-        <!-- Hero -->
+        <!-- Hero — 2 columns: text left, badges right -->
         <section class="security-hero">
             <div class="security-hero-inner">
-                <div class="security-hero-eyebrow">Security &amp; Trust</div>
-                <h1 class="security-hero-title">Your data is our responsibility</h1>
-                <p class="security-hero-subtitle">We take data privacy and security seriously. Lightspeed is built on Anthropic&rsquo;s infrastructure with strict access controls, audit logging, and tenant isolation baked in from day one.</p>
-            </div>
-        </section>
-
-        <!-- Trust Badges -->
-        <section class="security-badges">
-            <div class="security-badges-inner">
-                <div class="security-badge">
-                    <div class="security-badge-icon" style="background:#EBF4FF;color:#1B6BF5">&#128274;</div>
-                    <div class="security-badge-text">
-                        <div class="security-badge-label">SOC 2 Infrastructure</div>
-                        <div class="security-badge-sub">via Anthropic</div>
-                    </div>
+                <div class="security-hero-text">
+                    <div class="security-hero-eyebrow">Security &amp; Trust</div>
+                    <h1 class="security-hero-title">Your data is our responsibility</h1>
+                    <p class="security-hero-subtitle">We take data privacy and security seriously. Lightspeed is built on Anthropic&rsquo;s infrastructure with strict access controls, audit logging, and tenant isolation baked in from day one.</p>
                 </div>
-                <div class="security-badge">
-                    <div class="security-badge-icon" style="background:#E8F9EB;color:#28C840">&#128737;&#65039;</div>
-                    <div class="security-badge-text">
-                        <div class="security-badge-label">Encrypted in Transit</div>
-                        <div class="security-badge-sub">HTTPS / TLS</div>
+                <div class="security-hero-badges">
+                    <div class="security-badge">
+                        <div class="security-badge-icon" style="background:#EBF4FF;color:#1B6BF5">&#128274;</div>
+                        <div class="security-badge-text">
+                            <div class="security-badge-label">SOC 2 Infrastructure</div>
+                            <div class="security-badge-sub">via Anthropic</div>
+                        </div>
                     </div>
-                </div>
-                <div class="security-badge">
-                    <div class="security-badge-icon" style="background:#F3E8FF;color:#7C3AED">&#128101;</div>
-                    <div class="security-badge-text">
-                        <div class="security-badge-label">Tenant Isolation</div>
-                        <div class="security-badge-sub">Per-organization data boundaries</div>
+                    <div class="security-badge">
+                        <div class="security-badge-icon" style="background:#E8F9EB;color:#28C840">&#128737;&#65039;</div>
+                        <div class="security-badge-text">
+                            <div class="security-badge-label">Encrypted in Transit</div>
+                            <div class="security-badge-sub">HTTPS / TLS</div>
+                        </div>
                     </div>
-                </div>
-                <div class="security-badge">
-                    <div class="security-badge-icon" style="background:#FFF0E6;color:#F47B3A">&#128203;</div>
-                    <div class="security-badge-text">
-                        <div class="security-badge-label">Full Audit Logging</div>
-                        <div class="security-badge-sub">Every action recorded</div>
+                    <div class="security-badge">
+                        <div class="security-badge-icon" style="background:#F3E8FF;color:#7C3AED">&#128101;</div>
+                        <div class="security-badge-text">
+                            <div class="security-badge-label">Tenant Isolation</div>
+                            <div class="security-badge-sub">Per-organization data boundaries</div>
+                        </div>
+                    </div>
+                    <div class="security-badge">
+                        <div class="security-badge-icon" style="background:#FFF0E6;color:#F47B3A">&#128203;</div>
+                        <div class="security-badge-text">
+                            <div class="security-badge-label">Full Audit Logging</div>
+                            <div class="security-badge-sub">Every action recorded</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -375,23 +336,48 @@
             </div>
         </section>
 
-        <!-- Anthropic Partnership -->
-        <section class="security-partner">
-            <div class="security-partner-inner">
-                <div class="security-partner-icon">
-                    <svg width="48" height="48" viewBox="0 0 256 176" fill="currentColor"><path d="M147.5 0L256 176H199L147.5 81.6L96 176H39L147.5 0Z"/><path d="M96 0H39L0 72h57L96 0Z"/></svg>
+        <!-- Powered by Anthropic Strip (same as homepage) -->
+        <section class="landing-anthropic-strip">
+            <div class="landing-anthropic-inner">
+                <div class="anthropic-text-col">
+                    <div class="anthropic-badge">
+                        <svg width="32" height="32" viewBox="0 0 256 176" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M147.5 0L256 176H199L147.5 81.6L96 176H39L147.5 0Z" fill="currentColor"/><path d="M96 0H39L0 72h57L96 0Z" fill="currentColor"/></svg>
+                    </div>
+                    <div class="anthropic-eyebrow">Our AI Partner</div>
+                    <h3 class="anthropic-headline">Proudly powered by Anthropic</h3>
+                    <p class="anthropic-body">Lightspeed is built on Claude, the AI assistant by <strong>Anthropic</strong> &mdash; a company founded on the principle that AI should be safe, honest, and beneficial. We chose Anthropic because they share our values: under their API terms, your data is not used to train models, and every response is grounded in a commitment to accuracy over hype.</p>
+                    <p class="anthropic-body">In an industry built on trust, data sensitivity and integrity aren&rsquo;t optional &mdash; they&rsquo;re everything. Anthropic&rsquo;s responsible approach to AI means your organization&rsquo;s information stays private, secure, and under your control. We believe they are the right AI partner for organizations that take data seriously.</p>
                 </div>
-                <h2>Built on Anthropic&rsquo;s Claude</h2>
-                <p>We chose Anthropic because they share our values around safety and responsibility. Founded on the belief that AI should be safe, honest, and beneficial, Anthropic maintains SOC 2 compliant infrastructure and a clear commitment to data privacy.</p>
-                <p>Under Anthropic&rsquo;s API usage policy, data sent through the Claude API is not used for model training and is subject to a 30-day retention window for trust and safety purposes. We believe they are the right partner for an industry built on trust.</p>
+                <div class="anthropic-pillars-col">
+                    <div class="anthropic-pillar">
+                        <div class="anthropic-pillar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <div>
+                            <h4>Data Privacy</h4>
+                            <p>Under Anthropic&rsquo;s API terms, your data is not used to train AI models. All traffic is encrypted via HTTPS.</p>
+                        </div>
+                    </div>
+                    <div class="anthropic-pillar">
+                        <div class="anthropic-pillar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <div>
+                            <h4>Enterprise Security</h4>
+                            <p>AI processing runs through Anthropic&rsquo;s SOC 2 compliant infrastructure with role-based access controls.</p>
+                        </div>
+                    </div>
+                    <div class="anthropic-pillar">
+                        <div class="anthropic-pillar-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </div>
+                        <div>
+                            <h4>Ethical AI</h4>
+                            <p>Built by researchers committed to AI safety, honesty, and transparency above all else.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </section>
-
-        <!-- CTA -->
-        <section class="security-cta">
-            <h2>Questions about security?</h2>
-            <p>We&rsquo;re happy to discuss our security practices in detail.</p>
-            <a href="index.html#contact" class="ls-btn ls-btn-primary">Contact our team &rsaquo;</a>
         </section>
 
     </main>
