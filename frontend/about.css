@@ -1,0 +1,425 @@
+/* ============================================================
+   ABOUT PAGE
+   ============================================================ */
+.about-page {
+    padding-top: 64px; /* nav height */
+}
+
+/* ---- Hero ---- */
+.about-hero {
+    padding: 100px 40px 80px;
+    text-align: center;
+}
+
+.about-hero-inner {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.about-hero-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cta);
+    margin-bottom: 16px;
+}
+
+.about-hero-title {
+    font-size: 48px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+.about-hero-subtitle {
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+/* ---- Mission & Vision ---- */
+.about-mission {
+    padding: 80px 40px;
+    background: var(--bg-alt);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.about-mission-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+}
+
+.about-mission-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cta);
+    margin-bottom: 16px;
+}
+
+.about-mission-headline {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    line-height: 1.35;
+    margin-bottom: 16px;
+}
+
+.about-mission-body {
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--text-secondary);
+}
+
+/* ---- Founder ---- */
+.about-founder {
+    padding: 100px 40px;
+    background: #fff;
+}
+
+.about-founder-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 64px;
+    align-items: start;
+}
+
+.about-founder-image-col {
+    display: flex;
+    justify-content: center;
+}
+
+.about-founder-image-wrapper {
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--border);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    flex-shrink: 0;
+}
+
+.about-founder-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.about-founder-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cta);
+    margin-bottom: 12px;
+}
+
+.about-founder-name {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.about-founder-role {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+}
+
+.about-founder-bio p {
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.about-founder-bio p:last-child {
+    margin-bottom: 0;
+}
+
+/* ---- Values ---- */
+.about-values {
+    padding: 100px 40px;
+    background: var(--bg-alt);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.about-values-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+}
+
+.about-values-header {
+    text-align: center;
+    margin-bottom: 56px;
+}
+
+.about-values-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cta);
+    margin-bottom: 12px;
+}
+
+.about-values-headline {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+
+.about-values-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+}
+
+.about-value-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 24px;
+    text-align: center;
+}
+
+.about-value-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    color: var(--text-primary);
+}
+
+.about-value-card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.about-value-card p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+/* ---- What's New Strip ---- */
+.about-whats-new-strip {
+    padding: 100px 40px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+}
+
+.about-whats-new-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+    align-items: center;
+}
+
+.about-whats-new-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cta);
+    margin-bottom: 12px;
+}
+
+.about-whats-new-headline {
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    line-height: 1.3;
+    margin-bottom: 16px;
+}
+
+.about-whats-new-body {
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+}
+
+.about-whats-new-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.about-wn-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.about-wn-badge {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.about-wn-badge--ai {
+    background: #EDE9FE;
+    color: #635BFF;
+}
+
+.about-wn-badge--tools {
+    background: #FCE7F3;
+    color: #E91E8C;
+}
+
+.about-wn-badge--platform {
+    background: #DCFCE7;
+    color: #16A34A;
+}
+
+.about-wn-badge--integrations {
+    background: #FFF0E6;
+    color: #EA580C;
+}
+
+.about-wn-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* ---- CTA ---- */
+.about-cta {
+    padding: 80px 40px;
+    text-align: center;
+    background: #fff;
+}
+
+.about-cta-title {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.about-cta-desc {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 1024px) {
+    .about-values-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .about-hero {
+        padding: 80px 20px 60px;
+    }
+
+    .about-hero-title {
+        font-size: 32px;
+    }
+
+    .about-hero-subtitle {
+        font-size: 16px;
+    }
+
+    .about-mission {
+        padding: 60px 20px;
+    }
+
+    .about-mission-inner {
+        grid-template-columns: 1fr;
+        gap: 48px;
+    }
+
+    .about-founder {
+        padding: 60px 20px;
+    }
+
+    .about-founder-inner {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        text-align: center;
+    }
+
+    .about-founder-image-wrapper {
+        width: 220px;
+        height: 220px;
+    }
+
+    .about-founder-bio p {
+        text-align: left;
+    }
+
+    .about-values {
+        padding: 60px 20px;
+    }
+
+    .about-values-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .about-values-headline {
+        font-size: 26px;
+    }
+
+    .about-whats-new-strip {
+        padding: 60px 20px;
+    }
+
+    .about-whats-new-inner {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .about-whats-new-headline {
+        font-size: 24px;
+    }
+
+    .about-cta {
+        padding: 60px 20px;
+    }
+
+    .about-cta-title {
+        font-size: 24px;
+    }
+}
