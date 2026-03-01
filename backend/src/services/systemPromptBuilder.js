@@ -10,7 +10,7 @@
  */
 
 const pool = require('../../config/database');
-const { pickRelevantRatedExamples } = require('./claude');
+const { pickRelevantRatedExamples, pickRelevantKnowledge } = require('./claude');
 
 // ─── Input sanitization ─────────────────────────────────────────────
 
@@ -193,8 +193,8 @@ async function fetchRatedExamples(organizationId, tool, format, inquiry) {
     const params = format ? [organizationId, tool, format] : [organizationId, tool];
 
     // Fetch a larger pool when inquiry is provided (Haiku will filter for relevance)
-    const positiveLimit = inquiry ? 20 : 5;
-    const negativeLimit = inquiry ? 10 : 3;
+    const positiveLimit = inquiry ? 30 : 8;
+    const negativeLimit = inquiry ? 15 : 5;
 
     const positiveResult = await pool.query(
         `SELECT inquiry, response, format, tone
@@ -218,13 +218,13 @@ async function fetchRatedExamples(organizationId, tool, format, inquiry) {
     );
 
     // If an inquiry was provided, use Haiku to filter for topical relevance
-    if (inquiry && (positiveResult.rows.length > 5 || negativeResult.rows.length > 3)) {
+    if (inquiry && (positiveResult.rows.length > 8 || negativeResult.rows.length > 5)) {
         return await pickRelevantRatedExamples(
             inquiry,
             positiveResult.rows,
             negativeResult.rows,
-            5,
-            3
+            8,
+            5
         );
     }
 
@@ -232,6 +232,132 @@ async function fetchRatedExamples(organizationId, tool, format, inquiry) {
         positive: positiveResult.rows,
         negative: negativeResult.rows
     };
+}
+
+// ─── Dedicated correction retrieval ─────────────────────────────────
+//
+// Searches ALL negative-rated responses with corrections (no recency limit)
+// and uses Haiku to find ones relevant to the current inquiry.
+// This is separate from the rated-examples pool, ensuring corrections
+// never fall off a recency cliff.
+
+/**
+ * Fetch corrections from past negative feedback that are relevant to the
+ * current inquiry. Unlike fetchRatedExamples (which is recency-limited),
+ * this searches the ENTIRE correction history for the org.
+ *
+ * @param {string} organizationId
+ * @param {string} inquiry - The current customer inquiry
+ * @param {string} tool
+ * @param {string} format
+ * @returns {Promise<Array>} Relevant corrections with inquiry, feedback, and corrected_response
+ */
+async function fetchRelevantCorrections(organizationId, inquiry, tool, format) {
+    if (!inquiry) return [];
+
+    try {
+        const formatClause = format ? ` AND rh.format = $3` : '';
+        const params = format ? [organizationId, tool, format] : [organizationId, tool];
+
+        // Fetch ALL negative-rated responses that have either:
+        // - rating_feedback (user explained what was wrong)
+        // - feedback_kb_entry_id (user created a corrected KB entry)
+        // No LIMIT — we want to search the entire correction history
+        const correctionResult = await pool.query(
+            `SELECT rh.inquiry, rh.response, rh.rating_feedback,
+                    kb.content AS corrected_response, kb.title AS correction_title
+             FROM response_history rh
+             LEFT JOIN knowledge_base kb
+                ON rh.feedback_kb_entry_id = kb.id
+             WHERE rh.organization_id = $1
+               AND rh.rating = 'negative'
+               AND (rh.tool = $2 OR rh.tool IS NULL)
+               AND (rh.rating_feedback IS NOT NULL OR rh.feedback_kb_entry_id IS NOT NULL)
+               ${formatClause}
+             ORDER BY rh.rating_at DESC`,
+            params
+        );
+
+        if (correctionResult.rows.length === 0) return [];
+
+        // Use Haiku to find which corrections are relevant to this inquiry.
+        // We show Haiku the original inquiry that was corrected so it can
+        // do semantic topic matching.
+        const corrections = correctionResult.rows;
+
+        // If we have 5 or fewer corrections, return them all (no filtering needed)
+        if (corrections.length <= 5) return corrections;
+
+        // Build catalogue for Haiku
+        const catalogue = corrections.map((c, i) =>
+            `[${i}] Customer asked: "${c.inquiry.substring(0, 200)}"`
+        ).join('\n');
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 200,
+                system: `You are a correction matcher. Given a new customer inquiry and a list of past corrected inquiries, return ONLY the index numbers of past inquiries that are on a SIMILAR TOPIC to the new one. Be generous — if the topic is related, include it. Return a JSON array. Example: [0, 2, 4]`,
+                messages: [{
+                    role: 'user',
+                    content: `New customer inquiry: ${inquiry}\n\nPast corrected inquiries:\n${catalogue}`
+                }]
+            })
+        });
+
+        if (!response.ok) {
+            // Fallback: return most recent 5 corrections
+            return corrections.slice(0, 5);
+        }
+
+        const data = await response.json();
+        const text = data.content?.[0]?.text || '';
+        const match = text.match(/\[[\d,\s]*\]/);
+
+        if (!match) return corrections.slice(0, 5);
+
+        const indices = JSON.parse(match[0]);
+        const relevant = indices
+            .filter(i => typeof i === 'number' && i >= 0 && i < corrections.length)
+            .slice(0, 5)
+            .map(i => corrections[i]);
+
+        return relevant.length > 0 ? relevant : corrections.slice(0, 3);
+
+    } catch (err) {
+        console.warn('Correction retrieval failed:', err.message);
+        return [];
+    }
+}
+
+/**
+ * Build the CORRECTIONS prompt section from fetched corrections.
+ * This is a dedicated section with highest-priority instructions.
+ */
+function buildCorrectionsContext(corrections) {
+    if (!corrections || corrections.length === 0) return '';
+
+    let context = '\n\nCORRECTIONS FROM PAST FEEDBACK (HIGHEST PRIORITY — always follow these when applicable):\n';
+    context += 'When similar questions were asked before, staff corrected the response. If a correction below directly addresses the current inquiry, follow the correction over general knowledge base entries.\n';
+
+    corrections.forEach((c, i) => {
+        context += `\nCorrection ${i + 1}:\n`;
+        context += `Original question: ${c.inquiry.substring(0, 300)}\n`;
+        if (c.corrected_response) {
+            context += `Correct answer: ${c.corrected_response}\n`;
+        }
+        if (c.rating_feedback) {
+            context += `Staff note: ${c.rating_feedback}\n`;
+        }
+    });
+
+    return context;
 }
 
 // ─── Main system prompt builder ──────────────────────────────────────
@@ -304,13 +430,18 @@ async function buildResponseAssistantPrompt(params) {
         console.warn('Draw schedule fetch failed:', err.message);
     }
 
-    // Fetch rated examples
+    // Fetch rated examples + dedicated corrections (in parallel)
     let ratedExamplesContext = '';
+    let correctionsContext = '';
     try {
-        const ratedExamples = await fetchRatedExamples(organizationId, tool, format, inquiry);
+        const [ratedExamples, corrections] = await Promise.all([
+            fetchRatedExamples(organizationId, tool, format, inquiry),
+            fetchRelevantCorrections(organizationId, inquiry, tool, format)
+        ]);
         ratedExamplesContext = buildRatedExamplesContext(ratedExamples);
+        correctionsContext = buildCorrectionsContext(corrections);
     } catch (err) {
-        console.warn('Rated examples fetch failed:', err.message);
+        console.warn('Rated examples / corrections fetch failed:', err.message);
     }
 
     // Language instruction
@@ -378,7 +509,7 @@ ESCALATION: If the inquiry is unclear, bizarre, nonsensical, confrontational, th
 IMPORTANT: Only reference information from the organization knowledge base below and the draw schedule above. Do not assume details about websites, locations, game types, eligibility rules, or operational procedures that are not explicitly provided.
 
 Knowledge base:
-${ratedExamplesContext}${!ratedExamplesContext.trim() ? '\n(No knowledge base entries are available yet. Only provide general information and recommend the customer contact support directly for specific questions.)\n' : ''}`;
+${correctionsContext}${ratedExamplesContext}${!correctionsContext.trim() && !ratedExamplesContext.trim() ? '\n(No knowledge base entries are available yet. Only provide general information and recommend the customer contact support directly for specific questions.)\n' : ''}`;
 
     // Build user prompt with XML-delimited user content for prompt injection defense
     const sanitizedInquiry = sanitizeInquiry(inquiry);
@@ -412,7 +543,9 @@ module.exports = {
     buildResponseAssistantPrompt,
     buildDrawScheduleContext,
     buildRatedExamplesContext,
+    buildCorrectionsContext,
     fetchRatedExamples,
+    fetchRelevantCorrections,
     sanitizeInquiry,
     wrapUserContent,
     LANGUAGE_INSTRUCTIONS

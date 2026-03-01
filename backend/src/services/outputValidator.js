@@ -80,4 +80,73 @@ function validateOutput(responseText, options = {}) {
     return { warnings };
 }
 
-module.exports = { validateOutput };
+/**
+ * Validate format-specific compliance (Facebook char limit, email structure, etc.).
+ * Returns an array of violation objects that get merged into the main warnings.
+ *
+ * @param {string} responseText - The AI-generated response
+ * @param {string} format - 'email' or 'facebook'
+ * @param {object} options
+ * @param {boolean} options.hasKbEntries - Whether KB entries were provided to the model
+ * @returns {Array<{ type: string, message: string }>}
+ */
+function validateFormatCompliance(responseText, format, options = {}) {
+    const violations = [];
+    if (!responseText || !format) return violations;
+
+    const charCount = responseText.length;
+    const wordCount = responseText.trim().split(/\s+/).length;
+    const lowerText = responseText.toLowerCase();
+
+    if (format === 'facebook') {
+        if (charCount > 400) {
+            violations.push({
+                type: 'format_violation',
+                message: `Facebook response is ${charCount} chars — exceeds 400-character limit`
+            });
+        }
+        if (responseText.includes('\n')) {
+            violations.push({
+                type: 'format_violation',
+                message: 'Facebook response contains line breaks — should be single paragraph'
+            });
+        }
+        if (/[•\-]\s/.test(responseText) || /^\d+\.\s/m.test(responseText)) {
+            violations.push({
+                type: 'format_violation',
+                message: 'Facebook response contains bullet points or numbered lists'
+            });
+        }
+    } else if (format === 'email') {
+        if (wordCount < 20) {
+            violations.push({
+                type: 'format_warning',
+                message: 'Email response may be too brief (under 20 words)'
+            });
+        } else if (wordCount > 300) {
+            violations.push({
+                type: 'format_warning',
+                message: 'Email response may be too long (over 300 words)'
+            });
+        }
+        if (!lowerText.match(/^(hi|hello|dear|good\s(morning|afternoon|evening))/)) {
+            violations.push({
+                type: 'format_warning',
+                message: 'Email response may be missing a greeting'
+            });
+        }
+    }
+
+    // Citation consistency: response references [1] etc. but no KB entries were provided
+    const citationRefs = responseText.match(/\[\d+\]/g);
+    if (citationRefs && citationRefs.length > 0 && !options.hasKbEntries) {
+        violations.push({
+            type: 'citation_mismatch',
+            message: 'Response contains citation references but no KB entries were matched'
+        });
+    }
+
+    return violations;
+}
+
+module.exports = { validateOutput, validateFormatCompliance };

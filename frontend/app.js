@@ -7075,8 +7075,10 @@ async function handleGenerate() {
 
         const responseText = stripCitations(result.text);
         const referencedKbEntries = result.referencedKbEntries || [];
+        const serverWarnings = result.serverWarnings || [];
 
         const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        const responseTimeMs = Date.now() - startTime;
         const category = detectCategory(customerEmail);
 
         // Save to history
@@ -7113,7 +7115,10 @@ async function handleGenerate() {
                     inquiry: customerEmail,
                     response: responseText,
                     format: inquiryType || 'email',
-                    tone: toneDesc
+                    tone: toneDesc,
+                    kb_entries_used: referencedKbEntries.length,
+                    quality_violations: serverWarnings.filter(w => w.type === 'format_violation' || w.type === 'format_warning'),
+                    response_time_ms: responseTimeMs
                 })
             });
             if (backendResp.ok) {
@@ -7128,7 +7133,7 @@ async function handleGenerate() {
             showToast("Response saved locally but cloud sync failed — it won't appear on other devices", "error");
         }
 
-        displayResults(responseText, historyEntry.id);
+        displayResults(responseText, historyEntry.id, serverWarnings);
 
     } catch (error) {
         console.error("Error:", error);
@@ -7233,6 +7238,7 @@ async function generateCustomResponse(customerEmail, staffName, options) {
 
     // Stream if a target element is provided
     if (streamTarget) {
+        let serverWarnings = [];
         const { text, referencedKbEntries } = await fetchStream(requestBody, {
             endpoint: '/api/response-assistant/generate',
             onText: (chunk) => {
@@ -7241,9 +7247,14 @@ async function generateCustomResponse(customerEmail, staffName, options) {
             },
             onKb: (entries) => {
                 // KB entries are handled after streaming completes
+            },
+            onDone: (event) => {
+                if (event.warnings && event.warnings.length > 0) {
+                    serverWarnings = event.warnings;
+                }
             }
         });
-        return { text, referencedKbEntries };
+        return { text, referencedKbEntries, serverWarnings };
     }
 
     // Non-streaming fallback — use the legacy endpoint
@@ -7271,8 +7282,17 @@ async function generateCustomResponse(customerEmail, staffName, options) {
     };
 }
 
-function displayResults(response, historyId) {
+function displayResults(response, historyId, serverWarnings = []) {
     const qualityChecks = performQualityChecks(response);
+
+    // Merge server-side format violations into quality checks
+    for (const warning of serverWarnings) {
+        if (warning.type === 'format_violation') {
+            qualityChecks.push({ status: 'quality-fail', message: warning.message });
+        } else if (warning.type === 'format_warning' || warning.type === 'citation_mismatch') {
+            qualityChecks.push({ status: 'quality-warn', message: warning.message });
+        }
+    }
 
     // Get sentiment from the original inquiry
     const sentimentHtml = currentInquiry ? displaySentimentBadge(currentInquiry) : '';
@@ -7306,6 +7326,7 @@ function displayResults(response, historyId) {
             <span class="rating-label">Did this response work?</span>
             <button class="rating-btn thumbs-up" onclick="rateResponse('${historyId}', 'positive', this)">👍</button>
             <button class="rating-btn thumbs-down" onclick="rateResponse('${historyId}', 'negative', this)">👎</button>
+            <span class="rating-hint" style="display:block;font-size:0.8em;color:#888;margin-top:0.4rem;">Your ratings train Lightspeed for your team</span>
         </div>
 
         ${currentReferencedKb.length > 0 ? `
@@ -7567,7 +7588,7 @@ async function rateResponse(historyId, rating, button) {
                 console.warn('Failed to save rating to backend:', error);
             }
         }
-        showToast("Thanks! This helps Lightspeed learn your preferences.", "success");
+        showToast("Thanks! This will improve responses starting now.", "success");
     } else {
         // Negative: show feedback modal with referenced KB entries
         const backendId = entry ? entry.backendId : null;
@@ -7640,6 +7661,7 @@ function showFeedbackModal(backendId, inquiryText, responseText, referencedKbEnt
         <div class="feedback-modal">
             <div class="feedback-modal-header">
                 <h3>What went wrong?</h3>
+                <small class="feedback-subtitle" style="display:block;color:#888;font-weight:normal;margin-top:0.25rem;">Your feedback improves responses immediately for your entire team</small>
                 <button class="feedback-modal-close" onclick="closeFeedbackModal()">&times;</button>
             </div>
             <div class="feedback-modal-body">
@@ -7847,9 +7869,9 @@ async function submitRatingFeedback() {
             await loadKnowledgeFromBackend();
             showToast("Knowledge base updated — Lightspeed will get this right next time!", "success");
         } else if (activeType === 'info') {
-            showToast("Got it — Lightspeed will learn from this feedback.", "info");
+            showToast("Got it — future responses will use this correction.", "info");
         } else {
-            showToast("Got it — Lightspeed will learn from this feedback.", "info");
+            showToast("Got it — future responses will avoid this pattern.", "info");
         }
 
         closeFeedbackModal();
