@@ -136,6 +136,16 @@
     border-color: #425466;
 }
 
+.admin-btn-danger {
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.admin-btn-danger:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+}
+
 .admin-btn-sm {
     padding: 6px 12px;
     font-size: 0.78rem;

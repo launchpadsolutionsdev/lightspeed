@@ -444,6 +444,10 @@ async function renderUsersTab(container) {
                                             onclick="openUserOrgModal('${user.id}', '${(user.first_name || '').replace(/'/g, "\\'")} ${(user.last_name || '').replace(/'/g, "\\'")}', '${user.organization_id || ''}', '${user.role || ''}')">
                                         Edit
                                     </button>
+                                    ${!user.is_super_admin ? `<button class="admin-btn admin-btn-secondary admin-btn-sm admin-btn-danger"
+                                            onclick="adminDeleteUser('${user.id}', '${(user.email || '').replace(/'/g, "\\'")}')">
+                                        Delete
+                                    </button>` : ''}
                                 </td>
                             </tr>
                         `).join('') : '<tr><td colspan="8" class="text-center text-muted">No users found</td></tr>'}
@@ -538,7 +542,13 @@ async function renderOrgsTab(container) {
                                 <td>${parseInt(org.responses_30d || 0).toLocaleString()}${org.total_rated > 0 ? ' <span class="text-muted small-text">(' + Math.round(parseInt(org.positive_ratings) / parseInt(org.total_rated) * 100) + '% 👍)</span>' : ''}</td>
                                 <td>${org.total_tokens_used ? parseInt(org.total_tokens_used).toLocaleString() : '0'}</td>
                                 <td>${formatDateShort(org.created_at)}</td>
-                                <td><button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openOrgSetup('${org.id}')">Setup</button></td>
+                                <td style="white-space:nowrap">
+                                    <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openOrgSetup('${org.id}')">Setup</button>
+                                    <button class="admin-btn admin-btn-secondary admin-btn-sm admin-btn-danger"
+                                            onclick="adminDeleteOrganization('${org.id}', '${(org.name || '').replace(/'/g, "\\'")}', '${org.subscription_status}')">
+                                        Delete
+                                    </button>
+                                </td>
                             </tr>`;
                         }).join('') : '<tr><td colspan="9" class="text-center text-muted">No organizations found</td></tr>'}
                     </tbody>
@@ -1473,6 +1483,56 @@ async function toggleSuperAdmin(userId, makeAdmin) {
     }
 }
 
+async function adminDeleteUser(userId, email) {
+    if (!confirm('Are you sure you want to permanently delete the user "' + email + '"?\n\nThis cannot be undone. The user will be removed from all organizations and their account will be permanently deleted.')) return;
+    if (!confirm('FINAL CONFIRMATION: Delete user "' + email + '" and all associated data?')) return;
+
+    try {
+        const response = await fetch(API_BASE_URL + '/api/admin/users/' + userId, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            showToast('User "' + email + '" deleted successfully', 'success');
+            loadAdminTab('users');
+        } else {
+            const err = await response.json();
+            showToast(err.error || 'Failed to delete user', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to delete user', 'error');
+    }
+}
+
+async function adminDeleteOrganization(orgId, name, status) {
+    if (!confirm('Are you sure you want to permanently delete the organization "' + name + '"?\n\nThis will delete ALL associated data including:\n- Knowledge base entries\n- Response history\n- Content templates\n- Conversations & shared prompts\n- All member associations\n\nThis cannot be undone.')) return;
+    if (!confirm('FINAL CONFIRMATION: Permanently delete "' + name + '" and all its data?')) return;
+
+    try {
+        const response = await fetch(API_BASE_URL + '/api/admin/organizations/' + orgId, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            showToast('Organization "' + name + '" deleted successfully', 'success');
+            loadAdminTab('organizations');
+        } else {
+            const err = await response.json();
+            showToast(err.error || 'Failed to delete organization', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to delete organization', 'error');
+    }
+}
+
 function filterActivity(btn, type) {
     document.querySelectorAll('.admin-filter-pill').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
@@ -1826,6 +1886,8 @@ window.adminClearOrgSearch = adminClearOrgSearch;
 window.adminFilterOrgStatus = adminFilterOrgStatus;
 window.adminOrgsGoToPage = adminOrgsGoToPage;
 window.toggleSuperAdmin = toggleSuperAdmin;
+window.adminDeleteUser = adminDeleteUser;
+window.adminDeleteOrganization = adminDeleteOrganization;
 window.filterActivity = filterActivity;
 window.openUserOrgModal = openUserOrgModal;
 window.closeUserOrgModal = closeUserOrgModal;
@@ -1867,6 +1929,8 @@ async function renderAuditTab(container) {
         'ADMIN_USER_ROLE_CHANGED': 'Changed user role (admin)',
         'ADMIN_USER_REMOVED_FROM_ORG': 'Removed user from org (admin)',
         'ADMIN_ORG_CREATED': 'Created organization',
+        'ADMIN_USER_DELETED': 'Deleted user',
+        'ADMIN_ORGANIZATION_DELETED': 'Deleted organization',
         'ADMIN_ORG_UPDATED': 'Updated organization (admin)',
         'SUBSCRIPTION_ACTIVATED': 'Subscription activated',
         'SUBSCRIPTION_CANCELLED': 'Subscription cancelled',
