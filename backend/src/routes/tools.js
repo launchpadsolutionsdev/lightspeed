@@ -7,11 +7,12 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
-const { authenticate, checkUsageLimit } = require('../middleware/auth');
+const { authenticate, checkUsageLimit, checkAIRateLimit } = require('../middleware/auth');
 const claudeService = require('../services/claude');
 const shopifyService = require('../services/shopify');
 const { buildEnhancedPrompt } = require('../services/promptBuilder');
 const { buildResponseAssistantPrompt } = require('../services/systemPromptBuilder');
+const { validateOutput } = require('../services/outputValidator');
 
 /**
  * POST /api/response-assistant/generate
@@ -24,7 +25,7 @@ const { buildResponseAssistantPrompt } = require('../services/systemPromptBuilde
  * This replaces the pattern where the frontend built the system prompt and
  * sent it wholesale via /api/generate-stream.
  */
-router.post('/response-assistant/generate', authenticate, checkUsageLimit, async (req, res) => {
+router.post('/response-assistant/generate', authenticate, checkAIRateLimit, checkUsageLimit, async (req, res) => {
     // Set SSE headers
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -99,7 +100,13 @@ router.post('/response-assistant/generate', authenticate, checkUsageLimit, async
             ).catch(err => console.warn('Usage logging failed:', err.message));
         }
 
-        sendEvent({ type: 'done', usage: usage || {} });
+        // Validate output for safety issues
+        const { warnings } = validateOutput(text, { orgEmails: [] });
+        if (warnings.length > 0) {
+            console.warn('[OUTPUT VALIDATION]', warnings);
+        }
+
+        sendEvent({ type: 'done', usage: usage || {}, warnings });
         res.end();
 
     } catch (error) {

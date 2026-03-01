@@ -12,6 +12,47 @@
 const pool = require('../../config/database');
 const { pickRelevantRatedExamples } = require('./claude');
 
+// ─── Input sanitization ─────────────────────────────────────────────
+
+const MAX_INQUIRY_LENGTH = 10000;
+
+const INJECTION_PATTERNS = [
+    /ignore\s+(all\s+)?previous\s+instructions/gi,
+    /disregard\s+(all\s+)?prior\s+(instructions|context)/gi,
+    /you\s+are\s+now\s+(a|an)/gi,
+    /reveal\s+(the\s+)?(system\s+)?prompt/gi,
+    /output\s+(the\s+)?(full\s+)?(system\s+)?prompt/gi,
+    /repeat\s+(the\s+)?instructions\s+above/gi,
+    /what\s+(are|were)\s+your\s+(system\s+)?instructions/gi,
+];
+
+/**
+ * Sanitize user-provided inquiry text against prompt injection.
+ * Logs when patterns are detected for monitoring.
+ */
+function sanitizeInquiry(text) {
+    if (!text) return '';
+
+    let sanitized = text.substring(0, MAX_INQUIRY_LENGTH);
+
+    for (const pattern of INJECTION_PATTERNS) {
+        if (pattern.test(sanitized)) {
+            console.warn(`[SECURITY] Prompt injection pattern detected: ${pattern}`);
+            sanitized = sanitized.replace(pattern, '[filtered]');
+        }
+    }
+
+    return sanitized;
+}
+
+/**
+ * Wrap user-provided content in XML delimiters so the model can
+ * distinguish user content from system instructions.
+ */
+function wrapUserContent(tag, content) {
+    return `<${tag}>\n${content}\n</${tag}>`;
+}
+
 // ─── Language instructions ───────────────────────────────────────────
 
 const LANGUAGE_INSTRUCTIONS = {
@@ -339,25 +380,25 @@ IMPORTANT: Only reference information from the organization knowledge base below
 Knowledge base:
 ${ratedExamplesContext}`;
 
-    // Build user prompt
+    // Build user prompt with XML-delimited user content for prompt injection defense
+    const sanitizedInquiry = sanitizeInquiry(inquiry);
+
     const instructionsBlock = agentInstructions
-        ? `\nAGENT INSTRUCTIONS (from the staff member — follow these closely):\n${agentInstructions}\n`
+        ? `\n${wrapUserContent('agent_instructions', agentInstructions)}\n`
         : '';
 
     let userPrompt;
     if (isFacebook) {
         const fbEmailRef = orgSupportEmail ? `direct them to email ${orgSupportEmail} for assistance` : 'direct them to email for assistance';
-        userPrompt = `Write a FACEBOOK COMMENT reply to this inquiry. Remember: under 400 characters, single paragraph, end with -${staffName}
+        userPrompt = `Write a FACEBOOK COMMENT reply to the customer inquiry below. Remember: under 400 characters, single paragraph, end with -${staffName}
 
 IMPORTANT: Do NOT offer to take any direct action. Instead, ${fbEmailRef}.
 ${instructionsBlock}
-INQUIRY:
-${inquiry}`;
+${wrapUserContent('customer_inquiry', sanitizedInquiry)}`;
     } else {
-        userPrompt = `Write a response to this inquiry. Detect which lottery it's about from context.
+        userPrompt = `Write a response to the customer inquiry below. Detect which lottery it's about from context.
 ${instructionsBlock}
-INQUIRY:
-${inquiry}
+${wrapUserContent('customer_inquiry', sanitizedInquiry)}
 
 Sign as: ${staffName}`;
     }
@@ -372,5 +413,7 @@ module.exports = {
     buildDrawScheduleContext,
     buildRatedExamplesContext,
     fetchRatedExamples,
+    sanitizeInquiry,
+    wrapUserContent,
     LANGUAGE_INSTRUCTIONS
 };
