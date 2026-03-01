@@ -2750,7 +2750,7 @@ function initAskLightspeedPage() {
         });
         alsInput.addEventListener('input', () => {
             alsInput.style.height = 'auto';
-            alsInput.style.height = Math.min(alsInput.scrollHeight, 120) + 'px';
+            alsInput.style.height = Math.min(alsInput.scrollHeight, 150) + 'px';
         });
 
         // Sidebar toggle
@@ -2920,15 +2920,8 @@ async function loadAlsConversation(convId) {
         const messagesEl = document.getElementById('alsMessages');
         if (messagesEl) messagesEl.innerHTML = '';
 
-        const chatArea = document.getElementById('alsChatArea');
-        chatArea.style.display = 'block';
-        const prompts = document.getElementById('alsPrompts');
-        if (prompts) prompts.style.display = 'none';
-
-        const hero = document.getElementById('alsHero');
-        const caps = document.getElementById('alsCapabilities');
-        if (hero) hero.style.display = 'none';
-        if (caps) caps.style.display = 'none';
+        const welcome = document.getElementById('alsWelcome');
+        if (welcome) welcome.style.display = 'none';
 
         if (conv.summary) {
             showAlsSummaryBanner(conv.summary);
@@ -3026,15 +3019,8 @@ function useAlsSharedPrompt(promptId, el) {
 function restoreAlsChat() {
     if (askConversation.length === 0) return;
 
-    const chatArea = document.getElementById('alsChatArea');
-    const prompts = document.getElementById('alsPrompts');
-    if (chatArea) chatArea.style.display = 'block';
-    if (prompts) prompts.style.display = 'none';
-
-    const hero = document.getElementById('alsHero');
-    const caps = document.getElementById('alsCapabilities');
-    if (hero) hero.style.display = 'none';
-    if (caps) caps.style.display = 'none';
+    const welcome = document.getElementById('alsWelcome');
+    if (welcome) welcome.style.display = 'none';
 
     document.querySelectorAll('.als-tone').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tone === askTone);
@@ -3069,7 +3055,7 @@ function fillAlsPrompt(el) {
     input.value = el.textContent;
     input.focus();
     input.style.height = 'auto';
-    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    input.style.height = Math.min(input.scrollHeight, 150) + 'px';
 }
 
 // ===== SEND MESSAGE (with citations, teach mode, context mgmt) =====
@@ -3083,15 +3069,9 @@ async function sendAlsMessage() {
     sendBtn.disabled = true;
 
     const chatArea = document.getElementById('alsChatArea');
-    chatArea.style.display = 'block';
 
-    const prompts = document.getElementById('alsPrompts');
-    if (prompts) prompts.style.display = 'none';
-
-    const hero = document.getElementById('alsHero');
-    const caps = document.getElementById('alsCapabilities');
-    if (hero) hero.style.display = 'none';
-    if (caps) caps.style.display = 'none';
+    const welcome = document.getElementById('alsWelcome');
+    if (welcome) welcome.style.display = 'none';
 
     askConversation.push({ role: 'user', content: message });
     appendAlsMessage('user', message);
@@ -3556,7 +3536,7 @@ function appendAlsMessage(role, text, historyId) {
     }
 
     messagesEl.appendChild(msgDiv);
-    chatArea.scrollTop = chatArea.scrollHeight;
+    if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
 }
 
 function appendAlsMessageActions(msgDiv, historyId) {
@@ -3597,18 +3577,18 @@ function clearAlsChat() {
     alsKbEntries = [];
     saveAskConversation();
     document.getElementById('alsMessages').innerHTML = '';
-    document.getElementById('alsChatArea').style.display = 'none';
-    document.getElementById('alsPrompts').style.display = 'flex';
 
-    const hero = document.getElementById('alsHero');
-    const caps = document.getElementById('alsCapabilities');
-    if (hero) hero.style.display = '';
-    if (caps) caps.style.display = '';
+    const welcome = document.getElementById('alsWelcome');
+    if (welcome) welcome.style.display = '';
 
     const barEl = document.getElementById('alsContextBar');
     if (barEl) { barEl.style.display = 'none'; barEl.innerHTML = ''; }
 
     renderAlsSamplePrompts();
+
+    // Scroll back to top
+    const chatArea = document.getElementById('alsChatArea');
+    if (chatArea) chatArea.scrollTop = 0;
 }
 
 async function rateAlsMessage(historyId, rating, button) {
