@@ -8,6 +8,11 @@ const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const auditLog = require('../services/auditLog');
+const { cache } = require('../services/cache');
+
+function invalidateRulesCache(organizationId) {
+    if (organizationId) cache.del(`rules:${organizationId}`);
+}
 
 /**
  * GET /api/response-rules
@@ -78,6 +83,7 @@ router.post('/', authenticate, async (req, res) => {
             req
         });
 
+        invalidateRulesCache(organizationId);
         res.status(201).json({ rule: result.rows[0] });
 
     } catch (error) {
@@ -122,6 +128,7 @@ router.put('/reorder', authenticate, async (req, res) => {
             client.release();
         }
 
+        invalidateRulesCache(organizationId);
         res.json({ message: 'Order updated' });
 
     } catch (error) {
@@ -196,6 +203,7 @@ router.put('/:id', authenticate, async (req, res) => {
             req
         });
 
+        invalidateRulesCache(organizationId);
         res.json({ rule: result.rows[0] });
 
     } catch (error) {
@@ -234,6 +242,7 @@ router.delete('/:id', authenticate, async (req, res) => {
             req
         });
 
+        invalidateRulesCache(organizationId);
         res.json({ message: 'Rule deleted' });
 
     } catch (error) {

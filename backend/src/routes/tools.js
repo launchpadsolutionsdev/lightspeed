@@ -7,9 +7,121 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
-const { authenticate, checkUsageLimit } = require('../middleware/auth');
+const { authenticate, checkUsageLimit, checkAIRateLimit } = require('../middleware/auth');
 const claudeService = require('../services/claude');
 const shopifyService = require('../services/shopify');
+const { buildEnhancedPrompt } = require('../services/promptBuilder');
+const { buildResponseAssistantPrompt } = require('../services/systemPromptBuilder');
+const { validateOutput } = require('../services/outputValidator');
+
+/**
+ * POST /api/response-assistant/generate
+ * Unified Response Assistant endpoint — prompt is built entirely server-side.
+ *
+ * The frontend sends only parameters (tone, format, language, etc.) and the
+ * backend assembles the complete system prompt, fetches rated examples, picks
+ * relevant KB entries, injects Shopify context, and streams the response.
+ *
+ * This replaces the pattern where the frontend built the system prompt and
+ * sent it wholesale via /api/generate-stream.
+ */
+router.post('/response-assistant/generate', authenticate, checkAIRateLimit, checkUsageLimit, async (req, res) => {
+    // Set SSE headers
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no'
+    });
+
+    const sendEvent = (data) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+        const {
+            inquiry, format, tone, length, includeLinks, includeSteps,
+            agentInstructions, staffName, language, tool
+        } = req.body;
+
+        if (!inquiry) {
+            sendEvent({ type: 'error', error: 'Inquiry text is required' });
+            return res.end();
+        }
+
+        const organizationId = req.organizationId;
+
+        // 1. Build system + user prompts entirely server-side
+        const { systemPrompt, userPrompt, maxTokens } = await buildResponseAssistantPrompt({
+            organizationId,
+            inquiry,
+            format,
+            tone,
+            length,
+            includeLinks,
+            includeSteps,
+            agentInstructions,
+            staffName,
+            language,
+            tool
+        });
+
+        // 2. Enhance with KB entries, response rules, and Shopify context
+        const { system: enhancedSystem, referencedKbEntries } = await buildEnhancedPrompt(
+            systemPrompt, inquiry, organizationId, { kb_type: 'support' }
+        );
+
+        // Send KB entries before streaming starts
+        if (referencedKbEntries.length > 0) {
+            sendEvent({ type: 'kb', entries: referencedKbEntries });
+        }
+
+        // 3. Stream the response (track partial text for error recovery)
+        const startTime = Date.now();
+        let partialText = '';
+
+        const { text, usage } = await claudeService.streamResponse({
+            messages: [{ role: 'user', content: userPrompt }],
+            system: enhancedSystem,
+            max_tokens: maxTokens,
+            onText: (chunk) => {
+                partialText += chunk;
+                sendEvent({ type: 'delta', text: chunk });
+            }
+        });
+
+        const responseTimeMs = Date.now() - startTime;
+
+        // Log usage
+        if (organizationId && usage) {
+            const totalTokens = (usage.input_tokens || 0) + (usage.output_tokens || 0);
+            await pool.query(
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, $4, TRUE, NOW())`,
+                [organizationId, req.userId, totalTokens, responseTimeMs]
+            ).catch(err => console.warn('Usage logging failed:', err.message));
+        }
+
+        // Validate output for safety issues
+        const { warnings } = validateOutput(text, { orgEmails: [] });
+        if (warnings.length > 0) {
+            console.warn('[OUTPUT VALIDATION]', warnings);
+        }
+
+        sendEvent({ type: 'done', usage: usage || {}, warnings });
+        res.end();
+
+    } catch (error) {
+        console.error('Response assistant generate error:', error);
+        sendEvent({
+            type: 'error',
+            error: error.message || 'Failed to generate response',
+            partial: true,
+            retry: true
+        });
+        res.end();
+    }
+});
 
 /**
  * POST /api/generate
@@ -32,111 +144,10 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
 
         const organizationId = req.organizationId;
 
-        let enhancedSystem = system || '';
-        let referencedKbEntries = [];
-
-        // Inject org-level response rules into system prompt
-        if (organizationId) {
-            try {
-                const rulesResult = await pool.query(
-                    `SELECT rule_text, rule_type FROM response_rules
-                     WHERE organization_id = $1 AND is_active = TRUE
-                     ORDER BY sort_order, created_at`,
-                    [organizationId]
-                );
-                if (rulesResult.rows.length > 0) {
-                    const typeLabels = { always: 'ALWAYS', never: 'NEVER', formatting: 'FORMATTING', general: 'RULE' };
-                    const rulesBlock = rulesResult.rows
-                        .map((r, i) => `${i + 1}. [${typeLabels[r.rule_type] || 'RULE'}] ${r.rule_text}`)
-                        .join('\n');
-                    const rulesSection = `\n\nORGANIZATION RESPONSE RULES (you MUST follow these):\n${rulesBlock}\n`;
-
-                    // Insert before "Knowledge base:" marker if present, otherwise append
-                    if (enhancedSystem.includes('Knowledge base:')) {
-                        enhancedSystem = enhancedSystem.replace(
-                            'Knowledge base:',
-                            `${rulesSection}\nKnowledge base:`
-                        );
-                    } else {
-                        enhancedSystem += rulesSection;
-                    }
-                }
-            } catch (rulesErr) {
-                console.warn('Response rules injection failed, continuing without:', rulesErr.message);
-            }
-        }
-
-        // Server-side KB relevance picking when inquiry is provided
-        if (inquiry && organizationId) {
-            try {
-                // Determine which KB types to query based on the calling tool
-                // 'all' = Ask Lightspeed (both KBs), 'support' = Response Assistant, 'internal' = Draft Assistant
-                let kbFilter = "AND kb_type = 'support'";
-                if (kb_type === 'all') {
-                    kbFilter = ''; // query both
-                } else if (kb_type === 'internal') {
-                    kbFilter = "AND kb_type = 'internal'";
-                }
-
-                const kbResult = await pool.query(
-                    `SELECT id, title, content, category, tags, updated_at FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
-                    [organizationId]
-                );
-
-                if (kbResult.rows.length > 0) {
-                    // Use Haiku to pick relevant entries
-                    const relevantEntries = await claudeService.pickRelevantKnowledge(
-                        inquiry,
-                        kbResult.rows,
-                        8
-                    );
-
-                    if (relevantEntries.length > 0) {
-                        // Store the referenced entries to return to the frontend
-                        referencedKbEntries = relevantEntries.map((entry, idx) => ({
-                            id: entry.id,
-                            title: entry.title,
-                            content: entry.content,
-                            category: entry.category,
-                            updated_at: entry.updated_at?.toISOString() || null,
-                            citation_index: idx + 1
-                        }));
-
-                        // Number KB entries for citation support
-                        const knowledgeContext = relevantEntries
-                            .map((entry, idx) => `[Source ${idx + 1}] [${entry.category}] ${entry.title}: ${entry.content}`)
-                            .join('\n\n');
-
-                        const citationInstruction = '\n\nCITATION RULES: When your response uses information from the knowledge base sources above, include inline citations using the format [1], [2], etc. corresponding to the source numbers. Only cite when you directly use information from a specific source. Do not cite for general knowledge.';
-
-                        // Insert KB entries after the "Knowledge base:" marker in the system prompt.
-                        // The marker is placed by the frontend; rated examples may follow it.
-                        if (enhancedSystem.includes('Knowledge base:')) {
-                            enhancedSystem = enhancedSystem.replace(
-                                'Knowledge base:\n',
-                                `Knowledge base:\n\n${knowledgeContext}\n${citationInstruction}\n`
-                            );
-                        } else {
-                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}${citationInstruction}`;
-                        }
-                    }
-                }
-            } catch (kbError) {
-                console.warn('KB relevance picking failed, continuing without:', kbError.message);
-            }
-        }
-
-        // Inject Shopify context if the org has a connected store
-        if (inquiry && organizationId) {
-            try {
-                const shopifyContext = await shopifyService.buildContextForInquiry(organizationId, inquiry);
-                if (shopifyContext) {
-                    enhancedSystem += shopifyContext;
-                }
-            } catch (shopifyErr) {
-                console.warn('Shopify context injection failed, continuing without:', shopifyErr.message);
-            }
-        }
+        // Build enhanced system prompt with rules, KB, and Shopify context
+        const { system: enhancedSystem, referencedKbEntries } = await buildEnhancedPrompt(
+            system, inquiry, organizationId, { kb_type }
+        );
 
         // Call Claude API
         const startTime = Date.now();
@@ -209,102 +220,10 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
 
         const organizationId = req.organizationId;
 
-        let enhancedSystem = system || '';
-        let referencedKbEntries = [];
-
-        // Inject org-level response rules into system prompt
-        if (organizationId) {
-            try {
-                const rulesResult = await pool.query(
-                    `SELECT rule_text, rule_type FROM response_rules
-                     WHERE organization_id = $1 AND is_active = TRUE
-                     ORDER BY sort_order, created_at`,
-                    [organizationId]
-                );
-                if (rulesResult.rows.length > 0) {
-                    const typeLabels = { always: 'ALWAYS', never: 'NEVER', formatting: 'FORMATTING', general: 'RULE' };
-                    const rulesBlock = rulesResult.rows
-                        .map((r, i) => `${i + 1}. [${typeLabels[r.rule_type] || 'RULE'}] ${r.rule_text}`)
-                        .join('\n');
-                    const rulesSection = `\n\nORGANIZATION RESPONSE RULES (you MUST follow these):\n${rulesBlock}\n`;
-
-                    if (enhancedSystem.includes('Knowledge base:')) {
-                        enhancedSystem = enhancedSystem.replace(
-                            'Knowledge base:',
-                            `${rulesSection}\nKnowledge base:`
-                        );
-                    } else {
-                        enhancedSystem += rulesSection;
-                    }
-                }
-            } catch (rulesErr) {
-                console.warn('Response rules injection failed, continuing without:', rulesErr.message);
-            }
-        }
-
-        // Server-side KB relevance picking when inquiry is provided
-        if (inquiry && organizationId) {
-            try {
-                // Determine which KB types to query based on the calling tool
-                let kbFilter = "AND kb_type = 'support'";
-                if (kb_type === 'all') {
-                    kbFilter = '';
-                } else if (kb_type === 'internal') {
-                    kbFilter = "AND kb_type = 'internal'";
-                }
-
-                const kbResult = await pool.query(
-                    `SELECT id, title, content, category, tags, updated_at FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
-                    [organizationId]
-                );
-
-                if (kbResult.rows.length > 0) {
-                    const relevantEntries = await claudeService.pickRelevantKnowledge(
-                        inquiry,
-                        kbResult.rows,
-                        8
-                    );
-
-                    if (relevantEntries.length > 0) {
-                        referencedKbEntries = relevantEntries.map((entry, idx) => ({
-                            id: entry.id,
-                            title: entry.title,
-                            content: entry.content,
-                            category: entry.category,
-                            updated_at: entry.updated_at?.toISOString() || null,
-                            citation_index: idx + 1
-                        }));
-
-                        const knowledgeContext = relevantEntries
-                            .map((entry) => `[${entry.category}] ${entry.title}: ${entry.content}`)
-                            .join('\n\n');
-
-                        if (enhancedSystem.includes('Knowledge base:')) {
-                            enhancedSystem = enhancedSystem.replace(
-                                'Knowledge base:\n',
-                                `Knowledge base:\n\n${knowledgeContext}\n`
-                            );
-                        } else {
-                            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}`;
-                        }
-                    }
-                }
-            } catch (kbError) {
-                console.warn('KB relevance picking failed, continuing without:', kbError.message);
-            }
-        }
-
-        // Inject Shopify context if the org has a connected store
-        if (inquiry && organizationId) {
-            try {
-                const shopifyContext = await shopifyService.buildContextForInquiry(organizationId, inquiry);
-                if (shopifyContext) {
-                    enhancedSystem += shopifyContext;
-                }
-            } catch (shopifyErr) {
-                console.warn('Shopify context injection failed, continuing without:', shopifyErr.message);
-            }
-        }
+        // Build enhanced system prompt with rules, KB, and Shopify context
+        const { system: enhancedSystem, referencedKbEntries } = await buildEnhancedPrompt(
+            system, inquiry, organizationId, { kb_type }
+        );
 
         // Send KB entries before streaming starts
         if (referencedKbEntries.length > 0) {

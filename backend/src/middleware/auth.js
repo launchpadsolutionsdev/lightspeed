@@ -5,6 +5,7 @@
 
 const jwt = require('jsonwebtoken');
 const pool = require('../../config/database');
+const { cache, TTL } = require('../services/cache');
 
 /**
  * Verify JWT token and attach user to request
@@ -36,11 +37,17 @@ const authenticate = async (req, res, next) => {
 
         // Cache organization_id on the request so route handlers don't
         // each need a separate SELECT on organization_memberships.
-        const orgRow = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [decoded.userId]
-        );
-        req.organizationId = orgRow.rows[0]?.organization_id || null;
+        const orgCacheKey = `auth:org:${decoded.userId}`;
+        let orgId = cache.get(orgCacheKey);
+        if (orgId === undefined) {
+            const orgRow = await pool.query(
+                'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+                [decoded.userId]
+            );
+            orgId = orgRow.rows[0]?.organization_id || null;
+            cache.set(orgCacheKey, orgId, TTL.AUTH_ORG);
+        }
+        req.organizationId = orgId;
 
         next();
     } catch (error) {
@@ -185,11 +192,59 @@ const checkUsageLimit = async (req, res, next) => {
     }
 };
 
+/**
+ * Per-user AI generation rate limiter.
+ * Prevents a single authenticated user from flooding AI generation endpoints.
+ * Uses in-memory tracking — no Redis dependency needed at current scale.
+ */
+const AI_RATE_LIMIT = parseInt(process.env.AI_RATE_LIMIT_PER_MINUTE || '10');
+const aiRateMap = new Map(); // userId -> { count, windowStart }
+
+// Cleanup stale entries every 5 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, val] of aiRateMap) {
+        if (now - val.windowStart > 120000) aiRateMap.delete(key);
+    }
+}, 300000);
+
+const checkAIRateLimit = (req, res, next) => {
+    // Super admins bypass
+    if (req.user?.is_super_admin) return next();
+
+    const userId = req.userId;
+    const now = Date.now();
+    const windowMs = 60000; // 1 minute
+
+    let entry = aiRateMap.get(userId);
+
+    if (!entry || now - entry.windowStart > windowMs) {
+        // New window
+        entry = { count: 1, windowStart: now };
+        aiRateMap.set(userId, entry);
+        return next();
+    }
+
+    entry.count++;
+
+    if (entry.count > AI_RATE_LIMIT) {
+        const retryAfter = Math.ceil((entry.windowStart + windowMs - now) / 1000);
+        return res.status(429).json({
+            error: 'Too many AI generation requests. Please wait a moment.',
+            code: 'AI_RATE_LIMIT',
+            retryAfter
+        });
+    }
+
+    next();
+};
+
 module.exports = {
     authenticate,
     requireOrganization,
     requireAdmin,
     requireOwner,
     requireSuperAdmin,
-    checkUsageLimit
+    checkUsageLimit,
+    checkAIRateLimit
 };
