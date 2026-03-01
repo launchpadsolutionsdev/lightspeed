@@ -2517,7 +2517,8 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         }, {
             onText: (chunk) => {
                 // Render streamed markdown incrementally
-                msgDiv.innerHTML = renderSimpleMarkdown(msgDiv._rawText = (msgDiv._rawText || '') + chunk);
+                msgDiv._rawText = (msgDiv._rawText || '') + chunk;
+                msgDiv.innerHTML = renderSimpleMarkdown(stripCitations(msgDiv._rawText));
                 chatArea.scrollTop = chatArea.scrollHeight;
             }
         });
@@ -3426,7 +3427,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
 // ===== KB CITATION RENDERING =====
 
 function renderAlsMarkdownWithCitations(text, kbEntries) {
-    return renderSimpleMarkdown(text);
+    return renderSimpleMarkdown(stripCitations(text));
 }
 
 function showAlsCitationDetail(citationIndex) {
