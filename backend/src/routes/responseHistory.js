@@ -276,7 +276,46 @@ router.post('/:id/rate', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Response not found' });
         }
 
-        res.json({ entry: result.rows[0] });
+        const entry = result.rows[0];
+
+        // Auto-create a lightweight correction KB entry when:
+        // 1. Rating is negative
+        // 2. Feedback text was provided (user explained what was wrong)
+        // 3. No KB entry was already linked (user didn't create one manually)
+        // This ensures corrections are searchable in future KB retrieval.
+        if (rating === 'negative' && feedback && !entry.feedback_kb_entry_id) {
+            try {
+                const title = (entry.inquiry || '').substring(0, 255) || 'Correction from feedback';
+                const autoKeywords = title.toLowerCase()
+                    .replace(/[^a-z0-9\s]/g, '')
+                    .split(/\s+/)
+                    .filter(w => w.length > 3)
+                    .slice(0, 8)
+                    .map(k => `keyword:${k}`);
+
+                const tags = ['source:feedback', 'source:auto-correction', ...autoKeywords];
+
+                const kbResult = await pool.query(
+                    `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, kb_type, created_by, source_response_id, created_at, updated_at)
+                     VALUES (gen_random_uuid(), $1, $2, $3, 'faqs', $4, 'support', $5, $6, NOW(), NOW())
+                     RETURNING id`,
+                    [organizationId, title, feedback, tags, req.userId, id]
+                );
+
+                // Link the KB entry back to the response
+                await pool.query(
+                    `UPDATE response_history SET feedback_kb_entry_id = $1 WHERE id = $2`,
+                    [kbResult.rows[0].id, id]
+                );
+
+                entry.feedback_kb_entry_id = kbResult.rows[0].id;
+            } catch (kbErr) {
+                // Non-fatal: the rating was still saved successfully
+                console.warn('Auto-correction KB entry creation failed:', kbErr.message);
+            }
+        }
+
+        res.json({ entry });
 
     } catch (error) {
         console.error('Rate response error:', error);

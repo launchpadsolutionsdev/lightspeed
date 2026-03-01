@@ -130,7 +130,11 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
         }));
 
         const knowledgeContext = budgetedEntries
-            .map((entry, idx) => `[Source ${idx + 1}] [${entry.category}] ${entry.title}: ${entry.content}`)
+            .map((entry, idx) => {
+                const isCorrection = (entry.tags || []).some(t => t === 'source:feedback');
+                const label = isCorrection ? 'CORRECTION' : entry.category;
+                return `[Source ${idx + 1}] [${label}] ${entry.title}: ${entry.content}`;
+            })
             .join('\n\n');
 
         let citationBlock = '';
