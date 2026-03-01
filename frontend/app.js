@@ -101,8 +101,9 @@ async function handleApiError(response) {
  * @param {Function} [opts.onError]- Called on error with error message string
  * @returns {Promise<{text: string, referencedKbEntries: Array}>} Full text + KB entries
  */
-async function fetchStream(body, { onText, onKb, onDone, onError } = {}) {
-    const response = await fetch(`${API_BASE_URL}/api/generate-stream`, {
+async function fetchStream(body, { endpoint, onText, onKb, onDone, onError } = {}) {
+    const streamEndpoint = endpoint || '/api/generate-stream';
+    const response = await fetch(`${API_BASE_URL}${streamEndpoint}`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(body)
@@ -7204,124 +7205,29 @@ function buildRatedExamplesContext(ratedExamples) {
 async function generateCustomResponse(customerEmail, staffName, options) {
     const { toneValue, lengthValue, includeLinks, includeSteps, agentInstructions } = options;
     const isFacebook = inquiryType === "facebook";
-
-    const toneDesc = toneValue < 33 ? "formal and professional" :
-                     toneValue > 66 ? "warm and friendly" : "balanced";
-    const lengthDesc = isFacebook ? "very brief (MUST be under 400 characters total)" :
-                       lengthValue < 33 ? "brief and concise" :
-                       lengthValue > 66 ? "detailed and thorough" : "moderate length";
-
-    // KB entries are picked server-side by the Haiku relevance picker.
-
-    // Fetch rated examples for learning, scoped to the current format and filtered by topic relevance
     const currentFormat = isFacebook ? 'facebook' : 'email';
-    const ratedExamples = await getRatedExamples('response_assistant', currentFormat, customerEmail);
 
-    // Get draw schedule context (org-specific if available, else hardcoded fallback)
-    const drawScheduleContext = getDrawScheduleContext();
-
-    // Get org profile values for dynamic prompts
-    const org = currentUser?.organization;
-    const orgName = org?.name || 'our organization';
-    const orgWebsite = org?.website_url || '';
-    const orgSupportEmail = org?.support_email || '';
-
-    // Format instructions based on inquiry type
-    let formatInstructions = "";
-    if (isFacebook) {
-        const fbEmailDirective = orgSupportEmail
-            ? `"Please email us at ${orgSupportEmail} and our team will assist you as soon as possible."`
-            : '"Please email us and our team will assist you as soon as possible."';
-        formatInstructions = `FORMAT: This is a FACEBOOK COMMENT response.
-- CRITICAL: Response MUST be under 400 characters total (including signature)
-- Write in a single paragraph - NO line breaks, NO bullet points, NO numbered lists
-- Be friendly but concise
-- End with a dash and the staff name (e.g., "-${staffName}")
-- Do NOT include greetings like "Hi" or "Hello" - jump right into the response
-- Do NOT include email signatures, contact info, or closing phrases like "Best regards"
-
-FACEBOOK PRIVACY RULE - VERY IMPORTANT:
-- NEVER offer to take direct action on Facebook (e.g., "I'll resend your tickets", "I've forwarded this to our team", "Let me look into your account")
-- Facebook is a public platform where we cannot verify identity or handle sensitive account matters
-- Instead, ALWAYS direct the customer to email us: ${fbEmailDirective}
-- You can acknowledge their concern briefly, but the solution must be to email us`;
-    } else {
-        const linkInfo = orgWebsite ? `You MUST include ${orgWebsite} in the response. Reference it naturally (e.g., "Visit ${orgWebsite} for..." or "You can find more at ${orgWebsite}").` : 'Include relevant website links when helpful.';
-        formatInstructions = `${includeLinks ? `LINKS: ${linkInfo}` : "LINKS: Minimize links unless essential."}
-${includeSteps ? "FORMAT: Include step-by-step instructions when applicable." : "FORMAT: Use flowing paragraphs, avoid numbered lists unless necessary."}`;
-    }
-
-    // Build dynamic org info section
-    let orgInfoSection = `ORGANIZATION INFO:\n- Organization: ${orgName}`;
-    if (orgWebsite) orgInfoSection += `\n- Lottery Website: ${orgWebsite} (ONLY use this URL - do NOT make up other URLs)`;
-    if (orgSupportEmail) orgInfoSection += `\n- Support Email: ${orgSupportEmail}`;
-    if (org?.store_location) orgInfoSection += `\n- In-Person Location: ${org.store_location}`;
-    if (org?.licence_number) orgInfoSection += `\n- Licence Number: ${org.licence_number}`;
-    if (org?.cta_website_url) orgInfoSection += `\n- Catch The Ace Website: ${org.cta_website_url}`;
-
-    if (orgWebsite) {
-        orgInfoSection += `\n\nIMPORTANT: Only use the URLs listed above. Do NOT invent or guess other URLs - they may not exist.`;
-    }
-    if (org?.mission) {
-        orgInfoSection += `\n\nORGANIZATION MISSION: ${org.mission}`;
-    }
-
-    const systemPrompt = `You are a helpful customer support assistant for ${orgName}, a charitable lottery organization.
-
-TONE: Write in a ${toneDesc} tone.
-LENGTH: Keep the response ${lengthDesc}.
-${getLanguageInstruction()}${formatInstructions}
-
-${orgInfoSection}
-
-${drawScheduleContext}
-
-GENERAL LOTTERY KNOWLEDGE (use only when relevant and not contradicted by the organization's knowledge base):
-- Winners are typically contacted directly by phone
-- Tax receipts generally cannot be issued for lottery tickets (they are not charitable donations under CRA rules)
-
-DRAW DATE AWARENESS: If the customer asks about draw dates, Early Birds, or when the next draw is, use the draw schedule information above to give them accurate, specific dates. If no draw schedule is available, let the customer know they can check the organization's website for the latest schedule. If there's an Early Bird draw happening today or tomorrow and it's relevant to mention, include that information naturally.
-
-ESCALATION: If the inquiry is unclear, bizarre, nonsensical, confrontational, threatening, or simply cannot be answered with the knowledge available, write a polite response explaining that you will pass the email along to your manager who can look into it further. Do not attempt to answer questions you don't have information for.
-
-IMPORTANT: Only reference information from the organization knowledge base below and the draw schedule above. Do not assume details about websites, locations, game types, eligibility rules, or operational procedures that are not explicitly provided.
-
-Knowledge base:
-${buildRatedExamplesContext(ratedExamples)}`;
-
-    const instructionsBlock = agentInstructions
-        ? `\nAGENT INSTRUCTIONS (from the staff member — follow these closely):\n${agentInstructions}\n`
-        : '';
-
-    let userPrompt;
-    if (isFacebook) {
-        const fbEmailRef = orgSupportEmail ? `direct them to email ${orgSupportEmail} for assistance` : 'direct them to email for assistance';
-        userPrompt = `Write a FACEBOOK COMMENT reply to this inquiry. Remember: under 400 characters, single paragraph, end with -${staffName}
-
-IMPORTANT: Do NOT offer to take any direct action. Instead, ${fbEmailRef}.
-${instructionsBlock}
-INQUIRY:
-${customerEmail}`;
-    } else {
-        userPrompt = `Write a response to this inquiry. Detect which lottery it's about from context.
-${instructionsBlock}
-INQUIRY:
-${customerEmail}
-
-Sign as: ${staffName}`;
-    }
+    // Send only parameters — the backend builds the complete prompt server-side.
+    // This prevents prompt exposure in browser dev tools and centralizes prompt logic.
+    const requestBody = {
+        inquiry: customerEmail,
+        format: currentFormat,
+        tone: parseInt(toneValue),
+        length: parseInt(lengthValue),
+        includeLinks: !!includeLinks,
+        includeSteps: !!includeSteps,
+        agentInstructions: agentInstructions || '',
+        staffName: staffName,
+        language: responseLanguage || 'en',
+        tool: 'response_assistant'
+    };
 
     const streamTarget = options.streamTarget;
-    const requestBody = {
-        system: systemPrompt,
-        inquiry: customerEmail,
-        messages: [{ role: "user", content: userPrompt }],
-        max_tokens: isFacebook ? 200 : 1024
-    };
 
     // Stream if a target element is provided
     if (streamTarget) {
         const { text, referencedKbEntries } = await fetchStream(requestBody, {
+            endpoint: '/api/response-assistant/generate',
             onText: (chunk) => {
                 streamTarget._rawText = (streamTarget._rawText || '') + chunk;
                 streamTarget.innerHTML = escapeHtmlWithLinks(stripCitations(streamTarget._rawText));
@@ -7333,11 +7239,18 @@ Sign as: ${staffName}`;
         return { text, referencedKbEntries };
     }
 
-    // Non-streaming fallback
+    // Non-streaming fallback — use the legacy endpoint
+    const legacyBody = {
+        system: '',
+        inquiry: customerEmail,
+        messages: [{ role: "user", content: customerEmail }],
+        max_tokens: isFacebook ? 200 : 1024
+    };
+
     const response = await fetch(`${API_BASE_URL}/api/generate`, {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(legacyBody)
     });
 
     if (!response.ok) {
