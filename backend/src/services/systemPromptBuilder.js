@@ -252,6 +252,31 @@ async function fetchRatedExamples(organizationId, tool, format, inquiry) {
  * @param {string} format
  * @returns {Promise<Array>} Relevant corrections with inquiry, feedback, and corrected_response
  */
+/**
+ * Deduplicate corrections that cover the same topic.
+ * Two corrections are considered duplicates if their inquiry text is
+ * very similar (>70% word overlap). Keeps the first occurrence (most recent).
+ */
+function deduplicateCorrections(corrections) {
+    if (corrections.length <= 1) return corrections;
+
+    const normalize = (text) => (text || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2);
+
+    const kept = [];
+    for (const correction of corrections) {
+        const words = new Set(normalize(correction.inquiry));
+        const isDuplicate = kept.some(existing => {
+            const existingWords = new Set(normalize(existing.inquiry));
+            if (words.size === 0 || existingWords.size === 0) return false;
+            const intersection = [...words].filter(w => existingWords.has(w)).length;
+            const smaller = Math.min(words.size, existingWords.size);
+            return smaller > 0 && (intersection / smaller) > 0.7;
+        });
+        if (!isDuplicate) kept.push(correction);
+    }
+    return kept;
+}
+
 async function fetchRelevantCorrections(organizationId, inquiry, tool, format) {
     if (!inquiry) return [];
 
@@ -285,8 +310,8 @@ async function fetchRelevantCorrections(organizationId, inquiry, tool, format) {
         // do semantic topic matching.
         const corrections = correctionResult.rows;
 
-        // If we have 5 or fewer corrections, return them all (no filtering needed)
-        if (corrections.length <= 5) return corrections;
+        // If we have 5 or fewer corrections, deduplicate and return
+        if (corrections.length <= 5) return deduplicateCorrections(corrections);
 
         // Build catalogue for Haiku
         const catalogue = corrections.map((c, i) =>
@@ -325,10 +350,14 @@ async function fetchRelevantCorrections(organizationId, inquiry, tool, format) {
         const indices = JSON.parse(match[0]);
         const relevant = indices
             .filter(i => typeof i === 'number' && i >= 0 && i < corrections.length)
-            .slice(0, 5)
             .map(i => corrections[i]);
 
-        return relevant.length > 0 ? relevant : corrections.slice(0, 3);
+        // Deduplicate corrections that cover the same topic.
+        // When the same question is corrected multiple times, keep only the
+        // most recent correction (which appears first due to ORDER BY rating_at DESC).
+        const deduped = deduplicateCorrections(relevant);
+
+        return deduped.length > 0 ? deduped.slice(0, 5) : corrections.slice(0, 3);
 
     } catch (err) {
         console.warn('Correction retrieval failed:', err.message);

@@ -121,6 +121,24 @@ router.get('/stats', authenticate, async (req, res) => {
             [organizationId]
         );
 
+        // Tool usage breakdown
+        const toolResult = await pool.query(
+            `SELECT COALESCE(tool, 'response_assistant') as tool, COUNT(*) as count
+             FROM response_history
+             WHERE organization_id = $1
+             GROUP BY COALESCE(tool, 'response_assistant')
+             ORDER BY count DESC`,
+            [organizationId]
+        );
+
+        // Corrections count
+        const correctionsResult = await pool.query(
+            `SELECT COUNT(*) as total
+             FROM knowledge_base
+             WHERE organization_id = $1 AND 'source:auto-correction' = ANY(tags)`,
+            [organizationId]
+        );
+
         // Quality metrics (gracefully handles missing columns from migration 024)
         let quality = null;
         try {
@@ -187,6 +205,8 @@ router.get('/stats', authenticate, async (req, res) => {
             })),
             monthly: monthlyResult.rows,
             categories: categoryResult.rows,
+            tools: toolResult.rows,
+            correctionsCount: parseInt(correctionsResult.rows[0].total) || 0,
             quality
         });
 
@@ -283,6 +303,10 @@ router.post('/:id/rate', authenticate, async (req, res) => {
         // 2. Feedback text was provided (user explained what was wrong)
         // 3. No KB entry was already linked (user didn't create one manually)
         // This ensures corrections are searchable in future KB retrieval.
+        //
+        // Deduplication: before creating a new entry, check if a correction
+        // for a very similar inquiry already exists. If so, update its content
+        // (latest feedback wins) instead of creating a duplicate.
         if (rating === 'negative' && feedback && !entry.feedback_kb_entry_id) {
             try {
                 const title = (entry.inquiry || '').substring(0, 255) || 'Correction from feedback';
@@ -295,20 +319,45 @@ router.post('/:id/rate', authenticate, async (req, res) => {
 
                 const tags = ['source:feedback', 'source:auto-correction', ...autoKeywords];
 
-                const kbResult = await pool.query(
-                    `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, kb_type, created_by, source_response_id, created_at, updated_at)
-                     VALUES (gen_random_uuid(), $1, $2, $3, 'faqs', $4, 'support', $5, $6, NOW(), NOW())
-                     RETURNING id`,
-                    [organizationId, title, feedback, tags, req.userId, id]
+                // Check for existing auto-correction with matching title (same inquiry)
+                const existingCorrection = await pool.query(
+                    `SELECT id FROM knowledge_base
+                     WHERE organization_id = $1
+                       AND title = $2
+                       AND 'source:auto-correction' = ANY(tags)
+                     LIMIT 1`,
+                    [organizationId, title]
                 );
+
+                let kbEntryId;
+
+                if (existingCorrection.rows.length > 0) {
+                    // Update the existing correction with the latest feedback
+                    kbEntryId = existingCorrection.rows[0].id;
+                    await pool.query(
+                        `UPDATE knowledge_base
+                         SET content = $1, tags = $2, updated_at = NOW()
+                         WHERE id = $3`,
+                        [feedback, tags, kbEntryId]
+                    );
+                } else {
+                    // Create a new correction KB entry
+                    const kbResult = await pool.query(
+                        `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, kb_type, created_by, source_response_id, created_at, updated_at)
+                         VALUES (gen_random_uuid(), $1, $2, $3, 'faqs', $4, 'support', $5, $6, NOW(), NOW())
+                         RETURNING id`,
+                        [organizationId, title, feedback, tags, req.userId, id]
+                    );
+                    kbEntryId = kbResult.rows[0].id;
+                }
 
                 // Link the KB entry back to the response
                 await pool.query(
                     `UPDATE response_history SET feedback_kb_entry_id = $1 WHERE id = $2`,
-                    [kbResult.rows[0].id, id]
+                    [kbEntryId, id]
                 );
 
-                entry.feedback_kb_entry_id = kbResult.rows[0].id;
+                entry.feedback_kb_entry_id = kbEntryId;
             } catch (kbErr) {
                 // Non-fatal: the rating was still saved successfully
                 console.warn('Auto-correction KB entry creation failed:', kbErr.message);
