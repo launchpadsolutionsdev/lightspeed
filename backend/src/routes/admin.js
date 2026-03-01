@@ -566,6 +566,62 @@ router.patch('/users/:userId/super-admin', authenticate, requireSuperAdmin, asyn
 });
 
 /**
+ * DELETE /api/admin/users/:userId
+ * Permanently delete a user account
+ */
+router.delete('/users/:userId', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        // Can't delete yourself
+        if (userId === req.userId) {
+            return res.status(400).json({ error: 'Cannot delete your own account' });
+        }
+
+        // Get user details before deletion for audit log
+        const userResult = await pool.query(
+            'SELECT id, email, first_name, last_name, is_super_admin FROM users WHERE id = $1',
+            [userId]
+        );
+        if (!userResult.rows.length) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const user = userResult.rows[0];
+
+        // Prevent deleting other super admins without explicit confirmation
+        if (user.is_super_admin) {
+            return res.status(400).json({ error: 'Cannot delete a super admin. Remove super admin status first.' });
+        }
+
+        // Nullify soft references that don't have ON DELETE SET NULL
+        await pool.query('UPDATE knowledge_base SET created_by = NULL WHERE created_by = $1', [userId]);
+        await pool.query('UPDATE draw_schedules SET created_by = NULL WHERE created_by = $1', [userId]);
+        await pool.query('UPDATE draw_schedules SET updated_by = NULL WHERE updated_by = $1', [userId]);
+        await pool.query('UPDATE content_templates SET created_by = NULL WHERE created_by = $1', [userId]);
+        await pool.query('UPDATE rules_of_play_drafts SET created_by = NULL WHERE created_by = $1', [userId]);
+        await pool.query('UPDATE organization_invitations SET invited_by = NULL WHERE invited_by = $1', [userId]);
+
+        // Delete the user (cascades organization_memberships; SET NULLs usage_logs, response_history, etc.)
+        await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+        auditLog.logAction({
+            userId: req.userId,
+            action: 'ADMIN_USER_DELETED',
+            resourceType: 'USER',
+            resourceId: userId,
+            changes: { email: user.email, name: (user.first_name || '') + ' ' + (user.last_name || '') },
+            req
+        });
+
+        res.json({ message: 'User deleted successfully' });
+
+    } catch (error) {
+        console.error('Delete user error:', error);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
+/**
  * GET /api/admin/recent-activity
  * Recent signups, logins, and usage events
  */
@@ -882,6 +938,66 @@ router.post('/organizations', authenticate, requireSuperAdmin, async (req, res) 
     } catch (error) {
         console.error('Create organization error:', error);
         res.status(500).json({ error: 'Failed to create organization' });
+    }
+});
+
+/**
+ * DELETE /api/admin/organizations/:orgId
+ * Permanently delete an organization and all its data
+ */
+router.delete('/organizations/:orgId', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { orgId } = req.params;
+
+        // Get org details before deletion for audit log
+        const orgResult = await pool.query(
+            'SELECT id, name, slug, subscription_status, stripe_subscription_id FROM organizations WHERE id = $1',
+            [orgId]
+        );
+        if (!orgResult.rows.length) {
+            return res.status(404).json({ error: 'Organization not found' });
+        }
+        const org = orgResult.rows[0];
+
+        // Warn if there's an active Stripe subscription
+        if (org.stripe_subscription_id && org.subscription_status === 'active') {
+            return res.status(400).json({
+                error: 'This organization has an active Stripe subscription. Cancel the subscription in Stripe first, then delete.',
+                stripeSubscriptionId: org.stripe_subscription_id
+            });
+        }
+
+        // Get member count for audit log
+        const memberCount = await pool.query(
+            'SELECT COUNT(*) FROM organization_memberships WHERE organization_id = $1', [orgId]
+        );
+
+        // Delete the organization (cascades: memberships, invitations, knowledge_base,
+        // response_templates, response_history, favorites, draw_schedules, content_templates,
+        // jurisdiction_waitlist, rules_of_play_drafts, conversations, shared_prompts,
+        // shopify_stores/products/orders/customers/sync_logs, response_rules)
+        // SET NULL: usage_logs, feedback, audit_logs
+        await pool.query('DELETE FROM organizations WHERE id = $1', [orgId]);
+
+        auditLog.logAction({
+            userId: req.userId,
+            action: 'ADMIN_ORGANIZATION_DELETED',
+            resourceType: 'ORGANIZATION',
+            resourceId: orgId,
+            changes: {
+                name: org.name,
+                slug: org.slug,
+                subscription_status: org.subscription_status,
+                member_count: parseInt(memberCount.rows[0].count)
+            },
+            req
+        });
+
+        res.json({ message: 'Organization deleted successfully' });
+
+    } catch (error) {
+        console.error('Delete organization error:', error);
+        res.status(500).json({ error: 'Failed to delete organization' });
     }
 });
 
