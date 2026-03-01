@@ -13523,6 +13523,10 @@ Answer to question 2..."></textarea>
                 closeLegalModal();
             }
         });
+
+        // Auto-open legal modal from hash (e.g. index.html#privacy)
+        if (window.location.hash === '#privacy') showLegalModal('privacy');
+        if (window.location.hash === '#terms') showLegalModal('terms');
     </script>
 
     <!-- JavaScript -->
