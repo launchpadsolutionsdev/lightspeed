@@ -240,31 +240,32 @@ function showUpgradeModal(reason) {
                     <h2 id="upgradeTitle">Upgrade to Continue</h2>
                     <p id="upgradeMessage"></p>
                 </div>
-                <div class="upgrade-features">
-                    <div class="upgrade-feature">
-                        <span class="feature-icon">✓</span>
-                        <span>Unlimited AI generations</span>
+                <div class="upgrade-tiers">
+                    <div class="upgrade-tier">
+                        <div class="upgrade-tier-name">Starter</div>
+                        <div class="upgrade-tier-price">$79<span>/mo</span></div>
+                        <ul class="upgrade-tier-features">
+                            <li>1 user</li>
+                            <li>150 generations / month</li>
+                            <li>Response Assistant</li>
+                        </ul>
+                        <button class="btn-upgrade" onclick="startCheckout('monthly')">Get Starter</button>
                     </div>
-                    <div class="upgrade-feature">
-                        <span class="feature-icon">✓</span>
-                        <span>Custom knowledge base</span>
+                    <div class="upgrade-tier upgrade-tier-featured">
+                        <div class="upgrade-tier-badge">Recommended</div>
+                        <div class="upgrade-tier-name">Pro</div>
+                        <div class="upgrade-tier-price">$199<span>/mo</span></div>
+                        <ul class="upgrade-tier-features">
+                            <li>Up to 10 users</li>
+                            <li>500 generations / month</li>
+                            <li>All tools included</li>
+                            <li>Priority support</li>
+                        </ul>
+                        <button class="btn-upgrade btn-upgrade-primary" onclick="startCheckout('monthly')">Get Pro</button>
                     </div>
-                    <div class="upgrade-feature">
-                        <span class="feature-icon">✓</span>
-                        <span>Priority support</span>
-                    </div>
-                </div>
-                <div class="upgrade-pricing">
-                    <div class="upgrade-price">$199<span>/month</span></div>
-                    <p>or $169/month billed annually (save 15%)</p>
                 </div>
                 <div class="upgrade-actions">
-                    <button class="btn-primary btn-upgrade" onclick="startCheckout('monthly')">
-                        Subscribe Monthly — $199/mo
-                    </button>
-                    <button class="btn-primary btn-upgrade" onclick="startCheckout('annual')" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);">
-                        Subscribe Annually — $169/mo
-                    </button>
+                    <a href="pricing.html" class="upgrade-see-all">See all plans &amp; compare features &rarr;</a>
                     <button class="btn-secondary" onclick="document.getElementById('upgradeModal').classList.remove('show')">
                         Maybe Later
                     </button>
@@ -277,7 +278,7 @@ function showUpgradeModal(reason) {
         const styles = document.createElement('style');
         styles.textContent = `
             .upgrade-modal {
-                max-width: 440px;
+                max-width: 580px;
                 padding: 40px;
                 text-align: center;
                 background: #fff;
@@ -287,46 +288,97 @@ function showUpgradeModal(reason) {
             .upgrade-icon { font-size: 48px; margin-bottom: 16px; }
             .upgrade-header h2 { margin: 0 0 8px; font-size: 24px; color: #1a1a2e; }
             .upgrade-header p { margin: 0; color: #4a5568; font-size: 15px; line-height: 1.5; }
-            .upgrade-features {
-                background: #f8fafc;
-                border-radius: 12px;
-                padding: 20px;
+            .upgrade-tiers {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
                 margin-bottom: 24px;
                 text-align: left;
             }
-            .upgrade-feature {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 8px 0;
-                color: #2d3748;
+            .upgrade-tier {
+                border: 1px solid #e3e8ee;
+                border-radius: 12px;
+                padding: 20px;
+                position: relative;
             }
-            .feature-icon {
-                color: #48bb78;
-                font-weight: bold;
-                font-size: 18px;
+            .upgrade-tier-featured {
+                border-color: #635BFF;
+                box-shadow: 0 4px 16px rgba(99, 91, 255, 0.12);
             }
-            .upgrade-pricing { margin-bottom: 24px; }
-            .upgrade-price {
-                font-size: 36px;
-                font-weight: 700;
-                color: #0A2540;
+            .upgrade-tier-badge {
+                position: absolute;
+                top: -10px;
+                left: 16px;
+                background: linear-gradient(135deg, #E91E8C, #F47B3A, #F5C623);
+                color: #fff;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 3px 10px;
+                border-radius: 20px;
             }
-            .upgrade-price span { font-size: 16px; font-weight: 400; color: #718096; }
-            .upgrade-pricing p { margin: 8px 0 0; color: #718096; font-size: 14px; }
-            .upgrade-actions { display: flex; flex-direction: column; gap: 12px; }
-            .btn-upgrade {
-                background: linear-gradient(135deg, #E91E8C 0%, #F5A623 100%);
-                color: white;
-                border: none;
-                padding: 16px 24px;
-                border-radius: 10px;
+            .upgrade-tier-name {
                 font-size: 16px;
+                font-weight: 600;
+                color: #0A2540;
+                margin-bottom: 4px;
+            }
+            .upgrade-tier-price {
+                font-size: 32px;
+                font-weight: 800;
+                color: #0A2540;
+                margin-bottom: 12px;
+            }
+            .upgrade-tier-price span { font-size: 14px; font-weight: 400; color: #718096; }
+            .upgrade-tier-features {
+                list-style: none;
+                padding: 0;
+                margin: 0 0 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .upgrade-tier-features li {
+                font-size: 13px;
+                color: #425466;
+                padding-left: 18px;
+                position: relative;
+            }
+            .upgrade-tier-features li::before {
+                content: '\\2713';
+                position: absolute;
+                left: 0;
+                color: #30B130;
+                font-weight: 700;
+            }
+            .upgrade-actions { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+            .upgrade-see-all {
+                font-size: 14px;
+                font-weight: 600;
+                color: #635BFF;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            .upgrade-see-all:hover { text-decoration: underline; }
+            .btn-upgrade {
+                width: 100%;
+                background: #fff;
+                color: #0A2540;
+                border: 1px solid #e3e8ee;
+                padding: 12px 20px;
+                border-radius: 10px;
+                font-size: 14px;
                 font-weight: 600;
                 cursor: pointer;
                 transition: all 0.2s;
+                font-family: inherit;
             }
-            .btn-upgrade:hover { transform: translateY(-2px); }
+            .btn-upgrade:hover { border-color: #425466; background: #f6f9fc; }
+            .btn-upgrade-primary {
+                background: #635BFF;
+                color: #fff;
+                border-color: #635BFF;
+            }
+            .btn-upgrade-primary:hover { background: #7A73FF; border-color: #7A73FF; }
             .btn-secondary {
                 background: transparent;
                 color: #718096;
