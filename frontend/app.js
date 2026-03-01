@@ -8181,8 +8181,69 @@ async function updateAnalytics() {
         // Positive rating percentage
         document.getElementById("analyticsPositive").textContent = `${stats.positiveRate}%`;
 
-        // Average response time (not tracked in DB yet, show dash)
-        document.getElementById("analyticsAvgTime").textContent = stats.total > 0 ? '-' : '0s';
+        // Rated count
+        const ratedEl = document.getElementById("analyticsRated");
+        if (ratedEl) ratedEl.textContent = stats.rated || 0;
+
+        // Average response time from quality metrics
+        const avgTimeEl = document.getElementById("analyticsAvgTime");
+        if (stats.quality && stats.quality.avgResponseTimeMs > 0) {
+            avgTimeEl.textContent = (stats.quality.avgResponseTimeMs / 1000).toFixed(1) + 's';
+        } else {
+            avgTimeEl.textContent = stats.total > 0 ? '-' : '0s';
+        }
+
+        // Corrections count
+        const correctionsEl = document.getElementById("analyticsCorrections");
+        if (correctionsEl) correctionsEl.textContent = stats.correctionsCount || 0;
+
+        // Quality metrics row
+        if (stats.quality) {
+            const qmRow = document.getElementById("qualityMetricsRow");
+            if (qmRow) {
+                qmRow.style.display = 'flex';
+                document.getElementById("qmAvgWords").textContent = stats.quality.avgWordCount || '-';
+                document.getElementById("qmAvgChars").textContent = stats.quality.avgCharCount || '-';
+                document.getElementById("qmKbUsed").textContent = stats.quality.avgKbEntriesUsed || '-';
+                document.getElementById("qmFbOverLimit").textContent = stats.quality.facebookOverLimitRate + '%';
+            }
+        }
+
+        // Quality trend chart
+        if (stats.quality && stats.quality.qualityTrend && stats.quality.qualityTrend.length > 0) {
+            const trendCard = document.getElementById("qualityTrendCard");
+            if (trendCard) {
+                trendCard.style.display = '';
+                const trend = stats.quality.qualityTrend;
+                const maxKb = Math.max(...trend.map(t => t.avgKbEntries || 0), 1);
+                const trendHtml = trend.map(t => {
+                    const date = new Date(t.month + '-01');
+                    const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                    return `
+                        <div class="trend-row">
+                            <div class="trend-month">${monthName}</div>
+                            <div class="trend-bars">
+                                <div class="trend-bar-row">
+                                    <div class="trend-bar-label">Approval</div>
+                                    <div class="trend-bar-track">
+                                        <div class="trend-bar-fill approval" style="width: ${t.positiveRate}%"></div>
+                                    </div>
+                                    <div class="trend-bar-value">${t.positiveRate}%</div>
+                                </div>
+                                <div class="trend-bar-row">
+                                    <div class="trend-bar-label">KB Sources</div>
+                                    <div class="trend-bar-track">
+                                        <div class="trend-bar-fill kb" style="width: ${maxKb > 0 ? (t.avgKbEntries / maxKb * 100) : 0}%"></div>
+                                    </div>
+                                    <div class="trend-bar-value">${t.avgKbEntries}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById("qualityTrendChart").innerHTML = trendHtml;
+            }
+        }
 
         // Category chart from backend
         const categories = stats.categories || [];
@@ -8200,23 +8261,91 @@ async function updateAnalytics() {
         document.getElementById("categoryChart").innerHTML = chartHtml ||
             emptyStateHtml('📊', 'No category data yet', 'Generate responses to see inquiry breakdowns.', 'Generate Response', "switchPage('response')");
 
-        // Monthly breakdown from backend
+        // Monthly breakdown from backend (enhanced with negative count)
         const monthlyData = stats.monthly || [];
         const monthlyHtml = monthlyData.length > 0 ? monthlyData.map(month => {
             const date = new Date(month.month + '-01');
             const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
             const rated = parseInt(month.rated);
             const positive = parseInt(month.positive);
+            const negative = parseInt(month.negative);
+            const ratingText = rated > 0 ? `${Math.round(positive / rated * 100)}% positive` : 'No ratings';
             return `
                 <div class="monthly-stat-row">
                     <div class="monthly-stat-name">${monthName}</div>
                     <div class="monthly-stat-count">${month.count} responses</div>
-                    <div class="monthly-stat-rating">${rated > 0 ? Math.round(positive / rated * 100) + '% positive' : 'No ratings'}</div>
+                    <div class="monthly-stat-rating">${ratingText}${rated > 0 ? ` (${positive}/${rated})` : ''}</div>
                 </div>
             `;
         }).join('') : emptyStateHtml('📅', 'No monthly data yet', 'Your monthly response trends will appear here.');
 
         document.getElementById("monthlyBreakdown").innerHTML = monthlyHtml;
+
+        // Ratings breakdown (donut chart)
+        const ratingsEl = document.getElementById("ratingsBreakdown");
+        if (ratingsEl) {
+            const pos = parseInt(stats.positive) || 0;
+            const neg = parseInt(stats.negative) || 0;
+            const unrated = Math.max(0, (parseInt(stats.total) || 0) - (parseInt(stats.rated) || 0));
+            const total = pos + neg + unrated;
+            if (total > 0) {
+                const posPct = Math.round(pos / total * 100);
+                const negPct = Math.round(neg / total * 100);
+                const unratedPct = 100 - posPct - negPct;
+                const posStroke = posPct * 2.51327;
+                const negStroke = negPct * 2.51327;
+                const unratedStroke = unratedPct * 2.51327;
+                const negOffset = posStroke;
+                const unratedOffset = posStroke + negStroke;
+                ratingsEl.innerHTML = `
+                    <div class="ratings-donut">
+                        <div class="ratings-ring">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="40" fill="none" stroke="#d1d5db" stroke-width="12" />
+                                <circle cx="50" cy="50" r="40" fill="none" stroke="#10b981" stroke-width="12"
+                                    stroke-dasharray="${posStroke} 251.327" stroke-dashoffset="0" />
+                                <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" stroke-width="12"
+                                    stroke-dasharray="${negStroke} 251.327" stroke-dashoffset="-${negOffset}" />
+                            </svg>
+                            <div class="ratings-ring-label">${stats.rated || 0}</div>
+                        </div>
+                        <div class="ratings-legend">
+                            <div class="ratings-legend-item"><span class="ratings-dot positive"></span> ${pos} positive (${posPct}%)</div>
+                            <div class="ratings-legend-item"><span class="ratings-dot negative"></span> ${neg} negative (${negPct}%)</div>
+                            <div class="ratings-legend-item"><span class="ratings-dot unrated"></span> ${unrated} unrated</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                ratingsEl.innerHTML = emptyStateHtml('👍', 'No ratings yet', 'Rate responses to see your approval breakdown.');
+            }
+        }
+
+        // Tool usage chart
+        const toolChartEl = document.getElementById("toolChart");
+        if (toolChartEl) {
+            const tools = stats.tools || [];
+            if (tools.length > 0) {
+                const toolLabels = {
+                    'response_assistant': 'Response Assistant',
+                    'ask_lightspeed': 'Ask Lightspeed',
+                    'draft_studio': 'Draft Studio',
+                    'data_analysis': 'Data Analysis'
+                };
+                const maxToolCount = Math.max(...tools.map(t => parseInt(t.count)), 1);
+                toolChartEl.innerHTML = tools.slice(0, 5).map(t => `
+                    <div class="bar-item">
+                        <div class="bar-label">${toolLabels[t.tool] || t.tool}</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: ${parseInt(t.count) / maxToolCount * 100}%"></div>
+                        </div>
+                        <div class="bar-value">${t.count}</div>
+                    </div>
+                `).join('');
+            } else {
+                toolChartEl.innerHTML = emptyStateHtml('🔧', 'No tool data yet', 'Use tools to see usage breakdown.');
+            }
+        }
 
         // Team history list from backend
         const entries = historyData.entries || [];

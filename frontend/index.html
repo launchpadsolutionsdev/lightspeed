@@ -3706,7 +3706,170 @@
             border-color: var(--primary);
         }
 
+        .stats-grid-6 {
+            grid-template-columns: repeat(6, 1fr);
+        }
+
         /* ==================== ANALYTICS PAGE ==================== */
+
+        /* Quality metrics row */
+        .quality-metrics-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding: 16px 20px;
+            background: var(--bg-light);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+        }
+
+        .quality-metric {
+            flex: 1;
+            text-align: center;
+        }
+
+        .quality-metric-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .quality-metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Quality trend chart */
+        .quality-trend-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .trend-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+        }
+
+        .trend-month {
+            width: 120px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .trend-bars {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .trend-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .trend-bar-label {
+            width: 80px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        .trend-bar-track {
+            flex: 1;
+            height: 14px;
+            background: white;
+            border-radius: 100px;
+            overflow: hidden;
+        }
+
+        .trend-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            transition: width 0.5s ease;
+        }
+
+        .trend-bar-fill.approval {
+            background: linear-gradient(135deg, #10b981, #34d399);
+        }
+
+        .trend-bar-fill.kb {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        }
+
+        .trend-bar-value {
+            width: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Ratings breakdown */
+        .ratings-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ratings-donut {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 12px 0;
+        }
+
+        .ratings-ring {
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+
+        .ratings-ring svg {
+            transform: rotate(-90deg);
+        }
+
+        .ratings-ring-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .ratings-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ratings-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .ratings-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .ratings-dot.positive { background: #10b981; }
+        .ratings-dot.negative { background: #ef4444; }
+        .ratings-dot.unrated { background: #d1d5db; }
+
         .analytics-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -7772,6 +7935,9 @@
             .container { padding: 16px; }
             .hero-title { font-size: 2.5rem; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stats-grid-6 { grid-template-columns: repeat(3, 1fr); }
+            .quality-metrics-row { flex-wrap: wrap; }
+            .quality-metric { min-width: 80px; }
             .knowledge-stats { grid-template-columns: 1fr; }
             .tool-menu-title { font-size: 1.8rem; }
             .tool-cards-grid { grid-template-columns: 1fr; }
@@ -10134,7 +10300,8 @@
                     <span>📊 Team Analytics</span> - Showing combined data from all team members
                 </div>
 
-                <div class="stats-grid">
+                <!-- Primary stats row -->
+                <div class="stats-grid stats-grid-6">
                     <div class="stat-card">
                         <div class="stat-value" id="analyticsTotal">0</div>
                         <div class="stat-label">Total Responses</div>
@@ -10148,18 +10315,58 @@
                         <div class="stat-label">Positive Rating</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="analyticsAvgTime">0s</div>
+                        <div class="stat-value" id="analyticsRated">0</div>
+                        <div class="stat-label">Rated</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="analyticsAvgTime">-</div>
                         <div class="stat-label">Avg Response Time</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="analyticsCorrections">0</div>
+                        <div class="stat-label">Corrections</div>
+                    </div>
+                </div>
+
+                <!-- Quality metrics row -->
+                <div class="quality-metrics-row" id="qualityMetricsRow" style="display:none;">
+                    <div class="quality-metric">
+                        <div class="quality-metric-value" id="qmAvgWords">-</div>
+                        <div class="quality-metric-label">Avg Words</div>
+                    </div>
+                    <div class="quality-metric">
+                        <div class="quality-metric-value" id="qmAvgChars">-</div>
+                        <div class="quality-metric-label">Avg Characters</div>
+                    </div>
+                    <div class="quality-metric">
+                        <div class="quality-metric-value" id="qmKbUsed">-</div>
+                        <div class="quality-metric-label">Avg KB Sources</div>
+                    </div>
+                    <div class="quality-metric">
+                        <div class="quality-metric-value" id="qmFbOverLimit">-</div>
+                        <div class="quality-metric-label">FB Over Limit</div>
                     </div>
                 </div>
 
                 <div class="analytics-grid">
+                    <!-- Quality Trend (full width) -->
+                    <div class="card" id="qualityTrendCard" style="grid-column: 1 / -1; display:none;">
+                        <div class="card-header">
+                            <div class="card-icon icon-analytics">📈</div>
+                            <div>
+                                <div class="card-title">Quality Trend</div>
+                                <div class="card-description">Approval rate and KB usage over time</div>
+                            </div>
+                        </div>
+                        <div class="quality-trend-chart" id="qualityTrendChart"></div>
+                    </div>
+
                     <div class="card">
                         <div class="card-header">
                             <div class="card-icon icon-analytics">📊</div>
                             <div>
-                                <div class="card-title">Category Breakdown</div>
-                                <div class="card-description">Most common inquiry types</div>
+                                <div class="card-title">Format Breakdown</div>
+                                <div class="card-description">Email vs Facebook vs other</div>
                             </div>
                         </div>
                         <div class="bar-chart" id="categoryChart"></div>
@@ -10170,7 +10377,7 @@
                             <div class="card-icon icon-calendar">📅</div>
                             <div>
                                 <div class="card-title">Monthly Breakdown</div>
-                                <div class="card-description">Responses by month</div>
+                                <div class="card-description">Responses and ratings by month</div>
                             </div>
                         </div>
                         <div class="monthly-breakdown" id="monthlyBreakdown"></div>
@@ -10185,6 +10392,30 @@
                             </div>
                         </div>
                         <div class="leaderboard-container" id="leaderboardContainer"></div>
+                    </div>
+
+                    <!-- Ratings breakdown -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-analytics">👍</div>
+                            <div>
+                                <div class="card-title">Ratings Breakdown</div>
+                                <div class="card-description">Positive vs negative ratings</div>
+                            </div>
+                        </div>
+                        <div class="ratings-breakdown" id="ratingsBreakdown"></div>
+                    </div>
+
+                    <!-- Tool usage -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-analytics">🔧</div>
+                            <div>
+                                <div class="card-title">Tool Usage</div>
+                                <div class="card-description">Which tools generate the most responses</div>
+                            </div>
+                        </div>
+                        <div class="bar-chart" id="toolChart"></div>
                     </div>
 
                     <div class="card" style="grid-column: 1 / -1;">
