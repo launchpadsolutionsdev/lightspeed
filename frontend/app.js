@@ -2473,10 +2473,8 @@ async function sendAskMessage() {
 
 TONE: Respond in a ${toneDesc} tone.
 ${getLanguageInstruction()}
-CORE BEHAVIOR — ALWAYS FOLLOW:
-Before generating any content (emails, posts, documents, strategies, analyses, code, or anything substantial), you MUST first ask 2-3 clarifying questions to understand exactly what the user needs. This includes understanding context, audience, goals, constraints, and preferences. Only after the user answers should you produce the final output. This makes your work dramatically more accurate and tailored.
-
-Exception: If the user's request is a simple factual question, a quick calculation, or a brief answer that doesn't require generation — answer directly without asking clarifying questions.
+CORE BEHAVIOR:
+Respond directly to the user's request. If the request is clear enough to produce useful output, do so immediately. Only ask clarifying questions when the request is genuinely ambiguous and getting it wrong would waste the user's time — and even then, limit yourself to 1-2 focused questions, not a list. When in doubt, generate a response and let the user iterate.
 
 You are a fully capable AI assistant. You can help with absolutely anything:
 - Drafting emails, social media posts, marketing content, and communications
@@ -3318,10 +3316,8 @@ async function sendAlsMessage() {
 
 TONE: Respond in a ${toneDesc} tone.
 ${getLanguageInstruction()}
-CORE BEHAVIOR — ALWAYS FOLLOW:
-Before generating any content (emails, posts, documents, strategies, analyses, code, or anything substantial), you MUST first ask 2-3 clarifying questions to understand exactly what the user needs. This includes understanding context, audience, goals, constraints, and preferences. Only after the user answers should you produce the final output. This makes your work dramatically more accurate and tailored.
-
-Exception: If the user's request is a simple factual question, a quick calculation, or a brief answer that doesn't require generation — answer directly without asking clarifying questions.
+CORE BEHAVIOR:
+Respond directly to the user's request. If the request is clear enough to produce useful output, do so immediately. Only ask clarifying questions when the request is genuinely ambiguous and getting it wrong would waste the user's time — and even then, limit yourself to 1-2 focused questions, not a list. When in doubt, generate a response and let the user iterate.
 
 TEACH MODE: If the user says something like "remember that...", "our policy is...", "when someone asks about X, tell them Y", or similar knowledge-sharing statements, acknowledge what you've learned and confirm you'll remember it. Format your response to clearly state what knowledge was captured.
 
