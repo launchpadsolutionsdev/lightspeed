@@ -10,6 +10,7 @@ const pool = require('../../config/database');
 const claudeService = require('./claude');
 const shopifyService = require('./shopify');
 const { cache, TTL } = require('./cache');
+const { truncateEntriesToBudget } = require('./tokenCounter');
 
 /**
  * Inject organization-level response rules into the system prompt.
@@ -108,7 +109,10 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
 
         if (relevantEntries.length === 0) return { system, entries: [] };
 
-        const referencedKbEntries = relevantEntries.map((entry, idx) => ({
+        // Truncate entries that are too long (>3K chars) to prevent context overflow
+        const budgetedEntries = truncateEntriesToBudget(relevantEntries, 30000);
+
+        const referencedKbEntries = budgetedEntries.map((entry, idx) => ({
             id: entry.id,
             title: entry.title,
             content: entry.content,
@@ -117,7 +121,7 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
             citation_index: idx + 1
         }));
 
-        const knowledgeContext = relevantEntries
+        const knowledgeContext = budgetedEntries
             .map((entry, idx) => `[Source ${idx + 1}] [${entry.category}] ${entry.title}: ${entry.content}`)
             .join('\n\n');
 

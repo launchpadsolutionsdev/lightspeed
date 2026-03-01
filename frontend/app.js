@@ -142,6 +142,13 @@ async function fetchStream(body, { endpoint, onText, onKb, onDone, onError } = {
                 } else if (event.type === 'done') {
                     if (onDone) onDone(event);
                 } else if (event.type === 'error') {
+                    // If we have partial text and the error is retryable,
+                    // return what we have instead of throwing
+                    if (event.partial && fullText) {
+                        console.warn('Stream interrupted with partial response:', event.error);
+                        if (onError) onError(event.error);
+                        return { text: fullText, referencedKbEntries, partial: true };
+                    }
                     if (onError) onError(event.error);
                     throw new Error(event.error);
                 }

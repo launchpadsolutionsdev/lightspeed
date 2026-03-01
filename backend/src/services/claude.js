@@ -30,7 +30,11 @@ async function generateResponse({ messages, system, max_tokens = 1024 }) {
         body: JSON.stringify({
             model: ANTHROPIC_MODEL,
             max_tokens,
-            system: system || '',
+            system: system ? [{
+                type: 'text',
+                text: system,
+                cache_control: { type: 'ephemeral' }
+            }] : '',
             messages
         })
     });
@@ -340,7 +344,13 @@ async function streamResponse({ messages, system, max_tokens = 1024, model, onTe
         body: JSON.stringify({
             model: model || ANTHROPIC_MODEL,
             max_tokens,
-            system: system || '',
+            // Use Anthropic prompt caching: wrap system prompt with cache_control
+            // to cache the (mostly static) system prompt across requests
+            system: system ? [{
+                type: 'text',
+                text: system,
+                cache_control: { type: 'ephemeral' }
+            }] : '',
             messages,
             stream: true
         })

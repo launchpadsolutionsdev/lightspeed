@@ -76,14 +76,16 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
             sendEvent({ type: 'kb', entries: referencedKbEntries });
         }
 
-        // 3. Stream the response
+        // 3. Stream the response (track partial text for error recovery)
         const startTime = Date.now();
+        let partialText = '';
 
         const { text, usage } = await claudeService.streamResponse({
             messages: [{ role: 'user', content: userPrompt }],
             system: enhancedSystem,
             max_tokens: maxTokens,
             onText: (chunk) => {
+                partialText += chunk;
                 sendEvent({ type: 'delta', text: chunk });
             }
         });
@@ -111,7 +113,12 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
 
     } catch (error) {
         console.error('Response assistant generate error:', error);
-        sendEvent({ type: 'error', error: error.message || 'Failed to generate response' });
+        sendEvent({
+            type: 'error',
+            error: error.message || 'Failed to generate response',
+            partial: true,
+            retry: true
+        });
         res.end();
     }
 });

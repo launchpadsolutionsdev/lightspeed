@@ -378,7 +378,7 @@ ESCALATION: If the inquiry is unclear, bizarre, nonsensical, confrontational, th
 IMPORTANT: Only reference information from the organization knowledge base below and the draw schedule above. Do not assume details about websites, locations, game types, eligibility rules, or operational procedures that are not explicitly provided.
 
 Knowledge base:
-${ratedExamplesContext}`;
+${ratedExamplesContext}${!ratedExamplesContext.trim() ? '\n(No knowledge base entries are available yet. Only provide general information and recommend the customer contact support directly for specific questions.)\n' : ''}`;
 
     // Build user prompt with XML-delimited user content for prompt injection defense
     const sanitizedInquiry = sanitizeInquiry(inquiry);
