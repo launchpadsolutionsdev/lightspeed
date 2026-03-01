@@ -2704,6 +2704,144 @@ let alsListenersSetup = false;
 let alsCurrentConversationId = null;
 let alsKbEntries = []; // KB entries for current response (for citations)
 let alsSidebarTab = 'my';
+let alsAttachments = []; // Pending file attachments [{file, base64, mediaType, name, size, isImage}]
+
+// ===== FILE ATTACHMENT HELPERS =====
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]); // strip data:...;base64, prefix
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function getFileExtension(name) {
+    const parts = name.split('.');
+    return parts.length > 1 ? parts.pop().toUpperCase() : '?';
+}
+
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const TEXT_EXTENSIONS = ['txt', 'csv', 'md', 'json', 'xml', 'html', 'css', 'js', 'ts', 'py', 'java', 'c', 'cpp', 'rb', 'go', 'rs', 'swift', 'log', 'yaml', 'yml', 'toml', 'ini', 'sh', 'bat', 'sql'];
+
+async function addAlsAttachment(file) {
+    if (alsAttachments.length >= 5) {
+        showToast('Maximum 5 attachments per message', 'error');
+        return;
+    }
+    const isImage = IMAGE_TYPES.includes(file.type);
+    if (isImage && file.size > 5 * 1024 * 1024) {
+        showToast('Images must be under 5 MB', 'error');
+        return;
+    }
+    if (!isImage && file.size > 1 * 1024 * 1024) {
+        showToast('Text files must be under 1 MB', 'error');
+        return;
+    }
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isTextFile = TEXT_EXTENSIONS.includes(ext) || file.type === 'application/pdf';
+
+    if (!isImage && !isTextFile) {
+        showToast('Unsupported file type. Use images or text files.', 'error');
+        return;
+    }
+
+    let base64 = null;
+    let textContent = null;
+
+    if (isImage) {
+        base64 = await fileToBase64(file);
+    } else {
+        // Read text files as string
+        textContent = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
+    }
+
+    alsAttachments.push({
+        file,
+        base64,
+        textContent,
+        mediaType: file.type || 'application/octet-stream',
+        name: file.name,
+        size: file.size,
+        isImage,
+        previewUrl: isImage ? URL.createObjectURL(file) : null
+    });
+
+    renderAlsAttachments();
+}
+
+function removeAlsAttachment(index) {
+    const att = alsAttachments[index];
+    if (att && att.previewUrl) URL.revokeObjectURL(att.previewUrl);
+    alsAttachments.splice(index, 1);
+    renderAlsAttachments();
+}
+
+function renderAlsAttachments() {
+    const container = document.getElementById('alsAttachments');
+    if (!container) return;
+    container.innerHTML = alsAttachments.map((att, i) => {
+        const thumb = att.isImage
+            ? '<img class="als-attachment-thumb" src="' + att.previewUrl + '" alt="">'
+            : '<div class="als-attachment-icon">' + getFileExtension(att.name) + '</div>';
+        return '<div class="als-attachment-item">' +
+            thumb +
+            '<div class="als-attachment-info">' +
+                '<span class="als-attachment-name">' + escapeHtml(att.name) + '</span>' +
+                '<span class="als-attachment-size">' + formatFileSize(att.size) + '</span>' +
+            '</div>' +
+            '<button class="als-attachment-remove" onclick="removeAlsAttachment(' + i + ')">&times;</button>' +
+        '</div>';
+    }).join('');
+}
+
+function clearAlsAttachments() {
+    alsAttachments.forEach(att => { if (att.previewUrl) URL.revokeObjectURL(att.previewUrl); });
+    alsAttachments = [];
+    renderAlsAttachments();
+}
+
+function buildAlsUserContent(text, attachments) {
+    if (!attachments || attachments.length === 0) {
+        return text;
+    }
+    // Build content array with image blocks and/or text file content
+    const content = [];
+
+    for (const att of attachments) {
+        if (att.isImage) {
+            content.push({
+                type: 'image',
+                source: {
+                    type: 'base64',
+                    media_type: att.mediaType,
+                    data: att.base64
+                }
+            });
+        } else if (att.textContent) {
+            content.push({
+                type: 'text',
+                text: '--- File: ' + att.name + ' ---\n' + att.textContent + '\n--- End of file ---'
+            });
+        }
+    }
+
+    content.push({ type: 'text', text: text });
+    return content;
+}
 
 function initAskLightspeedPage() {
     loadAskConversation();
@@ -2752,6 +2890,54 @@ function initAskLightspeedPage() {
             alsInput.style.height = 'auto';
             alsInput.style.height = Math.min(alsInput.scrollHeight, 150) + 'px';
         });
+
+        // Paste images from clipboard
+        alsInput.addEventListener('paste', (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) addAlsAttachment(file);
+                }
+            }
+        });
+
+        // Attach button + file input
+        const attachBtn = document.getElementById('alsAttachBtn');
+        const fileInput = document.getElementById('alsFileInput');
+        if (attachBtn && fileInput) {
+            attachBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', () => {
+                Array.from(fileInput.files).forEach(f => addAlsAttachment(f));
+                fileInput.value = '';
+            });
+        }
+
+        // Drag and drop
+        const alsPage = document.querySelector('.als-page');
+        const dropOverlay = document.getElementById('alsDropOverlay');
+        let dragCounter = 0;
+        if (alsPage && dropOverlay) {
+            alsPage.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                dropOverlay.classList.add('visible');
+            });
+            alsPage.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter <= 0) { dragCounter = 0; dropOverlay.classList.remove('visible'); }
+            });
+            alsPage.addEventListener('dragover', (e) => e.preventDefault());
+            alsPage.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                dropOverlay.classList.remove('visible');
+                Array.from(e.dataTransfer.files).forEach(f => addAlsAttachment(f));
+            });
+        }
 
         // Sidebar toggle
         document.getElementById('alsSidebarToggle').addEventListener('click', toggleAlsSidebar);
@@ -3063,7 +3249,8 @@ function fillAlsPrompt(el) {
 async function sendAlsMessage() {
     const input = document.getElementById('alsInput');
     const message = input.value.trim();
-    if (!message) return;
+    const currentAttachments = [...alsAttachments];
+    if (!message && currentAttachments.length === 0) return;
 
     const sendBtn = document.getElementById('alsSendBtn');
     sendBtn.disabled = true;
@@ -3073,12 +3260,26 @@ async function sendAlsMessage() {
     const welcome = document.getElementById('alsWelcome');
     if (welcome) welcome.style.display = 'none';
 
-    askConversation.push({ role: 'user', content: message });
-    appendAlsMessage('user', message);
+    // Build display text (what the user sees in the chat)
+    const displayText = message || (currentAttachments.length > 0 ? '(attached ' + currentAttachments.length + ' file' + (currentAttachments.length > 1 ? 's' : '') + ')' : '');
+
+    // Store text-only version in conversation history (base64 is too large to persist)
+    const textForHistory = currentAttachments.length > 0
+        ? (currentAttachments.filter(a => !a.isImage).map(a => '[File: ' + a.name + ']\n' + (a.textContent || '')).join('\n') + '\n' + message).trim()
+        : message;
+    askConversation.push({ role: 'user', content: textForHistory });
+
+    // Build API content (with image blocks for Claude)
+    const apiContent = buildAlsUserContent(message || 'Please analyze the attached file(s).', currentAttachments);
+
+    // Show user message with image previews
+    appendAlsMessageWithAttachments('user', displayText, currentAttachments);
     saveAskConversation();
 
+    // Clear input and attachments
     input.value = '';
     input.style.height = 'auto';
+    clearAlsAttachments();
 
     const messagesEl = document.getElementById('alsMessages');
     const typingEl = document.createElement('div');
@@ -3096,7 +3297,13 @@ async function sendAlsMessage() {
         const orgName = currentUser?.organization?.name || 'your organization';
 
         // Build messages to send — include summary as context if available
-        let messagesToSend = askConversation.map(m => ({ role: m.role, content: m.content }));
+        // Build messages to send — use apiContent (with images) for the latest user message
+        let messagesToSend = askConversation.map((m, i) => {
+            if (i === askConversation.length - 1 && m.role === 'user' && apiContent) {
+                return { role: m.role, content: apiContent };
+            }
+            return { role: m.role, content: m.content };
+        });
 
         const summaryBanner = document.querySelector('.als-summary-banner');
         if (summaryBanner && summaryBanner.dataset.summary) {
@@ -3511,6 +3718,30 @@ async function saveAlsSharedPrompt() {
 
 // ===== MESSAGE RENDERING =====
 
+function appendAlsMessageWithAttachments(role, text, attachments) {
+    const messagesEl = document.getElementById('alsMessages');
+    const chatArea = document.getElementById('alsChatArea');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'als-msg als-msg-' + role;
+
+    let html = '';
+    // Show image thumbnails
+    if (attachments && attachments.length > 0) {
+        for (const att of attachments) {
+            if (att.isImage && att.previewUrl) {
+                html += '<img class="als-msg-image" src="' + att.previewUrl + '" alt="' + escapeHtml(att.name) + '">';
+            } else {
+                html += '<div class="als-msg-file-badge">' + getFileExtension(att.name) + ' ' + escapeHtml(att.name) + '</div>';
+            }
+        }
+    }
+    html += escapeHtml(text);
+    msgDiv.innerHTML = html;
+
+    messagesEl.appendChild(msgDiv);
+    if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+}
+
 function appendAlsMessage(role, text, historyId) {
     const messagesEl = document.getElementById('alsMessages');
     const chatArea = document.getElementById('alsChatArea');
@@ -3575,6 +3806,7 @@ function clearAlsChat() {
     askConversation = [];
     alsCurrentConversationId = null;
     alsKbEntries = [];
+    clearAlsAttachments();
     saveAskConversation();
     document.getElementById('alsMessages').innerHTML = '';
 
@@ -3629,6 +3861,7 @@ async function rateAlsMessage(historyId, rating, button) {
 window.fillAlsPrompt = fillAlsPrompt;
 window.copyAlsMessage = copyAlsMessage;
 window.clearAlsChat = clearAlsChat;
+window.removeAlsAttachment = removeAlsAttachment;
 window.rateAlsMessage = rateAlsMessage;
 window.loadAlsConversation = loadAlsConversation;
 window.deleteAlsConversation = deleteAlsConversation;
