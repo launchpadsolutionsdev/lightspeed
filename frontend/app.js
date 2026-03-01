@@ -265,7 +265,7 @@ function showUpgradeModal(reason) {
                     </div>
                 </div>
                 <div class="upgrade-actions">
-                    <a href="pricing.html" class="upgrade-see-all">See all plans &amp; compare features &rarr;</a>
+                    <a href="/pricing/" class="upgrade-see-all">See all plans &amp; compare features &rarr;</a>
                     <button class="btn-secondary" onclick="document.getElementById('upgradeModal').classList.remove('show')">
                         Maybe Later
                     </button>
