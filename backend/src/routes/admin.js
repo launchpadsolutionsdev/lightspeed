@@ -99,6 +99,79 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
             `SELECT COUNT(*) FROM organizations WHERE subscription_status = 'cancelled'`
         );
 
+        // Platform-wide response quality metrics
+        let responseQuality = null;
+        try {
+            const rqResult = await pool.query(
+                `SELECT
+                    COUNT(*) as total_responses,
+                    COUNT(*) FILTER (WHERE created_at > CURRENT_DATE) as responses_today,
+                    COUNT(*) FILTER (WHERE rating IS NOT NULL) as rated,
+                    COUNT(*) FILTER (WHERE rating = 'positive') as positive,
+                    COUNT(*) FILTER (WHERE rating = 'negative') as negative,
+                    ROUND(AVG(response_time_ms))::int as avg_response_time_ms,
+                    ROUND(AVG(word_count))::int as avg_word_count
+                 FROM response_history`
+            );
+            const rq = rqResult.rows[0];
+            const rqRated = parseInt(rq.rated) || 0;
+            responseQuality = {
+                totalResponses: parseInt(rq.total_responses) || 0,
+                responsesToday: parseInt(rq.responses_today) || 0,
+                rated: rqRated,
+                positive: parseInt(rq.positive) || 0,
+                negative: parseInt(rq.negative) || 0,
+                approvalRate: rqRated > 0 ? Math.round(parseInt(rq.positive) / rqRated * 100) : 0,
+                avgResponseTimeMs: parseInt(rq.avg_response_time_ms) || 0,
+                avgWordCount: parseInt(rq.avg_word_count) || 0
+            };
+        } catch (e) { /* response_history columns may not exist */ }
+
+        // Platform-wide KB overview
+        let kbOverview = null;
+        try {
+            const kbStatsResult = await pool.query(
+                `SELECT
+                    COUNT(*) as total_entries,
+                    COUNT(*) FILTER (WHERE 'source:auto-correction' = ANY(tags)) as auto_corrections,
+                    COUNT(DISTINCT organization_id) as orgs_with_kb
+                 FROM knowledge_base`
+            );
+            const kbCatResult = await pool.query(
+                `SELECT category, COUNT(*) as count
+                 FROM knowledge_base
+                 GROUP BY category
+                 ORDER BY count DESC`
+            );
+            const kbs = kbStatsResult.rows[0];
+            kbOverview = {
+                totalEntries: parseInt(kbs.total_entries) || 0,
+                autoCorrections: parseInt(kbs.auto_corrections) || 0,
+                manualEntries: (parseInt(kbs.total_entries) || 0) - (parseInt(kbs.auto_corrections) || 0),
+                orgsWithKb: parseInt(kbs.orgs_with_kb) || 0,
+                categories: kbCatResult.rows
+            };
+        } catch (e) { /* knowledge_base may not exist */ }
+
+        // Conversations & Shared Prompts stats
+        let contentStats = null;
+        try {
+            const convResult = await pool.query('SELECT COUNT(*) FROM conversations');
+            const promptResult = await pool.query('SELECT COUNT(*) FROM shared_prompts');
+            const topPromptsResult = await pool.query(
+                `SELECT title, usage_count
+                 FROM shared_prompts
+                 WHERE usage_count > 0
+                 ORDER BY usage_count DESC
+                 LIMIT 5`
+            );
+            contentStats = {
+                totalConversations: parseInt(convResult.rows[0].count) || 0,
+                totalSharedPrompts: parseInt(promptResult.rows[0].count) || 0,
+                topPrompts: topPromptsResult.rows
+            };
+        } catch (e) { /* tables may not exist */ }
+
         res.json({
             overview: {
                 totalUsers: parseInt(userCount.rows[0].count),
@@ -114,6 +187,9 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
             },
             toolUsage: toolUsage.rows || [],
             dailyActivity: dailyActivity.rows || [],
+            responseQuality,
+            kbOverview,
+            contentStats,
             subscriptions: {
                 trial: parseInt(trialCount.rows[0].count),
                 active: parseInt(activeCount.rows[0].count),
@@ -348,7 +424,11 @@ router.get('/organizations', authenticate, requireSuperAdmin, async (req, res) =
         let query = `
             SELECT o.*,
                    (SELECT COUNT(*) FROM organization_memberships WHERE organization_id = o.id) as member_count,
-                   (SELECT SUM(total_tokens) FROM usage_logs WHERE organization_id = o.id) as total_tokens_used
+                   (SELECT SUM(total_tokens) FROM usage_logs WHERE organization_id = o.id) as total_tokens_used,
+                   (SELECT COUNT(*) FROM knowledge_base WHERE organization_id = o.id) as kb_count,
+                   (SELECT COUNT(*) FROM response_history WHERE organization_id = o.id AND created_at > NOW() - INTERVAL '30 days') as responses_30d,
+                   (SELECT COUNT(*) FILTER (WHERE rating = 'positive') FROM response_history WHERE organization_id = o.id AND rating IS NOT NULL) as positive_ratings,
+                   (SELECT COUNT(*) FILTER (WHERE rating IS NOT NULL) FROM response_history WHERE organization_id = o.id) as total_rated
             FROM organizations o
             WHERE 1=1
         `;
@@ -585,6 +665,35 @@ router.get('/cost-estimate', authenticate, requireSuperAdmin, async (req, res) =
             ORDER BY date ASC
         `);
 
+        // Response volume trends (last 30 days)
+        let responseTrends = [];
+        let responsesByOrg = [];
+        try {
+            const rtResult = await pool.query(`
+                SELECT DATE(created_at) as date, COUNT(*) as responses,
+                       COUNT(*) FILTER (WHERE rating = 'positive') as positive,
+                       COUNT(*) FILTER (WHERE rating IS NOT NULL) as rated
+                FROM response_history
+                WHERE created_at > NOW() - INTERVAL '30 days'
+                GROUP BY DATE(created_at)
+                ORDER BY date ASC
+            `);
+            responseTrends = rtResult.rows;
+
+            const rbyOrgResult = await pool.query(`
+                SELECT o.name, COUNT(*) as responses,
+                       COUNT(*) FILTER (WHERE rh.rating = 'positive') as positive,
+                       COUNT(*) FILTER (WHERE rh.rating IS NOT NULL) as rated
+                FROM response_history rh
+                JOIN organizations o ON rh.organization_id = o.id
+                WHERE rh.created_at > NOW() - INTERVAL '30 days'
+                GROUP BY o.id, o.name
+                ORDER BY responses DESC
+                LIMIT 10
+            `);
+            responsesByOrg = rbyOrgResult.rows;
+        } catch (e) { /* response_history may not exist */ }
+
         res.json({
             summary: {
                 today: { tokens: parseInt(row.tokens_today) || 0, cost: calcCost(row.tokens_today) },
@@ -594,7 +703,9 @@ router.get('/cost-estimate', authenticate, requireSuperAdmin, async (req, res) =
             },
             byTool: costByTool.rows.map(r => ({ ...r, cost: calcCost(r.tokens) })),
             byOrg: costByOrg.rows.map(r => ({ ...r, cost: calcCost(r.tokens) })),
-            dailyTrend: dailyCost.rows.map(r => ({ ...r, cost: calcCost(r.tokens) }))
+            dailyTrend: dailyCost.rows.map(r => ({ ...r, cost: calcCost(r.tokens) })),
+            responseTrends,
+            responsesByOrg
         });
 
     } catch (error) {
