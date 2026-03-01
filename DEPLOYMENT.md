@@ -53,7 +53,7 @@ git push -u origin main
 3. Connect your GitHub repository
 4. Configure the service:
    - **Name**: `lightspeed-api`
-   - **Root Directory**: `server`
+   - **Root Directory**: `backend`
    - **Environment**: `Node`
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
