@@ -5,6 +5,7 @@
 
 const jwt = require('jsonwebtoken');
 const pool = require('../../config/database');
+const { cache, TTL } = require('../services/cache');
 
 /**
  * Verify JWT token and attach user to request
@@ -36,11 +37,17 @@ const authenticate = async (req, res, next) => {
 
         // Cache organization_id on the request so route handlers don't
         // each need a separate SELECT on organization_memberships.
-        const orgRow = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-            [decoded.userId]
-        );
-        req.organizationId = orgRow.rows[0]?.organization_id || null;
+        const orgCacheKey = `auth:org:${decoded.userId}`;
+        let orgId = cache.get(orgCacheKey);
+        if (orgId === undefined) {
+            const orgRow = await pool.query(
+                'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+                [decoded.userId]
+            );
+            orgId = orgRow.rows[0]?.organization_id || null;
+            cache.set(orgCacheKey, orgId, TTL.AUTH_ORG);
+        }
+        req.organizationId = orgId;
 
         next();
     } catch (error) {

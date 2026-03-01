@@ -12,6 +12,12 @@ const { authenticate } = require('../middleware/auth');
 const multer = require('multer');
 const mammoth = require('mammoth');
 const auditLog = require('../services/auditLog');
+const { cache } = require('../services/cache');
+
+// Helper to invalidate KB cache for an org after any write operation
+function invalidateKbCache(organizationId) {
+    if (organizationId) cache.invalidatePrefix(`kb:${organizationId}`);
+}
 
 // Configure multer for in-memory file uploads (max 10MB)
 const upload = multer({
@@ -184,6 +190,7 @@ router.post('/', authenticate, [
         );
 
         auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'KB_ENTRY_CREATED', resourceType: 'KNOWLEDGE_BASE', resourceId: entryId, changes: { title, category }, req });
+        invalidateKbCache(organizationId);
         res.status(201).json({ entry: result.rows[0] });
 
     } catch (error) {
@@ -449,6 +456,7 @@ router.put('/:id', authenticate, [
         }
 
         auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'KB_ENTRY_UPDATED', resourceType: 'KNOWLEDGE_BASE', resourceId: id, changes: { title, content: content?.substring(0, 100), category }, req });
+        invalidateKbCache(organizationId);
         res.json({ entry: result.rows[0] });
 
     } catch (error) {
@@ -480,6 +488,7 @@ router.delete('/:id', authenticate, async (req, res) => {
         }
 
         auditLog.logAction({ orgId: organizationId, userId: req.userId, action: 'KB_ENTRY_DELETED', resourceType: 'KNOWLEDGE_BASE', resourceId: id, changes: { title: result.rows[0].title }, req });
+        invalidateKbCache(organizationId);
         res.json({ message: 'Entry deleted' });
 
     } catch (error) {

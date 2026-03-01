@@ -9,6 +9,7 @@
 const pool = require('../../config/database');
 const claudeService = require('./claude');
 const shopifyService = require('./shopify');
+const { cache, TTL } = require('./cache');
 
 /**
  * Inject organization-level response rules into the system prompt.
@@ -17,16 +18,22 @@ const shopifyService = require('./shopify');
  */
 async function injectResponseRules(system, organizationId) {
     try {
-        const rulesResult = await pool.query(
-            `SELECT rule_text, rule_type FROM response_rules
-             WHERE organization_id = $1 AND is_active = TRUE
-             ORDER BY sort_order, created_at`,
-            [organizationId]
-        );
-        if (rulesResult.rows.length === 0) return system;
+        const cacheKey = `rules:${organizationId}`;
+        let rows = cache.get(cacheKey);
+        if (rows === undefined) {
+            const rulesResult = await pool.query(
+                `SELECT rule_text, rule_type FROM response_rules
+                 WHERE organization_id = $1 AND is_active = TRUE
+                 ORDER BY sort_order, created_at`,
+                [organizationId]
+            );
+            rows = rulesResult.rows;
+            cache.set(cacheKey, rows, TTL.RESPONSE_RULES);
+        }
+        if (rows.length === 0) return system;
 
         const typeLabels = { always: 'ALWAYS', never: 'NEVER', formatting: 'FORMATTING', general: 'RULE' };
-        const rulesBlock = rulesResult.rows
+        const rulesBlock = rows
             .map((r, i) => `${i + 1}. [${typeLabels[r.rule_type] || 'RULE'}] ${r.rule_text}`)
             .join('\n');
         const rulesSection = `\n\nORGANIZATION RESPONSE RULES (you MUST follow these):\n${rulesBlock}\n`;
@@ -63,16 +70,39 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
             kbFilter = "AND kb_type = 'internal'";
         }
 
-        const kbResult = await pool.query(
-            `SELECT id, title, content, category, tags, updated_at FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
-            [organizationId]
-        );
+        // Try full-text search pre-filtering first (scales to 100K+ entries)
+        let kbRows;
+        try {
+            const ftsResult = await pool.query(
+                `SELECT id, title, content, category, tags, updated_at,
+                        ts_rank(search_vector, plainto_tsquery('english', $2)) AS rank
+                 FROM knowledge_base
+                 WHERE organization_id = $1 ${kbFilter}
+                   AND search_vector @@ plainto_tsquery('english', $2)
+                 ORDER BY rank DESC
+                 LIMIT 30`,
+                [organizationId, inquiry]
+            );
+            kbRows = ftsResult.rows;
+        } catch (ftsErr) {
+            // search_vector column may not exist yet (migration not run)
+            kbRows = [];
+        }
 
-        if (kbResult.rows.length === 0) return { system, entries: [] };
+        // Fall back to loading all entries if FTS returned too few results
+        if (kbRows.length < 5) {
+            const allResult = await pool.query(
+                `SELECT id, title, content, category, tags, updated_at FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
+                [organizationId]
+            );
+            kbRows = allResult.rows;
+        }
+
+        if (kbRows.length === 0) return { system, entries: [] };
 
         const relevantEntries = await claudeService.pickRelevantKnowledge(
             inquiry,
-            kbResult.rows,
+            kbRows,
             8
         );
 
