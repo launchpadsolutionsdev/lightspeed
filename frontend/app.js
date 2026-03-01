@@ -8181,10 +8181,6 @@ async function updateAnalytics() {
         // Positive rating percentage
         document.getElementById("analyticsPositive").textContent = `${stats.positiveRate}%`;
 
-        // Rated count
-        const ratedEl = document.getElementById("analyticsRated");
-        if (ratedEl) ratedEl.textContent = stats.rated || 0;
-
         // Average response time from quality metrics
         const avgTimeEl = document.getElementById("analyticsAvgTime");
         if (stats.quality && stats.quality.avgResponseTimeMs > 0) {
@@ -8193,20 +8189,18 @@ async function updateAnalytics() {
             avgTimeEl.textContent = stats.total > 0 ? '-' : '0s';
         }
 
-        // Corrections count
+        // Secondary metrics strip
+        const ratedEl = document.getElementById("analyticsRated");
+        if (ratedEl) ratedEl.textContent = stats.rated || 0;
         const correctionsEl = document.getElementById("analyticsCorrections");
         if (correctionsEl) correctionsEl.textContent = stats.correctionsCount || 0;
-
-        // Quality metrics row
         if (stats.quality) {
-            const qmRow = document.getElementById("qualityMetricsRow");
-            if (qmRow) {
-                qmRow.style.display = 'flex';
-                document.getElementById("qmAvgWords").textContent = stats.quality.avgWordCount || '-';
-                document.getElementById("qmAvgChars").textContent = stats.quality.avgCharCount || '-';
-                document.getElementById("qmKbUsed").textContent = stats.quality.avgKbEntriesUsed || '-';
-                document.getElementById("qmFbOverLimit").textContent = stats.quality.facebookOverLimitRate + '%';
-            }
+            const qmWords = document.getElementById("qmAvgWords");
+            if (qmWords) qmWords.textContent = stats.quality.avgWordCount || '-';
+            const qmKb = document.getElementById("qmKbUsed");
+            if (qmKb) qmKb.textContent = stats.quality.avgKbEntriesUsed || '-';
+            const qmFb = document.getElementById("qmFbOverLimit");
+            if (qmFb) qmFb.textContent = stats.quality.facebookOverLimitRate + '%';
         }
 
         // Quality trend chart
@@ -8344,6 +8338,84 @@ async function updateAnalytics() {
                 `).join('');
             } else {
                 toolChartEl.innerHTML = emptyStateHtml('🔧', 'No tool data yet', 'Use tools to see usage breakdown.');
+            }
+        }
+
+        // Tone distribution chart
+        const toneChartEl = document.getElementById("toneChart");
+        if (toneChartEl) {
+            const tones = stats.tones || [];
+            if (tones.length > 0) {
+                const toneLabels = {
+                    'balanced': 'Balanced',
+                    'professional': 'Professional',
+                    'friendly': 'Friendly',
+                    'empathetic': 'Empathetic',
+                    'formal': 'Formal',
+                    'casual': 'Casual',
+                    'concise': 'Concise'
+                };
+                const maxToneCount = Math.max(...tones.map(t => parseInt(t.count)), 1);
+                toneChartEl.innerHTML = tones.slice(0, 6).map(t => `
+                    <div class="bar-item">
+                        <div class="bar-label">${toneLabels[t.tone] || t.tone.charAt(0).toUpperCase() + t.tone.slice(1)}</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: ${parseInt(t.count) / maxToneCount * 100}%"></div>
+                        </div>
+                        <div class="bar-value">${t.count}</div>
+                    </div>
+                `).join('');
+            } else {
+                toneChartEl.innerHTML = emptyStateHtml('🎨', 'No tone data yet', 'Generate responses to see tone preferences.');
+            }
+        }
+
+        // KB Health card
+        if (stats.kbHealth && stats.kbHealth.totalEntries > 0) {
+            const kbCard = document.getElementById("kbHealthCard");
+            const kbContent = document.getElementById("kbHealthContent");
+            if (kbCard && kbContent) {
+                kbCard.style.display = '';
+                const kb = stats.kbHealth;
+                const maxCatCount = Math.max(...(kb.categories || []).map(c => parseInt(c.count)), 1);
+                const oldestDate = kb.oldestUpdate ? new Date(kb.oldestUpdate).toLocaleDateString() : '-';
+                const newestDate = kb.newestUpdate ? new Date(kb.newestUpdate).toLocaleDateString() : '-';
+
+                const categoriesHtml = (kb.categories || []).slice(0, 6).map(c => `
+                    <div class="kb-cat-row">
+                        <div class="kb-cat-name">${(c.category || 'other').charAt(0).toUpperCase() + (c.category || 'other').slice(1)}</div>
+                        <div class="kb-cat-bar">
+                            <div class="kb-cat-fill" style="width: ${parseInt(c.count) / maxCatCount * 100}%"></div>
+                        </div>
+                        <div class="kb-cat-count">${c.count}</div>
+                    </div>
+                `).join('');
+
+                kbContent.innerHTML = `
+                    <div class="kb-health-stats">
+                        <div class="kb-health-stat">
+                            <div class="kb-health-stat-value">${kb.totalEntries}</div>
+                            <div class="kb-health-stat-label">Total Entries</div>
+                        </div>
+                        <div class="kb-health-stat">
+                            <div class="kb-health-stat-value">${kb.manualEntries}</div>
+                            <div class="kb-health-stat-label">Manual</div>
+                        </div>
+                        <div class="kb-health-stat">
+                            <div class="kb-health-stat-value">${kb.autoCorrections}</div>
+                            <div class="kb-health-stat-label">Auto-Corrections</div>
+                        </div>
+                        <div class="kb-health-stat">
+                            <div class="kb-health-stat-value">${kb.categoryCount}</div>
+                            <div class="kb-health-stat-label">Categories</div>
+                        </div>
+                    </div>
+                    <div class="kb-health-categories">
+                        <div class="kb-health-categories-title">Entries by Category</div>
+                        ${categoriesHtml}
+                        <div class="kb-health-freshness">Last updated: ${newestDate} &middot; Oldest entry: ${oldestDate}</div>
+                    </div>
+                `;
             }
         }
 

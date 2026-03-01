@@ -139,6 +139,55 @@ router.get('/stats', authenticate, async (req, res) => {
             [organizationId]
         );
 
+        // Tone breakdown
+        const toneResult = await pool.query(
+            `SELECT COALESCE(tone, 'balanced') as tone, COUNT(*) as count
+             FROM response_history
+             WHERE organization_id = $1
+             GROUP BY COALESCE(tone, 'balanced')
+             ORDER BY count DESC`,
+            [organizationId]
+        );
+
+        // KB health stats
+        let kbHealth = null;
+        try {
+            const kbStatsResult = await pool.query(
+                `SELECT
+                    COUNT(*) as total_entries,
+                    COUNT(*) FILTER (WHERE 'source:auto-correction' = ANY(tags)) as auto_corrections,
+                    COUNT(*) FILTER (WHERE NOT ('source:auto-correction' = ANY(tags))) as manual_entries,
+                    COUNT(DISTINCT category) as category_count,
+                    ROUND(AVG(LENGTH(content)))::int as avg_content_length,
+                    MIN(updated_at) as oldest_update,
+                    MAX(updated_at) as newest_update
+                 FROM knowledge_base
+                 WHERE organization_id = $1`,
+                [organizationId]
+            );
+            const kbCategoriesResult = await pool.query(
+                `SELECT category, COUNT(*) as count
+                 FROM knowledge_base
+                 WHERE organization_id = $1
+                 GROUP BY category
+                 ORDER BY count DESC`,
+                [organizationId]
+            );
+            const kb = kbStatsResult.rows[0];
+            kbHealth = {
+                totalEntries: parseInt(kb.total_entries) || 0,
+                autoCorrections: parseInt(kb.auto_corrections) || 0,
+                manualEntries: parseInt(kb.manual_entries) || 0,
+                categoryCount: parseInt(kb.category_count) || 0,
+                avgContentLength: parseInt(kb.avg_content_length) || 0,
+                oldestUpdate: kb.oldest_update,
+                newestUpdate: kb.newest_update,
+                categories: kbCategoriesResult.rows
+            };
+        } catch (kbErr) {
+            console.warn('KB health stats unavailable:', kbErr.message);
+        }
+
         // Quality metrics (gracefully handles missing columns from migration 024)
         let quality = null;
         try {
@@ -206,7 +255,9 @@ router.get('/stats', authenticate, async (req, res) => {
             monthly: monthlyResult.rows,
             categories: categoryResult.rows,
             tools: toolResult.rows,
+            tones: toneResult.rows,
             correctionsCount: parseInt(correctionsResult.rows[0].total) || 0,
+            kbHealth,
             quality
         });
 

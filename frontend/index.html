@@ -3706,18 +3706,14 @@
             border-color: var(--primary);
         }
 
-        .stats-grid-6 {
-            grid-template-columns: repeat(6, 1fr);
-        }
-
         /* ==================== ANALYTICS PAGE ==================== */
 
-        /* Quality metrics row */
+        /* Secondary metrics strip */
         .quality-metrics-row {
             display: flex;
             gap: 16px;
-            margin-bottom: 24px;
-            padding: 16px 20px;
+            margin-bottom: 28px;
+            padding: 14px 24px;
             background: var(--bg-light);
             border-radius: var(--radius-lg);
             border: 1px solid var(--border);
@@ -3729,15 +3725,17 @@
         }
 
         .quality-metric-value {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             font-weight: 700;
             color: var(--primary);
         }
 
         .quality-metric-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
             margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         /* Quality trend chart */
@@ -3872,8 +3870,100 @@
 
         .analytics-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 28px;
+        }
+
+        .analytics-grid .bento-full {
+            grid-column: 1 / -1;
+        }
+
+        /* KB Health card */
+        .kb-health-content {
+            display: flex;
+            gap: 32px;
+            align-items: flex-start;
+        }
+
+        .kb-health-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            flex: 1;
+        }
+
+        .kb-health-stat {
+            text-align: center;
+            padding: 12px;
+            background: var(--bg-light);
+            border-radius: var(--radius-md);
+        }
+
+        .kb-health-stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .kb-health-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .kb-health-categories {
+            flex: 1;
+        }
+
+        .kb-health-categories-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .kb-cat-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+        }
+
+        .kb-cat-name {
+            width: 100px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .kb-cat-bar {
+            flex: 1;
+            height: 18px;
+            background: var(--bg-light);
+            border-radius: 100px;
+            overflow: hidden;
+        }
+
+        .kb-cat-fill {
+            height: 100%;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 100px;
+            transition: width 0.5s ease;
+        }
+
+        .kb-cat-count {
+            width: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: right;
+        }
+
+        .kb-health-freshness {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
         }
 
         .bar-chart {
@@ -7935,9 +8025,10 @@
             .container { padding: 16px; }
             .hero-title { font-size: 2.5rem; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .stats-grid-6 { grid-template-columns: repeat(3, 1fr); }
+            .analytics-grid { grid-template-columns: 1fr; }
             .quality-metrics-row { flex-wrap: wrap; }
-            .quality-metric { min-width: 80px; }
+            .quality-metric { min-width: 70px; }
+            .kb-health-content { flex-direction: column; }
             .knowledge-stats { grid-template-columns: 1fr; }
             .tool-menu-title { font-size: 1.8rem; }
             .tool-cards-grid { grid-template-columns: 1fr; }
@@ -10300,8 +10391,8 @@
                     <span>📊 Team Analytics</span> - Showing combined data from all team members
                 </div>
 
-                <!-- Primary stats row -->
-                <div class="stats-grid stats-grid-6">
+                <!-- Hero stats — 4 key numbers -->
+                <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value" id="analyticsTotal">0</div>
                         <div class="stat-label">Total Responses</div>
@@ -10312,31 +10403,27 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="analyticsPositive">0%</div>
-                        <div class="stat-label">Positive Rating</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="analyticsRated">0</div>
-                        <div class="stat-label">Rated</div>
+                        <div class="stat-label">Approval Rate</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="analyticsAvgTime">-</div>
                         <div class="stat-label">Avg Response Time</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="analyticsCorrections">0</div>
-                        <div class="stat-label">Corrections</div>
-                    </div>
                 </div>
 
-                <!-- Quality metrics row -->
-                <div class="quality-metrics-row" id="qualityMetricsRow" style="display:none;">
+                <!-- Secondary metrics strip -->
+                <div class="quality-metrics-row" id="qualityMetricsRow">
+                    <div class="quality-metric">
+                        <div class="quality-metric-value" id="analyticsRated">0</div>
+                        <div class="quality-metric-label">Rated</div>
+                    </div>
+                    <div class="quality-metric">
+                        <div class="quality-metric-value" id="analyticsCorrections">0</div>
+                        <div class="quality-metric-label">Corrections</div>
+                    </div>
                     <div class="quality-metric">
                         <div class="quality-metric-value" id="qmAvgWords">-</div>
                         <div class="quality-metric-label">Avg Words</div>
-                    </div>
-                    <div class="quality-metric">
-                        <div class="quality-metric-value" id="qmAvgChars">-</div>
-                        <div class="quality-metric-label">Avg Characters</div>
                     </div>
                     <div class="quality-metric">
                         <div class="quality-metric-value" id="qmKbUsed">-</div>
@@ -10348,9 +10435,11 @@
                     </div>
                 </div>
 
+                <!-- 2x2 Bento Grid -->
                 <div class="analytics-grid">
+
                     <!-- Quality Trend (full width) -->
-                    <div class="card" id="qualityTrendCard" style="grid-column: 1 / -1; display:none;">
+                    <div class="card bento-full" id="qualityTrendCard" style="display:none;">
                         <div class="card-header">
                             <div class="card-icon icon-analytics">📈</div>
                             <div>
@@ -10361,17 +10450,7 @@
                         <div class="quality-trend-chart" id="qualityTrendChart"></div>
                     </div>
 
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-icon icon-analytics">📊</div>
-                            <div>
-                                <div class="card-title">Format Breakdown</div>
-                                <div class="card-description">Email vs Facebook vs other</div>
-                            </div>
-                        </div>
-                        <div class="bar-chart" id="categoryChart"></div>
-                    </div>
-
+                    <!-- Row: Monthly + Ratings -->
                     <div class="card">
                         <div class="card-header">
                             <div class="card-icon icon-calendar">📅</div>
@@ -10385,6 +10464,41 @@
 
                     <div class="card">
                         <div class="card-header">
+                            <div class="card-icon icon-analytics">👍</div>
+                            <div>
+                                <div class="card-title">Ratings Breakdown</div>
+                                <div class="card-description">Positive vs negative vs unrated</div>
+                            </div>
+                        </div>
+                        <div class="ratings-breakdown" id="ratingsBreakdown"></div>
+                    </div>
+
+                    <!-- Row: Format + Tone -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-analytics">📊</div>
+                            <div>
+                                <div class="card-title">Format Breakdown</div>
+                                <div class="card-description">Email vs Facebook vs other</div>
+                            </div>
+                        </div>
+                        <div class="bar-chart" id="categoryChart"></div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-analytics">🎨</div>
+                            <div>
+                                <div class="card-title">Tone Distribution</div>
+                                <div class="card-description">Which tones your team uses most</div>
+                            </div>
+                        </div>
+                        <div class="bar-chart" id="toneChart"></div>
+                    </div>
+
+                    <!-- Row: Leaderboard + Tool Usage -->
+                    <div class="card">
+                        <div class="card-header">
                             <div class="card-icon icon-analytics">🏆</div>
                             <div>
                                 <div class="card-title">Leaderboard</div>
@@ -10394,19 +10508,6 @@
                         <div class="leaderboard-container" id="leaderboardContainer"></div>
                     </div>
 
-                    <!-- Ratings breakdown -->
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-icon icon-analytics">👍</div>
-                            <div>
-                                <div class="card-title">Ratings Breakdown</div>
-                                <div class="card-description">Positive vs negative ratings</div>
-                            </div>
-                        </div>
-                        <div class="ratings-breakdown" id="ratingsBreakdown"></div>
-                    </div>
-
-                    <!-- Tool usage -->
                     <div class="card">
                         <div class="card-header">
                             <div class="card-icon icon-analytics">🔧</div>
@@ -10418,7 +10519,20 @@
                         <div class="bar-chart" id="toolChart"></div>
                     </div>
 
-                    <div class="card" style="grid-column: 1 / -1;">
+                    <!-- KB Health (full width) -->
+                    <div class="card bento-full" id="kbHealthCard" style="display:none;">
+                        <div class="card-header">
+                            <div class="card-icon icon-knowledge">📚</div>
+                            <div>
+                                <div class="card-title">Knowledge Base Health</div>
+                                <div class="card-description">Coverage, freshness, and source breakdown</div>
+                            </div>
+                        </div>
+                        <div class="kb-health-content" id="kbHealthContent"></div>
+                    </div>
+
+                    <!-- Team History (full width) -->
+                    <div class="card bento-full">
                         <div class="card-header">
                             <div class="card-icon icon-knowledge">📜</div>
                             <div>
