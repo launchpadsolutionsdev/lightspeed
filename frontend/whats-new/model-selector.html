@@ -137,17 +137,6 @@
         </div>
     </div>
 
-    <!-- Chat Widget -->
-    <div class="chat-widget-tooltip" id="chatTooltip">
-        <button class="chat-widget-tooltip-close" onclick="document.getElementById('chatTooltip').classList.remove('show')">&times;</button>
-        <div class="chat-widget-tooltip-header">Need help?</div>
-        <div class="chat-widget-tooltip-body">Have a question about Lightspeed? We&rsquo;d love to hear from you.</div>
-        <a class="chat-widget-tooltip-cta" href="../index.html#contact">Send us a message &rarr;</a>
-    </div>
-    <button class="chat-widget-btn" id="chatWidgetBtn" aria-label="Chat with us">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    </button>
-
     <script>
         function dismissCookieBanner(accepted) {
             localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
@@ -159,13 +148,6 @@
                 var banner = document.getElementById('cookieBanner');
                 if (banner) banner.classList.add('show');
             }, 1500);
-        }
-        var chatBtn = document.getElementById('chatWidgetBtn');
-        var chatTooltip = document.getElementById('chatTooltip');
-        if (chatBtn && chatTooltip) {
-            chatBtn.addEventListener('click', function() {
-                chatTooltip.classList.toggle('show');
-            });
         }
     </script>
 
