@@ -6,42 +6,42 @@
     <changefreq>weekly</changefreq>
   </url>
   <url>
-    <loc>https://www.lightspeedutility.ca/about.html</loc>
+    <loc>https://www.lightspeedutility.ca/about/</loc>
     <priority>0.8</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://www.lightspeedutility.ca/security.html</loc>
+    <loc>https://www.lightspeedutility.ca/security/</loc>
     <priority>0.7</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://www.lightspeedutility.ca/case-study.html</loc>
+    <loc>https://www.lightspeedutility.ca/case-study/</loc>
     <priority>0.7</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://www.lightspeedutility.ca/integrations.html</loc>
+    <loc>https://www.lightspeedutility.ca/integrations/</loc>
     <priority>0.7</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://www.lightspeedutility.ca/whats-new.html</loc>
+    <loc>https://www.lightspeedutility.ca/whats-new/</loc>
     <priority>0.7</priority>
     <changefreq>weekly</changefreq>
   </url>
   <url>
-    <loc>https://www.lightspeedutility.ca/faq.html</loc>
+    <loc>https://www.lightspeedutility.ca/faq/</loc>
     <priority>0.6</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://www.lightspeedutility.ca/help.html</loc>
+    <loc>https://www.lightspeedutility.ca/help/</loc>
     <priority>0.6</priority>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://www.lightspeedutility.ca/status.html</loc>
+    <loc>https://www.lightspeedutility.ca/status/</loc>
     <priority>0.5</priority>
     <changefreq>daily</changefreq>
   </url>
