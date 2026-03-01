@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing | Lightspeed by Launchpad</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="description" content="Simple, transparent pricing for every team. Start with a 14-day free trial and scale when you're ready.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="design-system.css?v=20260301">
+    <link rel="stylesheet" href="landing.css?v=20260301">
+    <style>
+        /* ===== Pricing Page Styles ===== */
+        .pricing-page-hero {
+            padding: 140px 40px 80px;
+            background: var(--bg-primary);
+            text-align: center;
+        }
+        .pricing-page-hero-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .pricing-page-tag {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--cta);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+        .pricing-page-title {
+            font-size: 44px;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+        .pricing-page-subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 560px;
+            margin: 0 auto 32px;
+        }
+
+        /* ===== Pricing Cards Section ===== */
+        .pricing-cards-section {
+            padding: 0 40px 80px;
+            background: var(--bg-primary);
+        }
+        .pricing-cards-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+
+        /* ===== Feature Comparison Table ===== */
+        .pricing-compare-section {
+            padding: 80px 40px;
+            background: var(--bg-alt);
+        }
+        .pricing-compare-inner {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        .pricing-compare-header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .pricing-compare-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .pricing-compare-subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+        .pricing-compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+        .pricing-compare-table thead th {
+            padding: 20px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+            border-bottom: 2px solid var(--border);
+            background: var(--bg-primary);
+        }
+        .pricing-compare-table thead th:first-child {
+            text-align: left;
+            width: 280px;
+        }
+        .pricing-compare-table thead th.col-featured {
+            background: rgba(99, 91, 255, 0.04);
+            border-bottom-color: var(--cta);
+        }
+        .pricing-compare-table tbody td {
+            padding: 14px 24px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+        .pricing-compare-table tbody td:first-child {
+            text-align: left;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .pricing-compare-table tbody td.col-featured {
+            background: rgba(99, 91, 255, 0.02);
+        }
+        .pricing-compare-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .compare-group-header td {
+            padding: 18px 24px 10px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted) !important;
+            background: var(--bg-alt);
+            border-bottom: 1px solid var(--border) !important;
+        }
+        .compare-check {
+            color: var(--cta);
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .compare-dash {
+            color: var(--border);
+            font-size: 16px;
+        }
+        .compare-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .pricing-compare-table tfoot td {
+            padding: 20px 24px;
+            text-align: center;
+            border-top: 2px solid var(--border);
+        }
+        .pricing-compare-table tfoot td:first-child {
+            text-align: left;
+        }
+        .pricing-compare-cta {
+            display: inline-block;
+            padding: 10px 24px;
+            border-radius: var(--radius-pill);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .pricing-compare-cta:hover {
+            border-color: var(--text-muted);
+            background: var(--bg-alt);
+        }
+        .pricing-compare-cta.primary {
+            background: var(--cta);
+            color: #fff;
+            border-color: var(--cta);
+        }
+        .pricing-compare-cta.primary:hover {
+            background: var(--cta-hover);
+            border-color: var(--cta-hover);
+        }
+
+        /* ===== FAQ Section ===== */
+        .pricing-faq-section {
+            padding: 80px 40px;
+            background: var(--bg-primary);
+        }
+        .pricing-faq-inner {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+        .pricing-faq-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .pricing-faq-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .pricing-faq-subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        /* ===== CTA Section ===== */
+        .pricing-cta-section {
+            padding: 80px 40px;
+            background: var(--bg-alt);
+            text-align: center;
+        }
+        .pricing-cta-inner {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .pricing-cta-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .pricing-cta-text {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+            line-height: 1.6;
+        }
+        .pricing-cta-btn {
+            display: inline-block;
+            padding: 14px 36px;
+            background: var(--cta);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-pill);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            font-family: var(--font-family);
+        }
+        .pricing-cta-btn:hover {
+            background: var(--cta-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            .pricing-page-hero {
+                padding: 120px 24px 60px;
+            }
+            .pricing-page-title {
+                font-size: 32px;
+            }
+            .pricing-cards-section {
+                padding: 0 24px 60px;
+            }
+            .landing-pricing-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+            }
+            .pricing-compare-section,
+            .pricing-faq-section,
+            .pricing-cta-section {
+                padding: 60px 24px;
+            }
+            .pricing-compare-table {
+                font-size: 13px;
+            }
+            .pricing-compare-table thead th,
+            .pricing-compare-table tbody td {
+                padding: 10px 12px;
+            }
+            .pricing-compare-table thead th:first-child {
+                width: 140px;
+            }
+            .pricing-compare-title {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="landing-nav">
+        <div class="landing-nav-inner">
+            <a href="index.html" class="landing-nav-logo">
+                <img src="launchpad-logo.svg" alt="Lightspeed" height="28">
+                <span>Lightspeed</span>
+            </a>
+            <div class="landing-nav-center">
+                <a href="index.html#features" class="landing-nav-link">Features</a>
+                <a href="pricing.html" class="landing-nav-link active">Pricing</a>
+                <a href="case-study.html" class="landing-nav-link">Case Studies</a>
+                <a href="whats-new.html" class="landing-nav-link">What's New</a>
+                <a href="about.html" class="landing-nav-link">About</a>
+                <a href="faq.html" class="landing-nav-link">FAQ</a>
+                <a href="index.html#contact" class="landing-nav-link">Contact</a>
+            </div>
+            <div class="landing-nav-actions">
+                <a href="index.html" class="landing-nav-signin">Sign in</a>
+                <a href="index.html" class="landing-nav-cta">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Hero -->
+        <section class="pricing-page-hero">
+            <div class="pricing-page-hero-inner">
+                <div class="pricing-page-tag">Pricing</div>
+                <h1 class="pricing-page-title">Simple pricing,<br>powerful results</h1>
+                <p class="pricing-page-subtitle">Start with a 14-day free trial on any plan. No credit card required. Scale your team when you&rsquo;re ready.</p>
+                <div class="pricing-toggle">
+                    <span class="pricing-toggle-label active" data-period="monthly">Monthly</span>
+                    <button class="pricing-toggle-switch" id="pricingToggle" aria-label="Toggle annual pricing">
+                        <span class="pricing-toggle-knob"></span>
+                    </button>
+                    <span class="pricing-toggle-label" data-period="annual">Annual</span>
+                    <span class="pricing-toggle-save">Save 20%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Cards -->
+        <section class="pricing-cards-section">
+            <div class="pricing-cards-inner">
+                <div class="landing-pricing-grid" style="max-width: 960px; margin: 0 auto;">
+                    <div class="landing-pricing-card">
+                        <div class="landing-pricing-name">Starter</div>
+                        <div class="landing-pricing-price">
+                            <span class="landing-pricing-amount" data-monthly="79" data-annual="63">$79</span>
+                            <span class="landing-pricing-period">/ month</span>
+                        </div>
+                        <p class="landing-pricing-desc">Everything you need to get started. One seat, full power.</p>
+                        <ul class="landing-pricing-features">
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 1 user included</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 150 AI generations / month</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Response Assistant</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 200 knowledge base entries</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Email support</li>
+                        </ul>
+                        <a href="index.html" class="landing-pricing-btn">Start free trial</a>
+                    </div>
+                    <div class="landing-pricing-card featured">
+                        <div class="landing-pricing-badge">Most Popular</div>
+                        <div class="landing-pricing-name">Pro</div>
+                        <div class="landing-pricing-price">
+                            <span class="landing-pricing-amount" data-monthly="199" data-annual="159">$199</span>
+                            <span class="landing-pricing-period">/ month</span>
+                        </div>
+                        <p class="landing-pricing-desc">For growing teams that need full access. Up to 10 users.</p>
+                        <ul class="landing-pricing-features">
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Up to 10 users</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 500 AI generations / month</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> All 5 tools included</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited knowledge base</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Priority email support</li>
+                        </ul>
+                        <a href="index.html" class="landing-pricing-btn primary">Start free trial</a>
+                    </div>
+                    <div class="landing-pricing-card">
+                        <div class="landing-pricing-name">Enterprise</div>
+                        <div class="landing-pricing-price">
+                            <span class="landing-pricing-amount" data-monthly="399" data-annual="319">$399</span>
+                            <span class="landing-pricing-period">/ month</span>
+                        </div>
+                        <p class="landing-pricing-desc">Built for larger organizations. Unlimited users with dedicated support.</p>
+                        <ul class="landing-pricing-features">
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited users</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 2,000 AI generations / month</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> All models (incl. Opus)</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Dedicated onboarding</li>
+                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Priority support</li>
+                        </ul>
+                        <a href="index.html" class="landing-pricing-btn">Start free trial</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Comparison Table -->
+        <section class="pricing-compare-section">
+            <div class="pricing-compare-inner">
+                <div class="pricing-compare-header">
+                    <h2 class="pricing-compare-title">Compare plans in detail</h2>
+                    <p class="pricing-compare-subtitle">Find the plan that fits your organization&rsquo;s needs.</p>
+                </div>
+                <table class="pricing-compare-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Starter</th>
+                            <th class="col-featured">Pro</th>
+                            <th>Enterprise</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Pricing Row -->
+                        <tr>
+                            <td>Monthly price</td>
+                            <td><strong class="landing-pricing-amount" data-monthly="79" data-annual="63">$79</strong><span class="landing-pricing-period" style="font-size:12px;color:var(--text-muted)"> /mo</span></td>
+                            <td class="col-featured"><strong class="landing-pricing-amount" data-monthly="199" data-annual="159">$199</strong><span class="landing-pricing-period" style="font-size:12px;color:var(--text-muted)"> /mo</span></td>
+                            <td><strong class="landing-pricing-amount" data-monthly="399" data-annual="319">$399</strong><span class="landing-pricing-period" style="font-size:12px;color:var(--text-muted)"> /mo</span></td>
+                        </tr>
+
+                        <!-- Usage -->
+                        <tr class="compare-group-header">
+                            <td colspan="4">Usage</td>
+                        </tr>
+                        <tr>
+                            <td>Team members</td>
+                            <td>1</td>
+                            <td class="col-featured">Up to 10</td>
+                            <td>Unlimited</td>
+                        </tr>
+                        <tr>
+                            <td>AI generations / month</td>
+                            <td>150</td>
+                            <td class="col-featured">500</td>
+                            <td>2,000</td>
+                        </tr>
+                        <tr>
+                            <td>Knowledge base entries</td>
+                            <td>200</td>
+                            <td class="col-featured">Unlimited</td>
+                            <td>Unlimited</td>
+                        </tr>
+                        <tr>
+                            <td>Response templates</td>
+                            <td>10</td>
+                            <td class="col-featured">100</td>
+                            <td>Unlimited</td>
+                        </tr>
+                        <tr>
+                            <td>Content templates</td>
+                            <td>5</td>
+                            <td class="col-featured">25</td>
+                            <td>Unlimited</td>
+                        </tr>
+                        <tr>
+                            <td>Response history</td>
+                            <td>30 days</td>
+                            <td class="col-featured">Unlimited</td>
+                            <td>Unlimited</td>
+                        </tr>
+
+                        <!-- Tools -->
+                        <tr class="compare-group-header">
+                            <td colspan="4">Tools</td>
+                        </tr>
+                        <tr>
+                            <td>Response Assistant</td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+                        <tr>
+                            <td>Draft Assistant</td>
+                            <td><span class="compare-dash">&mdash;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+                        <tr>
+                            <td>Insights Engine</td>
+                            <td><span class="compare-dash">&mdash;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+                        <tr>
+                            <td>List Normalizer</td>
+                            <td><span class="compare-dash">&mdash;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+                        <tr>
+                            <td>Ask Lightspeed</td>
+                            <td><span class="compare-dash">&mdash;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+
+                        <!-- AI & Models -->
+                        <tr class="compare-group-header">
+                            <td colspan="4">AI &amp; Models</td>
+                        </tr>
+                        <tr>
+                            <td>AI model</td>
+                            <td><span class="compare-text">Haiku</span></td>
+                            <td class="col-featured"><span class="compare-text">Haiku + Sonnet</span></td>
+                            <td><span class="compare-text">All models (incl. Opus)</span></td>
+                        </tr>
+                        <tr>
+                            <td>Custom knowledge base</td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+                        <tr>
+                            <td>Machine learning</td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+
+                        <!-- Channels -->
+                        <tr class="compare-group-header">
+                            <td colspan="4">Output Channels</td>
+                        </tr>
+                        <tr>
+                            <td>Email responses</td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+                        <tr>
+                            <td>Facebook / social media</td>
+                            <td><span class="compare-dash">&mdash;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+                        <tr>
+                            <td>Shopify integration</td>
+                            <td><span class="compare-dash">&mdash;</span></td>
+                            <td class="col-featured"><span class="compare-check">&#10003;</span></td>
+                            <td><span class="compare-check">&#10003;</span></td>
+                        </tr>
+
+                        <!-- Team & Admin -->
+                        <tr class="compare-group-header">
+                            <td colspan="4">Team &amp; Administration</td>
+                        </tr>
+                        <tr>
+                            <td>Team roles</td>
+                            <td><span class="compare-text">Owner only</span></td>
+                            <td class="col-featured"><span class="compare-text">Owner + Admin + Member</span></td>
+                            <td><span class="compare-text">Full RBAC</span></td>
+                        </tr>
+                        <tr>
+                            <td>Shared prompts</td>
+                            <td>5</td>
+                            <td class="col-featured">50</td>
+                            <td>Unlimited</td>
+                        </tr>
+                        <tr>
+                            <td>Usage analytics</td>
+                            <td><span class="compare-text">Basic</span></td>
+                            <td class="col-featured"><span class="compare-text">Team dashboard</span></td>
+                            <td><span class="compare-text">Full admin dashboard</span></td>
+                        </tr>
+                        <tr>
+                            <td>Audit logs</td>
+                            <td>7 days</td>
+                            <td class="col-featured">90 days</td>
+                            <td>Unlimited</td>
+                        </tr>
+
+                        <!-- Support -->
+                        <tr class="compare-group-header">
+                            <td colspan="4">Support &amp; Onboarding</td>
+                        </tr>
+                        <tr>
+                            <td>Support</td>
+                            <td><span class="compare-text">Email</span></td>
+                            <td class="col-featured"><span class="compare-text">Priority email</span></td>
+                            <td><span class="compare-text">Dedicated support</span></td>
+                        </tr>
+                        <tr>
+                            <td>Onboarding</td>
+                            <td><span class="compare-text">Self-serve</span></td>
+                            <td class="col-featured"><span class="compare-text">Guided setup</span></td>
+                            <td><span class="compare-text">Dedicated onboarding</span></td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td></td>
+                            <td><a href="index.html" class="pricing-compare-cta">Start free trial</a></td>
+                            <td class="col-featured"><a href="index.html" class="pricing-compare-cta primary">Start free trial</a></td>
+                            <td><a href="index.html" class="pricing-compare-cta">Start free trial</a></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <!-- Pricing FAQ -->
+        <section class="pricing-faq-section">
+            <div class="pricing-faq-inner">
+                <div class="pricing-faq-header">
+                    <h2 class="pricing-faq-title">Pricing questions</h2>
+                    <p class="pricing-faq-subtitle">Common questions about plans and billing.</p>
+                </div>
+                <div class="landing-faq-list">
+                    <div class="landing-faq-item">
+                        <button class="landing-faq-question">
+                            What happens during the 14-day free trial?
+                            <span class="landing-faq-icon">+</span>
+                        </button>
+                        <div class="landing-faq-answer">
+                            <div class="landing-faq-answer-inner">You get full access to all features of your chosen plan for 14 days, no credit card required. At the end of your trial, you can subscribe to continue or your account will be paused until you upgrade.</div>
+                        </div>
+                    </div>
+                    <div class="landing-faq-item">
+                        <button class="landing-faq-question">
+                            Can I change plans later?
+                            <span class="landing-faq-icon">+</span>
+                        </button>
+                        <div class="landing-faq-answer">
+                            <div class="landing-faq-answer-inner">Yes. You can upgrade or downgrade your plan at any time from the billing portal. When upgrading, you&rsquo;ll be prorated for the remainder of your billing period. When downgrading, the change takes effect at the start of your next billing cycle.</div>
+                        </div>
+                    </div>
+                    <div class="landing-faq-item">
+                        <button class="landing-faq-question">
+                            What counts as an &ldquo;AI generation&rdquo;?
+                            <span class="landing-faq-icon">+</span>
+                        </button>
+                        <div class="landing-faq-answer">
+                            <div class="landing-faq-answer-inner">Each time you generate a response, draft, analysis, or use any AI-powered tool, that counts as one generation. Editing or copying a previous response does not count. Your usage resets at the start of each billing period.</div>
+                        </div>
+                    </div>
+                    <div class="landing-faq-item">
+                        <button class="landing-faq-question">
+                            What happens if I hit my generation limit?
+                            <span class="landing-faq-icon">+</span>
+                        </button>
+                        <div class="landing-faq-answer">
+                            <div class="landing-faq-answer-inner">You&rsquo;ll receive a notification when you&rsquo;re approaching your limit. Once reached, you can upgrade to a higher plan for immediate access to more generations, or wait until your limit resets at the start of your next billing cycle.</div>
+                        </div>
+                    </div>
+                    <div class="landing-faq-item">
+                        <button class="landing-faq-question">
+                            Do you offer discounts for nonprofits?
+                            <span class="landing-faq-icon">+</span>
+                        </button>
+                        <div class="landing-faq-answer">
+                            <div class="landing-faq-answer-inner">Lightspeed is purpose-built for nonprofits and charitable gaming operators, and our pricing already reflects that mission. For organizations with special circumstances, <a href="index.html#contact" style="color: var(--cta); font-weight: 600;">contact us</a> and we&rsquo;ll work with you.</div>
+                        </div>
+                    </div>
+                    <div class="landing-faq-item">
+                        <button class="landing-faq-question">
+                            How does annual billing work?
+                            <span class="landing-faq-icon">+</span>
+                        </button>
+                        <div class="landing-faq-answer">
+                            <div class="landing-faq-answer-inner">Annual plans are billed once per year at a 20% discount compared to monthly pricing. For example, the Pro plan is $159/month billed annually ($1,908/year) instead of $199/month billed monthly ($2,388/year), saving you $480.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom CTA -->
+        <section class="pricing-cta-section">
+            <div class="pricing-cta-inner">
+                <h2 class="pricing-cta-title">Ready to get started?</h2>
+                <p class="pricing-cta-text">Join hundreds of nonprofit teams using Lightspeed to work smarter. Start your 14-day free trial today.</p>
+                <a href="index.html" class="pricing-cta-btn">Start free trial</a>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="landing-footer-inner">
+            <div class="landing-footer-top">
+                <div class="landing-footer-brand">
+                    <div class="landing-footer-brand-logo">
+                        <img src="launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                        <span>Lightspeed</span>
+                    </div>
+                    <p class="landing-footer-brand-desc">AI-powered productivity tools built for nonprofit teams and charitable gaming operators.</p>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Product</h4>
+                    <a href="index.html#features">Features</a>
+                    <a href="pricing.html">Pricing</a>
+                    <a href="integrations.html">Integrations</a>
+                    <a href="faq.html">FAQ</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Company</h4>
+                    <a href="about.html">About</a>
+                    <a href="security.html">Security</a>
+                    <a href="case-study.html">Case Studies</a>
+                    <a href="index.html#contact">Contact</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Resources</h4>
+                    <a href="whats-new.html">What&rsquo;s New</a>
+                    <a href="help.html">Help Center</a>
+                    <a href="status.html">System Status</a>
+                </div>
+            </div>
+            <div class="landing-footer-bottom">
+                <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Canada.</span>
+                <a href="status.html" class="landing-footer-status" id="footerStatus">
+                    <span class="status-dot" id="footerDot"></span>
+                    <span id="footerStatusText">All systems operational</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-banner" id="cookieBanner">
+        <span class="cookie-banner-text">We use cookies to improve your experience. By continuing to use this site you agree to our <a href="index.html">Privacy Policy</a>.</span>
+        <div class="cookie-banner-actions">
+            <button class="cookie-btn" onclick="dismissCookieBanner(false)">Decline</button>
+            <button class="cookie-btn cookie-btn-accept" onclick="dismissCookieBanner(true)">Accept</button>
+        </div>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget-tooltip" id="chatTooltip">
+        <button class="chat-widget-tooltip-close" onclick="document.getElementById('chatTooltip').classList.remove('show')">&times;</button>
+        <div class="chat-widget-tooltip-header">Need help?</div>
+        <div class="chat-widget-tooltip-body">Have a question about pricing? We&rsquo;d love to hear from you.</div>
+        <a class="chat-widget-tooltip-cta" href="index.html#contact">Send us a message &rarr;</a>
+    </div>
+    <button class="chat-widget-btn" id="chatWidgetBtn" aria-label="Chat with us">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
+
+    <script>
+        // Pricing toggle (monthly / annual)
+        var pricingToggle = document.getElementById('pricingToggle');
+        if (pricingToggle) {
+            var labels = document.querySelectorAll('.pricing-toggle-label');
+            var amounts = document.querySelectorAll('.landing-pricing-amount[data-monthly]');
+
+            pricingToggle.addEventListener('click', function() {
+                var isAnnual = pricingToggle.classList.toggle('active');
+                labels.forEach(function(l) {
+                    l.classList.toggle('active', isAnnual ? l.dataset.period === 'annual' : l.dataset.period === 'monthly');
+                });
+                amounts.forEach(function(el) {
+                    var price = isAnnual ? el.dataset.annual : el.dataset.monthly;
+                    el.textContent = '$' + price;
+                });
+                document.querySelectorAll('.landing-pricing-period').forEach(function(p) {
+                    p.textContent = isAnnual ? ' /mo, billed annually' : ' / month';
+                });
+            });
+        }
+
+        // FAQ accordion
+        document.querySelectorAll('.landing-faq-question').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var item = btn.closest('.landing-faq-item');
+                var wasOpen = item.classList.contains('open');
+                document.querySelectorAll('.landing-faq-item').forEach(function(i) { i.classList.remove('open'); });
+                if (!wasOpen) {
+                    item.classList.add('open');
+                }
+            });
+        });
+
+        // Cookie consent
+        function dismissCookieBanner(accepted) {
+            localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
+            var banner = document.getElementById('cookieBanner');
+            if (banner) banner.classList.remove('show');
+        }
+        if (!localStorage.getItem('cookie_consent')) {
+            setTimeout(function() {
+                var banner = document.getElementById('cookieBanner');
+                if (banner) banner.classList.add('show');
+            }, 1500);
+        }
+
+        // Chat widget
+        var chatBtn = document.getElementById('chatWidgetBtn');
+        var chatTooltip = document.getElementById('chatTooltip');
+        if (chatBtn && chatTooltip) {
+            chatBtn.addEventListener('click', function() {
+                chatTooltip.classList.toggle('show');
+            });
+        }
+    </script>
+
+    <!-- Live Status Check -->
+    <script>
+        (function() {
+            var API = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+                ? "http://localhost:3001" : "https://lightspeed-backend.onrender.com";
+            fetch(API + "/health", { mode: "cors" })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    var dot = document.getElementById("footerDot");
+                    var txt = document.getElementById("footerStatusText");
+                    if (!dot || !txt) return;
+                    var labels = { operational: "All systems operational", degraded: "Service disruption", down: "System outage" };
+                    dot.className = "status-dot status-dot-" + d.status;
+                    txt.textContent = labels[d.status] || "All systems operational";
+                })
+                .catch(function() {
+                    var dot = document.getElementById("footerDot");
+                    var txt = document.getElementById("footerStatusText");
+                    if (dot) dot.className = "status-dot status-dot-down";
+                    if (txt) txt.textContent = "System outage";
+                });
+        })();
+    </script>
+</body>
+</html>
