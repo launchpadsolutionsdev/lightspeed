@@ -12,50 +12,6 @@
     <link rel="stylesheet" href="design-system.css?v=20260301">
     <link rel="stylesheet" href="landing.css?v=20260301">
     <style>
-        /* ===== Pricing Page Styles ===== */
-        .pricing-page-hero {
-            padding: 140px 40px 80px;
-            background: var(--bg-primary);
-            text-align: center;
-        }
-        .pricing-page-hero-inner {
-            max-width: var(--max-width);
-            margin: 0 auto;
-        }
-        .pricing-page-tag {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--cta);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 12px;
-        }
-        .pricing-page-title {
-            font-size: 44px;
-            font-weight: 800;
-            color: var(--text-primary);
-            line-height: 1.15;
-            letter-spacing: -0.02em;
-            margin-bottom: 16px;
-        }
-        .pricing-page-subtitle {
-            font-size: 18px;
-            color: var(--text-secondary);
-            line-height: 1.6;
-            max-width: 560px;
-            margin: 0 auto 32px;
-        }
-
-        /* ===== Pricing Cards Section ===== */
-        .pricing-cards-section {
-            padding: 0 40px 80px;
-            background: var(--bg-primary);
-        }
-        .pricing-cards-inner {
-            max-width: var(--max-width);
-            margin: 0 auto;
-        }
-
         /* ===== Feature Comparison Table ===== */
         .pricing-compare-section {
             padding: 80px 40px;
@@ -248,19 +204,6 @@
 
         /* ===== Responsive ===== */
         @media (max-width: 768px) {
-            .pricing-page-hero {
-                padding: 120px 24px 60px;
-            }
-            .pricing-page-title {
-                font-size: 32px;
-            }
-            .pricing-cards-section {
-                padding: 0 24px 60px;
-            }
-            .landing-pricing-grid {
-                grid-template-columns: 1fr;
-                max-width: 400px;
-            }
             .pricing-compare-section,
             .pricing-faq-section,
             .pricing-cta-section {
@@ -308,76 +251,69 @@
     </nav>
 
     <main>
-        <!-- Hero -->
-        <section class="pricing-page-hero">
-            <div class="pricing-page-hero-inner">
-                <div class="pricing-page-tag">Pricing</div>
-                <h1 class="pricing-page-title">Simple pricing,<br>powerful results</h1>
-                <p class="pricing-page-subtitle">Start with a 14-day free trial on any plan. No credit card required. Scale your team when you&rsquo;re ready.</p>
-                <div class="pricing-toggle">
-                    <span class="pricing-toggle-label active" data-period="monthly">Monthly</span>
-                    <button class="pricing-toggle-switch" id="pricingToggle" aria-label="Toggle annual pricing">
-                        <span class="pricing-toggle-knob"></span>
-                    </button>
-                    <span class="pricing-toggle-label" data-period="annual">Annual</span>
-                    <span class="pricing-toggle-save">Save 20%</span>
+        <!-- Pricing Section (mirrors homepage) -->
+        <section class="landing-pricing-section" id="pricing" style="padding-top: 140px;">
+            <div class="landing-pricing-inner">
+                <div class="landing-pricing-header">
+                    <div class="landing-pricing-tag">Pricing</div>
+                    <h1 class="landing-pricing-title">Simple pricing for every team</h1>
+                    <p class="landing-pricing-subtitle">Start with a 14-day free trial. Upgrade when you&rsquo;re ready.</p>
+                    <div class="pricing-toggle">
+                        <span class="pricing-toggle-label active" data-period="monthly">Monthly</span>
+                        <button class="pricing-toggle-switch" id="pricingToggle" aria-label="Toggle annual pricing">
+                            <span class="pricing-toggle-knob"></span>
+                        </button>
+                        <span class="pricing-toggle-label" data-period="annual">Annual</span>
+                        <span class="pricing-toggle-save">Save 20%</span>
+                    </div>
                 </div>
-            </div>
-        </section>
-
-        <!-- Pricing Cards -->
-        <section class="pricing-cards-section">
-            <div class="pricing-cards-inner">
-                <div class="landing-pricing-grid" style="max-width: 960px; margin: 0 auto;">
-                    <div class="landing-pricing-card">
-                        <div class="landing-pricing-name">Starter</div>
-                        <div class="landing-pricing-price">
-                            <span class="landing-pricing-amount" data-monthly="79" data-annual="63">$79</span>
-                            <span class="landing-pricing-period">/ month</span>
-                        </div>
-                        <p class="landing-pricing-desc">Everything you need to get started. One seat, full power.</p>
-                        <ul class="landing-pricing-features">
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 1 user included</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 150 AI generations / month</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Response Assistant</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 200 knowledge base entries</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Email support</li>
-                        </ul>
-                        <a href="index.html" class="landing-pricing-btn">Start free trial</a>
+                <div class="landing-pricing-grid">
+                <div class="landing-pricing-card">
+                    <div class="landing-pricing-name">Starter</div>
+                    <div class="landing-pricing-price">
+                        <span class="landing-pricing-amount" data-monthly="79" data-annual="63">$79</span>
+                        <span class="landing-pricing-period">/ month</span>
                     </div>
-                    <div class="landing-pricing-card featured">
-                        <div class="landing-pricing-badge">Most Popular</div>
-                        <div class="landing-pricing-name">Pro</div>
-                        <div class="landing-pricing-price">
-                            <span class="landing-pricing-amount" data-monthly="199" data-annual="159">$199</span>
-                            <span class="landing-pricing-period">/ month</span>
-                        </div>
-                        <p class="landing-pricing-desc">For growing teams that need full access. Up to 10 users.</p>
-                        <ul class="landing-pricing-features">
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Up to 10 users</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 500 AI generations / month</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> All 5 tools included</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited knowledge base</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Priority email support</li>
-                        </ul>
-                        <a href="index.html" class="landing-pricing-btn primary">Start free trial</a>
+                    <p class="landing-pricing-desc">Everything you need to get started. One seat, full power.</p>
+                    <ul class="landing-pricing-features">
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 1 user included</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 150 AI generations / month</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Response Assistant</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Email support</li>
+                    </ul>
+                    <a href="index.html" class="landing-pricing-btn">Start free trial</a>
+                </div>
+                <div class="landing-pricing-card featured">
+                    <div class="landing-pricing-badge">Most Popular</div>
+                    <div class="landing-pricing-name">Pro</div>
+                    <div class="landing-pricing-price">
+                        <span class="landing-pricing-amount" data-monthly="199" data-annual="159">$199</span>
+                        <span class="landing-pricing-period">/ month</span>
                     </div>
-                    <div class="landing-pricing-card">
-                        <div class="landing-pricing-name">Enterprise</div>
-                        <div class="landing-pricing-price">
-                            <span class="landing-pricing-amount" data-monthly="399" data-annual="319">$399</span>
-                            <span class="landing-pricing-period">/ month</span>
-                        </div>
-                        <p class="landing-pricing-desc">Built for larger organizations. Unlimited users with dedicated support.</p>
-                        <ul class="landing-pricing-features">
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited users</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 2,000 AI generations / month</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> All models (incl. Opus)</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Dedicated onboarding</li>
-                            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Priority support</li>
-                        </ul>
-                        <a href="index.html" class="landing-pricing-btn">Start free trial</a>
+                    <p class="landing-pricing-desc">For growing teams that need full access. Up to 10 users.</p>
+                    <ul class="landing-pricing-features">
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Up to 10 users</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 500 AI generations / month</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> All tools &amp; custom knowledge base</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Priority support</li>
+                    </ul>
+                    <a href="index.html" class="landing-pricing-btn primary">Start free trial</a>
+                </div>
+                <div class="landing-pricing-card">
+                    <div class="landing-pricing-name">Enterprise</div>
+                    <div class="landing-pricing-price">
+                        <span class="landing-pricing-amount" data-monthly="399" data-annual="319">$399</span>
+                        <span class="landing-pricing-period">/ month</span>
                     </div>
+                    <p class="landing-pricing-desc">Built for larger organizations. Unlimited users with dedicated support.</p>
+                    <ul class="landing-pricing-features">
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited users</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 2,000 AI generations / month</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Dedicated onboarding</li>
+                        <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4L6 11.3 2.7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> All models &amp; priority support</li>
+                    </ul>
+                    <a href="index.html" class="landing-pricing-btn">Start free trial</a>
+                </div>
                 </div>
             </div>
         </section>
