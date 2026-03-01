@@ -165,7 +165,7 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
     try {
         // Build a numbered catalogue including tags for better Haiku decisions
         const catalogue = knowledgeEntries.map((entry, i) =>
-            `[${i}] ${entry.title} (${entry.category})${formatTagsForCatalogue(entry.tags)}: ${entry.content.substring(0, 150)}`
+            `[${i}] ${entry.title} (${entry.category})${formatTagsForCatalogue(entry.tags)}: ${entry.content.substring(0, 500)}`
         ).join('\n');
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -412,5 +412,6 @@ module.exports = {
     generateWithKnowledge,
     pickRelevantKnowledge,
     pickRelevantRatedExamples,
+    tagMatchFallback,
     streamResponse
 };

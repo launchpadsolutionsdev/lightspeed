@@ -12,7 +12,7 @@ const claudeService = require('../services/claude');
 const shopifyService = require('../services/shopify');
 const { buildEnhancedPrompt } = require('../services/promptBuilder');
 const { buildResponseAssistantPrompt } = require('../services/systemPromptBuilder');
-const { validateOutput } = require('../services/outputValidator');
+const { validateOutput, validateFormatCompliance } = require('../services/outputValidator');
 
 /**
  * POST /api/response-assistant/generate
@@ -102,13 +102,27 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
             ).catch(err => console.warn('Usage logging failed:', err.message));
         }
 
-        // Validate output for safety issues
+        // Validate output for safety + format compliance
         const { warnings } = validateOutput(text, { orgEmails: [] });
+        const formatViolations = validateFormatCompliance(text, req.body.format, {
+            hasKbEntries: referencedKbEntries.length > 0
+        });
+        warnings.push(...formatViolations);
         if (warnings.length > 0) {
             console.warn('[OUTPUT VALIDATION]', warnings);
         }
 
-        sendEvent({ type: 'done', usage: usage || {}, warnings });
+        sendEvent({
+            type: 'done',
+            usage: usage || {},
+            warnings,
+            quality: {
+                charCount: text.length,
+                wordCount: text.trim().split(/\s+/).length,
+                kbEntriesUsed: referencedKbEntries.length,
+                responseTimeMs
+            }
+        });
         res.end();
 
     } catch (error) {

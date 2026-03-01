@@ -193,8 +193,8 @@ async function fetchRatedExamples(organizationId, tool, format, inquiry) {
     const params = format ? [organizationId, tool, format] : [organizationId, tool];
 
     // Fetch a larger pool when inquiry is provided (Haiku will filter for relevance)
-    const positiveLimit = inquiry ? 20 : 5;
-    const negativeLimit = inquiry ? 10 : 3;
+    const positiveLimit = inquiry ? 30 : 8;
+    const negativeLimit = inquiry ? 15 : 5;
 
     const positiveResult = await pool.query(
         `SELECT inquiry, response, format, tone
@@ -218,13 +218,13 @@ async function fetchRatedExamples(organizationId, tool, format, inquiry) {
     );
 
     // If an inquiry was provided, use Haiku to filter for topical relevance
-    if (inquiry && (positiveResult.rows.length > 5 || negativeResult.rows.length > 3)) {
+    if (inquiry && (positiveResult.rows.length > 8 || negativeResult.rows.length > 5)) {
         return await pickRelevantRatedExamples(
             inquiry,
             positiveResult.rows,
             negativeResult.rows,
-            5,
-            3
+            8,
+            5
         );
     }
 

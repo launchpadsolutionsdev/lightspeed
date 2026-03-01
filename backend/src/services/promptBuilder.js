@@ -90,13 +90,21 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
             kbRows = [];
         }
 
-        // Fall back to loading all entries if FTS returned too few results
-        if (kbRows.length < 5) {
+        // Fall back to loading all entries only if FTS returned nothing.
+        // If FTS found 1-4 results, those are still the most relevant — don't
+        // dilute them by loading the entire KB alphabetically.
+        if (kbRows.length === 0) {
             const allResult = await pool.query(
                 `SELECT id, title, content, category, tags, updated_at FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
                 [organizationId]
             );
-            kbRows = allResult.rows;
+            // Pre-filter large KBs with tag-match scoring so Haiku gets a
+            // manageable, pre-ranked pool instead of hundreds of unsorted entries
+            if (allResult.rows.length > 30) {
+                kbRows = claudeService.tagMatchFallback(inquiry, allResult.rows, 30);
+            } else {
+                kbRows = allResult.rows;
+            }
         }
 
         if (kbRows.length === 0) return { system, entries: [] };

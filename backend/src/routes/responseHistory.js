@@ -121,6 +121,56 @@ router.get('/stats', authenticate, async (req, res) => {
             [organizationId]
         );
 
+        // Quality metrics (gracefully handles missing columns from migration 024)
+        let quality = null;
+        try {
+            const qualityResult = await pool.query(
+                `SELECT
+                    ROUND(AVG(char_count))::int AS avg_char_count,
+                    ROUND(AVG(word_count))::int AS avg_word_count,
+                    ROUND(AVG(kb_entries_used)::numeric, 1) AS avg_kb_entries_used,
+                    ROUND(AVG(response_time_ms))::int AS avg_response_time_ms,
+                    COUNT(*) FILTER (WHERE format = 'facebook' AND char_count > 400) AS facebook_over_limit,
+                    COUNT(*) FILTER (WHERE format = 'facebook') AS facebook_total
+                 FROM response_history
+                 WHERE organization_id = $1 AND char_count IS NOT NULL`,
+                [organizationId]
+            );
+
+            const qualityTrendResult = await pool.query(
+                `SELECT
+                    TO_CHAR(created_at, 'YYYY-MM') AS month,
+                    ROUND(AVG(kb_entries_used)::numeric, 1) AS avg_kb_entries,
+                    COUNT(*) FILTER (WHERE rating = 'positive') AS positive,
+                    COUNT(*) FILTER (WHERE rating IS NOT NULL) AS rated,
+                    ROUND(AVG(response_time_ms))::int AS avg_response_time_ms
+                 FROM response_history
+                 WHERE organization_id = $1 AND created_at >= NOW() - INTERVAL '6 months'
+                 GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+                 ORDER BY month DESC`,
+                [organizationId]
+            );
+
+            const q = qualityResult.rows[0];
+            const fbTotal = parseInt(q.facebook_total) || 0;
+            quality = {
+                avgCharCount: parseInt(q.avg_char_count) || 0,
+                avgWordCount: parseInt(q.avg_word_count) || 0,
+                avgKbEntriesUsed: parseFloat(q.avg_kb_entries_used) || 0,
+                avgResponseTimeMs: parseInt(q.avg_response_time_ms) || 0,
+                facebookOverLimitRate: fbTotal > 0 ? Math.round(parseInt(q.facebook_over_limit) / fbTotal * 100) : 0,
+                qualityTrend: qualityTrendResult.rows.map(r => ({
+                    month: r.month,
+                    positiveRate: parseInt(r.rated) > 0 ? Math.round(parseInt(r.positive) / parseInt(r.rated) * 100) : 0,
+                    avgKbEntries: parseFloat(r.avg_kb_entries) || 0,
+                    avgResponseTimeMs: parseInt(r.avg_response_time_ms) || 0
+                }))
+            };
+        } catch (qualityErr) {
+            // Migration 024 may not have run yet — quality columns don't exist
+            console.warn('Quality metrics unavailable:', qualityErr.message);
+        }
+
         const rating = ratingResult.rows[0];
 
         res.json({
@@ -136,7 +186,8 @@ router.get('/stats', authenticate, async (req, res) => {
                 count: parseInt(r.count)
             })),
             monthly: monthlyResult.rows,
-            categories: categoryResult.rows
+            categories: categoryResult.rows,
+            quality
         });
 
     } catch (error) {
@@ -151,7 +202,7 @@ router.get('/stats', authenticate, async (req, res) => {
  */
 router.post('/', authenticate, async (req, res) => {
     try {
-        const { inquiry, response, format, tone, tool } = req.body;
+        const { inquiry, response, format, tone, tool, kb_entries_used, quality_violations, response_time_ms } = req.body;
 
         if (!inquiry || !response) {
             return res.status(400).json({ error: 'Inquiry and response required' });
@@ -168,11 +219,17 @@ router.post('/', authenticate, async (req, res) => {
 
         const organizationId = orgResult.rows[0].organization_id;
 
+        // Compute quality metrics
+        const charCount = response.length;
+        const wordCount = response.trim().split(/\s+/).length;
+
         const result = await pool.query(
-            `INSERT INTO response_history (organization_id, user_id, inquiry, response, format, tone, tool, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            `INSERT INTO response_history (organization_id, user_id, inquiry, response, format, tone, tool,
+                char_count, word_count, kb_entries_used, quality_violations, response_time_ms, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
              RETURNING *`,
-            [organizationId, req.userId, inquiry, response, format || 'email', tone || 'balanced', tool || 'response_assistant']
+            [organizationId, req.userId, inquiry, response, format || 'email', tone || 'balanced', tool || 'response_assistant',
+             charCount, wordCount, kb_entries_used || 0, JSON.stringify(quality_violations || []), response_time_ms || null]
         );
 
         res.status(201).json({ entry: result.rows[0] });
