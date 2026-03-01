@@ -151,7 +151,7 @@ async function renderOverviewTab(container) {
     ]);
 
     adminData = { ...dashData, engagement: engData };
-    const { overview, toolUsage, subscriptions, engagement } = adminData;
+    const { overview, toolUsage, subscriptions, engagement, responseQuality, kbOverview, contentStats } = adminData;
 
     container.innerHTML = `
         <!-- Key Metrics -->
@@ -239,6 +239,12 @@ async function renderOverviewTab(container) {
             </div>
         </div>
 
+        <!-- Platform Response Quality + KB -->
+        ${responseQuality ? renderResponseQualitySection(responseQuality, kbOverview) : ''}
+
+        <!-- Conversations & Shared Prompts -->
+        ${contentStats ? renderContentStatsSection(contentStats) : ''}
+
         <!-- Top Users -->
         <div class="admin-card">
             <div class="admin-card-header">
@@ -267,6 +273,68 @@ async function renderOverviewTab(container) {
     `;
 
     setTimeout(() => initOverviewCharts(engagement), 100);
+}
+
+function renderResponseQualitySection(rq, kbOverview) {
+    const avgTime = rq.avgResponseTimeMs > 0 ? (rq.avgResponseTimeMs / 1000).toFixed(1) + 's' : '—';
+    let kbHtml = '<div style="padding:1rem;color:#9ca3af;text-align:center;">No KB data available</div>';
+    if (kbOverview) {
+        const cats = (kbOverview.categories || []).slice(0, 5);
+        const maxCat = Math.max(...cats.map(x => parseInt(x.count)), 1);
+        const catBars = cats.map(c => {
+            const pct = Math.round((parseInt(c.count) / maxCat) * 100);
+            const label = (c.category || 'other').charAt(0).toUpperCase() + (c.category || 'other').slice(1);
+            return '<div class="admin-tool-bar-row">' +
+                '<span class="admin-tool-bar-label">' + label + '</span>' +
+                '<div class="admin-tool-bar-track"><div class="admin-tool-bar-fill" style="width:' + pct + '%"></div></div>' +
+                '<span class="admin-tool-bar-count">' + parseInt(c.count).toLocaleString() + '</span></div>';
+        }).join('');
+        kbHtml = '<div class="admin-stats-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">' +
+            statCard('📚', 'Total Entries', kbOverview.totalEntries, kbOverview.orgsWithKb + ' orgs') +
+            statCard('🔄', 'Auto-Corrections', kbOverview.autoCorrections, kbOverview.manualEntries + ' manual') +
+            '</div><div class="admin-tool-bars">' + catBars + '</div>';
+    }
+    return '<div class="admin-section-row">' +
+        '<div class="admin-card admin-card-narrow">' +
+            '<div class="admin-card-header"><h3>Response Quality</h3><span class="admin-card-badge">Platform-wide</span></div>' +
+            '<div class="admin-stats-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 0;">' +
+                statCard('💬', 'Total Responses', rq.totalResponses, rq.responsesToday + ' today') +
+                statCard('👍', 'Approval Rate', rq.approvalRate + '%', rq.positive + '/' + rq.rated + ' rated') +
+                statCard('⏱️', 'Avg Response Time', avgTime, '') +
+                statCard('📝', 'Avg Word Count', rq.avgWordCount || '—', '') +
+            '</div>' +
+        '</div>' +
+        '<div class="admin-card admin-card-narrow">' +
+            '<div class="admin-card-header"><h3>Knowledge Base</h3><span class="admin-card-badge">Platform-wide</span></div>' +
+            kbHtml +
+        '</div></div>';
+}
+
+function renderContentStatsSection(cs) {
+    let promptsHtml = '<div style="padding:1rem;color:#9ca3af;text-align:center;">No shared prompts used yet</div>';
+    if (cs.topPrompts && cs.topPrompts.length > 0) {
+        const maxUsage = Math.max(...cs.topPrompts.map(x => parseInt(x.usage_count)), 1);
+        const bars = cs.topPrompts.map(p => {
+            const pct = Math.round((parseInt(p.usage_count) / maxUsage) * 100);
+            return '<div class="admin-tool-bar-row">' +
+                '<span class="admin-tool-bar-label">' + escapeHtmlAdmin(p.title) + '</span>' +
+                '<div class="admin-tool-bar-track"><div class="admin-tool-bar-fill" style="width:' + pct + '%"></div></div>' +
+                '<span class="admin-tool-bar-count">' + parseInt(p.usage_count).toLocaleString() + '</span></div>';
+        }).join('');
+        promptsHtml = '<div class="admin-tool-bars">' + bars + '</div>';
+    }
+    return '<div class="admin-section-row">' +
+        '<div class="admin-card admin-card-narrow">' +
+            '<div class="admin-card-header"><h3>Content Activity</h3></div>' +
+            '<div class="admin-stats-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 0;">' +
+                statCard('💭', 'Conversations', cs.totalConversations, '') +
+                statCard('📋', 'Shared Prompts', cs.totalSharedPrompts, '') +
+            '</div>' +
+        '</div>' +
+        '<div class="admin-card admin-card-narrow">' +
+            '<div class="admin-card-header"><h3>Top Shared Prompts</h3><span class="admin-card-badge">By usage</span></div>' +
+            promptsHtml +
+        '</div></div>';
 }
 
 function initOverviewCharts(engagement) {
@@ -440,8 +508,10 @@ async function renderOrgsTab(container) {
                         <tr>
                             <th>Organization</th>
                             <th>Setup</th>
+                            <th>Health</th>
                             <th>Status</th>
                             <th>Members</th>
+                            <th>Responses (30d)</th>
                             <th>Tokens Used</th>
                             <th>Created</th>
                             <th></th>
@@ -450,6 +520,7 @@ async function renderOrgsTab(container) {
                     <tbody>
                         ${data.organizations.length ? data.organizations.map(org => {
                             const progress = getQuickSetupProgress(org);
+                            const health = getOrgHealthScore(org, progress);
                             return `
                             <tr class="admin-org-row">
                                 <td class="name">
@@ -461,13 +532,15 @@ async function renderOrgsTab(container) {
                                         ${progress.done}/${progress.total}
                                     </span>
                                 </td>
+                                <td><span class="admin-health-pill ${health.level}" title="${health.detail}">${health.label}</span></td>
                                 <td><span class="admin-status-pill admin-status-${org.subscription_status}">${formatSubscriptionStatus(org.subscription_status)}</span></td>
                                 <td>${parseInt(org.member_count).toLocaleString()}</td>
+                                <td>${parseInt(org.responses_30d || 0).toLocaleString()}${org.total_rated > 0 ? ' <span class="text-muted small-text">(' + Math.round(parseInt(org.positive_ratings) / parseInt(org.total_rated) * 100) + '% 👍)</span>' : ''}</td>
                                 <td>${org.total_tokens_used ? parseInt(org.total_tokens_used).toLocaleString() : '0'}</td>
                                 <td>${formatDateShort(org.created_at)}</td>
                                 <td><button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openOrgSetup('${org.id}')">Setup</button></td>
                             </tr>`;
-                        }).join('') : '<tr><td colspan="7" class="text-center text-muted">No organizations found</td></tr>'}
+                        }).join('') : '<tr><td colspan="9" class="text-center text-muted">No organizations found</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -488,6 +561,35 @@ async function renderOrgsTab(container) {
     document.getElementById('adminOrgSearch')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') adminSearchOrgs();
     });
+}
+
+// Compute org health score from setup progress + activity data
+function getOrgHealthScore(org, progress) {
+    let score = 0;
+    // Setup completeness (0-30 points)
+    score += Math.round((progress.done / progress.total) * 30);
+    // Has KB entries (0-20 points)
+    const kbCount = parseInt(org.kb_count) || 0;
+    score += kbCount >= 10 ? 20 : kbCount >= 3 ? 15 : kbCount > 0 ? 10 : 0;
+    // Response activity in last 30 days (0-30 points)
+    const responses30d = parseInt(org.responses_30d) || 0;
+    score += responses30d >= 50 ? 30 : responses30d >= 20 ? 25 : responses30d >= 5 ? 15 : responses30d > 0 ? 5 : 0;
+    // Approval rate (0-20 points)
+    const totalRated = parseInt(org.total_rated) || 0;
+    const positiveRatings = parseInt(org.positive_ratings) || 0;
+    if (totalRated >= 3) {
+        const rate = Math.round(positiveRatings / totalRated * 100);
+        score += rate >= 80 ? 20 : rate >= 60 ? 15 : rate >= 40 ? 10 : 5;
+    }
+
+    let level, label;
+    if (score >= 80) { level = 'excellent'; label = 'Excellent'; }
+    else if (score >= 60) { level = 'good'; label = 'Good'; }
+    else if (score >= 35) { level = 'fair'; label = 'Fair'; }
+    else { level = 'needs-attention'; label = 'Needs Work'; }
+
+    const detail = 'Score: ' + score + '/100 (Setup: ' + progress.done + '/' + progress.total + ', KB: ' + kbCount + ', Responses 30d: ' + responses30d + ')';
+    return { score, level, label, detail };
 }
 
 // Quick setup progress from the org list data (no extra API call)
@@ -1032,12 +1134,55 @@ async function renderCostsTab(container) {
             </div>
         </div>
 
+        <!-- Response Volume -->
+        <div class="admin-charts-grid">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>Daily Response Volume</h3>
+                    <span class="admin-card-badge">Last 30 days</span>
+                </div>
+                <div class="admin-chart-container"><canvas id="responseVolumeChart"></canvas></div>
+            </div>
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>Approval Rate Trend</h3>
+                    <span class="admin-card-badge">Last 30 days</span>
+                </div>
+                <div class="admin-chart-container"><canvas id="approvalTrendChart"></canvas></div>
+            </div>
+        </div>
+
+        ${renderResponsesByOrgTable(costData.responsesByOrg || [])}
+
         <div class="admin-cost-note">
             <strong>Note:</strong> Cost estimates are based on Claude Sonnet 4 pricing ($3/1M input, $15/1M output tokens) with an estimated 40/60 input/output split. Actual costs may vary.
         </div>
     `;
 
     setTimeout(() => initCostCharts(costData), 100);
+}
+
+function renderResponsesByOrgTable(responsesByOrg) {
+    if (!responsesByOrg || responsesByOrg.length === 0) return '';
+    const rows = responsesByOrg.map(function(o) {
+        const rated = parseInt(o.rated) || 0;
+        const positive = parseInt(o.positive) || 0;
+        const approvalRate = rated > 0 ? Math.round(positive / rated * 100) + '%' : '—';
+        return '<tr>' +
+            '<td>' + escapeHtmlAdmin(o.name) + '</td>' +
+            '<td>' + parseInt(o.responses).toLocaleString() + '</td>' +
+            '<td>' + approvalRate + '</td>' +
+            '<td>' + rated + '</td>' +
+            '</tr>';
+    }).join('');
+    return '<div class="admin-card">' +
+        '<div class="admin-card-header"><h3>Responses by Organization (30d)</h3></div>' +
+        '<div class="admin-table-container">' +
+            '<table class="admin-table">' +
+                '<thead><tr><th>Organization</th><th>Responses</th><th>Approval</th><th>Rated</th></tr></thead>' +
+                '<tbody>' + rows + '</tbody>' +
+            '</table>' +
+        '</div></div>';
 }
 
 function initCostCharts(costData) {
@@ -1076,6 +1221,57 @@ function initCostCharts(costData) {
                 plugins: { legend: { position: 'bottom' } }
             }
         });
+    }
+
+    // Response volume chart
+    const rvCtx = document.getElementById('responseVolumeChart');
+    if (rvCtx && costData.responseTrends && costData.responseTrends.length) {
+        adminCharts.responseVolume = new Chart(rvCtx, {
+            type: 'bar',
+            data: {
+                labels: costData.responseTrends.map(d => formatDate(d.date)),
+                datasets: [{
+                    label: 'Responses',
+                    data: costData.responseTrends.map(d => parseInt(d.responses)),
+                    backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                    borderColor: '#10B981', borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    // Approval rate trend chart
+    const atCtx = document.getElementById('approvalTrendChart');
+    if (atCtx && costData.responseTrends && costData.responseTrends.length) {
+        const trendData = costData.responseTrends.filter(d => parseInt(d.rated) > 0);
+        if (trendData.length > 0) {
+            adminCharts.approvalTrend = new Chart(atCtx, {
+                type: 'line',
+                data: {
+                    labels: trendData.map(d => formatDate(d.date)),
+                    datasets: [{
+                        label: 'Approval Rate (%)',
+                        data: trendData.map(d => {
+                            const rated = parseInt(d.rated) || 1;
+                            return Math.round(parseInt(d.positive) / rated * 100);
+                        }),
+                        borderColor: '#6366F1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true, tension: 0.4, pointRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+                }
+            });
+        }
     }
 }
 
