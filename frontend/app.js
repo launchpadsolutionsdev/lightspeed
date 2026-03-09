@@ -2616,14 +2616,93 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
 }
 
 /** Render simple markdown (bold, italic, code, line breaks) from raw text */
-function renderSimpleMarkdown(text) {
+function inlineMarkdown(text) {
     let html = escapeHtml(text);
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-    html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.04);padding:1px 5px;border-radius:4px;font-size:0.84em;">$1</code>');
+    html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.84em;font-family:monospace;">$1</code>');
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/\n/g, '<br>');
+    html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
     return html;
+}
+
+function renderSimpleMarkdown(text) {
+    // Step 1: Extract fenced code blocks so they aren't touched by inline rules
+    const codeBlocks = [];
+    let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+        const idx = codeBlocks.length;
+        codeBlocks.push(`<pre><code>${escapeHtml(code)}</code></pre>`);
+        return `\x02CB${idx}\x02`;
+    });
+
+    // Step 2: Process line by line for block-level elements
+    const lines = processed.split('\n');
+    const parts = [];
+    let i = 0;
+
+    while (i < lines.length) {
+        const line = lines[i];
+
+        // Restored code block placeholder
+        const cbMatch = line.trim().match(/^\x02CB(\d+)\x02$/);
+        if (cbMatch) {
+            parts.push(codeBlocks[parseInt(cbMatch[1])]);
+            i++;
+            continue;
+        }
+
+        // Horizontal rule
+        if (/^-{3,}$/.test(line.trim())) {
+            parts.push('<hr style="border:none;border-top:1px solid rgba(0,0,0,0.12);margin:0.6em 0;">');
+            i++;
+            continue;
+        }
+
+        // Headings — map # → h2, ## → h3, ### → h4, ####+ → h5
+        const hMatch = line.match(/^(#{1,6}) (.+)/);
+        if (hMatch) {
+            const level = Math.min(hMatch[1].length + 1, 5);
+            parts.push(`<h${level} style="margin:0.75em 0 0.2em;font-size:${level <= 2 ? '1.15em' : level === 3 ? '1.05em' : '1em'}">${inlineMarkdown(hMatch[2])}</h${level}>`);
+            i++;
+            continue;
+        }
+
+        // Unordered list — group consecutive items
+        if (/^[-*+] /.test(line)) {
+            const items = [];
+            while (i < lines.length && /^[-*+] /.test(lines[i])) {
+                items.push(`<li>${inlineMarkdown(lines[i].replace(/^[-*+] /, ''))}</li>`);
+                i++;
+            }
+            parts.push(`<ul style="margin:0.4em 0;padding-left:1.4em;">${items.join('')}</ul>`);
+            continue;
+        }
+
+        // Ordered list — group consecutive items
+        if (/^\d+[.)]\s/.test(line)) {
+            const items = [];
+            while (i < lines.length && /^\d+[.)]\s/.test(lines[i])) {
+                items.push(`<li>${inlineMarkdown(lines[i].replace(/^\d+[.)]\s+/, ''))}</li>`);
+                i++;
+            }
+            parts.push(`<ol style="margin:0.4em 0;padding-left:1.4em;">${items.join('')}</ol>`);
+            continue;
+        }
+
+        // Empty line — paragraph break (deduplicate consecutive breaks)
+        if (line.trim() === '') {
+            if (parts.length > 0 && parts[parts.length - 1] !== '<br>') {
+                parts.push('<br>');
+            }
+            i++;
+            continue;
+        }
+
+        // Regular text
+        parts.push(inlineMarkdown(line) + '<br>');
+        i++;
+    }
+
+    return parts.join('');
 }
 
 /** Append action buttons (Copy, New chat, rating) to a streaming message div */
@@ -2663,14 +2742,7 @@ function appendAskMessage(role, text, historyId) {
     msgDiv.className = `ask-msg ask-msg-${role}`;
 
     if (role === 'ai') {
-        // Simple markdown: bold, italic, code blocks, line breaks
-        let html = escapeHtml(text);
-        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-        html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;font-size:0.84em;">$1</code>');
-        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-        html = html.replace(/\n/g, '<br>');
-        msgDiv.innerHTML = html;
+        msgDiv.innerHTML = renderSimpleMarkdown(text);
 
         // Add copy button + rating buttons
         const actions = document.createElement('div');
