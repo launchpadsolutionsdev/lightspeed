@@ -41,7 +41,7 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
     try {
         const {
             inquiry, format, tone, length, includeLinks, includeSteps,
-            agentInstructions, staffName, language, tool
+            agentInstructions, staffName, language, tool, isThread
         } = req.body;
 
         if (!inquiry) {
@@ -63,7 +63,8 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
             agentInstructions,
             staffName,
             language,
-            tool
+            tool,
+            isThread: !!isThread
         });
 
         // 2. Enhance with KB entries, response rules, and Shopify context
@@ -105,7 +106,8 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
         // Validate output for safety + format compliance
         const { warnings } = validateOutput(text, { orgEmails: [] });
         const formatViolations = validateFormatCompliance(text, req.body.format, {
-            hasKbEntries: referencedKbEntries.length > 0
+            hasKbEntries: referencedKbEntries.length > 0,
+            isThread: !!isThread
         });
         warnings.push(...formatViolations);
         if (warnings.length > 0) {

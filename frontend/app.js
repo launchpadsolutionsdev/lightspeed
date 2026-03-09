@@ -4526,6 +4526,10 @@ function loadSettings() {
     if (staffNameEl && defaultName) {
         staffNameEl.value = defaultName;
     }
+    const threadStaffNameEl = document.getElementById("threadStaffName");
+    if (threadStaffNameEl && defaultName) {
+        threadStaffNameEl.value = defaultName;
+    }
     if (orgNameEl && orgName) {
         orgNameEl.value = orgName;
     }
@@ -4597,6 +4601,33 @@ function setupEventListeners() {
     document.getElementById("customerEmail").addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") handleGenerate();
     });
+
+    // Thread Generator
+    document.getElementById("threadGenerateBtn").addEventListener("click", handleThreadGenerate);
+    document.getElementById("threadEmail").addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") handleThreadGenerate();
+    });
+    document.getElementById("threadEmail").addEventListener("input", updateThreadCharCount);
+
+    // Thread instruction chips
+    document.querySelectorAll(".thread-instruction-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+            const field = document.getElementById("threadAgentInstructions");
+            const current = field.value.trim();
+            const instruction = chip.dataset.instruction;
+            field.value = current ? current + ". " + instruction : instruction;
+            field.focus();
+        });
+    });
+
+    // Thread collapsible options section
+    const threadOptionsHeader = document.getElementById("threadOptionsHeader");
+    if (threadOptionsHeader) {
+        threadOptionsHeader.addEventListener("click", () => {
+            threadOptionsHeader.classList.toggle("collapsed");
+            document.getElementById("threadOptionsContent").classList.toggle("collapsed");
+        });
+    }
 
     // Smart suggestions
     document.querySelectorAll(".suggestion-chip:not(.instruction-chip)").forEach(chip => {
@@ -7281,6 +7312,8 @@ function saveSettings() {
     saveUserData();
 
     document.getElementById("staffName").value = defaultName;
+    const threadStaffNameSave = document.getElementById("threadStaffName");
+    if (threadStaffNameSave) threadStaffNameSave.value = defaultName;
 
     document.getElementById("settingsModal").classList.remove("show");
 
@@ -7403,6 +7436,146 @@ async function handleGenerate() {
     } finally {
         generateBtn.disabled = false;
         generateBtn.innerHTML = `<span class="btn-icon">⚡</span> Generate Response`;
+    }
+}
+
+// ==================== THREAD GENERATOR ====================
+async function handleThreadGenerate() {
+    const threadEmail = document.getElementById("threadEmail").value.trim();
+    const staffName = document.getElementById("threadStaffName").value.trim() || document.getElementById("staffName").value.trim() || "Bella";
+
+    if (!threadEmail) {
+        document.getElementById("threadResponseArea").innerHTML = `
+            <div class="response-placeholder" style="color: #dc2626;">
+                <div class="placeholder-icon">⚠️</div>
+                <div class="placeholder-text">Please paste an email thread first.</div>
+            </div>
+        `;
+        return;
+    }
+
+    const toneValue = document.getElementById("threadToneSlider").value;
+    const lengthValue = document.getElementById("threadLengthSlider").value;
+    const agentInstructions = document.getElementById("threadAgentInstructions")?.value.trim() || "";
+
+    const generateBtn = document.getElementById("threadGenerateBtn");
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = `<span class="btn-icon">⏳</span> Generating...`;
+
+    const responseArea = document.getElementById("threadResponseArea");
+    responseArea.innerHTML = `
+        <div class="response-section">
+            <div class="response-header">
+                <div class="response-label">
+                    <span class="response-label-icon">✨</span>
+                    <span class="response-label-text" id="threadStreamingLabel">Generating...</span>
+                </div>
+            </div>
+            <div class="response-box" id="threadStreamingResponseText"></div>
+        </div>
+    `;
+
+    const streamTarget = document.getElementById("threadStreamingResponseText");
+    const startTime = Date.now();
+
+    try {
+        const requestBody = {
+            inquiry: threadEmail,
+            format: 'email',
+            tone: parseInt(toneValue),
+            length: parseInt(lengthValue),
+            includeLinks: true,
+            includeSteps: false,
+            agentInstructions: agentInstructions,
+            staffName: staffName,
+            language: responseLanguage || 'en',
+            tool: 'response_assistant',
+            isThread: true
+        };
+
+        let serverWarnings = [];
+        let referencedKbEntries = [];
+
+        const { text } = await fetchStream(requestBody, {
+            endpoint: '/api/response-assistant/generate',
+            onText: (chunk) => {
+                streamTarget._rawText = (streamTarget._rawText || '') + chunk;
+                streamTarget.innerHTML = escapeHtmlWithLinks(stripCitations(streamTarget._rawText));
+            },
+            onKb: (entries) => {
+                referencedKbEntries = entries;
+            },
+            onDone: (event) => {
+                if (event.warnings && event.warnings.length > 0) {
+                    serverWarnings = event.warnings;
+                }
+            }
+        });
+
+        const responseText = stripCitations(text);
+        const responseTimeMs = Date.now() - startTime;
+        const responseTime = (responseTimeMs / 1000).toFixed(1);
+        const category = detectCategory(threadEmail);
+
+        const historyEntry = {
+            id: `history-${Date.now()}`,
+            backendId: null,
+            inquiry: threadEmail,
+            response: responseText,
+            referencedKbEntries: referencedKbEntries,
+            staffName: staffName,
+            category: category,
+            timestamp: new Date().toISOString(),
+            responseTime: parseFloat(responseTime),
+            rating: null
+        };
+        responseHistory.unshift(historyEntry);
+        if (responseHistory.length > 100) responseHistory.pop();
+
+        currentResponse = responseText;
+        currentInquiry = threadEmail;
+        currentReferencedKb = referencedKbEntries;
+        currentHistoryId = historyEntry.id;
+
+        saveUserData();
+
+        try {
+            const toneDesc = toneValue < 33 ? "formal" : toneValue > 66 ? "friendly" : "balanced";
+            const backendResp = await fetch(`${API_BASE_URL}/api/response-history`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    inquiry: threadEmail,
+                    response: responseText,
+                    format: 'email',
+                    tone: toneDesc,
+                    kb_entries_used: referencedKbEntries.length,
+                    quality_violations: serverWarnings.filter(w => w.type === 'format_violation' || w.type === 'format_warning'),
+                    response_time_ms: responseTimeMs
+                })
+            });
+            if (backendResp.ok) {
+                const backendData = await backendResp.json();
+                historyEntry.backendId = backendData.entry.id;
+                saveUserData();
+            }
+        } catch (err) {
+            console.warn('Failed to save thread response to backend:', err);
+        }
+
+        displayResults(responseText, historyEntry.id, serverWarnings, 'threadResponseArea');
+
+    } catch (error) {
+        console.error("Thread generate error:", error);
+        document.getElementById("threadResponseArea").innerHTML = `
+            <div class="response-placeholder" style="color: #dc2626;">
+                <div class="placeholder-icon">⚠️</div>
+                <div class="placeholder-text">Something went wrong. Please try again.</div>
+            </div>
+        `;
+    } finally {
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = `<span class="btn-icon">⚡</span> Generate Thread Reply`;
     }
 }
 
@@ -7544,7 +7717,7 @@ async function generateCustomResponse(customerEmail, staffName, options) {
     };
 }
 
-function displayResults(response, historyId, serverWarnings = []) {
+function displayResults(response, historyId, serverWarnings = [], containerId = 'responseArea') {
     const qualityChecks = performQualityChecks(response);
 
     // Merge server-side format violations into quality checks
@@ -7559,7 +7732,7 @@ function displayResults(response, historyId, serverWarnings = []) {
     // Get sentiment from the original inquiry
     const sentimentHtml = currentInquiry ? displaySentimentBadge(currentInquiry) : '';
 
-    document.getElementById("responseArea").innerHTML = `
+    document.getElementById(containerId).innerHTML = `
         ${sentimentHtml}
         <div class="response-section">
             <div class="response-header">
@@ -9772,6 +9945,20 @@ function updateCharCount() {
 
     document.getElementById("inputChars").textContent = chars;
     document.getElementById("inputWords").textContent = words;
+}
+
+function updateThreadCharCount() {
+    const text = document.getElementById("threadEmail").value;
+    const chars = text.length;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+    document.getElementById("threadInputChars").textContent = chars;
+    document.getElementById("threadInputWords").textContent = words;
+
+    const warning = document.getElementById("threadCharWarning");
+    if (warning) {
+        warning.style.display = chars > 8000 ? 'block' : 'none';
+    }
 }
 
 // ==================== AUTO-SAVE DRAFTS ====================
@@ -13714,6 +13901,7 @@ const ROUTES = {
     '/response-assistant/admin':      { view: 'tool', tool: 'customer-response', page: 'admin' },
     '/response-assistant/feedback':   { view: 'tool', tool: 'customer-response', page: 'feedback' },
     '/response-assistant/bulk':       { view: 'tool', tool: 'customer-response', page: 'bulk' },
+    '/response-assistant/thread':     { view: 'tool', tool: 'customer-response', page: 'thread' },
     '/data-analysis':       { view: 'tool', tool: 'data-analysis' },
     '/draft-assistant':     { view: 'tool', tool: 'draft-assistant' },
     '/list-normalizer':              { view: 'tool', tool: 'list-normalizer' },
@@ -13745,6 +13933,7 @@ const PAGE_ROUTES = {
     'admin':     '/response-assistant/admin',
     'feedback':  '/response-assistant/feedback',
     'bulk':      '/response-assistant/bulk',
+    'thread':    '/response-assistant/thread',
 };
 
 // Flag to suppress pushState during route navigation (popstate / initial load)

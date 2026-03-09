@@ -129,7 +129,7 @@ function validateFormatCompliance(responseText, format, options = {}) {
                 message: 'Email response may be too long (over 300 words)'
             });
         }
-        if (!lowerText.match(/^(hi|hello|dear|good\s(morning|afternoon|evening))/)) {
+        if (!options.isThread && !lowerText.match(/^(hi|hello|dear|good\s(morning|afternoon|evening))/)) {
             violations.push({
                 type: 'format_warning',
                 message: 'Email response may be missing a greeting'
