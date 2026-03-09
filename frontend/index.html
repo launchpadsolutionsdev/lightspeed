@@ -10173,6 +10173,10 @@
                         <span class="sidebar-btn-icon">&#128172;</span>
                         <span class="sidebar-btn-label">Generator</span>
                     </button>
+                    <button class="sidebar-btn" data-page="thread">
+                        <span class="sidebar-btn-icon">&#128231;</span>
+                        <span class="sidebar-btn-label">Thread</span>
+                    </button>
                     <button class="sidebar-btn" data-page="templates">
                         <span class="sidebar-btn-icon">&#128203;</span>
                         <span class="sidebar-btn-label">Quick Replies</span>
@@ -10376,6 +10380,102 @@
                     </div>
                     <div id="drawScheduleContainer">
                         <!-- Draw schedule will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thread Page -->
+            <div class="page" id="page-thread">
+                <div class="response-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-input">📧</div>
+                            <div>
+                                <div class="card-title">Email Thread</div>
+                                <div class="card-description">Paste the full back-and-forth conversation below</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="input-wrapper">
+                                <textarea id="threadEmail" placeholder="Paste the full email thread here, including all previous messages..." style="min-height: 220px;"></textarea>
+                                <div class="input-footer">
+                                    <div class="char-count">
+                                        <span id="threadInputChars">0</span> characters • <span id="threadInputWords">0</span> words
+                                    </div>
+                                    <div class="char-count-warning" id="threadCharWarning" style="display: none; color: var(--warning, #f59e0b); font-size: 0.75rem;">
+                                        ⚠️ Thread is very long — older messages may be trimmed
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 12px;">
+                            <label class="form-label" for="threadAgentInstructions">Agent Instructions <span style="font-weight: 400; color: var(--text-muted);">(optional)</span></label>
+                            <div class="smart-suggestions" id="threadInstructionChips" style="margin-bottom: 8px;">
+                                <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;">Quick add:</span>
+                                <button class="suggestion-chip thread-instruction-chip" data-instruction="I've already resolved this issue">Resolved</button>
+                                <button class="suggestion-chip thread-instruction-chip" data-instruction="I've already cancelled their subscription">Cancelled</button>
+                                <button class="suggestion-chip thread-instruction-chip" data-instruction="Refund has been approved and will be visible on your statement in 2-3 business days">Refund approved</button>
+                                <button class="suggestion-chip thread-instruction-chip" data-instruction="Escalate to manager — don't promise immediate resolution">Escalate</button>
+                                <button class="suggestion-chip thread-instruction-chip" data-instruction="I have resent the tickets to your email">Resent tickets</button>
+                            </div>
+                            <textarea id="threadAgentInstructions" placeholder="e.g. &quot;I've already cancelled their subscription&quot; or &quot;Refund has been processed&quot;" rows="2" style="min-height: 56px; resize: vertical;"></textarea>
+                        </div>
+
+                        <div class="options-section">
+                            <div class="options-header" id="threadOptionsHeader">
+                                <span class="options-title">⚙️ Response Options</span>
+                                <span class="options-toggle">▼</span>
+                            </div>
+                            <div class="options-content" id="threadOptionsContent">
+                                <div class="form-group">
+                                    <label class="form-label">Your Name</label>
+                                    <input type="text" id="threadStaffName" placeholder="Your name for sign-off">
+                                </div>
+
+                                <div class="tone-controls">
+                                    <div class="tone-control">
+                                        <label class="form-label">Tone</label>
+                                        <input type="range" class="tone-slider" id="threadToneSlider" min="0" max="100" value="50">
+                                        <div class="tone-labels">
+                                            <span>Formal</span>
+                                            <span>Friendly</span>
+                                        </div>
+                                    </div>
+                                    <div class="tone-control">
+                                        <label class="form-label">Length</label>
+                                        <input type="range" class="tone-slider" id="threadLengthSlider" min="0" max="100" value="50">
+                                        <div class="tone-labels">
+                                            <span>Brief</span>
+                                            <span>Detailed</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn-primary" id="threadGenerateBtn">
+                            <span class="btn-icon">⚡</span>
+                            Generate Thread Reply
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon icon-output">✨</div>
+                            <div>
+                                <div class="card-title">Generated Reply</div>
+                                <div class="card-description">AI-powered reply to the latest message</div>
+                            </div>
+                        </div>
+
+                        <div id="threadResponseArea">
+                            <div class="response-placeholder">
+                                <div class="placeholder-icon">📧</div>
+                                <div class="placeholder-text">Your generated reply will appear here</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

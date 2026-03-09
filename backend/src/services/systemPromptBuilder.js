@@ -15,6 +15,7 @@ const { pickRelevantRatedExamples, pickRelevantKnowledge } = require('./claude')
 // ─── Input sanitization ─────────────────────────────────────────────
 
 const MAX_INQUIRY_LENGTH = 10000;
+const MAX_THREAD_LENGTH = 20000;
 
 const INJECTION_PATTERNS = [
     /ignore\s+(all\s+)?previous\s+instructions/gi,
@@ -30,10 +31,10 @@ const INJECTION_PATTERNS = [
  * Sanitize user-provided inquiry text against prompt injection.
  * Logs when patterns are detected for monitoring.
  */
-function sanitizeInquiry(text) {
+function sanitizeInquiry(text, maxLength = MAX_INQUIRY_LENGTH) {
     if (!text) return '';
 
-    let sanitized = text.substring(0, MAX_INQUIRY_LENGTH);
+    let sanitized = text.substring(0, maxLength);
 
     for (const pattern of INJECTION_PATTERNS) {
         if (pattern.test(sanitized)) {
@@ -423,7 +424,8 @@ async function buildResponseAssistantPrompt(params) {
         agentInstructions = '',
         staffName = 'Support Team',
         language = 'en',
-        tool = 'response_assistant'
+        tool = 'response_assistant',
+        isThread = false
     } = params;
 
     const isFacebook = format === 'facebook';
@@ -478,7 +480,11 @@ async function buildResponseAssistantPrompt(params) {
 
     // Format instructions
     let formatInstructions = '';
-    if (isFacebook) {
+    if (isThread) {
+        const linkInfo = orgWebsite ? `You MUST include ${orgWebsite} in the response. Reference it naturally (e.g., "Visit ${orgWebsite} for..." or "You can find more at ${orgWebsite}").` : 'Include relevant website links when helpful.';
+        formatInstructions = `LINKS: ${linkInfo}
+FORMAT: This is a reply within an ongoing email thread. Use flowing paragraphs. Do NOT repeat information or pleasantries already covered earlier in the thread.`;
+    } else if (isFacebook) {
         const fbEmailDirective = orgSupportEmail
             ? `"Please email us at ${orgSupportEmail} and our team will assist you as soon as possible."`
             : '"Please email us and our team will assist you as soon as possible."';
@@ -517,7 +523,10 @@ ${includeSteps ? 'FORMAT: Include step-by-step instructions when applicable.' : 
     }
 
     // Assemble system prompt
-    const systemPrompt = `You are a helpful customer support assistant for ${orgName}, a charitable lottery organization.
+    const threadFraming = isThread
+        ? ` You will be given a full email thread between a customer and support staff. Your task is to write a reply to the LATEST message from the customer, taking the full conversation history into account. Do not repeat information or pleasantries already covered in the thread.`
+        : '';
+    const systemPrompt = `You are a helpful customer support assistant for ${orgName}, a charitable lottery organization.${threadFraming}
 
 TONE: Write in a ${toneDesc} tone.
 LENGTH: Keep the response ${lengthDesc}.
@@ -541,14 +550,20 @@ Knowledge base:
 ${correctionsContext}${ratedExamplesContext}${!correctionsContext.trim() && !ratedExamplesContext.trim() ? '\n(No knowledge base entries are available yet. Only provide general information and recommend the customer contact support directly for specific questions.)\n' : ''}`;
 
     // Build user prompt with XML-delimited user content for prompt injection defense
-    const sanitizedInquiry = sanitizeInquiry(inquiry);
+    const sanitizedInquiry = sanitizeInquiry(inquiry, isThread ? MAX_THREAD_LENGTH : MAX_INQUIRY_LENGTH);
 
     const instructionsBlock = agentInstructions
         ? `\n${wrapUserContent('agent_instructions', agentInstructions)}\n`
         : '';
 
     let userPrompt;
-    if (isFacebook) {
+    if (isThread) {
+        userPrompt = `The following is a complete email thread. Read the entire conversation for context, then write a reply to the latest customer message.
+${instructionsBlock}
+${wrapUserContent('email_thread', sanitizedInquiry)}
+
+Sign as: ${staffName}`;
+    } else if (isFacebook) {
         const fbEmailRef = orgSupportEmail ? `direct them to email ${orgSupportEmail} for assistance` : 'direct them to email for assistance';
         userPrompt = `Write a FACEBOOK COMMENT reply to the customer inquiry below. Remember: under 400 characters, single paragraph, end with -${staffName}
 
