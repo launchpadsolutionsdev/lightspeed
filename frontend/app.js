@@ -2559,6 +2559,9 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         msgDiv.className = 'ask-msg ask-msg-ai';
         messagesEl.appendChild(msgDiv);
 
+        const askRenderer = createSmoothedStreamRenderer(
+            msgDiv, txt => renderSimpleMarkdown(stripCitations(txt)), chatArea);
+
         const { text: aiText } = await fetchStream({
             system: fullSystemPrompt,
             inquiry: message,
@@ -2566,15 +2569,9 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             messages: askConversation.map(m => ({ role: m.role, content: m.content })),
             max_tokens: 4096,
             model: alsModel
-        }, {
-            onText: (chunk) => {
-                // Render streamed markdown incrementally
-                msgDiv._rawText = (msgDiv._rawText || '') + chunk;
-                msgDiv.innerHTML = renderSimpleMarkdown(stripCitations(msgDiv._rawText));
-                chatArea.scrollTop = chatArea.scrollHeight;
-            }
-        });
+        }, { onText: chunk => askRenderer.onText(chunk) });
 
+        askRenderer.flush();
         askConversation.push({ role: 'assistant', content: aiText });
         saveAskConversation();
 
@@ -2613,6 +2610,50 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         sendBtn.disabled = false;
         input.focus();
     }
+}
+
+/**
+ * Buffers incoming LLM stream chunks and drains them at a steady pace via
+ * requestAnimationFrame, giving a smooth, even appearance regardless of how
+ * unevenly the API delivers text.
+ *
+ * @param {HTMLElement} el        Element whose innerHTML is updated
+ * @param {Function}    renderFn  (text: string) => HTML string
+ * @param {HTMLElement} scrollEl  Element to keep scrolled to bottom (optional)
+ * @param {number}      charsPerFrame  Characters to reveal per animation frame
+ */
+function createSmoothedStreamRenderer(el, renderFn, scrollEl, charsPerFrame = 12) {
+    let buffer = '';
+    let displayed = '';
+    let rafPending = false;
+
+    function drain() {
+        rafPending = false;
+        if (!buffer.length) return;
+        const take = Math.min(charsPerFrame, buffer.length);
+        displayed += buffer.slice(0, take);
+        buffer = buffer.slice(take);
+        el.innerHTML = renderFn(displayed);
+        el._rawText = displayed + buffer;
+        if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+        if (buffer.length > 0) { rafPending = true; requestAnimationFrame(drain); }
+    }
+
+    return {
+        onText(chunk) {
+            buffer += chunk;
+            el._rawText = displayed + buffer;
+            if (!rafPending) { rafPending = true; requestAnimationFrame(drain); }
+        },
+        flush() {
+            rafPending = false;
+            displayed += buffer;
+            buffer = '';
+            el._rawText = displayed;
+            el.innerHTML = renderFn(displayed);
+            if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+        }
+    };
 }
 
 /** Render simple markdown (bold, italic, code, line breaks) from raw text */
@@ -3473,6 +3514,9 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         // Reset KB entries for this response
         alsKbEntries = [];
 
+        const alsRenderer = createSmoothedStreamRenderer(
+            msgDiv, txt => renderAlsMarkdownWithCitations(txt, alsKbEntries), chatArea);
+
         const { text: aiText, referencedKbEntries } = await fetchStream({
             system: fullSystemPrompt,
             inquiry: message,
@@ -3481,16 +3525,11 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             max_tokens: 4096,
             model: alsModel
         }, {
-            onText: (chunk) => {
-                msgDiv._rawText = (msgDiv._rawText || '') + chunk;
-                msgDiv.innerHTML = renderAlsMarkdownWithCitations(msgDiv._rawText, alsKbEntries);
-                chatArea.scrollTop = chatArea.scrollHeight;
-            },
-            onKb: (entries) => {
-                alsKbEntries = entries;
-            }
+            onText: chunk => alsRenderer.onText(chunk),
+            onKb: (entries) => { alsKbEntries = entries; }
         });
 
+        alsRenderer.flush();
         askConversation.push({ role: 'assistant', content: aiText });
         saveAskConversation();
 
