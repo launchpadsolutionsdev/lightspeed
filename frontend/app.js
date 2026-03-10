@@ -3574,7 +3574,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         if (typing) typing.remove();
 
         const msgDiv = document.createElement('div');
-        msgDiv.className = 'als-msg als-msg-ai';
+        msgDiv.className = 'als-msg als-msg-ai als-streaming';
         messagesEl.appendChild(msgDiv);
 
         // Reset KB entries for this response
@@ -3597,6 +3597,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         });
 
         alsRenderer.flush();
+        msgDiv.classList.remove('als-streaming');
         askConversation.push({ role: 'assistant', content: aiText });
         saveAskConversation();
 
