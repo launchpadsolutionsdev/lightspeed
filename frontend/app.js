@@ -101,12 +101,13 @@ async function handleApiError(response) {
  * @param {Function} [opts.onError]- Called on error with error message string
  * @returns {Promise<{text: string, referencedKbEntries: Array}>} Full text + KB entries
  */
-async function fetchStream(body, { endpoint, onText, onKb, onDone, onError } = {}) {
+async function fetchStream(body, { endpoint, onText, onKb, onDone, onError, signal } = {}) {
     const streamEndpoint = endpoint || '/api/generate-stream';
     const response = await fetch(`${API_BASE_URL}${streamEndpoint}`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        signal
     });
 
     if (!response.ok) {
@@ -2369,6 +2370,8 @@ let askConversation = [];
 let askTone = 'professional';
 let alsModel = 'claude-sonnet-4-6';
 let askListenersSetup = false;
+let alsStreamController = null;
+let alsQueuedMessage = null;
 
 function saveAskConversation() {
     try {
@@ -2707,6 +2710,38 @@ function renderSimpleMarkdown(text) {
             continue;
         }
 
+        // Blockquote — group consecutive > lines
+        if (/^> /.test(line)) {
+            const bqLines = [];
+            while (i < lines.length && /^> /.test(lines[i])) {
+                bqLines.push(inlineMarkdown(lines[i].replace(/^> /, '')));
+                i++;
+            }
+            parts.push(`<blockquote style="border-left:3px solid rgba(0,0,0,0.2);margin:0.4em 0;padding:0.3em 0.8em;color:rgba(0,0,0,0.65);font-style:italic;">${bqLines.join('<br>')}</blockquote>`);
+            continue;
+        }
+
+        // Table — group consecutive | lines
+        if (/^\|/.test(line)) {
+            const tableLines = [];
+            while (i < lines.length && /^\|/.test(lines[i])) {
+                tableLines.push(lines[i]);
+                i++;
+            }
+            if (tableLines.length >= 2 && /^\|[-|: ]+\|/.test(tableLines[1])) {
+                const parseCells = row => row.split('|').slice(1, -1).map(c => c.trim());
+                const headers = parseCells(tableLines[0]).map(h => `<th style="padding:6px 12px;text-align:left;border-bottom:2px solid rgba(0,0,0,0.15);white-space:nowrap;">${inlineMarkdown(h)}</th>`).join('');
+                const rows = tableLines.slice(2).map(row => {
+                    const cells = parseCells(row).map(c => `<td style="padding:6px 12px;border-bottom:1px solid rgba(0,0,0,0.07);">${inlineMarkdown(c)}</td>`).join('');
+                    return `<tr>${cells}</tr>`;
+                }).join('');
+                parts.push(`<div style="overflow-x:auto;margin:0.5em 0;"><table style="border-collapse:collapse;width:100%;font-size:0.88em;"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`);
+            } else {
+                tableLines.forEach(l => parts.push(inlineMarkdown(l) + '<br>'));
+            }
+            continue;
+        }
+
         // Unordered list — group consecutive items
         if (/^[-*+] /.test(line)) {
             const items = [];
@@ -2759,6 +2794,22 @@ function appendAskMessageActions(msgDiv, historyId) {
     }
     actions.innerHTML = actionsHtml;
     msgDiv.appendChild(actions);
+
+    // Refinement buttons
+    const refinements = document.createElement('div');
+    refinements.className = 'ask-refinements';
+    refinements.innerHTML = `
+        <button class="ask-refine-btn" onclick="sendAskRefinement('Make it shorter and more concise')">Shorter</button>
+        <button class="ask-refine-btn" onclick="sendAskRefinement('Make it longer with more detail')">Longer</button>
+        <button class="ask-refine-btn" onclick="sendAskRefinement('Rewrite in a more formal, professional tone')">More formal</button>
+        <button class="ask-refine-btn" onclick="sendAskRefinement('Rewrite in a more casual, friendly tone')">More casual</button>
+        <button class="ask-refine-btn" onclick="sendAskRefinement('Convert this into bullet points')">Bullet points</button>`;
+    msgDiv.appendChild(refinements);
+}
+
+function sendAskRefinement(instruction) {
+    const input = document.getElementById('askInput');
+    if (input) { input.value = instruction; sendAskMessage(); }
 }
 
 /** Append action buttons (Copy, New chat, rating) to an Als streaming message div */
@@ -3416,8 +3467,23 @@ async function sendAlsMessage() {
     const currentAttachments = [...alsAttachments];
     if (!message && currentAttachments.length === 0) return;
 
+    // If already streaming, queue this message for after the current one finishes
+    if (alsStreamController) {
+        alsQueuedMessage = message;
+        input.value = '';
+        input.style.height = 'auto';
+        clearAlsAttachments();
+        // Show a queued indicator in the input placeholder
+        input.placeholder = 'Queued — will send when response finishes…';
+        return;
+    }
+
     const sendBtn = document.getElementById('alsSendBtn');
     sendBtn.disabled = true;
+    const stopBtn = document.getElementById('alsStopBtn');
+    if (stopBtn) stopBtn.style.display = 'flex';
+
+    alsStreamController = new AbortController();
 
     const chatArea = document.getElementById('alsChatArea');
 
@@ -3526,7 +3592,8 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             model: alsModel
         }, {
             onText: chunk => alsRenderer.onText(chunk),
-            onKb: (entries) => { alsKbEntries = entries; }
+            onKb: (entries) => { alsKbEntries = entries; },
+            signal: alsStreamController ? alsStreamController.signal : undefined
         });
 
         alsRenderer.flush();
@@ -3579,11 +3646,39 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
     } catch (error) {
         const typing = document.getElementById('alsTyping');
         if (typing) typing.remove();
-        console.error('Ask Lightspeed error:', error);
-        appendAlsMessage('ai', 'Sorry, I ran into an issue. Please try again.');
+        if (error.name === 'AbortError') {
+            // User stopped generation — keep partial response if any was rendered
+            const partialDiv = document.querySelector('.als-msg.als-msg-ai:last-child');
+            if (partialDiv && partialDiv._rawText) {
+                partialDiv.innerHTML = renderAlsMarkdownWithCitations(partialDiv._rawText, alsKbEntries);
+                appendAlsEnhancedActions(partialDiv, null, alsKbEntries);
+            }
+        } else {
+            console.error('Ask Lightspeed error:', error);
+            const errDiv = document.createElement('div');
+            errDiv.className = 'als-msg als-msg-ai als-msg-error';
+            errDiv.innerHTML = `<span class="als-error-text">Sorry, something went wrong.</span>
+                <button class="als-retry-btn" onclick="alsRetryLastMessage(this)">Try again</button>`;
+            document.getElementById('alsMessages').appendChild(errDiv);
+            document.getElementById('alsChatArea').scrollTop = document.getElementById('alsChatArea').scrollHeight;
+        }
     } finally {
+        alsStreamController = null;
         sendBtn.disabled = false;
-        input.focus();
+        const stopBtnFinal = document.getElementById('alsStopBtn');
+        if (stopBtnFinal) stopBtnFinal.style.display = 'none';
+        // Restore placeholder
+        input.placeholder = 'Ask anything... (or say \'Remember that...\' to teach me)';
+        // Drain queued message if any
+        if (alsQueuedMessage) {
+            const queued = alsQueuedMessage;
+            alsQueuedMessage = null;
+            input.value = queued;
+            input.focus();
+            sendAlsMessage();
+        } else {
+            input.focus();
+        }
     }
 }
 
@@ -3629,11 +3724,32 @@ function buildAlsSourcesPanel(kbEntries) {
 
 // ===== ENHANCED ACTION BUTTONS (with refinements) =====
 
+function regenerateAlsMessage(btn) {
+    const msgDiv = btn.closest('.als-msg');
+    // Remove the last assistant message from conversation
+    if (askConversation.length > 0 && askConversation[askConversation.length - 1].role === 'assistant') {
+        askConversation.pop();
+    }
+    // Remove the message div from DOM
+    msgDiv.remove();
+    // Pop the last user message and re-send it via the input
+    const lastUserIdx = [...askConversation].reverse().findIndex(m => m.role === 'user');
+    if (lastUserIdx !== -1) {
+        const realIdx = askConversation.length - 1 - lastUserIdx;
+        const lastUser = askConversation[realIdx];
+        askConversation.splice(realIdx, 1);
+        const input = document.getElementById('alsInput');
+        input.value = lastUser.content;
+        sendAlsMessage();
+    }
+}
+
 function appendAlsEnhancedActions(msgDiv, historyId, kbEntries) {
     // Action buttons
     const actions = document.createElement('div');
     actions.className = 'als-msg-actions';
     let actionsHtml = `<button onclick="copyAlsMessage(this)">Copy</button>
+        <button onclick="regenerateAlsMessage(this)" title="Regenerate response">Regenerate</button>
         <button onclick="clearAlsChat()">New chat</button>
         <button onclick="showAlsSavePromptModal()">Save prompt</button>`;
     if (historyId) {
@@ -3946,20 +4062,40 @@ function appendAlsMessageActions(msgDiv, historyId) {
 
 function copyAlsMessage(btn) {
     const msgDiv = btn.closest('.als-msg');
-    const clone = msgDiv.cloneNode(true);
-    const actions = clone.querySelector('.als-msg-actions');
-    if (actions) actions.remove();
-    const refinements = clone.querySelector('.als-refinements');
-    if (refinements) refinements.remove();
-    const sources = clone.querySelector('.als-sources-panel');
-    if (sources) sources.remove();
-    const teach = clone.querySelector('.als-teach-confirm');
-    if (teach) teach.remove();
-    const text = clone.textContent.trim();
+    // Use the stored raw markdown if available (preserves formatting)
+    const text = msgDiv._rawText || (() => {
+        const clone = msgDiv.cloneNode(true);
+        clone.querySelectorAll('.als-msg-actions, .als-refinements, .als-sources-panel, .als-teach-confirm').forEach(el => el.remove());
+        return clone.textContent.trim();
+    })();
     navigator.clipboard.writeText(text).then(() => {
         btn.textContent = 'Copied!';
         setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
     });
+}
+
+function stopAlsGeneration() {
+    if (alsStreamController) {
+        alsStreamController.abort();
+    }
+}
+
+function alsRetryLastMessage(btn) {
+    // Remove the error div
+    const errDiv = btn.closest('.als-msg-error');
+    if (errDiv) errDiv.remove();
+    // Re-send the last user message
+    let lastUserIdx = -1;
+    for (let i = askConversation.length - 1; i >= 0; i--) {
+        if (askConversation[i].role === 'user') { lastUserIdx = i; break; }
+    }
+    if (lastUserIdx !== -1) {
+        const lastUser = askConversation[lastUserIdx];
+        askConversation.splice(lastUserIdx, 1);
+        const input = document.getElementById('alsInput');
+        input.value = lastUser.content;
+        sendAlsMessage();
+    }
 }
 
 function clearAlsChat() {
@@ -4027,6 +4163,9 @@ window.loadAlsConversation = loadAlsConversation;
 window.deleteAlsConversation = deleteAlsConversation;
 window.useAlsSharedPrompt = useAlsSharedPrompt;
 window.sendAlsRefinement = sendAlsRefinement;
+window.stopAlsGeneration = stopAlsGeneration;
+window.alsRetryLastMessage = alsRetryLastMessage;
+window.regenerateAlsMessage = regenerateAlsMessage;
 window.saveAlsTeachToKB = saveAlsTeachToKB;
 window.summarizeAlsConversation = summarizeAlsConversation;
 window.showAlsCitationDetail = showAlsCitationDetail;
