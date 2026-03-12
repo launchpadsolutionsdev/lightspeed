@@ -223,7 +223,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
     };
 
     try {
-        const { messages, system, inquiry, max_tokens = 1024, model, kb_type } = req.body;
+        const { messages, system, staticSystem, dynamicSystem, inquiry, max_tokens = 1024, model, kb_type } = req.body;
 
         // Whitelist allowed models to prevent abuse
         const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
@@ -236,10 +236,22 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
 
         const organizationId = req.organizationId;
 
-        // Build enhanced system prompt with rules, KB, and Shopify context
-        const { system: enhancedSystem, referencedKbEntries } = await buildEnhancedPrompt(
-            system, inquiry, organizationId, { kb_type }
-        );
+        let finalStaticSystem, finalDynamicSystem, referencedKbEntries;
+
+        if (staticSystem !== undefined && dynamicSystem !== undefined) {
+            // Split-prompt path (Ask Lightspeed): Layer 1 is static and cached; Layer 2+3 is dynamic.
+            // Run buildEnhancedPrompt only on the dynamic portion so Layer 1 is never modified.
+            const enhanced = await buildEnhancedPrompt(dynamicSystem, inquiry, organizationId, { kb_type });
+            finalStaticSystem = staticSystem;
+            finalDynamicSystem = enhanced.system;
+            referencedKbEntries = enhanced.referencedKbEntries;
+        } else {
+            // Legacy path: single system string — enhance the whole thing as before
+            const enhanced = await buildEnhancedPrompt(system, inquiry, organizationId, { kb_type });
+            finalStaticSystem = null;
+            finalDynamicSystem = enhanced.system;
+            referencedKbEntries = enhanced.referencedKbEntries;
+        }
 
         // Send KB entries before streaming starts
         if (referencedKbEntries.length > 0) {
@@ -251,7 +263,8 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
 
         const { text, usage } = await claudeService.streamResponse({
             messages,
-            system: enhancedSystem,
+            staticSystem: finalStaticSystem,
+            dynamicSystem: finalDynamicSystem,
             max_tokens,
             model: selectedModel,
             onText: (chunk) => {

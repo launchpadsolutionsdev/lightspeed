@@ -340,9 +340,35 @@ async function pickRelevantRatedExamples(inquiry, positiveExamples, negativeExam
  * @param {Function} options.onError - Called if an error occurs
  * @returns {Promise<{text: string, usage: Object}>} Full text + usage once stream completes
  */
-async function streamResponse({ messages, system, max_tokens = 1024, model, onText, onDone, onError }) {
+async function streamResponse({ messages, system, staticSystem, dynamicSystem, max_tokens = 1024, model, onText, onDone, onError }) {
     if (!ANTHROPIC_API_KEY) {
         throw new Error('ANTHROPIC_API_KEY not configured');
+    }
+
+    // Layer 1 (static) is cached across all requests via cache_control.
+    // Layer 2+3 (dynamic: org, tone, language, KB, rules, Shopify) is uncached since it varies per request.
+    let systemBlocks;
+    if (staticSystem !== null && staticSystem !== undefined && dynamicSystem !== undefined) {
+        // Split-prompt path: two blocks — static cached, dynamic uncached
+        systemBlocks = [
+            {
+                type: 'text',
+                text: staticSystem,
+                cache_control: { type: 'ephemeral' }
+            },
+            {
+                type: 'text',
+                text: dynamicSystem
+            }
+        ];
+    } else {
+        // Legacy path: single block with cache applied to the whole thing
+        const systemText = system || dynamicSystem || '';
+        systemBlocks = systemText ? [{
+            type: 'text',
+            text: systemText,
+            cache_control: { type: 'ephemeral' }
+        }] : [];
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -355,13 +381,7 @@ async function streamResponse({ messages, system, max_tokens = 1024, model, onTe
         body: JSON.stringify({
             model: model || ANTHROPIC_MODEL,
             max_tokens,
-            // Use Anthropic prompt caching: wrap system prompt with cache_control
-            // to cache the (mostly static) system prompt across requests
-            system: system ? [{
-                type: 'text',
-                text: system,
-                cache_control: { type: 'ephemeral' }
-            }] : '',
+            system: systemBlocks.length > 0 ? systemBlocks : '',
             messages,
             stream: true
         })

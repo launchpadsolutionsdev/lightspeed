@@ -2616,12 +2616,13 @@ SECURITY:
             ? '\n\nDRAW SCHEDULE (source of truth — always use this data when answering questions about upcoming draws, deadlines, prizes, Early Bird dates, and ticket sales windows. Never contradict this information):\n' + drawScheduleSection
             : '';
 
-        // Layer 2: all dynamic content — org name, tone, language — prepended before Knowledge base.
-        // Keeping these out of Layer 1 ensures the static base prompt stays cache-stable.
-        const layer2Header = `ORGANIZATION: ${orgName}
-TONE SETTING: Respond in a ${toneDesc} tone. This overrides the default tone guidance above.${languageBlock}`;
-
-        const fullSystemPrompt = systemPrompt + '\n\n' + layer2Header + '\n\nKnowledge base:\n' + drawScheduleBlock + feedbackSection;
+        // Layer 2: all dynamic content — org name, tone, language, draw schedule, rated examples.
+        // Sent separately from Layer 1 (staticSystem) so the backend can cache only the static
+        // base prompt and leave dynamic content uncached.
+        const dynamicSystem = `ORGANIZATION: ${orgName}
+TONE SETTING: Respond in a ${toneDesc} tone. This overrides the default tone guidance above.${languageBlock}
+Knowledge base:
+${drawScheduleBlock}${feedbackSection}`;
 
         // Remove typing indicator and create streaming message div
         const typing = document.getElementById('askTyping');
@@ -2635,7 +2636,8 @@ TONE SETTING: Respond in a ${toneDesc} tone. This overrides the default tone gui
             msgDiv, txt => renderSimpleMarkdown(stripCitations(txt)), chatArea);
 
         const { text: aiText } = await fetchStream({
-            system: fullSystemPrompt,
+            staticSystem: systemPrompt,
+            dynamicSystem,
             inquiry: message,
             kb_type: 'all',
             messages: askConversation.map(m => ({ role: m.role, content: m.content })),
