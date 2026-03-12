@@ -6,6 +6,7 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../../config/database');
 const { cache, TTL } = require('../services/cache');
+const log = require('../services/logger');
 
 /**
  * Verify JWT token and attach user to request
@@ -57,7 +58,7 @@ const authenticate = async (req, res, next) => {
         if (error.name === 'JsonWebTokenError') {
             return res.status(401).json({ error: 'Invalid token' });
         }
-        console.error('Auth middleware error:', error);
+        log.error('Auth middleware error', { error });
         res.status(500).json({ error: 'Authentication error' });
     }
 };
@@ -97,7 +98,7 @@ const requireOrganization = async (req, res, next) => {
         req.memberRole = memberResult.rows[0].role;
         next();
     } catch (error) {
-        console.error('Org middleware error:', error);
+        log.error('Org middleware error', { error });
         res.status(500).json({ error: 'Organization verification error' });
     }
 };
@@ -215,7 +216,7 @@ const checkUsageLimit = async (req, res, next) => {
 
         next();
     } catch (error) {
-        console.error('Usage limit check error:', error);
+        log.error('Usage limit check error', { error });
         res.status(503).json({ error: 'Unable to verify usage limits. Please try again.' });
     }
 };

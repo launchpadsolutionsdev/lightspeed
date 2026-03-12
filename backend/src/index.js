@@ -9,6 +9,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const log = require('./services/logger');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -36,7 +37,7 @@ const pool = require('../config/database');
 const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET', 'ANTHROPIC_API_KEY', 'GOOGLE_CLIENT_ID'];
 const missing = REQUIRED_ENV.filter(v => !process.env[v]);
 if (missing.length > 0) {
-    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    log.error('Missing required environment variables', { missing });
     process.exit(1);
 }
 
@@ -187,7 +188,7 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
+    log.error('Unhandled error', { error: err });
     res.status(500).json({ error: 'Internal server error' });
 });
 
@@ -204,30 +205,28 @@ async function runMigrations() {
         for (const file of files) {
             const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
             await pool.query(sql);
-            console.log(`Migration applied: ${file}`);
+            log.info('Migration applied', { file });
         }
     } catch (error) {
-        console.error('Migration error:', error.message);
+        log.error('Migration error', { error });
     }
 }
 
 runMigrations().then(() => {
     const server = app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Lightspeed API server running on port ${PORT}`);
+        log.info('Lightspeed API server running', { port: PORT });
 
-        // Warn if email is not configured
         if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-            console.warn('\n⚠  EMAIL NOT CONFIGURED — contact form and team invites will not send.');
-            console.warn('   Set SMTP_HOST, SMTP_USER, and SMTP_PASS in your .env file.\n');
+            log.warn('Email not configured — contact form and team invites will not send');
         }
     });
 
     // Graceful shutdown
     const shutdown = (signal) => {
-        console.log(`\n${signal} received. Shutting down gracefully...`);
+        log.info('Shutting down gracefully', { signal });
         server.close(() => {
             pool.end().then(() => {
-                console.log('Database pool closed.');
+                log.info('Database pool closed');
                 process.exit(0);
             });
         });

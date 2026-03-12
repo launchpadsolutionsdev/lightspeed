@@ -12,6 +12,7 @@ const { OAuth2Client } = require('google-auth-library');
 const msal = require('@azure/msal-node');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -59,7 +60,7 @@ router.post('/google', async (req, res) => {
                 userGoogleId = payload.sub;
                 userPicture = payload.picture;
             } catch (verifyError) {
-                console.error('Google token verification failed:', verifyError);
+                log.error('Google token verification failed', { error: verifyError });
                 return res.status(401).json({ error: 'Invalid Google credential' });
             }
         } else if (accessToken) {
@@ -77,7 +78,7 @@ router.post('/google', async (req, res) => {
                 userGoogleId = profile.sub;
                 userPicture = profile.picture || null;
             } catch (fetchError) {
-                console.error('Google userinfo API call failed:', fetchError);
+                log.error('Google userinfo API call failed', { error: fetchError });
                 return res.status(401).json({ error: 'Failed to verify Google access token' });
             }
         } else {
@@ -166,7 +167,7 @@ router.post('/google', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Google auth error:', error);
+        log.error('Google auth error', { error });
         res.status(500).json({ error: 'Authentication failed' });
     }
 });
@@ -198,7 +199,7 @@ router.post('/microsoft', async (req, res) => {
                 userName = profile.displayName || '';
                 userMicrosoftId = profile.id;
             } catch (graphError) {
-                console.error('Microsoft Graph API call failed:', graphError);
+                log.error('Microsoft Graph API call failed', { error: graphError });
                 return res.status(401).json({ error: 'Failed to verify Microsoft access token' });
             }
 
@@ -226,7 +227,7 @@ router.post('/microsoft', async (req, res) => {
                     redirectUri
                 });
             } catch (msalError) {
-                console.error('MSAL token exchange failed:', msalError);
+                log.error('MSAL token exchange failed', { error: msalError });
                 return res.status(401).json({ error: 'Invalid Microsoft authorization code' });
             }
 
@@ -340,7 +341,7 @@ router.post('/microsoft', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Microsoft auth error:', error);
+        log.error('Microsoft auth error', { error });
         res.status(500).json({ error: 'Authentication failed' });
     }
 });
@@ -375,7 +376,7 @@ router.get('/me', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get user error:', error);
+        log.error('Get user error', { error });
         res.status(500).json({ error: 'Failed to get user' });
     }
 });
@@ -435,7 +436,7 @@ router.post('/create-organization', authenticate, [
         });
 
     } catch (error) {
-        console.error('Create org error:', error);
+        log.error('Create org error', { error });
         res.status(500).json({ error: 'Failed to create organization' });
     }
 });
