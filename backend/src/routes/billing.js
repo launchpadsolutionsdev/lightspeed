@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const auditLog = require('../services/auditLog');
@@ -34,12 +35,12 @@ router.post('/webhook', async (req, res) => {
             process.env.STRIPE_WEBHOOK_SECRET
         );
     } catch (err) {
-        console.error('Webhook signature verification failed:', err.message);
+        log.error('Webhook signature verification failed', { error: err.message });
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     try {
-        console.log(`[Stripe] Processing event: ${event.type}`);
+        log.info('Processing Stripe event', { eventType: event.type });
 
         switch (event.type) {
             case 'checkout.session.completed': {
@@ -58,7 +59,7 @@ router.post('/webhook', async (req, res) => {
                         [session.customer, session.subscription, plan, orgId]
                     );
                     auditLog.logAction({ orgId, action: 'SUBSCRIPTION_ACTIVATED', resourceType: 'SUBSCRIPTION', changes: { plan, customer: session.customer }, req });
-                    console.log(`[Stripe] Organization ${orgId} activated on ${plan} plan`);
+                    log.info('Organization subscription activated', { orgId, plan });
                 }
                 break;
             }
@@ -76,7 +77,7 @@ router.post('/webhook', async (req, res) => {
                      WHERE stripe_subscription_id = $3`,
                     [status, subscription.current_period_end, subscription.id]
                 );
-                console.log(`[Stripe] Subscription ${subscription.id} updated to ${status}`);
+                log.info('Subscription updated', { subscriptionId: subscription.id, status });
                 break;
             }
 
@@ -89,7 +90,7 @@ router.post('/webhook', async (req, res) => {
                     [subscription.id]
                 );
                 auditLog.logAction({ action: 'SUBSCRIPTION_CANCELLED', resourceType: 'SUBSCRIPTION', resourceId: subscription.id, req });
-                console.log(`[Stripe] Subscription ${subscription.id} cancelled`);
+                log.info('Subscription cancelled', { subscriptionId: subscription.id });
                 break;
             }
 
@@ -101,7 +102,7 @@ router.post('/webhook', async (req, res) => {
                      WHERE stripe_customer_id = $1`,
                     [invoice.customer]
                 );
-                console.log(`[Stripe] Payment failed for customer ${invoice.customer}`);
+                log.info('Payment failed', { customerId: invoice.customer });
                 break;
             }
 
@@ -114,14 +115,14 @@ router.post('/webhook', async (req, res) => {
                      WHERE stripe_customer_id = $2`,
                     [invoice.lines?.data?.[0]?.period?.end || (Date.now() / 1000 + 30 * 86400), invoice.customer]
                 );
-                console.log(`[Stripe] Invoice paid for customer ${invoice.customer}`);
+                log.info('Invoice paid', { customerId: invoice.customer });
                 break;
             }
         }
 
         res.json({ received: true });
     } catch (error) {
-        console.error('Webhook processing error:', error);
+        log.error('Webhook processing error', { error });
         res.status(500).json({ error: 'Webhook processing failed' });
     }
 });
@@ -195,7 +196,7 @@ router.post('/create-checkout-session', authenticate, async (req, res) => {
         res.json({ url: session.url });
 
     } catch (error) {
-        console.error('Create checkout session error:', error);
+        log.error('Create checkout session error', { error });
         res.status(500).json({ error: 'Failed to create checkout session. Please try again.' });
     }
 });
@@ -230,7 +231,7 @@ router.post('/create-portal-session', authenticate, async (req, res) => {
         res.json({ url: session.url });
 
     } catch (error) {
-        console.error('Create portal session error:', error);
+        log.error('Create portal session error', { error });
         res.status(500).json({ error: 'Failed to create portal session' });
     }
 });
@@ -266,7 +267,7 @@ router.get('/subscription', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get subscription error:', error);
+        log.error('Get subscription error', { error });
         res.status(500).json({ error: 'Failed to get subscription' });
     }
 });

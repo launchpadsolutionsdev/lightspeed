@@ -8,6 +8,7 @@ const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const auditLog = require('../services/auditLog');
+const log = require('../services/logger');
 
 /**
  * GET /api/organizations/:orgId/export
@@ -151,7 +152,7 @@ router.get('/:orgId/export', authenticate, async (req, res) => {
         res.json(exportData);
 
     } catch (error) {
-        console.error('Export error:', error);
+        log.error('Export error', { error, orgId: req.params.orgId });
         res.status(500).json({ error: 'Failed to export organization data' });
     }
 });
@@ -207,7 +208,7 @@ router.delete('/:orgId/data', authenticate, async (req, res) => {
                 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                 await stripe.subscriptions.cancel(org.stripe_subscription_id);
             } catch (stripeErr) {
-                console.warn('Stripe subscription cancellation failed (may already be cancelled):', stripeErr.message);
+                log.warn('Stripe subscription cancellation failed (may already be cancelled)', { error: stripeErr.message });
             }
         }
 
@@ -235,7 +236,7 @@ router.delete('/:orgId/data', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Data deletion error:', error);
+        log.error('Data deletion error', { error, orgId: req.params.orgId });
         res.status(500).json({ error: 'Failed to delete organization data' });
     }
 });
@@ -306,7 +307,7 @@ router.delete('/:orgId/user-data', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('User data deletion error:', error);
+        log.error('User data deletion error', { error, orgId: req.params.orgId });
         res.status(500).json({ error: 'Failed to delete user data' });
     }
 });
