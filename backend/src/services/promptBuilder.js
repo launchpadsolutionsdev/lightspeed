@@ -139,7 +139,7 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
 
         let citationBlock = '';
         if (includeCitations) {
-            citationBlock = '\n\nCITATION RULES: When your response uses information from the knowledge base sources above, include inline citations using the format [1], [2], etc. corresponding to the source numbers. Only cite when you directly use information from a specific source. Do not cite for general knowledge.';
+            citationBlock = '\n\nCITATION RULES: When your response uses information from the knowledge base sources above, include inline citations using the format [Source 1], [Source 2], etc. corresponding to the source numbers. Only cite when you directly use information from a specific source. Do not cite for general knowledge.';
         }
 
         let updatedSystem;
