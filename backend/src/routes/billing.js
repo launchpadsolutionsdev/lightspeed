@@ -11,10 +11,10 @@ const { authenticate } = require('../middleware/auth');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const auditLog = require('../services/auditLog');
 
-// Stripe Price IDs
+// Stripe Price IDs — configured via environment variables
 const PRICES = {
-    monthly: 'price_1Sy220D0OAjcDsbxhriCFRTT',
-    annual: 'price_1Sy220D0OAjcDsbxhAjDMmPM'
+    monthly: process.env.STRIPE_PRICE_MONTHLY || 'price_1Sy220D0OAjcDsbxhriCFRTT',
+    annual: process.env.STRIPE_PRICE_ANNUAL || 'price_1Sy220D0OAjcDsbxhAjDMmPM'
 };
 
 /**

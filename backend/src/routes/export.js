@@ -1,6 +1,6 @@
 /**
- * Organization Data Export Route
- * Full data export for PIPEDA compliance and org admin needs
+ * Organization Data Export & Deletion Routes
+ * Full data export and deletion for PIPEDA/GDPR compliance
  */
 
 const express = require('express');
@@ -153,6 +153,161 @@ router.get('/:orgId/export', authenticate, async (req, res) => {
     } catch (error) {
         console.error('Export error:', error);
         res.status(500).json({ error: 'Failed to export organization data' });
+    }
+});
+
+/**
+ * DELETE /api/organizations/:orgId/data
+ * Permanently delete all organization data (PIPEDA/GDPR right to erasure).
+ * Owner-only. Cancels Stripe subscription if active, then deletes the
+ * organization row — all related data cascades via ON DELETE CASCADE.
+ *
+ * Requires confirmation: body must include { confirm: "DELETE" }
+ */
+router.delete('/:orgId/data', authenticate, async (req, res) => {
+    try {
+        const { orgId } = req.params;
+        const { confirm } = req.body;
+
+        if (confirm !== 'DELETE') {
+            return res.status(400).json({
+                error: 'Deletion requires confirmation. Send { "confirm": "DELETE" } in the request body.'
+            });
+        }
+
+        // Verify user is owner of this org
+        const memberCheck = await pool.query(
+            `SELECT role FROM organization_memberships WHERE user_id = $1 AND organization_id = $2`,
+            [req.userId, orgId]
+        );
+
+        if (memberCheck.rows.length === 0) {
+            return res.status(403).json({ error: 'Not a member of this organization' });
+        }
+
+        if (memberCheck.rows[0].role !== 'owner') {
+            return res.status(403).json({ error: 'Only organization owners can delete organization data' });
+        }
+
+        // Get org details for Stripe cleanup and audit
+        const orgResult = await pool.query(
+            'SELECT name, stripe_subscription_id, stripe_customer_id FROM organizations WHERE id = $1',
+            [orgId]
+        );
+
+        if (orgResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Organization not found' });
+        }
+
+        const org = orgResult.rows[0];
+
+        // Cancel Stripe subscription if active
+        if (org.stripe_subscription_id) {
+            try {
+                const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+                await stripe.subscriptions.cancel(org.stripe_subscription_id);
+            } catch (stripeErr) {
+                console.warn('Stripe subscription cancellation failed (may already be cancelled):', stripeErr.message);
+            }
+        }
+
+        // Log before deletion (audit_logs has org_id but no FK cascade, so it persists)
+        auditLog.logAction({
+            orgId,
+            userId: req.userId,
+            action: 'ORG_DATA_DELETED',
+            resourceType: 'ORGANIZATION',
+            resourceId: orgId,
+            changes: { organization_name: org.name },
+            req
+        });
+
+        // Delete the organization — ON DELETE CASCADE removes:
+        // organization_memberships, knowledge_base, response_history,
+        // usage_logs, favorites, response_templates, content_templates,
+        // draw_schedules, organization_invitations, response_rules,
+        // shopify_stores (and nested shopify tables)
+        await pool.query('DELETE FROM organizations WHERE id = $1', [orgId]);
+
+        res.json({
+            message: 'Organization and all associated data have been permanently deleted.',
+            deleted_organization: org.name
+        });
+
+    } catch (error) {
+        console.error('Data deletion error:', error);
+        res.status(500).json({ error: 'Failed to delete organization data' });
+    }
+});
+
+/**
+ * DELETE /api/organizations/:orgId/user-data
+ * Delete a specific user's personal data from the organization (PIPEDA/GDPR).
+ * The user can request deletion of their own data, or an owner can delete
+ * any member's data. Anonymizes response history rather than deleting it
+ * (preserves org analytics while removing PII).
+ */
+router.delete('/:orgId/user-data', authenticate, async (req, res) => {
+    try {
+        const { orgId } = req.params;
+        const targetUserId = req.body.userId || req.userId;
+
+        // Users can delete their own data; owners can delete any member's data
+        if (targetUserId !== req.userId) {
+            const memberCheck = await pool.query(
+                `SELECT role FROM organization_memberships WHERE user_id = $1 AND organization_id = $2`,
+                [req.userId, orgId]
+            );
+            if (memberCheck.rows.length === 0 || memberCheck.rows[0].role !== 'owner') {
+                return res.status(403).json({ error: 'Only owners can delete other users\' data' });
+            }
+        }
+
+        // Verify target user is a member
+        const targetCheck = await pool.query(
+            `SELECT role FROM organization_memberships WHERE user_id = $1 AND organization_id = $2`,
+            [targetUserId, orgId]
+        );
+        if (targetCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'User is not a member of this organization' });
+        }
+
+        // Anonymize response history (set user_id to NULL, preserve org data)
+        const anonResult = await pool.query(
+            `UPDATE response_history SET user_id = NULL WHERE user_id = $1 AND organization_id = $2`,
+            [targetUserId, orgId]
+        );
+
+        // Delete user's favorites
+        await pool.query(
+            `DELETE FROM favorites WHERE user_id = $1 AND organization_id = $2`,
+            [targetUserId, orgId]
+        );
+
+        // Remove org membership
+        await pool.query(
+            `DELETE FROM organization_memberships WHERE user_id = $1 AND organization_id = $2`,
+            [targetUserId, orgId]
+        );
+
+        auditLog.logAction({
+            orgId,
+            userId: req.userId,
+            action: 'USER_DATA_DELETED',
+            resourceType: 'USER',
+            resourceId: targetUserId,
+            changes: { responses_anonymized: anonResult.rowCount },
+            req
+        });
+
+        res.json({
+            message: 'User data has been deleted and response history anonymized.',
+            responses_anonymized: anonResult.rowCount
+        });
+
+    } catch (error) {
+        console.error('User data deletion error:', error);
+        res.status(500).json({ error: 'Failed to delete user data' });
     }
 });
 
