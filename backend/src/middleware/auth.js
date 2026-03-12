@@ -133,11 +133,20 @@ const requireSuperAdmin = (req, res, next) => {
 };
 
 /**
- * Check AI generation usage limits based on subscription tier
- * Trial: unlimited, Paid: 500/month, Super admin: unlimited
+ * Check AI generation usage limits based on subscription tier.
+ *
+ * Limits per status:
+ *   trial   — 100 generations/month (prevents abuse during free trial)
+ *   active  — 500 generations/month (paid tier)
+ *   past_due — 50 generations/month  (grace period while payment is resolved)
+ *   cancelled / other — blocked entirely
+ *
+ * Super admins always bypass limits.
  */
 const USAGE_LIMITS = {
-    active: 500
+    trial: parseInt(process.env.TRIAL_USAGE_LIMIT || '100'),
+    active: parseInt(process.env.ACTIVE_USAGE_LIMIT || '500'),
+    past_due: parseInt(process.env.PAST_DUE_USAGE_LIMIT || '50')
 };
 
 const checkUsageLimit = async (req, res, next) => {
@@ -147,7 +156,7 @@ const checkUsageLimit = async (req, res, next) => {
 
         // Get user's organization and subscription
         const orgResult = await pool.query(
-            `SELECT o.subscription_status, om.organization_id
+            `SELECT o.subscription_status, o.trial_ends_at, om.organization_id
              FROM organizations o
              JOIN organization_memberships om ON o.id = om.organization_id
              WHERE om.user_id = $1 LIMIT 1`,
@@ -160,14 +169,33 @@ const checkUsageLimit = async (req, res, next) => {
 
         const org = orgResult.rows[0];
 
-        // Trial accounts: no usage limits
-        if (org.subscription_status === 'trial') {
-            return next();
+        // Block cancelled subscriptions entirely
+        if (org.subscription_status === 'cancelled') {
+            return res.status(403).json({
+                error: 'Your subscription has been cancelled. Please resubscribe to continue using AI tools.',
+                code: 'SUBSCRIPTION_CANCELLED'
+            });
         }
 
-        // Paid subscriptions: enforce monthly limit
-        const limit = USAGE_LIMITS[org.subscription_status] || USAGE_LIMITS.active;
+        // Block expired trials
+        if (org.subscription_status === 'trial' && org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
+            return res.status(403).json({
+                error: 'Your free trial has expired. Please subscribe to continue using AI tools.',
+                code: 'TRIAL_EXPIRED'
+            });
+        }
 
+        // Look up the monthly limit for this subscription status
+        const limit = USAGE_LIMITS[org.subscription_status];
+        if (limit === undefined) {
+            // Unknown status — block to be safe
+            return res.status(403).json({
+                error: 'Your subscription status does not allow AI generation. Please contact support.',
+                code: 'SUBSCRIPTION_INVALID'
+            });
+        }
+
+        // Count this month's usage
         const usageQuery = await pool.query(
             `SELECT COUNT(*) FROM usage_logs
              WHERE organization_id = $1 AND created_at >= date_trunc('month', CURRENT_DATE)`,
@@ -178,7 +206,7 @@ const checkUsageLimit = async (req, res, next) => {
 
         if (usageCount >= limit) {
             return res.status(429).json({
-                error: 'Usage limit reached',
+                error: 'Monthly usage limit reached. Please upgrade your plan or wait until next month.',
                 code: 'USAGE_LIMIT_REACHED',
                 usageCount,
                 limit

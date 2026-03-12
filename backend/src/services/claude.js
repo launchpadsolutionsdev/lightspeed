@@ -49,23 +49,34 @@ async function generateResponse({ messages, system, max_tokens = 1024 }) {
 }
 
 /**
- * Generate a response with knowledge base context
+ * Generate a response with knowledge base context.
+ * Uses Haiku relevance picking to select only the most relevant entries
+ * instead of concatenating everything into the prompt.
+ *
  * @param {Object} options
  * @param {Array} options.messages - Conversation messages
  * @param {string} options.system - Base system prompt
  * @param {Array} options.knowledgeEntries - Knowledge base entries to include
+ * @param {string} options.inquiry - Customer inquiry for relevance filtering
  * @param {number} options.max_tokens - Maximum tokens to generate
  * @returns {Promise<Object>} API response
  */
-async function generateWithKnowledge({ messages, system, knowledgeEntries, max_tokens = 1024 }) {
+async function generateWithKnowledge({ messages, system, knowledgeEntries, inquiry, max_tokens = 1024 }) {
     let enhancedSystem = system || '';
 
     if (knowledgeEntries && knowledgeEntries.length > 0) {
-        const knowledgeContext = knowledgeEntries
-            .map(entry => `[${entry.category}] ${entry.title}: ${entry.content}`)
-            .join('\n\n');
+        // Use relevance picking to filter down to the most relevant entries
+        const relevantEntries = inquiry
+            ? await pickRelevantKnowledge(inquiry, knowledgeEntries, 8)
+            : knowledgeEntries.slice(0, 8);
 
-        enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}`;
+        if (relevantEntries.length > 0) {
+            const knowledgeContext = relevantEntries
+                .map(entry => `[${entry.category}] ${entry.title}: ${entry.content}`)
+                .join('\n\n');
+
+            enhancedSystem += `\n\nRelevant knowledge base information:\n${knowledgeContext}`;
+        }
     }
 
     return generateResponse({
