@@ -179,7 +179,7 @@ router.post('/google', async (req, res) => {
  */
 router.post('/microsoft', async (req, res) => {
     try {
-        const { code, redirectUri, accessToken, email, name, microsoftId } = req.body;
+        const { code, redirectUri, accessToken } = req.body;
 
         let userEmail, userName, userMicrosoftId, userPicture = null;
 
@@ -194,9 +194,9 @@ router.post('/microsoft', async (req, res) => {
                     return res.status(401).json({ error: 'Invalid Microsoft access token' });
                 }
                 const profile = await graphResponse.json();
-                userEmail = profile.mail || profile.userPrincipalName || email;
-                userName = profile.displayName || name || '';
-                userMicrosoftId = profile.id || microsoftId;
+                userEmail = profile.mail || profile.userPrincipalName;
+                userName = profile.displayName || '';
+                userMicrosoftId = profile.id;
             } catch (graphError) {
                 console.error('Microsoft Graph API call failed:', graphError);
                 return res.status(401).json({ error: 'Failed to verify Microsoft access token' });
@@ -255,6 +255,10 @@ router.post('/microsoft', async (req, res) => {
 
         if (!userEmail) {
             return res.status(400).json({ error: 'Could not retrieve email from Microsoft account' });
+        }
+
+        if (!userMicrosoftId) {
+            return res.status(400).json({ error: 'Could not retrieve account ID from Microsoft' });
         }
 
         // Check if user exists (by email or microsoft_id)
