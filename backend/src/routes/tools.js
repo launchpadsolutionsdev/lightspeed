@@ -69,7 +69,7 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
 
         // 2. Enhance with KB entries, response rules, and Shopify context
         const { system: enhancedSystem, referencedKbEntries } = await buildEnhancedPrompt(
-            systemPrompt, inquiry, organizationId, { kb_type: 'support' }
+            systemPrompt, inquiry, organizationId, { kb_type: 'support', userId: req.userId }
         );
 
         // Send KB entries before streaming starts
@@ -162,7 +162,7 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
 
         // Build enhanced system prompt with rules, KB, and Shopify context
         const { system: enhancedSystem, referencedKbEntries } = await buildEnhancedPrompt(
-            system, inquiry, organizationId, { kb_type }
+            system, inquiry, organizationId, { kb_type, userId: req.userId }
         );
 
         // Call Claude API
@@ -241,13 +241,17 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
         if (staticSystem !== undefined && dynamicSystem !== undefined) {
             // Split-prompt path (Ask Lightspeed): Layer 1 is static and cached; Layer 2+3 is dynamic.
             // Run buildEnhancedPrompt only on the dynamic portion so Layer 1 is never modified.
-            const enhanced = await buildEnhancedPrompt(dynamicSystem, inquiry, organizationId, { kb_type });
+            const enhanced = await buildEnhancedPrompt(dynamicSystem, inquiry, organizationId, {
+                kb_type, userId: req.userId
+            });
             finalStaticSystem = staticSystem;
             finalDynamicSystem = enhanced.system;
             referencedKbEntries = enhanced.referencedKbEntries;
         } else {
             // Legacy path: single system string — enhance the whole thing as before
-            const enhanced = await buildEnhancedPrompt(system, inquiry, organizationId, { kb_type });
+            const enhanced = await buildEnhancedPrompt(system, inquiry, organizationId, {
+                kb_type, userId: req.userId
+            });
             finalStaticSystem = null;
             finalDynamicSystem = enhanced.system;
             referencedKbEntries = enhanced.referencedKbEntries;
@@ -291,6 +295,44 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
         console.error('Generate-stream error:', error);
         sendEvent({ type: 'error', error: error.message || 'Failed to generate response' });
         res.end();
+    }
+});
+
+/**
+ * POST /api/voice-profile/generate
+ * Build or rebuild the org's voice fingerprint from approved responses.
+ * Requires at least 5 positively-rated responses.
+ */
+router.post('/voice-profile/generate', authenticate, async (req, res) => {
+    try {
+        const { buildVoiceProfile } = require('../services/voiceFingerprint');
+        const profile = await buildVoiceProfile(req.organizationId);
+
+        if (!profile) {
+            return res.status(400).json({
+                error: 'Not enough approved responses to generate a voice profile. Rate at least 5 responses positively first.'
+            });
+        }
+
+        res.json({ success: true, profile });
+    } catch (error) {
+        console.error('Voice profile generation error:', error);
+        res.status(500).json({ error: 'Failed to generate voice profile' });
+    }
+});
+
+/**
+ * GET /api/voice-profile
+ * Retrieve the org's current voice profile.
+ */
+router.get('/voice-profile', authenticate, async (req, res) => {
+    try {
+        const { getVoiceProfile } = require('../services/voiceFingerprint');
+        const profile = await getVoiceProfile(req.organizationId);
+        res.json({ profile });
+    } catch (error) {
+        console.error('Voice profile retrieval error:', error);
+        res.status(500).json({ error: 'Failed to retrieve voice profile' });
     }
 });
 

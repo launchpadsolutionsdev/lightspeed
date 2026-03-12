@@ -3,7 +3,8 @@
  *
  * Centralizes the shared logic that was previously duplicated between
  * /api/generate and /api/generate-stream: response rules injection,
- * KB relevance picking, and Shopify context injection.
+ * KB relevance picking, Shopify context injection, conversation memory,
+ * cross-tool context, and voice fingerprinting.
  */
 
 const pool = require('../../config/database');
@@ -11,6 +12,8 @@ const claudeService = require('./claude');
 const shopifyService = require('./shopify');
 const { cache, TTL } = require('./cache');
 const { truncateEntriesToBudget } = require('./tokenCounter');
+const { getConversationMemory, getCrossToolContext } = require('./conversationMemory');
+const { getVoiceProfileContext } = require('./voiceFingerprint');
 
 /**
  * Inject organization-level response rules into the system prompt.
@@ -186,6 +189,7 @@ async function injectShopifyContext(system, inquiry, organizationId) {
  * @param {object} options
  * @param {string} options.kb_type - 'support' | 'internal' | 'all'
  * @param {boolean} options.includeCitations - Whether to add citation rules
+ * @param {string} options.userId - Current user UUID (for memory and cross-tool context)
  * @returns {Promise<{ system: string, referencedKbEntries: Array }>}
  */
 async function buildEnhancedPrompt(baseSystem, inquiry, organizationId, options = {}) {
@@ -209,6 +213,24 @@ async function buildEnhancedPrompt(baseSystem, inquiry, organizationId, options 
     // 3. Shopify context
     if (inquiry && organizationId) {
         system = await injectShopifyContext(system, inquiry, organizationId);
+    }
+
+    // 4. Conversation memory — org-wide past conversation context
+    if (inquiry && organizationId && options.userId) {
+        const memoryContext = await getConversationMemory(inquiry, organizationId, options.userId);
+        if (memoryContext) system += memoryContext;
+    }
+
+    // 5. Cross-tool activity — recent work across other Lightspeed tools
+    if (organizationId && options.userId) {
+        const crossToolContext = await getCrossToolContext(organizationId, options.userId);
+        if (crossToolContext) system += crossToolContext;
+    }
+
+    // 6. Voice fingerprint — org-specific communication style
+    if (organizationId) {
+        const voiceContext = await getVoiceProfileContext(organizationId);
+        if (voiceContext) system += voiceContext;
     }
 
     return { system, referencedKbEntries };
