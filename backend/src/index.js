@@ -117,7 +117,7 @@ app.get('/health', async (req, res) => {
     try {
         await pool.query('SELECT 1');
         health.services.database = { status: 'operational', latency: Date.now() - dbStart };
-    } catch (error) {
+    } catch (_error) {
         health.services.database = { status: 'down', latency: null };
         health.status = 'degraded';
     }
@@ -141,7 +141,7 @@ app.get('/health', async (req, res) => {
             latency: Date.now() - aiStart
         };
         if (!response.ok) health.status = 'degraded';
-    } catch (error) {
+    } catch (_error) {
         health.services.ai = { status: 'down', latency: null };
         health.status = 'degraded';
     }

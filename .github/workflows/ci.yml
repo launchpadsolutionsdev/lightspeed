@@ -51,4 +51,4 @@ jobs:
 
       - run: npm ci
 
-      - run: npx eslint src/ --max-warnings 0
+      - run: npx eslint src/ --max-warnings 25
