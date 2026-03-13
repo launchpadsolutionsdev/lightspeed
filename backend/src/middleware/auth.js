@@ -178,14 +178,6 @@ const checkUsageLimit = async (req, res, next) => {
             });
         }
 
-        // Block expired trials
-        if (org.subscription_status === 'trial' && org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
-            return res.status(403).json({
-                error: 'Your free trial has expired. Please subscribe to continue using AI tools.',
-                code: 'TRIAL_EXPIRED'
-            });
-        }
-
         // Look up the monthly limit for this subscription status
         const limit = USAGE_LIMITS[org.subscription_status];
         if (limit === undefined) {
