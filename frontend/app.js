@@ -4429,6 +4429,8 @@ async function loadDrawScheduleFromBackend() {
                 orgDrawSchedule = null;
                 displayNoSchedule();
             }
+            // Re-render the Response Assistant draw schedule display
+            renderDrawSchedule();
         }
     } catch (error) {
         console.warn('Could not load draw schedule from backend:', error);
@@ -4476,7 +4478,8 @@ function displayActiveSchedule(schedule) {
     }
     const earlyBirds = typeof schedule.early_birds === 'string' ? JSON.parse(schedule.early_birds) : (schedule.early_birds || []);
     if (earlyBirds.length > 0) {
-        details += `<div style="margin-top: 0.35rem;">Early Birds: ${earlyBirds.length} draw${earlyBirds.length !== 1 ? 's' : ''} scheduled</div>`;
+        const totalDraws = earlyBirds.reduce((sum, eb) => sum + (parseInt(eb.quantity) || 1), 0);
+        details += `<div style="margin-top: 0.35rem;">Early Birds: ${totalDraws} draw${totalDraws !== 1 ? 's' : ''} scheduled</div>`;
     }
     document.getElementById('activeScheduleDetails').innerHTML = details;
 }
