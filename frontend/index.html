@@ -5869,7 +5869,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 24px;
-            min-height: calc(100vh - 64px);
+            height: calc(100vh - 64px);
         }
 
         /* Sidebar */
@@ -6446,6 +6446,8 @@
         @media (max-width: 900px) {
             .draft-studio {
                 grid-template-columns: 1fr;
+                height: auto;
+                min-height: calc(100vh - 64px);
             }
 
             .draft-studio-sidebar {
