@@ -62,14 +62,15 @@ describe('checkUsageLimit', () => {
         expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'SUBSCRIPTION_CANCELLED' }));
     });
 
-    it('blocks expired trials', async () => {
+    it('allows expired trials (trial check temporarily disabled)', async () => {
         const pastDate = new Date(Date.now() - 86400000).toISOString(); // yesterday
-        pool.query.mockResolvedValueOnce({
-            rows: [{ subscription_status: 'trial', trial_ends_at: pastDate, organization_id: 'org-1' }]
-        });
+        pool.query
+            .mockResolvedValueOnce({
+                rows: [{ subscription_status: 'trial', trial_ends_at: pastDate, organization_id: 'org-1' }]
+            })
+            .mockResolvedValueOnce({ rows: [{ count: '50' }] }); // under 100 limit
         await checkUsageLimit(req, res, next);
-        expect(res.status).toHaveBeenCalledWith(403);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'TRIAL_EXPIRED' }));
+        expect(next).toHaveBeenCalled();
     });
 
     it('allows active trial under limit', async () => {
