@@ -5932,10 +5932,17 @@
             padding: 12px 16px;
             border-top: 1px solid var(--border);
             background: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .draft-studio-footer .als-model-pills {
+            flex-shrink: 0;
         }
 
         .draft-studio-footer .draft-generate-btn {
-            width: 100%;
+            flex: 1;
             padding: 12px 20px;
             font-size: 0.9rem;
         }
@@ -12366,6 +12373,17 @@
                     </div>
 
                     <div class="draft-studio-footer">
+                        <div class="als-model-pills" id="draftModelPills">
+                            <button class="als-model active" data-model="claude-sonnet-4-6">
+                                <span class="als-model-name">Sonnet 4.6</span>
+                            </button>
+                            <button class="als-model" data-model="claude-opus-4-6">
+                                <span class="als-model-name">Opus 4.6</span>
+                            </button>
+                            <button class="als-model" data-model="claude-haiku-4-5-20251001">
+                                <span class="als-model-name">Haiku 4.5</span>
+                            </button>
+                        </div>
                         <button class="draft-generate-btn" id="draftStudioGenerateBtn">
                             <span class="draft-generate-icon">✨</span>
                             Generate
