@@ -452,6 +452,54 @@ async function getMsalInstance() {
     return msalInstance;
 }
 
+// ==================== FOOTER CLOCK ====================
+let _footerClockInterval = null;
+
+function getOrgTimezone() {
+    return currentUser?.organization?.timezone || 'America/Toronto';
+}
+
+function formatFooterClock(timezone) {
+    try {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', {
+            timeZone: timezone,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        const abbr = now.toLocaleTimeString('en-US', {
+            timeZone: timezone,
+            timeZoneName: 'short'
+        }).split(' ').pop();
+        return `${timeStr} ${abbr}`;
+    } catch {
+        return '';
+    }
+}
+
+function updateFooterClocks() {
+    const tz = getOrgTimezone();
+    const text = formatFooterClock(tz);
+    document.querySelectorAll('.footer-clock').forEach(el => {
+        el.textContent = text;
+    });
+}
+
+function startFooterClock() {
+    if (_footerClockInterval) clearInterval(_footerClockInterval);
+    updateFooterClocks();
+    _footerClockInterval = setInterval(updateFooterClocks, 15000);
+}
+
+function stopFooterClock() {
+    if (_footerClockInterval) {
+        clearInterval(_footerClockInterval);
+        _footerClockInterval = null;
+    }
+    document.querySelectorAll('.footer-clock').forEach(el => { el.textContent = ''; });
+}
+
 // ==================== AUTH STATE ====================
 let currentUser = null;
 let users = [];
@@ -2238,8 +2286,12 @@ function showToolMenu() {
     if (responsePages) responsePages.style.display = 'none';
     closeSidebar();
 
-    // Update greeting based on time of day
-    const hour = new Date().getHours();
+    // Update greeting based on time of day (uses org timezone)
+    const tz = getOrgTimezone();
+    let hour;
+    try {
+        hour = parseInt(new Date().toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', hour12: false }));
+    } catch { hour = new Date().getHours(); }
     const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const greetingEl = document.getElementById("menuGreeting");
     if (greetingEl && currentUser) {
@@ -4315,6 +4367,9 @@ function loginUser(user, showMessage = true) {
         showToast(`Welcome back, ${user.name.split(" ")[0]}!`, "success");
     }
 
+    // Start the footer clock with org timezone
+    startFooterClock();
+
     // Process any pending invite token after login
     processPendingInvite();
 
@@ -4812,6 +4867,9 @@ function saveUserData() {
 function handleLogout() {
     // Save any pending data
     saveUserData();
+
+    // Stop the footer clock
+    stopFooterClock();
 
     // Clear current user
     currentUser = null;
@@ -6893,6 +6951,7 @@ function populateOrgProfile(org) {
         orgProfileMediaContactEmail: org.media_contact_email || '',
         orgProfileCtaWebsite: org.cta_website_url || '',
         orgProfileMission: org.mission || '',
+        orgProfileTimezone: org.timezone || 'America/Toronto',
         orgProfileDrawTime: org.default_draw_time || '',
         orgProfileDeadlineTime: org.ticket_deadline_time || '',
         orgProfileSocialLine: org.social_required_line || ''
@@ -6952,6 +7011,7 @@ async function saveOrgProfile() {
         }) : null;
 
         const payload = {
+            timezone: document.getElementById('orgProfileTimezone')?.value || 'America/Toronto',
             websiteUrl: document.getElementById('orgProfileWebsite').value.trim(),
             licenceNumber: document.getElementById('orgProfileLicence').value.trim(),
             storeLocation: document.getElementById('orgProfileStoreLocation').value.trim(),
@@ -6993,6 +7053,9 @@ async function saveOrgProfile() {
         if (currentUser) {
             currentUser.organization = { ...currentUser.organization, ...data.organization };
         }
+
+        // Refresh footer clock in case timezone changed
+        startFooterClock();
 
         showToast('Organization profile saved!', 'success');
     } catch (error) {
