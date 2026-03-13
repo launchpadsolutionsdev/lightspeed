@@ -68,8 +68,9 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
         });
 
         // 2. Enhance with KB entries, response rules, and Shopify context
+        // Response Assistant should not include citation markers — those are only for Ask Lightspeed
         const { system: enhancedSystem, referencedKbEntries } = await buildEnhancedPrompt(
-            systemPrompt, inquiry, organizationId, { kb_type: 'support', userId: req.userId }
+            systemPrompt, inquiry, organizationId, { kb_type: 'support', userId: req.userId, includeCitations: false }
         );
 
         // Send KB entries before streaming starts
@@ -223,7 +224,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
     };
 
     try {
-        const { messages, system, staticSystem, dynamicSystem, inquiry, max_tokens = 1024, model, kb_type } = req.body;
+        const { messages, system, staticSystem, dynamicSystem, inquiry, max_tokens = 1024, model, kb_type, includeCitations } = req.body;
 
         // Whitelist allowed models to prevent abuse
         const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
@@ -242,7 +243,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
             // Split-prompt path (Ask Lightspeed): Layer 1 is static and cached; Layer 2+3 is dynamic.
             // Run buildEnhancedPrompt only on the dynamic portion so Layer 1 is never modified.
             const enhanced = await buildEnhancedPrompt(dynamicSystem, inquiry, organizationId, {
-                kb_type, userId: req.userId
+                kb_type, userId: req.userId, includeCitations: !!includeCitations
             });
             finalStaticSystem = staticSystem;
             finalDynamicSystem = enhanced.system;
@@ -250,7 +251,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
         } else {
             // Legacy path: single system string — enhance the whole thing as before
             const enhanced = await buildEnhancedPrompt(system, inquiry, organizationId, {
-                kb_type, userId: req.userId
+                kb_type, userId: req.userId, includeCitations: !!includeCitations
             });
             finalStaticSystem = null;
             finalDynamicSystem = enhanced.system;

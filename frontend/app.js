@@ -2647,6 +2647,7 @@ ${feedbackSection}`;
             dynamicSystem,
             inquiry: message,
             kb_type: 'all',
+            includeCitations: true,
             messages: askConversation.map(m => ({ role: m.role, content: m.content })),
             max_tokens: 4096,
             model: alsModel
@@ -3668,6 +3669,7 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             system: fullSystemPrompt,
             inquiry: message,
             kb_type: 'all',
+            includeCitations: true,
             messages: messagesToSend,
             max_tokens: 4096,
             model: alsModel
