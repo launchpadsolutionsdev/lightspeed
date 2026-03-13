@@ -85,6 +85,12 @@ async function handleApiError(response) {
         handleLogout();
         throw new Error('AUTH_REQUIRED');
     }
+    if (error.code === 'USAGE_LIMIT_REACHED') {
+        throw new Error(error.error || 'Monthly usage limit reached. Please upgrade your plan or wait until next month.');
+    }
+    if (error.code === 'SUBSCRIPTION_CANCELLED') {
+        throw new Error(error.error || 'Your subscription has been cancelled. Please resubscribe to continue.');
+    }
 
     throw new Error(error.error || error.message || 'API request failed. Please try again.');
 }
@@ -3793,7 +3799,10 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             console.error('Ask Lightspeed error:', error);
             const errDiv = document.createElement('div');
             errDiv.className = 'als-msg als-msg-ai als-msg-error';
-            errDiv.innerHTML = `<span class="als-error-text">Sorry, something went wrong.</span>
+            const alsErrMsg = (error.message && error.message !== 'AUTH_REQUIRED' && error.message !== 'TRIAL_EXPIRED')
+                ? error.message
+                : 'Sorry, something went wrong.';
+            errDiv.innerHTML = `<span class="als-error-text">${alsErrMsg}</span>
                 <button class="als-retry-btn" onclick="alsRetryLastMessage(this)">Try again</button>`;
             document.getElementById('alsMessages').appendChild(errDiv);
             document.getElementById('alsChatArea').scrollTop = document.getElementById('alsChatArea').scrollHeight;
@@ -7832,7 +7841,10 @@ async function handleGenerate() {
 
     } catch (error) {
         console.error("Error:", error);
-        showError("Something went wrong. Please try again.");
+        const msg = (error.message && error.message !== 'AUTH_REQUIRED' && error.message !== 'TRIAL_EXPIRED')
+            ? error.message
+            : "Something went wrong. Please try again.";
+        showError(msg);
     } finally {
         generateBtn.disabled = false;
         generateBtn.innerHTML = `<span class="btn-icon">⚡</span> Generate Response`;
@@ -7967,10 +7979,13 @@ async function handleThreadGenerate() {
 
     } catch (error) {
         console.error("Thread generate error:", error);
+        const msg = (error.message && error.message !== 'AUTH_REQUIRED' && error.message !== 'TRIAL_EXPIRED')
+            ? error.message
+            : "Something went wrong. Please try again.";
         document.getElementById("threadResponseArea").innerHTML = `
             <div class="response-placeholder" style="color: #dc2626;">
                 <div class="placeholder-icon">⚠️</div>
-                <div class="placeholder-text">Something went wrong. Please try again.</div>
+                <div class="placeholder-text">${msg}</div>
             </div>
         `;
     } finally {
