@@ -145,7 +145,7 @@ const requireSuperAdmin = (req, res, next) => {
  * Super admins always bypass limits.
  */
 const USAGE_LIMITS = {
-    trial: parseInt(process.env.TRIAL_USAGE_LIMIT || '100'),
+    trial: parseInt(process.env.TRIAL_USAGE_LIMIT || '300'),
     active: parseInt(process.env.ACTIVE_USAGE_LIMIT || '500'),
     past_due: parseInt(process.env.PAST_DUE_USAGE_LIMIT || '50')
 };
