@@ -658,17 +658,22 @@ function getOrgDrawScheduleAIContext(schedule) {
         context += '\n';
     }
 
-    // Upcoming early birds
-    const upcoming = earlyBirds.filter(eb => {
-        if (!eb.date) return false;
-        const drawDate = new Date(eb.date);
-        drawDate.setHours(0, 0, 0, 0);
-        return drawDate >= today;
-    }).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 5);
+    // Show all early bird draws sorted by date, marking upcoming vs completed
+    const sorted = earlyBirds.filter(eb => eb.date).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const upcoming = sorted.filter(eb => new Date(eb.date) >= today);
+    const passed = sorted.filter(eb => new Date(eb.date) < today);
 
     if (upcoming.length > 0) {
         context += `UPCOMING EARLY BIRD DRAWS:\n`;
         for (const eb of upcoming) {
+            const day = eb.day || new Date(eb.date).toLocaleDateString('en-US', { weekday: 'long' });
+            const qty = eb.quantity > 1 ? `${eb.quantity} x ` : '';
+            context += `- ${day}, ${formatDate(eb.date)}: Early Bird #${eb.number} - ${qty}${eb.prize}\n`;
+        }
+    }
+    if (passed.length > 0) {
+        context += `\nCOMPLETED EARLY BIRD DRAWS (already drawn):\n`;
+        for (const eb of passed) {
             const day = eb.day || new Date(eb.date).toLocaleDateString('en-US', { weekday: 'long' });
             const qty = eb.quantity > 1 ? `${eb.quantity} x ` : '';
             context += `- ${day}, ${formatDate(eb.date)}: Early Bird #${eb.number} - ${qty}${eb.prize}\n`;
@@ -2619,10 +2624,12 @@ SECURITY:
         // Layer 2: all dynamic content — org name, tone, language, draw schedule, rated examples.
         // Sent separately from Layer 1 (staticSystem) so the backend can cache only the static
         // base prompt and leave dynamic content uncached.
+        // IMPORTANT: draw schedule goes BEFORE "Knowledge base:" so server-side KB injection
+        // (which replaces "Knowledge base:\n") doesn't bury it under KB entries.
         const dynamicSystem = `ORGANIZATION: ${orgName}
-TONE SETTING: Respond in a ${toneDesc} tone. This overrides the default tone guidance above.${languageBlock}
+TONE SETTING: Respond in a ${toneDesc} tone. This overrides the default tone guidance above.${languageBlock}${drawScheduleBlock}
 Knowledge base:
-${drawScheduleBlock}${feedbackSection}`;
+${feedbackSection}`;
 
         // Remove typing indicator and create streaming message div
         const typing = document.getElementById('askTyping');
@@ -3639,7 +3646,10 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         const ratedExamples = await getRatedExamples('ask_lightspeed', null, message);
         const feedbackSection = buildRatedExamplesContext(ratedExamples);
         const drawScheduleSection = getDrawScheduleContext();
-        const fullSystemPrompt = systemPrompt + '\n\nKnowledge base:\n' + (drawScheduleSection ? '\n\n' + drawScheduleSection : '') + feedbackSection;
+        const drawScheduleBlock = drawScheduleSection
+            ? '\n\nDRAW SCHEDULE (source of truth — always use this data when answering questions about upcoming draws, deadlines, prizes, Early Bird dates, and ticket sales windows. Never contradict this information):\n' + drawScheduleSection
+            : '';
+        const fullSystemPrompt = systemPrompt + drawScheduleBlock + '\n\nKnowledge base:\n' + feedbackSection;
 
         const typing = document.getElementById('alsTyping');
         if (typing) typing.remove();
@@ -10807,6 +10817,12 @@ async function buildDraftDynamicPrompt(contentType, emailType = null, userInquir
         }
     }
 
+    // Draw schedule context — placed before KB so it's not buried under KB entries
+    const drawCtx = getDrawScheduleContext();
+    if (drawCtx) {
+        dynamic += '\n\nDRAW SCHEDULE (source of truth for dates, prizes, and deadlines):\n' + drawCtx;
+    }
+
     // Internal KB entries
     const draftKb = (typeof internalKnowledge !== 'undefined' && internalKnowledge.length > 0)
         ? internalKnowledge : customKnowledge;
@@ -10815,12 +10831,6 @@ async function buildDraftDynamicPrompt(contentType, emailType = null, userInquir
             `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
         ).join('\n\n---\n\n');
         dynamic += '\n\nKnowledge base:\n' + kbContext;
-    }
-
-    // Draw schedule context
-    const drawCtx = getDrawScheduleContext();
-    if (drawCtx) {
-        dynamic += '\n\n' + drawCtx;
     }
 
     // Rated examples from feedback loop
