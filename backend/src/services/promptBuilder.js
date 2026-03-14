@@ -77,7 +77,7 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
         }
 
         // Dynamic budget allocation based on inquiry complexity
-        const { complexity, budgets } = getBudgetAllocation(inquiry);
+        const { budgets } = getBudgetAllocation(inquiry);
         const kbTokenBudget = budgets.knowledgeBase;
         const maxEntries = budgets.maxKbEntries;
 
@@ -106,7 +106,7 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
                     [organizationId, inquiry]
                 );
                 kbRows = ftsResult.rows;
-            } catch (ftsErr) {
+            } catch (_e) {
                 kbRows = [];
             }
         }
@@ -232,7 +232,7 @@ async function ftsChunkSearch(inquiry, organizationId, kbFilter) {
         );
 
         return result.rows.map(r => ({ ...r, _fromSemanticSearch: true }));
-    } catch (err) {
+    } catch (_e) {
         // kb_chunks table may not exist yet
         return [];
     }

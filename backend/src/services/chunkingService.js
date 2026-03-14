@@ -14,7 +14,6 @@
 
 const pool = require('../../config/database');
 const { generateEmbeddings, formatForPgvector } = require('./embeddingService');
-const { estimateTokens } = require('./tokenCounter');
 
 const MIN_CHUNK_CHARS = 200;   // ~50 tokens — too small to be useful alone
 const TARGET_CHUNK_CHARS = 1600; // ~400 tokens — sweet spot for retrieval

@@ -90,7 +90,7 @@ describe('checkUsageLimit', () => {
             .mockResolvedValueOnce({
                 rows: [{ subscription_status: 'trial', trial_ends_at: futureDate, organization_id: 'org-1' }]
             })
-            .mockResolvedValueOnce({ rows: [{ count: '100' }] }); // at 100 limit
+            .mockResolvedValueOnce({ rows: [{ count: '300' }] }); // at 300 limit
         await checkUsageLimit(req, res, next);
         expect(res.status).toHaveBeenCalledWith(429);
         expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'USAGE_LIMIT_REACHED' }));
