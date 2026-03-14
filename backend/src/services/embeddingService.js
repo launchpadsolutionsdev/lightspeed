@@ -4,7 +4,7 @@
  * Generates text embeddings using Voyager (via the Anthropic ecosystem)
  * for semantic search over knowledge base chunks.
  *
- * Uses the Voyage AI embeddings API (voyage-3-lite, 1024 dimensions)
+ * Uses the Voyage AI embeddings API (voyage-3-lite, 512 dimensions)
  * which is optimized for retrieval tasks.
  */
 
@@ -17,7 +17,7 @@ const VOYAGE_API_URL = 'https://api.voyageai.com/v1/embeddings';
  *
  * @param {string[]} texts - Array of text strings to embed
  * @param {string} inputType - 'document' for KB content, 'query' for search queries
- * @returns {Promise<number[][]>} Array of embedding vectors (1024 dimensions each)
+ * @returns {Promise<number[][]>} Array of embedding vectors (512 dimensions each)
  */
 async function generateEmbeddings(texts, inputType = 'document') {
     if (!VOYAGE_API_KEY) {
