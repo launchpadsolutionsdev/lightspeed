@@ -26,7 +26,14 @@ CREATE INDEX IF NOT EXISTS idx_kb_gaps_org ON kb_gaps (organization_id, created_
 
 -- 3. Running summary and semantic embedding for conversation auto-summarization
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS running_summary TEXT;
-ALTER TABLE conversations ADD COLUMN IF NOT EXISTS summary_embedding vector(512);
+
+-- summary_embedding requires pgvector; wrap so failure doesn't block remaining statements
+DO $$
+BEGIN
+    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS summary_embedding vector(512);
+EXCEPTION WHEN undefined_object THEN
+    RAISE NOTICE 'pgvector not available – skipping summary_embedding column';
+END $$;
 
 -- 4. Content calendar
 CREATE TABLE IF NOT EXISTS content_calendar (
