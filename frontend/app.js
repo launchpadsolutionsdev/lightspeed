@@ -9518,6 +9518,7 @@ async function loadFeedbackIntelligence() {
     } catch (e) {
         console.warn('Feedback intelligence load failed:', e);
     }
+}
 
 // Fallback analytics using localStorage (when backend is unreachable)
 function updateAnalyticsFromLocalStorage() {
