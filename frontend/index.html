@@ -6363,6 +6363,239 @@
             color: white;
         }
 
+        /* ==================== Content Calendar ==================== */
+        .cal-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .cal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .cal-title {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+        .cal-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .cal-nav-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+        .cal-nav-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .cal-month-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-width: 160px;
+            text-align: center;
+        }
+        .cal-today-btn {
+            padding: 6px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 500;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+        .cal-today-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+        .cal-dow-row {
+            border-bottom: 2px solid var(--border);
+        }
+        .cal-dow {
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .cal-day-cell {
+            min-height: 100px;
+            border: 1px solid var(--border);
+            border-top: none;
+            padding: 4px;
+            cursor: pointer;
+            transition: background 0.12s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .cal-day-cell:nth-child(7n+1) {
+            border-left: none;
+        }
+        .cal-day-cell:nth-child(7n) {
+            border-right: none;
+        }
+        .cal-day-cell:hover {
+            background: var(--bg-light);
+        }
+        .cal-day-number {
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            padding: 2px 6px;
+            display: inline-block;
+            border-radius: 50%;
+            min-width: 24px;
+            text-align: center;
+            line-height: 24px;
+        }
+        .cal-day-today .cal-day-number {
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+        }
+        .cal-day-outside {
+            background: #fafafa;
+        }
+        .cal-day-outside .cal-day-number {
+            color: #d1d5db;
+        }
+        .cal-event-chip {
+            display: block;
+            padding: 2px 6px;
+            margin: 2px 0;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            line-height: 1.3;
+            color: white;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: opacity 0.12s ease;
+        }
+        .cal-event-chip:hover {
+            opacity: 0.85;
+        }
+        .cal-chip-blue { background: #3b82f6; }
+        .cal-chip-red { background: #ef4444; }
+        .cal-chip-green { background: #10b981; }
+        .cal-chip-orange { background: #f59e0b; }
+        .cal-chip-purple { background: #8b5cf6; }
+        .cal-chip-pink { background: #ec4899; }
+
+        /* Event Modal */
+        .cal-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .cal-modal-overlay.active {
+            display: flex;
+        }
+        .cal-modal {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 460px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .cal-modal-title {
+            margin: 0 0 16px;
+            font-size: 1.1rem;
+        }
+        .cal-modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }
+        .cal-delete-btn {
+            margin-right: auto;
+            padding: 8px 14px;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            background: #fef2f2;
+            color: #dc2626;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+        .cal-delete-btn:hover {
+            background: #fee2e2;
+            border-color: #f87171;
+        }
+        .cal-color-picker {
+            display: flex;
+            gap: 8px;
+        }
+        .cal-color-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.12s ease;
+            padding: 0;
+        }
+        .cal-color-swatch:hover {
+            transform: scale(1.15);
+        }
+        .cal-color-swatch.selected {
+            border-color: var(--text-primary);
+            box-shadow: 0 0 0 2px white, 0 0 0 4px var(--text-primary);
+        }
+        .cal-swatch-blue { background: #3b82f6; }
+        .cal-swatch-red { background: #ef4444; }
+        .cal-swatch-green { background: #10b981; }
+        .cal-swatch-orange { background: #f59e0b; }
+        .cal-swatch-purple { background: #8b5cf6; }
+        .cal-swatch-pink { background: #ec4899; }
+
+        @media (max-width: 768px) {
+            .cal-day-cell {
+                min-height: 70px;
+                padding: 2px;
+            }
+            .cal-event-chip {
+                font-size: 0.65rem;
+                padding: 1px 4px;
+            }
+            .cal-month-label {
+                min-width: auto;
+                font-size: 0.95rem;
+            }
+        }
+
         /* Quote Section */
         .draft-quote-container {
             padding: 8px 0;
@@ -11034,50 +11267,68 @@
             <!-- Teams Management Page -->
             <!-- Content Calendar Page -->
             <div class="page" id="page-content-calendar">
-                <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h2 style="margin: 0;">Content Calendar</h2>
-                        <button class="btn-primary" id="ccAddBtn" onclick="showCalendarAddForm()">
-                            <span class="btn-icon">+</span> Plan Content
-                        </button>
+                <div class="cal-container">
+                    <!-- Calendar Header -->
+                    <div class="cal-header">
+                        <h2 class="cal-title">Content Calendar</h2>
+                        <div class="cal-nav">
+                            <button class="cal-nav-btn" onclick="calNavigateMonth(-1)" title="Previous month">&larr;</button>
+                            <span class="cal-month-label" id="calMonthLabel">March 2026</span>
+                            <button class="cal-nav-btn" onclick="calNavigateMonth(1)" title="Next month">&rarr;</button>
+                            <button class="cal-today-btn" onclick="calGoToToday()">Today</button>
+                        </div>
                     </div>
-                    <div style="display:flex; gap:8px; margin-bottom:16px;">
-                        <button class="wa-toggle-pill active" data-cc-view="upcoming" onclick="switchCalendarView('upcoming')">Upcoming</button>
-                        <button class="wa-toggle-pill" data-cc-view="past" onclick="switchCalendarView('past')">Past</button>
-                        <button class="wa-toggle-pill" data-cc-view="all" onclick="switchCalendarView('all')">All</button>
+
+                    <!-- Day-of-week headers -->
+                    <div class="cal-grid cal-dow-row">
+                        <div class="cal-dow">Sun</div>
+                        <div class="cal-dow">Mon</div>
+                        <div class="cal-dow">Tue</div>
+                        <div class="cal-dow">Wed</div>
+                        <div class="cal-dow">Thu</div>
+                        <div class="cal-dow">Fri</div>
+                        <div class="cal-dow">Sat</div>
                     </div>
-                    <div id="calendarList" style="display:flex;flex-direction:column;gap:12px;"></div>
+
+                    <!-- Day cells rendered by JS -->
+                    <div class="cal-grid cal-days" id="calDays"></div>
                 </div>
 
-                <!-- Add/Edit Calendar Modal -->
-                <div id="calendarModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;">
-                    <div style="background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;">
-                        <h3 id="calendarModalTitle" style="margin:0 0 16px;">Plan Content</h3>
+                <!-- Add/Edit Event Modal -->
+                <div class="cal-modal-overlay" id="calEventModal">
+                    <div class="cal-modal">
+                        <h3 class="cal-modal-title" id="calModalTitle">Add Event</h3>
                         <div class="draft-form-group">
                             <label class="draft-label">Title</label>
-                            <input type="text" id="ccTitle" class="draft-input" placeholder="E.g., February Grand Prize Announcement">
+                            <input type="text" id="calEvTitle" class="draft-input" placeholder="E.g., Impact Sunday email">
                         </div>
                         <div class="draft-form-group">
-                            <label class="draft-label">Content type</label>
-                            <select id="ccContentType" class="draft-select">
-                                <option value="email">Email</option>
-                                <option value="social">Social Media</option>
-                                <option value="media-release">Media Release</option>
-                                <option value="ad">Ad</option>
-                                <option value="write-anything">Other</option>
-                            </select>
+                            <label class="draft-label">Date</label>
+                            <input type="date" id="calEvDate" class="draft-input">
                         </div>
                         <div class="draft-form-group">
-                            <label class="draft-label">Scheduled date</label>
-                            <input type="date" id="ccDate" class="draft-input">
+                            <label class="draft-label">Time (optional)</label>
+                            <input type="time" id="calEvTime" class="draft-input">
                         </div>
                         <div class="draft-form-group">
                             <label class="draft-label">Notes (optional)</label>
-                            <textarea id="ccNotes" class="draft-textarea draft-textarea-sm" placeholder="Key messages, audience, special instructions..."></textarea>
+                            <textarea id="calEvNotes" class="draft-textarea draft-textarea-sm" placeholder="Any extra details..."></textarea>
                         </div>
-                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
-                            <button class="btn-secondary" onclick="hideCalendarModal()">Cancel</button>
-                            <button class="btn-primary" id="ccSaveBtn" onclick="saveCalendarEntry()">Save</button>
+                        <div class="draft-form-group">
+                            <label class="draft-label">Color</label>
+                            <div class="cal-color-picker" id="calColorPicker">
+                                <button type="button" class="cal-color-swatch cal-swatch-blue selected" data-color="blue" onclick="calPickColor('blue')"></button>
+                                <button type="button" class="cal-color-swatch cal-swatch-red" data-color="red" onclick="calPickColor('red')"></button>
+                                <button type="button" class="cal-color-swatch cal-swatch-green" data-color="green" onclick="calPickColor('green')"></button>
+                                <button type="button" class="cal-color-swatch cal-swatch-orange" data-color="orange" onclick="calPickColor('orange')"></button>
+                                <button type="button" class="cal-color-swatch cal-swatch-purple" data-color="purple" onclick="calPickColor('purple')"></button>
+                                <button type="button" class="cal-color-swatch cal-swatch-pink" data-color="pink" onclick="calPickColor('pink')"></button>
+                            </div>
+                        </div>
+                        <div class="cal-modal-actions">
+                            <button class="btn-secondary" onclick="calHideModal()">Cancel</button>
+                            <button class="cal-delete-btn" id="calDeleteBtn" onclick="calDeleteEvent()" style="display:none;">Delete</button>
+                            <button class="btn-primary" onclick="calSaveEvent()">Save</button>
                         </div>
                     </div>
                 </div>

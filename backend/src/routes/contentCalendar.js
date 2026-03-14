@@ -1,6 +1,6 @@
 /**
  * Content Calendar Routes
- * Simple campaign planner for scheduling content across types
+ * Google Calendar-style event planner — freeform events with date, time, color
  */
 
 const express = require('express');
@@ -8,10 +8,11 @@ const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 
+const VALID_COLORS = ['blue', 'red', 'green', 'orange', 'purple', 'pink'];
+
 /**
- * GET /api/content-calendar
- * List calendar entries for the organization
- * Query: ?view=upcoming|past|all
+ * GET /api/content-calendar?month=YYYY-MM
+ * List events for the given month (defaults to current month)
  */
 router.get('/', authenticate, async (req, res) => {
     try {
@@ -22,37 +23,52 @@ router.get('/', authenticate, async (req, res) => {
         if (orgResult.rows.length === 0) return res.status(400).json({ error: 'No organization found' });
         const organizationId = orgResult.rows[0].organization_id;
 
-        const view = req.query.view || 'upcoming';
-        let dateFilter = '';
-        if (view === 'upcoming') dateFilter = 'AND scheduled_date >= CURRENT_DATE';
-        else if (view === 'past') dateFilter = 'AND scheduled_date < CURRENT_DATE';
+        const month = req.query.month; // YYYY-MM
+        let startDate, endDate;
+        if (month && /^\d{4}-\d{2}$/.test(month)) {
+            startDate = `${month}-01`;
+            const [y, m] = month.split('-').map(Number);
+            const lastDay = new Date(y, m, 0).getDate();
+            endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+        } else {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            startDate = `${y}-${m}-01`;
+            const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+            endDate = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+        }
 
         const result = await pool.query(
-            `SELECT cc.*, u.name as created_by_name
-             FROM content_calendar cc
-             LEFT JOIN users u ON cc.created_by = u.id
-             WHERE cc.organization_id = $1 ${dateFilter}
-             ORDER BY cc.scheduled_date ASC`,
-            [organizationId]
+            `SELECT ce.*, u.name as created_by_name
+             FROM calendar_events ce
+             LEFT JOIN users u ON ce.created_by = u.id
+             WHERE ce.organization_id = $1
+               AND ce.event_date >= $2::date
+               AND ce.event_date <= $3::date
+             ORDER BY ce.event_date ASC, ce.event_time ASC NULLS LAST`,
+            [organizationId, startDate, endDate]
         );
 
         res.json(result.rows);
     } catch (error) {
-        console.error('Content calendar list error:', error);
-        res.status(500).json({ error: 'Failed to load content calendar' });
+        console.error('Calendar events list error:', error);
+        res.status(500).json({ error: 'Failed to load calendar events' });
     }
 });
 
 /**
  * POST /api/content-calendar
- * Create a new calendar entry
+ * Create a new calendar event
  */
 router.post('/', authenticate, async (req, res) => {
     try {
-        const { title, content_type, scheduled_date, notes } = req.body;
-        if (!title || !content_type || !scheduled_date) {
-            return res.status(400).json({ error: 'Title, content type, and date are required' });
+        const { title, event_date, event_time, notes, color } = req.body;
+        if (!title || !event_date) {
+            return res.status(400).json({ error: 'Title and date are required' });
         }
+
+        const safeColor = VALID_COLORS.includes(color) ? color : 'blue';
 
         const orgResult = await pool.query(
             'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
@@ -62,26 +78,28 @@ router.post('/', authenticate, async (req, res) => {
         const organizationId = orgResult.rows[0].organization_id;
 
         const result = await pool.query(
-            `INSERT INTO content_calendar (organization_id, title, content_type, scheduled_date, notes, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6)
+            `INSERT INTO calendar_events (organization_id, title, event_date, event_time, notes, color, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING *`,
-            [organizationId, title, content_type, scheduled_date, notes || null, req.userId]
+            [organizationId, title, event_date, event_time || null, notes || null, safeColor, req.userId]
         );
 
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Content calendar create error:', error);
-        res.status(500).json({ error: 'Failed to create calendar entry' });
+        console.error('Calendar event create error:', error);
+        res.status(500).json({ error: 'Failed to create calendar event' });
     }
 });
 
 /**
  * PUT /api/content-calendar/:id
- * Update a calendar entry (status, notes, generated content)
+ * Update a calendar event
  */
 router.put('/:id', authenticate, async (req, res) => {
     try {
-        const { title, content_type, scheduled_date, notes, status, generated_content } = req.body;
+        const { title, event_date, event_time, notes, color } = req.body;
+
+        const safeColor = color && VALID_COLORS.includes(color) ? color : undefined;
 
         const orgResult = await pool.query(
             'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
@@ -91,24 +109,23 @@ router.put('/:id', authenticate, async (req, res) => {
         const organizationId = orgResult.rows[0].organization_id;
 
         const result = await pool.query(
-            `UPDATE content_calendar
+            `UPDATE calendar_events
              SET title = COALESCE($1, title),
-                 content_type = COALESCE($2, content_type),
-                 scheduled_date = COALESCE($3, scheduled_date),
+                 event_date = COALESCE($2, event_date),
+                 event_time = COALESCE($3, event_time),
                  notes = COALESCE($4, notes),
-                 status = COALESCE($5, status),
-                 generated_content = COALESCE($6, generated_content),
+                 color = COALESCE($5, color),
                  updated_at = NOW()
-             WHERE id = $7 AND organization_id = $8
+             WHERE id = $6 AND organization_id = $7
              RETURNING *`,
-            [title, content_type, scheduled_date, notes, status, generated_content, req.params.id, organizationId]
+            [title, event_date, event_time, notes, safeColor, req.params.id, organizationId]
         );
 
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Entry not found' });
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Content calendar update error:', error);
-        res.status(500).json({ error: 'Failed to update calendar entry' });
+        console.error('Calendar event update error:', error);
+        res.status(500).json({ error: 'Failed to update calendar event' });
     }
 });
 
@@ -125,14 +142,14 @@ router.delete('/:id', authenticate, async (req, res) => {
         const organizationId = orgResult.rows[0].organization_id;
 
         await pool.query(
-            'DELETE FROM content_calendar WHERE id = $1 AND organization_id = $2',
+            'DELETE FROM calendar_events WHERE id = $1 AND organization_id = $2',
             [req.params.id, organizationId]
         );
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Content calendar delete error:', error);
-        res.status(500).json({ error: 'Failed to delete calendar entry' });
+        console.error('Calendar event delete error:', error);
+        res.status(500).json({ error: 'Failed to delete calendar event' });
     }
 });
 

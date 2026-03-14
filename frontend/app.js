@@ -6885,7 +6885,7 @@ function switchPage(pageId) {
         // Load team management data
         loadTeamData();
     } else if (pageId === "content-calendar") {
-        loadContentCalendar();
+        calInit();
     } else if (pageId === "admin") {
         // Load admin dashboard data
         if (typeof loadAdminDashboard === 'function') {
@@ -6895,137 +6895,222 @@ function switchPage(pageId) {
 }
 
 // ==================== CONTENT CALENDAR ====================
-let calendarView = 'upcoming';
-let calendarEditId = null;
+const CAL_MIN_DATE = new Date(2020, 0, 1);
+const CAL_MAX_DATE = new Date(2030, 2, 31); // March 2030
+let calYear, calMonth; // 0-indexed month
+let calEvents = [];
+let calEditId = null;
+let calSelectedColor = 'blue';
 
-async function loadContentCalendar() {
-    const listEl = document.getElementById('calendarList');
-    if (!listEl) return;
-    listEl.innerHTML = '<p style="color:#9ca3af;text-align:center;">Loading...</p>';
+function calInit() {
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth();
+    calLoadMonth();
+}
+
+async function calLoadMonth() {
+    const label = document.getElementById('calMonthLabel');
+    const grid = document.getElementById('calDays');
+    if (!label || !grid) return;
+
+    const monthStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    label.textContent = `${monthNames[calMonth]} ${calYear}`;
+
+    // Disable nav buttons at bounds
+    const prevBtn = label.parentElement.querySelector('[onclick="calNavigateMonth(-1)"]');
+    const nextBtn = label.parentElement.querySelector('[onclick="calNavigateMonth(1)"]');
+    if (prevBtn) prevBtn.disabled = (calYear === CAL_MIN_DATE.getFullYear() && calMonth === CAL_MIN_DATE.getMonth());
+    if (nextBtn) nextBtn.disabled = (calYear === CAL_MAX_DATE.getFullYear() && calMonth === CAL_MAX_DATE.getMonth());
 
     try {
-        const resp = await fetch(`${API_BASE_URL}/api/content-calendar?view=${calendarView}`, { headers: getAuthHeaders() });
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar?month=${monthStr}`, { headers: getAuthHeaders() });
         if (!resp.ok) throw new Error('Failed to load');
-        const entries = await resp.json();
+        calEvents = await resp.json();
+    } catch (e) {
+        calEvents = [];
+        showToast('Failed to load calendar events', 'error');
+    }
 
-        if (entries.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;">No content planned yet. Click "Plan Content" to get started.</div>';
-            return;
+    calRenderGrid();
+}
+
+function calRenderGrid() {
+    const grid = document.getElementById('calDays');
+    if (!grid) return;
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+    const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+
+    // Build event lookup by date string
+    const eventsByDate = {};
+    calEvents.forEach(ev => {
+        const d = ev.event_date.substring(0, 10); // YYYY-MM-DD
+        if (!eventsByDate[d]) eventsByDate[d] = [];
+        eventsByDate[d].push(ev);
+    });
+
+    let html = '';
+    const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+    for (let i = 0; i < totalCells; i++) {
+        let dayNum, dateStr, isOutside = false;
+
+        if (i < firstDay) {
+            // Previous month
+            dayNum = daysInPrev - firstDay + 1 + i;
+            const pm = calMonth === 0 ? 12 : calMonth;
+            const py = calMonth === 0 ? calYear - 1 : calYear;
+            dateStr = `${py}-${String(pm).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+            isOutside = true;
+        } else if (i - firstDay >= daysInMonth) {
+            // Next month
+            dayNum = i - firstDay - daysInMonth + 1;
+            const nm = calMonth === 11 ? 1 : calMonth + 2;
+            const ny = calMonth === 11 ? calYear + 1 : calYear;
+            dateStr = `${ny}-${String(nm).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+            isOutside = true;
+        } else {
+            dayNum = i - firstDay + 1;
+            dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
         }
 
-        const TYPE_ICONS = { email: '📧', social: '📱', 'media-release': '📰', ad: '📣', 'write-anything': '✨' };
-        const STATUS_COLORS = { planned: '#3b82f6', 'in-progress': '#f59e0b', done: '#10b981' };
+        const isToday = dateStr === todayStr;
+        const classes = ['cal-day-cell'];
+        if (isOutside) classes.push('cal-day-outside');
+        if (isToday) classes.push('cal-day-today');
 
-        listEl.innerHTML = entries.map(e => {
-            const icon = TYPE_ICONS[e.content_type] || '📄';
-            const statusColor = STATUS_COLORS[e.status] || '#6b7280';
-            const dateStr = new Date(e.scheduled_date).toLocaleDateString('en-CA');
-            const isPast = new Date(e.scheduled_date) < new Date(new Date().toDateString());
-            return `<div class="card" style="padding:16px;${isPast ? 'opacity:0.7;' : ''}" data-cc-id="${e.id}">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                    <div style="flex:1;">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                            <span>${icon}</span>
-                            <strong>${escapeHtml(e.title)}</strong>
-                            <span style="background:${statusColor};color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:10px;">${e.status}</span>
-                        </div>
-                        <div style="font-size:0.85rem;color:#6b7280;">${dateStr} &middot; ${DRAFT_TYPE_LABELS[e.content_type] || e.content_type}${e.created_by_name ? ' &middot; ' + escapeHtml(e.created_by_name) : ''}</div>
-                        ${e.notes ? '<div style="font-size:0.85rem;color:#374151;margin-top:6px;">' + escapeHtml(e.notes) + '</div>' : ''}
-                    </div>
-                    <div style="display:flex;gap:4px;">
-                        <select style="font-size:0.75rem;border:1px solid #e5e7eb;border-radius:4px;padding:2px 4px;" onchange="updateCalendarStatus('${e.id}', this.value)">
-                            <option value="planned" ${e.status === 'planned' ? 'selected' : ''}>Planned</option>
-                            <option value="in-progress" ${e.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
-                            <option value="done" ${e.status === 'done' ? 'selected' : ''}>Done</option>
-                        </select>
-                        <button style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:1rem;" onclick="deleteCalendarEntry('${e.id}')" title="Delete">×</button>
-                    </div>
-                </div>
-            </div>`;
+        const dayEvents = eventsByDate[dateStr] || [];
+        const eventsHtml = dayEvents.map(ev => {
+            const timeStr = ev.event_time ? formatCalTime(ev.event_time) + ' ' : '';
+            return `<div class="cal-event-chip cal-chip-${escapeHtml(ev.color || 'blue')}" onclick="calEditEvent('${ev.id}');event.stopPropagation();" title="${escapeHtml(ev.title)}${ev.notes ? '\n' + escapeHtml(ev.notes) : ''}">${timeStr}${escapeHtml(ev.title)}</div>`;
         }).join('');
-    } catch (e) {
-        listEl.innerHTML = '<p style="color:#dc2626;text-align:center;">Failed to load calendar.</p>';
+
+        html += `<div class="${classes.join(' ')}" onclick="calShowModal('${dateStr}')">
+            <span class="cal-day-number">${dayNum}</span>
+            ${eventsHtml}
+        </div>`;
     }
+
+    grid.innerHTML = html;
 }
 
-function switchCalendarView(view) {
-    calendarView = view;
-    document.querySelectorAll('[data-cc-view]').forEach(b => b.classList.remove('active'));
-    const btn = document.querySelector(`[data-cc-view="${view}"]`);
-    if (btn) btn.classList.add('active');
-    loadContentCalendar();
+function formatCalTime(timeStr) {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
 }
 
-function showCalendarAddForm() {
-    calendarEditId = null;
-    document.getElementById('calendarModalTitle').textContent = 'Plan Content';
-    document.getElementById('ccTitle').value = '';
-    document.getElementById('ccContentType').value = 'email';
-    document.getElementById('ccDate').value = '';
-    document.getElementById('ccNotes').value = '';
-    document.getElementById('calendarModal').style.display = 'flex';
+function calNavigateMonth(delta) {
+    calMonth += delta;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+
+    // Clamp to bounds
+    if (calYear < CAL_MIN_DATE.getFullYear() || (calYear === CAL_MIN_DATE.getFullYear() && calMonth < CAL_MIN_DATE.getMonth())) {
+        calYear = CAL_MIN_DATE.getFullYear();
+        calMonth = CAL_MIN_DATE.getMonth();
+    }
+    if (calYear > CAL_MAX_DATE.getFullYear() || (calYear === CAL_MAX_DATE.getFullYear() && calMonth > CAL_MAX_DATE.getMonth())) {
+        calYear = CAL_MAX_DATE.getFullYear();
+        calMonth = CAL_MAX_DATE.getMonth();
+    }
+
+    calLoadMonth();
 }
 
-function hideCalendarModal() {
-    document.getElementById('calendarModal').style.display = 'none';
+function calGoToToday() {
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth();
+    calLoadMonth();
 }
 
-async function saveCalendarEntry() {
-    const title = document.getElementById('ccTitle').value.trim();
-    const content_type = document.getElementById('ccContentType').value;
-    const scheduled_date = document.getElementById('ccDate').value;
-    const notes = document.getElementById('ccNotes').value.trim();
+function calShowModal(dateStr, eventData) {
+    calEditId = eventData ? eventData.id : null;
+    document.getElementById('calModalTitle').textContent = eventData ? 'Edit Event' : 'Add Event';
+    document.getElementById('calEvTitle').value = eventData ? eventData.title : '';
+    document.getElementById('calEvDate').value = dateStr;
+    document.getElementById('calEvTime').value = eventData && eventData.event_time ? eventData.event_time.substring(0, 5) : '';
+    document.getElementById('calEvNotes').value = eventData && eventData.notes ? eventData.notes : '';
+    document.getElementById('calDeleteBtn').style.display = eventData ? '' : 'none';
+    calPickColor(eventData ? (eventData.color || 'blue') : 'blue');
+    document.getElementById('calEventModal').classList.add('active');
+    setTimeout(() => document.getElementById('calEvTitle').focus(), 100);
+}
 
-    if (!title || !scheduled_date) {
+function calHideModal() {
+    document.getElementById('calEventModal').classList.remove('active');
+    calEditId = null;
+}
+
+function calPickColor(color) {
+    calSelectedColor = color;
+    document.querySelectorAll('#calColorPicker .cal-color-swatch').forEach(s => {
+        s.classList.toggle('selected', s.dataset.color === color);
+    });
+}
+
+function calEditEvent(id) {
+    const ev = calEvents.find(e => e.id === id);
+    if (!ev) return;
+    calShowModal(ev.event_date.substring(0, 10), ev);
+}
+
+async function calSaveEvent() {
+    const title = document.getElementById('calEvTitle').value.trim();
+    const event_date = document.getElementById('calEvDate').value;
+    const event_time = document.getElementById('calEvTime').value || null;
+    const notes = document.getElementById('calEvNotes').value.trim() || null;
+    const color = calSelectedColor;
+
+    if (!title || !event_date) {
         showToast('Please enter a title and date', 'error');
         return;
     }
 
     try {
-        const url = calendarEditId
-            ? `${API_BASE_URL}/api/content-calendar/${calendarEditId}`
+        const url = calEditId
+            ? `${API_BASE_URL}/api/content-calendar/${calEditId}`
             : `${API_BASE_URL}/api/content-calendar`;
-        const method = calendarEditId ? 'PUT' : 'POST';
+        const method = calEditId ? 'PUT' : 'POST';
 
         const resp = await fetch(url, {
             method,
             headers: getAuthHeaders(),
-            body: JSON.stringify({ title, content_type, scheduled_date, notes })
+            body: JSON.stringify({ title, event_date, event_time, notes, color })
         });
 
         if (!resp.ok) throw new Error('Failed to save');
 
-        hideCalendarModal();
-        showToast('Content planned!', 'success');
-        loadContentCalendar();
+        calHideModal();
+        showToast(calEditId ? 'Event updated!' : 'Event added!', 'success');
+        calLoadMonth();
     } catch (e) {
-        showToast('Failed to save: ' + e.message, 'error');
+        showToast('Failed to save event', 'error');
     }
 }
 
-async function updateCalendarStatus(id, status) {
+async function calDeleteEvent() {
+    if (!calEditId) return;
+    if (!confirm('Delete this event?')) return;
     try {
-        await fetch(`${API_BASE_URL}/api/content-calendar/${id}`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ status })
-        });
-        loadContentCalendar();
-    } catch (e) {
-        showToast('Failed to update status', 'error');
-    }
-}
-
-async function deleteCalendarEntry(id) {
-    if (!confirm('Delete this calendar entry?')) return;
-    try {
-        await fetch(`${API_BASE_URL}/api/content-calendar/${id}`, {
+        await fetch(`${API_BASE_URL}/api/content-calendar/${calEditId}`, {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
-        loadContentCalendar();
+        calHideModal();
+        showToast('Event deleted', 'success');
+        calLoadMonth();
     } catch (e) {
-        showToast('Failed to delete', 'error');
+        showToast('Failed to delete event', 'error');
     }
 }
 
