@@ -10784,9 +10784,14 @@
                     <div class="kb-page-header">
                         <div class="kb-page-title-row">
                             <h2 class="kb-page-title">Knowledge Base</h2>
-                            <button class="btn-primary" id="kbAddEntryBtn" onclick="openKbAddForm()">
-                                <span class="btn-icon">+</span> Add Entry
-                            </button>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <button class="btn-primary" id="kbAddEntryBtn" onclick="openKbAddForm()">
+                                    <span class="btn-icon">+</span> Add Entry
+                                </button>
+                                <button class="btn-secondary" id="kbRechunkBtn" onclick="rechunkKnowledgeBase()">
+                                    Re-index Search
+                                </button>
+                            </div>
                         </div>
                         <div class="kb-tabs">
                             <button class="kb-tab active" data-kb-type="support" onclick="switchKbTab('support')">

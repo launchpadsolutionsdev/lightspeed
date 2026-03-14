@@ -9717,6 +9717,27 @@ function toggleKbEntry(el) {
     el.classList.toggle('expanded');
 }
 
+async function rechunkKnowledgeBase() {
+    var btn = document.getElementById('kbRechunkBtn');
+    var originalText = btn.textContent;
+    btn.textContent = 'Re-indexing...';
+    btn.disabled = true;
+    try {
+        var res = await fetch(API_BASE_URL + '/api/knowledge-base/rechunk', {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Re-index failed');
+        showToast('Re-indexed ' + data.processed + ' entries into ' + data.totalChunks + ' chunks', 'success');
+    } catch (err) {
+        showToast('Re-index failed: ' + err.message, 'error');
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+
 function openKbAddForm() {
     document.getElementById('kbFormCard').style.display = '';
     document.getElementById('kbFormTitle').textContent = 'Add New Entry';
