@@ -301,14 +301,34 @@ router.post('/:id/summarize', authenticate, async (req, res) => {
         const summaryData = await summaryResponse.json();
         const summaryText = summaryData.content?.[0]?.text || '';
 
-        // Update conversation: store summary and keep only recent messages
+        // Build running summary: combine previous running summary with new summary
+        const previousRunning = conv.running_summary || '';
+        const runningSummary = previousRunning
+            ? `${previousRunning}\n\n[Continued] ${summaryText}`
+            : summaryText;
+
+        // Update conversation: store summary, running summary, and keep only recent messages
         await pool.query(
-            `UPDATE conversations SET summary = $1, messages = $2, updated_at = NOW()
-             WHERE id = $3`,
-            [summaryText, JSON.stringify(recentMessages), conv.id]
+            `UPDATE conversations SET summary = $1, running_summary = $2, messages = $3, updated_at = NOW()
+             WHERE id = $4`,
+            [summaryText, runningSummary, JSON.stringify(recentMessages), conv.id]
         );
 
-        res.json({ summary: summaryText, messages: recentMessages, summarized: true });
+        // Embed the summary for semantic conversation memory (non-blocking)
+        try {
+            const { embedQuery, formatForPgvector } = require('../services/embeddingService');
+            const summaryEmbedding = await embedQuery(summaryText);
+            if (summaryEmbedding) {
+                await pool.query(
+                    `UPDATE conversations SET summary_embedding = $1::vector WHERE id = $2`,
+                    [formatForPgvector(summaryEmbedding), conv.id]
+                ).catch(() => {}); // Column may not exist yet
+            }
+        } catch (_e) {
+            // Embedding service not available — skip
+        }
+
+        res.json({ summary: summaryText, runningSummary, messages: recentMessages, summarized: true });
     } catch (error) {
         console.error('Summarize conversation error:', error);
         res.status(500).json({ error: 'Failed to summarize conversation' });
