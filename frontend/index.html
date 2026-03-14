@@ -12282,6 +12282,14 @@
                                 <textarea id="draftEmailDetails" class="draft-textarea" placeholder=""></textarea>
                             </div>
 
+                            <div class="draft-form-group" id="emailCampaignSection" style="display: none;">
+                                <label class="draft-checkbox-label">
+                                    <input type="checkbox" id="emailCampaignMode" class="draft-checkbox">
+                                    <span>Campaign sequence mode</span>
+                                </label>
+                                <p class="draft-hint">Generate a 3-email series: announcement, reminder, and last chance.</p>
+                            </div>
+
                             <div class="draft-form-group" id="emailAddonsSection" style="display: none;">
                                 <label class="draft-label">Include additional sections?</label>
                                 <div class="draft-checkbox-group">
@@ -12301,20 +12309,76 @@
                             </div>
                         </div>
 
-                        <!-- STANDARD Panel (Social, Media Release, Ad) -->
-                        <div class="draft-tab-panel" id="draftPanelStandard" style="display: none;">
+                        <!-- SOCIAL Panel -->
+                        <div class="draft-tab-panel" id="draftPanelSocial" style="display: none;">
+                            <div class="draft-form-group">
+                                <label class="draft-label">Platform</label>
+                                <div class="wa-toggle-group" id="socialPlatformGroup">
+                                    <button class="wa-toggle-pill active" data-social-platform="facebook">Facebook</button>
+                                    <button class="wa-toggle-pill" data-social-platform="instagram">Instagram</button>
+                                    <button class="wa-toggle-pill" data-social-platform="linkedin">LinkedIn</button>
+                                </div>
+                            </div>
+
                             <div class="draft-form-group">
                                 <label class="draft-label">Topic or announcement</label>
-                                <textarea id="draftTopicInput" class="draft-textarea" placeholder="E.g., January Grand Prize has crossed $2,000,000, Early Bird draws happening Wednesday..."></textarea>
+                                <textarea id="socialTopicInput" class="draft-textarea" placeholder="E.g., January Grand Prize has crossed $2,000,000, Early Bird draws happening Wednesday..."></textarea>
                             </div>
 
                             <div class="draft-form-group">
                                 <label class="draft-label">Key details (optional)</label>
-                                <textarea id="draftDetailsInput" class="draft-textarea draft-textarea-sm" placeholder="Prize amounts, dates, winner name, location..."></textarea>
+                                <textarea id="socialDetailsInput" class="draft-textarea draft-textarea-sm" placeholder="Prize amounts, dates, winner name, location..."></textarea>
                             </div>
 
-                            <!-- Quotes (Media Release only) -->
-                            <div id="draftQuoteSection" style="display: none;">
+                            <div class="draft-form-group">
+                                <label class="draft-label">Variants</label>
+                                <div class="wa-toggle-group" id="socialVariantGroup">
+                                    <button class="wa-toggle-pill" data-social-variants="1">1</button>
+                                    <button class="wa-toggle-pill active" data-social-variants="3">3</button>
+                                </div>
+                                <p class="draft-hint">Generate multiple options to pick your favorite.</p>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Tone</label>
+                                <div class="draft-tone-options">
+                                    <button class="draft-tone-btn active" data-tone="balanced">Balanced</button>
+                                    <button class="draft-tone-btn" data-tone="exciting">Exciting</button>
+                                    <button class="draft-tone-btn" data-tone="professional">Professional</button>
+                                    <button class="draft-tone-btn" data-tone="urgent">Urgent</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MEDIA RELEASE Panel -->
+                        <div class="draft-tab-panel" id="draftPanelMediaRelease" style="display: none;">
+                            <div class="draft-form-group">
+                                <label class="draft-label">Release type</label>
+                                <select id="releaseTypeSelect" class="draft-select">
+                                    <option value="immediate">For Immediate Release</option>
+                                    <option value="embargo">Embargo Until Date</option>
+                                    <option value="award">Award / Recognition</option>
+                                    <option value="community-impact">Community Impact</option>
+                                </select>
+                            </div>
+
+                            <div class="draft-form-group" id="embargoDateGroup" style="display: none;">
+                                <label class="draft-label">Embargo date</label>
+                                <input type="date" id="embargoDateInput" class="draft-input">
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Topic or announcement</label>
+                                <textarea id="releaseTopicInput" class="draft-textarea" placeholder="E.g., Hospital Foundation launches $5M lottery, announces record-breaking prize..."></textarea>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Key details (optional)</label>
+                                <textarea id="releaseDetailsInput" class="draft-textarea draft-textarea-sm" placeholder="Prize amounts, dates, stats, partner names..."></textarea>
+                            </div>
+
+                            <!-- Quotes -->
+                            <div id="draftQuoteSection">
                                 <label class="draft-label" style="margin-bottom: 8px; display: block;">Quotes (optional)</label>
 
                                 <div class="draft-quote-container" id="draftQuoteContainer1">
@@ -12358,8 +12422,38 @@
                                 <label class="draft-label">Tone</label>
                                 <div class="draft-tone-options">
                                     <button class="draft-tone-btn active" data-tone="balanced">Balanced</button>
-                                    <button class="draft-tone-btn" data-tone="exciting">Exciting</button>
                                     <button class="draft-tone-btn" data-tone="professional">Professional</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AD Panel -->
+                        <div class="draft-tab-panel" id="draftPanelAd" style="display: none;">
+                            <div class="draft-form-group">
+                                <label class="draft-label">Campaign goal</label>
+                                <textarea id="adTopicInput" class="draft-textarea" placeholder="E.g., Drive ticket sales for the February Grand Prize draw..."></textarea>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Key details (optional)</label>
+                                <textarea id="adDetailsInput" class="draft-textarea draft-textarea-sm" placeholder="Prize amount, deadline, special offer..."></textarea>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Variants</label>
+                                <div class="wa-toggle-group" id="adVariantGroup">
+                                    <button class="wa-toggle-pill" data-ad-variants="1">1</button>
+                                    <button class="wa-toggle-pill" data-ad-variants="3">3</button>
+                                    <button class="wa-toggle-pill active" data-ad-variants="5">5</button>
+                                </div>
+                                <p class="draft-hint">Generate multiple ad variants to A/B test.</p>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">Tone</label>
+                                <div class="draft-tone-options">
+                                    <button class="draft-tone-btn" data-tone="balanced">Balanced</button>
+                                    <button class="draft-tone-btn active" data-tone="exciting">Exciting</button>
                                     <button class="draft-tone-btn" data-tone="urgent">Urgent</button>
                                 </div>
                             </div>
@@ -12368,7 +12462,19 @@
                         <!-- WRITE ANYTHING Panel -->
                         <div class="draft-tab-panel" id="draftPanelWriteAnything" style="display: none;">
                             <div class="draft-form-group">
-                                <label class="draft-label">What do you want to write?</label>
+                                <label class="draft-label">Content type (optional)</label>
+                                <select id="writeAnythingTypeSelect" class="draft-select">
+                                    <option value="">Freeform — describe anything</option>
+                                    <option value="board-report">Board Report</option>
+                                    <option value="grant-application">Grant Application</option>
+                                    <option value="talking-points">Talking Points</option>
+                                    <option value="internal-memo">Internal Memo</option>
+                                    <option value="volunteer-recruitment">Volunteer Recruitment</option>
+                                </select>
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label" id="writeAnythingTopicLabel">What do you want to write?</label>
                                 <textarea id="writeAnythingTopic" class="draft-textarea" placeholder="E.g., A thank-you letter to donors, a board report summary, talking points for a gala speech..."></textarea>
                             </div>
 
