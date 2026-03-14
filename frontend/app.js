@@ -2377,6 +2377,10 @@ function updateSidebarForTool(toolId) {
         btn.classList.toggle("active", btn.dataset.tool === toolId);
     });
 
+    // Deactivate standalone page buttons (e.g., Runway) when switching tools
+    const runwayBtn = document.querySelector('.sidebar-btn[data-page="content-calendar"]');
+    if (runwayBtn) runwayBtn.classList.remove("active");
+
     // Show/hide Response Assistant sub-pages group
     const responsePages = document.getElementById("sidebarResponsePages");
     if (responsePages) {
@@ -4967,10 +4971,17 @@ function setupEventListeners() {
         });
     });
 
-    // Navigation - page switching buttons in sidebar (Response Assistant sub-pages)
+    // Navigation - page switching buttons in sidebar
     document.querySelectorAll(".sidebar-btn[data-page]").forEach(btn => {
         btn.addEventListener("click", () => {
-            // Ensure we're on the Response Assistant if clicking a page button
+            // Runway (content-calendar) is a standalone page, not a Response Assistant sub-page
+            if (btn.dataset.page === 'content-calendar') {
+                // Deactivate all tool buttons so only Runway is highlighted
+                document.querySelectorAll(".sidebar-btn[data-tool]").forEach(b => b.classList.remove("active"));
+                switchPage(btn.dataset.page);
+                return;
+            }
+            // All other data-page buttons are Response Assistant sub-pages
             if (currentTool !== 'customer-response') {
                 openTool('customer-response');
             }
