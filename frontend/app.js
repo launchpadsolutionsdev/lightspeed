@@ -10626,23 +10626,23 @@ const DRAFT_EMPTY_STATES = {
     },
     'social': {
         icon: '📱', title: 'Social Media',
-        text: 'Enter your topic and tone, and Lightspeed will draft a post with your licence disclaimer and required lines included.',
-        tips: ['Keep it punchy \u2014 social posts work best when short and exciting', 'Lightspeed automatically adds your licence disclaimer', 'Use the Tone selector to control energy level']
+        text: 'Choose your platform, enter a topic, and Lightspeed drafts posts tailored to each platform\'s style and character limits.',
+        tips: ['Select a platform \u2014 Facebook, Instagram, and LinkedIn each get tailored copy', 'Generate 3 variants at once to pick your favorite', 'Lightspeed automatically adds your licence disclaimer']
     },
     'media-release': {
         icon: '📰', title: 'Media Release',
-        text: 'Provide your announcement details and add quotes from spokespeople. Lightspeed formats it in AP style.',
-        tips: ['Add at least one quote for a more compelling release', 'Include specific numbers \u2014 dollar amounts, dates, and stats', 'Lightspeed structures it with headline, lead, quotes, and boilerplate']
+        text: 'Choose a release type, provide your announcement, and add quotes. Lightspeed formats it in AP style with your org\'s About boilerplate.',
+        tips: ['Select the release type for proper formatting (Immediate, Embargo, Award, Impact)', 'Add at least one quote for a more compelling release', 'The About boilerplate is auto-populated from your knowledge base']
     },
     'ad': {
         icon: '📣', title: 'Facebook/Instagram Ad',
-        text: 'Describe your campaign goal. Lightspeed generates ad copy under 120 characters with your website URL.',
-        tips: ['Ad copy is limited to 120 characters for best performance', 'Focus on one clear call-to-action per ad', 'Your website URL is included automatically']
+        text: 'Describe your campaign goal. Lightspeed generates structured ad variants with separate headline, primary text, and CTA fields matching Meta Ads Manager.',
+        tips: ['Generate up to 5 variants to A/B test', 'Each variant includes headline (40 chars), primary text (125 chars), and CTA (30 chars)', 'Character counts are shown per field for easy copy-paste into Meta Ads Manager']
     },
     'write-anything': {
         icon: '✨', title: 'Write Anything',
-        text: 'Describe what you need in plain English. Set your tone, format, and length, and Lightspeed handles the rest.',
-        tips: ['Be specific about your audience and purpose', 'Use the Format selector to choose structure (paragraphs, bullets, etc.)', 'Adjust Length to control how detailed the output is']
+        text: 'Pick a content type or go freeform. Set your tone, format, and length, and Lightspeed handles the rest.',
+        tips: ['Use a preset (Board Report, Grant Application, etc.) for type-specific guidance', 'Or leave it on Freeform and describe anything in plain English', 'Adjust Length to control how detailed the output is']
     }
 };
 
@@ -10687,28 +10687,59 @@ FOR SOCIAL MEDIA:
 - Keep it punchy but informative — short paragraph form with line breaks
 - Include the lottery licence disclaimer at the end
 - Maximum 2 emojis per post (one after the first sentence is typical)
+- PLATFORM-SPECIFIC RULES:
+  - Facebook: Up to 500 characters. Conversational tone, 1-2 hashtags max, can be slightly longer.
+  - Instagram: Up to 400 characters for the main caption. Use 3-5 relevant hashtags at the end. More visual/emotional language.
+  - LinkedIn: Up to 700 characters. More professional tone, industry language, no hashtags unless standard (e.g., #nonprofit). Can include a call to action for engagement.
+- When generating multiple variants, make each one distinct — vary the opening hook, structure, and angle. Don't just rephrase the same post.
 
 FOR EMAIL:
 - Conversational and personal — like writing to a friend who supports the cause
 - Can be longer and more detailed than social posts
 - Structure varies by email category (see dynamic configuration below)
+- CAMPAIGN SEQUENCE MODE: When requested, generate a 3-email series for the same campaign:
+  1. Announcement email — introduces the draw/event with excitement and full details
+  2. Reminder email — shorter, creates urgency, references the announcement ("As we shared last week...")
+  3. Last Chance email — maximum urgency, countdown language, final call to action
+  Each email should have its own subject line. Separate the three emails with "---" dividers and label them (Email 1: Announcement, Email 2: Reminder, Email 3: Last Chance).
 
 FOR MEDIA RELEASES:
 - Professional journalistic style
-- Structure: lead paragraph with key news, supporting details, quotes, background info
-- End with an "About" boilerplate if appropriate
+- RELEASE TYPES:
+  - For Immediate Release: Standard format with "FOR IMMEDIATE RELEASE" header, date, and city
+  - Embargo: Include "EMBARGOED UNTIL [date]" prominently at the top. Note the date in the header.
+  - Award/Recognition: Lead with the honor/award, include background on the awarding body, highlight why the org was selected
+  - Community Impact: Lead with the community outcome, include stats on impact, human interest angle
+- Structure: headline, release type header, lead paragraph with key news, supporting details, quotes, background info, About boilerplate
+- End with the organization's "About" boilerplate section (pulled from knowledge base if available)
 - Include quotes from leadership when provided
+- Include media contact information at the end: "For media inquiries, contact: [Organization Name]"
 
 FOR FACEBOOK/INSTAGRAM ADS:
-- MAXIMUM 120 characters
-- Must include the organization's website URL
+- Generate each ad variant as a STRUCTURED FORMAT with three separate fields:
+  - HEADLINE: Maximum 40 characters. Punchy, attention-grabbing. The hook.
+  - PRIMARY TEXT: Maximum 125 characters. The main message with key value proposition.
+  - DESCRIPTION/CTA: Maximum 30 characters. Clear call to action.
+- Must include the organization's website URL in the primary text
 - Focus on urgency and excitement — goal is always ticket sales
-- One emoji allowed
+- One emoji allowed per field
+- When generating multiple variants, vary the angle: try urgency, excitement, social proof, FOMO, and value-focused approaches.
+- Format each variant clearly:
+  --- Variant 1 ---
+  Headline (X/40 chars): [text]
+  Primary Text (X/125 chars): [text]
+  Description (X/30 chars): [text]
 
 FOR WRITE ANYTHING (free-form):
 - Adapt to any content type the user requests
 - Follow the user's specified tone, format, and length precisely
 - Use organization context naturally when relevant — don't force it
+- CONTENT TYPE PRESETS (when a preset is selected, follow its specific guidance):
+  - Board Report: Formal, data-driven summary. Structure with Executive Summary, Key Metrics, Highlights, Challenges, and Next Steps sections. Use bullet points for metrics. Professional tone.
+  - Grant Application: Persuasive, evidence-based. Structure with Need Statement, Project Description, Goals/Objectives, Evaluation Plan, and Budget Narrative sections. Use specific numbers and outcomes.
+  - Talking Points: Brief, scannable bullet points. Group by topic. Each point should be self-contained and quotable. Include supporting facts under each main point. 8-12 main points max.
+  - Internal Memo: Clear and direct. Structure with To/From/Date/Re header, Purpose, Background, Key Points, and Action Items sections. Keep under 500 words unless detailed length is selected.
+  - Volunteer Recruitment: Warm and inspiring. Lead with impact, explain the role clearly, address time commitment, highlight benefits to the volunteer. Include a clear sign-up call to action.
 
 WRITING PRINCIPLES:
 1. CLARITY FIRST: Every sentence should serve a purpose. Cut filler and jargon.
@@ -11014,6 +11045,47 @@ function setupDraftAssistant() {
         });
     });
 
+    // Release type selector — show/hide embargo date field
+    const releaseTypeSelect = document.getElementById('releaseTypeSelect');
+    if (releaseTypeSelect) {
+        releaseTypeSelect.addEventListener('change', (e) => {
+            const embargoGroup = document.getElementById('embargoDateGroup');
+            if (embargoGroup) embargoGroup.style.display = e.target.value === 'embargo' ? 'block' : 'none';
+        });
+    }
+
+    // Email type change — show/hide campaign sequence checkbox
+    const origEmailHandler = document.getElementById('draftEmailTypeSelect');
+    if (origEmailHandler) {
+        origEmailHandler.addEventListener('change', () => {
+            const campaignSection = document.getElementById('emailCampaignSection');
+            const emailType = origEmailHandler.value;
+            // Show campaign mode for draw-related types (not impact-sunday)
+            if (campaignSection) {
+                campaignSection.style.display = (emailType && emailType !== 'impact-sunday') ? 'block' : 'none';
+            }
+        });
+    }
+
+    // Write Anything content type dropdown — update placeholder/label
+    const waTypeSelect = document.getElementById('writeAnythingTypeSelect');
+    if (waTypeSelect) {
+        waTypeSelect.addEventListener('change', () => {
+            const topicLabel = document.getElementById('writeAnythingTopicLabel');
+            const topicInput = document.getElementById('writeAnythingTopic');
+            const presetPlaceholders = {
+                '': 'E.g., A thank-you letter to donors, a board report summary, talking points for a gala speech...',
+                'board-report': 'E.g., Q4 2025 financial results and program outcomes...',
+                'grant-application': 'E.g., Community health equipment upgrade program for rural hospitals...',
+                'talking-points': 'E.g., Gala speech about lottery impact on local healthcare...',
+                'internal-memo': 'E.g., Updated ticket sales procedures effective March 2026...',
+                'volunteer-recruitment': 'E.g., Event volunteers needed for annual charity golf tournament...'
+            };
+            if (topicLabel) topicLabel.textContent = waTypeSelect.value ? 'Topic / subject' : 'What do you want to write?';
+            if (topicInput) topicInput.placeholder = presetPlaceholders[waTypeSelect.value] || presetPlaceholders[''];
+        });
+    }
+
     // Unified generate button
     document.getElementById('draftStudioGenerateBtn').addEventListener('click', () => {
         if (activeDraftTab === 'email') generateEmailDraft();
@@ -11081,22 +11153,21 @@ function selectDraftTab(tabId) {
 
     // Show correct panel
     document.getElementById('draftPanelEmail').style.display = 'none';
-    document.getElementById('draftPanelStandard').style.display = 'none';
+    document.getElementById('draftPanelSocial').style.display = 'none';
+    document.getElementById('draftPanelMediaRelease').style.display = 'none';
+    document.getElementById('draftPanelAd').style.display = 'none';
     document.getElementById('draftPanelWriteAnything').style.display = 'none';
 
-    if (tabId === 'email') {
-        document.getElementById('draftPanelEmail').style.display = 'flex';
-        currentDraftType = 'email';
-    } else if (tabId === 'write-anything') {
-        document.getElementById('draftPanelWriteAnything').style.display = 'flex';
-        currentDraftType = 'write-anything';
-    } else {
-        document.getElementById('draftPanelStandard').style.display = 'flex';
-        currentDraftType = tabId;
-        // Show quotes section only for media release
-        const quoteSection = document.getElementById('draftQuoteSection');
-        if (quoteSection) quoteSection.style.display = (tabId === 'media-release') ? 'block' : 'none';
-    }
+    const panelMap = {
+        'email': 'draftPanelEmail',
+        'social': 'draftPanelSocial',
+        'media-release': 'draftPanelMediaRelease',
+        'ad': 'draftPanelAd',
+        'write-anything': 'draftPanelWriteAnything'
+    };
+    const panelId = panelMap[tabId];
+    if (panelId) document.getElementById(panelId).style.display = 'flex';
+    currentDraftType = tabId;
 
     // Update empty state (only if output is not showing)
     const outputEl = document.getElementById('draftStudioOutput');
@@ -11131,64 +11202,88 @@ function showDraftMain(section) {
 }
 
 async function generateDraft() {
-    const topic = document.getElementById('draftTopicInput').value.trim();
-    if (!topic) {
-        showToast('Please enter a topic or announcement', 'error');
-        return;
-    }
+    let topic, details, userPrompt;
 
-    const details = document.getElementById('draftDetailsInput').value.trim();
+    if (currentDraftType === 'social') {
+        topic = document.getElementById('socialTopicInput').value.trim();
+        if (!topic) { showToast('Please enter a topic or announcement', 'error'); return; }
+        details = document.getElementById('socialDetailsInput').value.trim();
 
-    // Get quote info if applicable (up to 5 quotes for media releases)
-    let quoteInfo = '';
-    if (currentDraftType === 'media-release') {
+        const platformEl = document.querySelector('.wa-toggle-pill[data-social-platform].active');
+        const platform = platformEl ? platformEl.dataset.socialPlatform : 'facebook';
+        const variantEl = document.querySelector('.wa-toggle-pill[data-social-variants].active');
+        const variantCount = variantEl ? parseInt(variantEl.dataset.socialVariants) : 3;
+
+        const platformLimits = { facebook: '500 characters', instagram: '400 characters plus 3-5 hashtags', linkedin: '700 characters, professional tone' };
+
+        userPrompt = 'Write ' + (variantCount > 1 ? variantCount + ' distinct variants of a ' : 'a ') + platform.charAt(0).toUpperCase() + platform.slice(1) + ' post about: ' + topic;
+        if (details) userPrompt += '\n\nKey details to include: ' + details;
+
+        const org = currentUser?.organization;
+        let requiredLine = org?.social_required_line || 'Purchase tickets online at [Organization Website] or at the [In-Person Ticket Location]!';
+        requiredLine = replaceOrgPlaceholders(requiredLine);
+        userPrompt += '\n\nIMPORTANT: You MUST include this exact line in each post: "' + requiredLine + '"';
+        userPrompt += '\n\nPlatform: ' + platform + ' (' + platformLimits[platform] + ')';
+        if (variantCount > 1) userPrompt += '\n\nGenerate ' + variantCount + ' distinct variants. Separate each with "---" and label them (Variant 1, Variant 2, etc.). Vary the opening hook and angle for each.';
+        userPrompt += '\n\nTone: ' + currentDraftTone;
+
+    } else if (currentDraftType === 'media-release') {
+        topic = document.getElementById('releaseTopicInput').value.trim();
+        if (!topic) { showToast('Please enter a topic or announcement', 'error'); return; }
+        details = document.getElementById('releaseDetailsInput').value.trim();
+
+        const releaseType = document.getElementById('releaseTypeSelect').value;
+        const releaseTypeLabels = { immediate: 'For Immediate Release', embargo: 'Embargoed', award: 'Award/Recognition', 'community-impact': 'Community Impact' };
+
+        // Collect quotes
+        let quoteInfo = '';
         const quotes = [];
-        for (let i = 1; i <= 5; i++) {
+        for (let i = 1; i <= 3; i++) {
             const fields = document.getElementById('draftQuoteFields' + i);
             if (fields && fields.style.display !== 'none') {
-                const nameInput = document.querySelector('.draft-quote-name[data-quote="' + i + '"]');
-                const titleInput = document.querySelector('.draft-quote-title[data-quote="' + i + '"]');
-                const textInput = document.querySelector('.draft-quote-text[data-quote="' + i + '"]');
-                const name = nameInput ? nameInput.value.trim() : '';
-                const title = titleInput ? titleInput.value.trim() : '';
-                const text = textInput ? textInput.value.trim() : '';
-                if (name && text) {
-                    quotes.push({ name, title, text });
-                }
+                const name = document.querySelector('.draft-quote-name[data-quote="' + i + '"]')?.value.trim() || '';
+                const title = document.querySelector('.draft-quote-title[data-quote="' + i + '"]')?.value.trim() || '';
+                const text = document.querySelector('.draft-quote-text[data-quote="' + i + '"]')?.value.trim() || '';
+                if (name && text) quotes.push({ name, title, text });
             }
         }
         if (quotes.length > 0) {
             quoteInfo = '\n\nInclude the following quotes in the media release:';
-            quotes.forEach((q, idx) => {
-                quoteInfo += '\n' + (idx + 1) + '. Quote from ' + q.name + (q.title ? ', ' + q.title : '') + ': "' + q.text + '"';
-            });
+            quotes.forEach((q, idx) => { quoteInfo += '\n' + (idx + 1) + '. Quote from ' + q.name + (q.title ? ', ' + q.title : '') + ': "' + q.text + '"'; });
         }
-    }
 
-    // Build the user prompt
-    let userPrompt = "Write a " + DRAFT_TYPE_LABELS[currentDraftType] + " about: " + topic;
-    if (details) {
-        userPrompt += "\n\nKey details to include: " + details;
-    }
+        userPrompt = 'Write a ' + releaseTypeLabels[releaseType] + ' media release about: ' + topic;
+        if (details) userPrompt += '\n\nKey details to include: ' + details;
+        if (releaseType === 'embargo') {
+            const embargoDate = document.getElementById('embargoDateInput').value;
+            if (embargoDate) userPrompt += '\n\nEMBARGO DATE: ' + embargoDate;
+        }
+        userPrompt += quoteInfo;
+        userPrompt += '\n\nInclude the organization\'s About boilerplate at the end (use knowledge base if available, otherwise write a generic one).';
+        userPrompt += '\n\nTone: ' + currentDraftTone;
 
-    // Add required line for social media posts
-    if (currentDraftType === 'social') {
-        const org = currentUser?.organization;
-        // Use org's custom social required line if set, otherwise fall back to generic placeholder
-        let requiredLine = org?.social_required_line || 'Purchase tickets online at [Organization Website] or at the [In-Person Ticket Location]!';
-        requiredLine = replaceOrgPlaceholders(requiredLine);
-        userPrompt += '\n\nIMPORTANT: You MUST include this exact line in the post: "' + requiredLine + '"';
-    }
-    userPrompt += quoteInfo;
-    userPrompt += "\n\nTone: " + currentDraftTone;
+    } else if (currentDraftType === 'ad') {
+        topic = document.getElementById('adTopicInput').value.trim();
+        if (!topic) { showToast('Please enter a campaign goal', 'error'); return; }
+        details = document.getElementById('adDetailsInput').value.trim();
 
-    if (currentDraftType === 'ad') {
+        const variantEl = document.querySelector('.wa-toggle-pill[data-ad-variants].active');
+        const variantCount = variantEl ? parseInt(variantEl.dataset.adVariants) : 5;
+
         const org = currentUser?.organization;
         const adUrl = org?.website_url || '[Organization Website]';
-        userPrompt += "\n\nREMEMBER: Maximum 120 characters and MUST include " + adUrl;
+
+        userPrompt = 'Generate ' + variantCount + ' Facebook/Instagram ad variant' + (variantCount > 1 ? 's' : '') + ' for: ' + topic;
+        if (details) userPrompt += '\n\nKey details: ' + details;
+        userPrompt += '\n\nFor EACH variant, output in this exact structured format:\n--- Variant N ---\nHeadline (X/40 chars): [headline text]\nPrimary Text (X/125 chars): [primary text]\nDescription (X/30 chars): [CTA text]';
+        userPrompt += '\n\nRULES:\n- Headline: MAX 40 characters\n- Primary Text: MAX 125 characters, MUST include ' + adUrl + '\n- Description/CTA: MAX 30 characters\n- Show actual character count for each field\n- One emoji allowed per field\n- Vary the angle across variants: urgency, excitement, social proof, FOMO, value';
+        userPrompt += '\n\nTone: ' + currentDraftTone;
+    } else {
+        showToast('Unknown draft type', 'error');
+        return;
     }
 
-    lastDraftRequest = { topic, details, quoteInfo };
+    lastDraftRequest = { topic, details, type: currentDraftType };
 
     // Show output area immediately for streaming
     showDraftMain('output');
@@ -11196,6 +11291,8 @@ async function generateDraft() {
     const outputEl = document.getElementById('draftOutputContent');
     outputEl.innerHTML = '';
     document.getElementById('draftCopyHtmlBtn').style.display = 'none';
+
+    const maxTokens = currentDraftType === 'ad' ? 2048 : (currentDraftType === 'media-release' ? 2048 : 1500);
 
     try {
         const dynamicSystem = await buildDraftDynamicPrompt(currentDraftType, null, topic);
@@ -11207,7 +11304,7 @@ async function generateDraft() {
             kb_type: 'all',
             tool: 'draft_assistant',
             messages: [{ role: 'user', content: userPrompt }],
-            max_tokens: 1024,
+            max_tokens: maxTokens,
             model: draftModel
         }, {
             onText: (chunk) => {
@@ -11219,14 +11316,8 @@ async function generateDraft() {
         saveDraftToHistory(userPrompt, generatedContent, currentDraftType);
 
         const disclaimer = document.getElementById('draftDisclaimer');
-        if (currentDraftType === 'ad') {
-            const charCount = generatedContent.length;
-            disclaimer.innerHTML = 'Character count: ' + charCount + '/120 ' + (charCount > 120 ? '\u26A0\uFE0F Over limit!' : '\u2705');
-            disclaimer.style.display = 'block';
-        } else {
-            disclaimer.innerHTML = '\u26A0\uFE0F Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
-            disclaimer.style.display = 'block';
-        }
+        disclaimer.innerHTML = '\u26A0\uFE0F Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
+        disclaimer.style.display = 'block';
 
     } catch (error) {
         showDraftMain('empty');
@@ -11236,6 +11327,14 @@ async function generateDraft() {
     }
 }
 
+const WRITE_ANYTHING_PRESETS = {
+    'board-report': { label: 'Board Report', guidance: 'Write a formal board report. Use sections: Executive Summary, Key Metrics, Highlights, Challenges, and Next Steps. Professional tone, data-driven.' },
+    'grant-application': { label: 'Grant Application', guidance: 'Write grant application content. Use sections: Need Statement, Project Description, Goals/Objectives, Evaluation Plan, and Budget Narrative. Persuasive, evidence-based.' },
+    'talking-points': { label: 'Talking Points', guidance: 'Write talking points as brief, scannable bullet points. Group by topic. Each point should be self-contained and quotable. Include supporting facts. 8-12 main points max.' },
+    'internal-memo': { label: 'Internal Memo', guidance: 'Write an internal memo. Start with To/From/Date/Re header block. Sections: Purpose, Background, Key Points, Action Items. Keep concise and direct.' },
+    'volunteer-recruitment': { label: 'Volunteer Recruitment', guidance: 'Write volunteer recruitment content. Lead with impact, explain the role clearly, address time commitment, highlight benefits to the volunteer. Include a clear sign-up call to action.' }
+};
+
 async function generateWriteAnything() {
     const topic = document.getElementById('writeAnythingTopic').value.trim();
     if (!topic) {
@@ -11244,6 +11343,7 @@ async function generateWriteAnything() {
     }
 
     const context = document.getElementById('writeAnythingContext').value.trim();
+    const contentType = document.getElementById('writeAnythingTypeSelect').value;
 
     // Get selected toggles
     const toneEl = document.querySelector('.wa-toggle-pill[data-wa-tone].active');
@@ -11253,8 +11353,14 @@ async function generateWriteAnything() {
     const format = formatEl ? formatEl.dataset.waFormat : 'paragraphs';
     const length = lengthEl ? lengthEl.dataset.waLength : 'standard';
 
-    // Build user prompt
-    let userPrompt = topic;
+    // Build user prompt with content type guidance
+    let userPrompt = '';
+    if (contentType && WRITE_ANYTHING_PRESETS[contentType]) {
+        const preset = WRITE_ANYTHING_PRESETS[contentType];
+        userPrompt = preset.guidance + '\n\nTopic/Subject: ' + topic;
+    } else {
+        userPrompt = topic;
+    }
     if (context) {
         userPrompt += '\n\nAdditional context: ' + context;
     }
@@ -11262,11 +11368,12 @@ async function generateWriteAnything() {
     userPrompt += '\nFormat: ' + format.replace('-', ' ');
     userPrompt += '\nLength: ' + length;
 
-    lastDraftRequest = { topic, context, isWriteAnything: true };
+    lastDraftRequest = { topic, context, isWriteAnything: true, contentType };
 
     // Show output area immediately for streaming
+    const badgeLabel = contentType && WRITE_ANYTHING_PRESETS[contentType] ? WRITE_ANYTHING_PRESETS[contentType].label : 'Write Anything';
     showDraftMain('output');
-    document.getElementById('draftOutputBadge').textContent = '\u2728 Write Anything';
+    document.getElementById('draftOutputBadge').textContent = '\u2728 ' + badgeLabel;
     const outputEl = document.getElementById('draftOutputContent');
     outputEl.innerHTML = '';
     document.getElementById('draftCopyHtmlBtn').style.display = 'none';
@@ -11281,7 +11388,7 @@ async function generateWriteAnything() {
             kb_type: 'all',
             tool: 'draft_assistant',
             messages: [{ role: 'user', content: userPrompt }],
-            max_tokens: 2048,
+            max_tokens: length === 'detailed' ? 3000 : 2048,
             model: draftModel
         }, {
             onText: (chunk) => {
@@ -11290,7 +11397,7 @@ async function generateWriteAnything() {
             }
         });
 
-        saveDraftToHistory(userPrompt, generatedContent, 'write-anything');
+        saveDraftToHistory(userPrompt, generatedContent, 'write-anything' + (contentType ? '-' + contentType : ''));
 
         const disclaimer = document.getElementById('draftDisclaimer');
         disclaimer.innerHTML = '\u26A0\uFE0F Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
@@ -11313,6 +11420,8 @@ async function generateEmailDraft() {
     let userPrompt = '';
     let details = '';
 
+    const campaignMode = document.getElementById('emailCampaignMode')?.checked || false;
+
     if (currentEmailType === 'impact-sunday') {
         const context = document.getElementById('draftImpactContext').value.trim();
         if (!context) {
@@ -11328,8 +11437,14 @@ async function generateEmailDraft() {
             showToast('Please enter the key details for the email', 'error');
             return;
         }
-        userPrompt = "Write a " + EMAIL_TYPE_LABELS[currentEmailType] + " email with these details:\n\n" + details;
-        userPrompt += "\n\nInclude a subject line at the beginning.";
+        if (campaignMode) {
+            userPrompt = "Generate a 3-email campaign sequence for a " + EMAIL_TYPE_LABELS[currentEmailType] + " campaign with these details:\n\n" + details;
+            userPrompt += "\n\nCreate three emails:\n1. Email 1: Announcement — introduce the draw/event with full details and excitement\n2. Email 2: Reminder — shorter, create urgency, reference the announcement\n3. Email 3: Last Chance — maximum urgency, countdown language, final call to action";
+            userPrompt += "\n\nEach email should have its own subject line. Separate them with '---' dividers and label them.";
+        } else {
+            userPrompt = "Write a " + EMAIL_TYPE_LABELS[currentEmailType] + " email with these details:\n\n" + details;
+            userPrompt += "\n\nInclude a subject line at the beginning.";
+        }
     }
 
     // Check for email add-ons
@@ -11362,11 +11477,11 @@ async function generateEmailDraft() {
         }
     }
 
-    lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details, addSubscriptions, addCatchTheAce, addOther };
+    lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details, addSubscriptions, addCatchTheAce, addOther, campaignMode };
 
     // Show output area immediately for streaming
     showDraftMain('output');
-    document.getElementById('draftOutputBadge').textContent = '📧 ' + EMAIL_TYPE_LABELS[currentEmailType];
+    document.getElementById('draftOutputBadge').textContent = campaignMode ? '📧 Campaign: ' + EMAIL_TYPE_LABELS[currentEmailType] : '📧 ' + EMAIL_TYPE_LABELS[currentEmailType];
     const outputEl = document.getElementById('draftOutputContent');
     outputEl.innerHTML = '';
     document.getElementById('draftCopyHtmlBtn').style.display = 'inline-flex';
@@ -11381,7 +11496,7 @@ async function generateEmailDraft() {
             kb_type: 'all',
             tool: 'draft_assistant',
             messages: [{ role: 'user', content: userPrompt }],
-            max_tokens: 2048,
+            max_tokens: campaignMode ? 4096 : 2048,
             model: draftModel
         }, {
             onText: (chunk) => {
@@ -11410,9 +11525,29 @@ function resetDraftAssistant() {
     lastDraftRequest = null;
     currentEmailType = null;
 
-    // Reset standard form fields
-    document.getElementById('draftTopicInput').value = '';
-    document.getElementById('draftDetailsInput').value = '';
+    // Reset Social panel fields
+    const socialTopic = document.getElementById('socialTopicInput');
+    const socialDetails = document.getElementById('socialDetailsInput');
+    if (socialTopic) socialTopic.value = '';
+    if (socialDetails) socialDetails.value = '';
+
+    // Reset Media Release panel fields
+    const releaseTopic = document.getElementById('releaseTopicInput');
+    const releaseDetails = document.getElementById('releaseDetailsInput');
+    const releaseType = document.getElementById('releaseTypeSelect');
+    const embargoDate = document.getElementById('embargoDateInput');
+    const embargoGroup = document.getElementById('embargoDateGroup');
+    if (releaseTopic) releaseTopic.value = '';
+    if (releaseDetails) releaseDetails.value = '';
+    if (releaseType) releaseType.value = 'immediate';
+    if (embargoDate) embargoDate.value = '';
+    if (embargoGroup) embargoGroup.style.display = 'none';
+
+    // Reset Ad panel fields
+    const adTopic = document.getElementById('adTopicInput');
+    const adDetails = document.getElementById('adDetailsInput');
+    if (adTopic) adTopic.value = '';
+    if (adDetails) adDetails.value = '';
 
     // Reset all quote fields (1-3)
     for (let i = 1; i <= 3; i++) {
@@ -11435,23 +11570,35 @@ function resetDraftAssistant() {
     document.getElementById('impactSundayContext').style.display = 'none';
     document.getElementById('emailKeyDetails').style.display = 'none';
 
-    // Reset email add-ons
+    // Reset email add-ons and campaign mode
     document.getElementById('emailAddonsSection').style.display = 'none';
     document.getElementById('emailAddSubscriptions').checked = false;
     document.getElementById('emailAddCatchTheAce').checked = false;
     const emailAddOther = document.getElementById('emailAddOther');
     if (emailAddOther) emailAddOther.checked = false;
+    const emailCampaignMode = document.getElementById('emailCampaignMode');
+    if (emailCampaignMode) emailCampaignMode.checked = false;
+    const emailCampaignSection = document.getElementById('emailCampaignSection');
+    if (emailCampaignSection) emailCampaignSection.style.display = 'none';
 
     // Reset Write Anything fields
     document.getElementById('writeAnythingTopic').value = '';
     document.getElementById('writeAnythingContext').value = '';
+    const waTypeSelect = document.getElementById('writeAnythingTypeSelect');
+    if (waTypeSelect) waTypeSelect.value = '';
     document.querySelectorAll('.wa-toggle-pill').forEach(p => p.classList.remove('active'));
     const defaultTone = document.querySelector('.wa-toggle-pill[data-wa-tone="balanced"]');
     const defaultFormat = document.querySelector('.wa-toggle-pill[data-wa-format="paragraphs"]');
     const defaultLength = document.querySelector('.wa-toggle-pill[data-wa-length="standard"]');
+    const defaultPlatform = document.querySelector('.wa-toggle-pill[data-social-platform="facebook"]');
+    const defaultSocialVariants = document.querySelector('.wa-toggle-pill[data-social-variants="3"]');
+    const defaultAdVariants = document.querySelector('.wa-toggle-pill[data-ad-variants="5"]');
     if (defaultTone) defaultTone.classList.add('active');
     if (defaultFormat) defaultFormat.classList.add('active');
     if (defaultLength) defaultLength.classList.add('active');
+    if (defaultPlatform) defaultPlatform.classList.add('active');
+    if (defaultSocialVariants) defaultSocialVariants.classList.add('active');
+    if (defaultAdVariants) defaultAdVariants.classList.add('active');
 
     // Reset tone buttons
     document.querySelectorAll('.draft-tone-btn').forEach(b => b.classList.remove('active'));
