@@ -3,8 +3,8 @@
  *
  * Analyzes an organization's approved responses to extract a custom
  * voice/tone profile — vocabulary, sentence patterns, sign-off style,
- * formality level, etc. The profile is stored per-org and injected into
- * all tool prompts so outputs automatically match the org's voice.
+ * formality level, etc. Supports per-tool profiles so Draft Assistant
+ * learns writing style separately from Response Assistant's reply style.
  */
 
 const pool = require('../../config/database');
@@ -13,25 +13,25 @@ const { cache, TTL } = require('./cache');
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
-// Cache voice profiles for 1 hour in memory
 const VOICE_CACHE_TTL = 60 * 60 * 1000;
 
 /**
- * Get the organization's voice profile (from cache, then DB).
- * Returns null if no profile has been generated yet.
- *
- * @param {string} organizationId
- * @returns {Promise<string|null>} Profile text or null
+ * Get the organization's voice profile for a specific tool (from cache, then DB).
+ * Falls back to the general profile if no tool-specific one exists.
  */
-async function getVoiceProfile(organizationId) {
-    const cacheKey = `voice:${organizationId}`;
+async function getVoiceProfile(organizationId, tool = 'general') {
+    const cacheKey = `voice:${organizationId}:${tool}`;
     const cached = cache.get(cacheKey);
     if (cached !== undefined) return cached;
 
     try {
+        // Try tool-specific first, then fall back to general
         const result = await pool.query(
-            `SELECT profile_text FROM voice_profiles WHERE organization_id = $1`,
-            [organizationId]
+            `SELECT profile_text, tool FROM voice_profiles
+             WHERE organization_id = $1 AND tool IN ($2, 'general')
+             ORDER BY CASE WHEN tool = $2 THEN 0 ELSE 1 END
+             LIMIT 1`,
+            [organizationId, tool]
         );
 
         if (result.rows.length > 0) {
@@ -50,47 +50,33 @@ async function getVoiceProfile(organizationId) {
 /**
  * Build the voice profile context block for prompt injection.
  * Returns empty string if no profile exists.
- *
- * @param {string} organizationId
- * @returns {Promise<string>} Context block or empty string
  */
-async function getVoiceProfileContext(organizationId) {
-    const profile = await getVoiceProfile(organizationId);
+async function getVoiceProfileContext(organizationId, tool = 'general') {
+    const profile = await getVoiceProfile(organizationId, tool);
     if (!profile) return '';
 
-    return `\n\nVOICE PROFILE (this organization's communication style — match this voice in all outputs):\n${profile}`;
+    const label = tool === 'draft_assistant'
+        ? 'WRITING VOICE PROFILE (this organization\'s content writing style — match this voice):'
+        : 'VOICE PROFILE (this organization\'s communication style — match this voice in all outputs):';
+
+    return `\n\n${label}\n${profile}`;
 }
 
-/**
- * Analyze approved responses and build/rebuild the voice profile.
- * Requires at least 5 positively-rated responses to produce a reliable profile.
- * Uses Haiku for cost-efficient analysis.
- *
- * @param {string} organizationId
- * @returns {Promise<string|null>} Generated profile text, or null if insufficient data
- */
-async function buildVoiceProfile(organizationId) {
-    try {
-        // Get positively-rated responses for this org (across all tools)
-        const result = await pool.query(
-            `SELECT inquiry, response, format, tone
-             FROM response_history
-             WHERE organization_id = $1
-               AND rating = 'positive'
-             ORDER BY created_at DESC
-             LIMIT 30`,
-            [organizationId]
-        );
+const TOOL_ANALYSIS_PROMPTS = {
+    draft_assistant: `Analyze the following approved WRITTEN CONTENT (emails, social posts, press releases, ads) from a charitable lottery organization and extract a concise writing style profile.
 
-        if (result.rows.length < 5) {
-            return null; // Not enough data to build a reliable profile
-        }
+Focus on:
+- Sentence length and paragraph structure preferences
+- Vocabulary level and recurring phrases
+- How they open and close different content types
+- Emoji and punctuation usage patterns
+- Level of formality vs. warmth in written content
+- How they handle calls-to-action
+- Headline and subject line style
 
-        const sampleResponses = result.rows.slice(0, 20).map((r, i) =>
-            `Example ${i + 1} (${r.format || 'general'}, ${r.tone || 'default'}):\n${r.response}`
-        ).join('\n\n---\n\n');
+Return ONLY the writing style profile as a concise guide (under 300 words) that another AI could follow to match this organization's content writing voice. Format as bullet points. No preamble.`,
 
-        const analysisPrompt = `Analyze the following approved responses from a charitable lottery organization and extract a concise voice and style profile.
+    general: `Analyze the following approved responses from a charitable lottery organization and extract a concise voice and style profile.
 
 Focus on:
 - Vocabulary preferences and recurring phrases
@@ -100,10 +86,38 @@ Focus on:
 - How they handle technical/compliance topics vs casual inquiries
 - Any distinctive brand voice characteristics
 
-Return ONLY the voice profile as a concise guide (under 300 words) that another AI could follow to match this organization's voice. Format it as bullet points. Do not include any preamble or explanation.
+Return ONLY the voice profile as a concise guide (under 300 words) that another AI could follow to match this organization's voice. Format it as bullet points. Do not include any preamble or explanation.`
+};
 
-APPROVED RESPONSES:
-${sampleResponses}`;
+/**
+ * Analyze approved responses and build/rebuild the voice profile.
+ * Supports per-tool profiles for specialized voice matching.
+ */
+async function buildVoiceProfile(organizationId, tool = 'general') {
+    try {
+        const toolFilter = tool === 'general'
+            ? '' : ` AND tool = '${tool === 'draft_assistant' ? 'draft_assistant' : 'response_assistant'}'`;
+
+        const result = await pool.query(
+            `SELECT inquiry, response, format, tone
+             FROM response_history
+             WHERE organization_id = $1
+               AND rating = 'positive'${toolFilter}
+             ORDER BY created_at DESC
+             LIMIT 30`,
+            [organizationId]
+        );
+
+        if (result.rows.length < 5) {
+            return null;
+        }
+
+        const sampleResponses = result.rows.slice(0, 20).map((r, i) =>
+            `Example ${i + 1} (${r.format || 'general'}, ${r.tone || 'default'}):\n${r.response}`
+        ).join('\n\n---\n\n');
+
+        const basePrompt = TOOL_ANALYSIS_PROMPTS[tool] || TOOL_ANALYSIS_PROMPTS.general;
+        const analysisPrompt = `${basePrompt}\n\nAPPROVED ${tool === 'draft_assistant' ? 'CONTENT' : 'RESPONSES'}:\n${sampleResponses}`;
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -129,17 +143,16 @@ ${sampleResponses}`;
         const profileText = data.content?.[0]?.text;
         if (!profileText) return null;
 
-        // Upsert the profile
+        // Upsert the profile with tool specificity
         await pool.query(
-            `INSERT INTO voice_profiles (id, organization_id, profile_text, source_count, last_analyzed_at)
-             VALUES (gen_random_uuid(), $1, $2, $3, NOW())
-             ON CONFLICT (organization_id)
-             DO UPDATE SET profile_text = $2, source_count = $3, last_analyzed_at = NOW(), updated_at = NOW()`,
-            [organizationId, profileText, result.rows.length]
+            `INSERT INTO voice_profiles (id, organization_id, tool, profile_text, source_count, last_analyzed_at)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW())
+             ON CONFLICT (organization_id, tool)
+             DO UPDATE SET profile_text = $3, source_count = $4, last_analyzed_at = NOW(), updated_at = NOW()`,
+            [organizationId, tool, profileText, result.rows.length]
         );
 
-        // Update cache
-        cache.set(`voice:${organizationId}`, profileText, VOICE_CACHE_TTL);
+        cache.set(`voice:${organizationId}:${tool}`, profileText, VOICE_CACHE_TTL);
 
         return profileText;
     } catch (err) {

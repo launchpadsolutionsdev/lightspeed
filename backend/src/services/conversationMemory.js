@@ -7,22 +7,50 @@
 
 const pool = require('../../config/database');
 
+let embedQuery, formatForPgvector;
+try {
+    const embeddingService = require('./embeddingService');
+    embedQuery = embeddingService.embedQuery;
+    formatForPgvector = embeddingService.formatForPgvector;
+} catch (_e) {
+    // Embedding service not available — semantic search will be skipped
+}
+
 /**
  * Retrieve relevant past conversations for org-level memory.
- * Searches across ALL org conversations (team-wide), ranked by relevance.
- * Falls back to recent conversations if FTS isn't available or returns nothing.
- *
- * @param {string} inquiry - Current user inquiry
- * @param {string} organizationId - Organization UUID
- * @param {string} userId - Current user UUID (to label "you" vs "a team member")
- * @returns {Promise<string>} Context block to inject into system prompt
+ * Uses a 3-tier search: semantic (embeddings) → FTS → recent fallback.
  */
 async function getConversationMemory(inquiry, organizationId, userId) {
     try {
         let conversations = [];
 
-        // Try full-text search first for relevance-ranked results
-        if (inquiry) {
+        // Tier 1: Semantic search via embeddings on summaries
+        if (inquiry && embedQuery) {
+            try {
+                const queryEmbedding = await embedQuery(inquiry);
+                if (queryEmbedding) {
+                    const pgVector = formatForPgvector(queryEmbedding);
+                    const semanticResult = await pool.query(
+                        `SELECT id, title, summary, user_id, updated_at,
+                                summary_embedding <=> $2::vector AS distance
+                         FROM conversations
+                         WHERE organization_id = $1
+                           AND is_archived = FALSE
+                           AND summary_embedding IS NOT NULL
+                         ORDER BY distance ASC
+                         LIMIT 8`,
+                        [organizationId, pgVector]
+                    );
+                    // Only keep results with reasonable similarity (distance < 0.8)
+                    conversations = semanticResult.rows.filter(r => r.distance < 0.8);
+                }
+            } catch (_e) {
+                // summary_embedding column may not exist — fall through to FTS
+            }
+        }
+
+        // Tier 2: Full-text search for relevance-ranked results
+        if (conversations.length === 0 && inquiry) {
             try {
                 const ftsResult = await pool.query(
                     `SELECT id, title, summary, user_id, updated_at,
@@ -36,12 +64,12 @@ async function getConversationMemory(inquiry, organizationId, userId) {
                     [organizationId, inquiry]
                 );
                 conversations = ftsResult.rows;
-            } catch {
-                // search_vector column may not exist yet (migration not run)
+            } catch (_e) {
+                // search_vector column may not exist yet
             }
         }
 
-        // Fall back to recent conversations with summaries
+        // Tier 3: Fall back to recent conversations with summaries
         if (conversations.length === 0) {
             const recentResult = await pool.query(
                 `SELECT id, title, summary, user_id, updated_at
@@ -58,7 +86,6 @@ async function getConversationMemory(inquiry, organizationId, userId) {
 
         if (conversations.length === 0) return '';
 
-        // Build memory context — cap at 8 entries for token efficiency
         const entries = conversations.slice(0, 8);
         let memoryContext = '\n\nCONVERSATION MEMORY (previous discussions from your organization — use for continuity and context when relevant):';
 
@@ -71,7 +98,6 @@ async function getConversationMemory(inquiry, organizationId, userId) {
                 : 'recently';
             memoryContext += `\n${i + 1}. [${dateStr}] ${who} discussed: "${conv.title || 'Untitled conversation'}"`;
             if (conv.summary) {
-                // Truncate long summaries to keep token budget manageable
                 const truncatedSummary = conv.summary.length > 300
                     ? conv.summary.substring(0, 300) + '...'
                     : conv.summary;

@@ -18,6 +18,16 @@ const { embedQuery, formatForPgvector } = require('./embeddingService');
 const { getBudgetAllocation } = require('./budgetAllocator');
 const { fetchRelevantCorrections, buildCorrectionsContext } = require('./systemPromptBuilder');
 
+/** Log a KB gap (non-blocking, fire-and-forget) */
+function logKbGap(organizationId, inquiry, tool, kbResultsCount) {
+    if (!organizationId || !inquiry) return;
+    pool.query(
+        `INSERT INTO kb_gaps (organization_id, inquiry, tool, kb_results_count)
+         VALUES ($1, $2, $3, $4)`,
+        [organizationId, inquiry.substring(0, 500), tool || 'response_assistant', kbResultsCount]
+    ).catch(() => {}); // Non-fatal — table may not exist yet
+}
+
 /**
  * Inject organization-level response rules into the system prompt.
  * Rules are inserted before the "Knowledge base:" marker if present,
@@ -125,7 +135,10 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
             }
         }
 
-        if (kbRows.length === 0) return { system, entries: [] };
+        if (kbRows.length === 0) {
+            logKbGap(organizationId, inquiry, options.tool, 0);
+            return { system, entries: [] };
+        }
 
         // If we got chunks via semantic/FTS search, skip Haiku picking (already ranked)
         let relevantEntries;
@@ -139,7 +152,10 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
             );
         }
 
-        if (relevantEntries.length === 0) return { system, entries: [] };
+        if (relevantEntries.length === 0) {
+            logKbGap(organizationId, inquiry, options.tool, kbRows.length);
+            return { system, entries: [] };
+        }
 
         // Use dynamic budget instead of hardcoded 30000
         const budgetedEntries = truncateEntriesToBudget(relevantEntries, kbTokenBudget);
@@ -304,9 +320,10 @@ async function buildEnhancedPrompt(baseSystem, inquiry, organizationId, options 
         if (crossToolContext) system += crossToolContext;
     }
 
-    // 6. Voice fingerprint — org-specific communication style
+    // 6. Voice fingerprint — org-specific communication style (tool-aware)
     if (organizationId) {
-        const voiceContext = await getVoiceProfileContext(organizationId);
+        const tool = options.tool || 'general';
+        const voiceContext = await getVoiceProfileContext(organizationId, tool);
         if (voiceContext) system += voiceContext;
     }
 

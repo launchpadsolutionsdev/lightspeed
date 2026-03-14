@@ -10270,6 +10270,10 @@
                         <span class="sidebar-btn-icon">&#128101;</span>
                         <span class="sidebar-btn-label">Teams</span>
                     </button>
+                    <button class="sidebar-btn" data-page="content-calendar">
+                        <span class="sidebar-btn-icon">&#128197;</span>
+                        <span class="sidebar-btn-label">Content Calendar</span>
+                    </button>
                     <button class="sidebar-btn" id="adminNavBtn" data-page="admin" style="display: none;">
                         <span class="sidebar-btn-icon">&#128737;&#65039;</span>
                         <span class="sidebar-btn-label">Admin</span>
@@ -10763,6 +10767,47 @@
                         <div class="kb-health-content" id="kbHealthContent"></div>
                     </div>
 
+                    <!-- Feedback Intelligence (full width) -->
+                    <div class="card bento-full" id="feedbackIntelCard">
+                        <div class="card-header">
+                            <div class="card-icon icon-analytics">🧠</div>
+                            <div>
+                                <div class="card-title">Feedback Intelligence</div>
+                                <div class="card-description">Satisfaction by tool, content type trends, and KB coverage gaps</div>
+                            </div>
+                        </div>
+                        <div id="feedbackIntelContent" style="padding: 16px;">
+                            <div class="stats-grid" style="margin-bottom: 16px;">
+                                <div class="stat-card">
+                                    <div class="stat-value" id="fiSatisfaction">-</div>
+                                    <div class="stat-label">Satisfaction Rate</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" id="fiTotalRated">0</div>
+                                    <div class="stat-label">Total Rated</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" id="fiKbGaps">0</div>
+                                    <div class="stat-label">KB Gaps Found</div>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                <div>
+                                    <h4 style="margin: 0 0 8px; font-size: 0.85rem; color: #6b7280;">Ratings by Tool</h4>
+                                    <div id="fiByTool" class="bar-chart"></div>
+                                </div>
+                                <div>
+                                    <h4 style="margin: 0 0 8px; font-size: 0.85rem; color: #6b7280;">KB Coverage Gaps</h4>
+                                    <div id="fiKbGapsList" style="font-size: 0.85rem; color: #374151; max-height: 200px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 16px;">
+                                <h4 style="margin: 0 0 8px; font-size: 0.85rem; color: #6b7280;">Recent Negative Feedback</h4>
+                                <div id="fiNegativeFeedback" style="font-size: 0.85rem; max-height: 200px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Team History (full width) -->
                     <div class="card bento-full">
                         <div class="card-header">
@@ -10987,6 +11032,57 @@
             </div>
 
             <!-- Teams Management Page -->
+            <!-- Content Calendar Page -->
+            <div class="page" id="page-content-calendar">
+                <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0;">Content Calendar</h2>
+                        <button class="btn-primary" id="ccAddBtn" onclick="showCalendarAddForm()">
+                            <span class="btn-icon">+</span> Plan Content
+                        </button>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-bottom:16px;">
+                        <button class="wa-toggle-pill active" data-cc-view="upcoming" onclick="switchCalendarView('upcoming')">Upcoming</button>
+                        <button class="wa-toggle-pill" data-cc-view="past" onclick="switchCalendarView('past')">Past</button>
+                        <button class="wa-toggle-pill" data-cc-view="all" onclick="switchCalendarView('all')">All</button>
+                    </div>
+                    <div id="calendarList" style="display:flex;flex-direction:column;gap:12px;"></div>
+                </div>
+
+                <!-- Add/Edit Calendar Modal -->
+                <div id="calendarModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;">
+                    <div style="background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;">
+                        <h3 id="calendarModalTitle" style="margin:0 0 16px;">Plan Content</h3>
+                        <div class="draft-form-group">
+                            <label class="draft-label">Title</label>
+                            <input type="text" id="ccTitle" class="draft-input" placeholder="E.g., February Grand Prize Announcement">
+                        </div>
+                        <div class="draft-form-group">
+                            <label class="draft-label">Content type</label>
+                            <select id="ccContentType" class="draft-select">
+                                <option value="email">Email</option>
+                                <option value="social">Social Media</option>
+                                <option value="media-release">Media Release</option>
+                                <option value="ad">Ad</option>
+                                <option value="write-anything">Other</option>
+                            </select>
+                        </div>
+                        <div class="draft-form-group">
+                            <label class="draft-label">Scheduled date</label>
+                            <input type="date" id="ccDate" class="draft-input">
+                        </div>
+                        <div class="draft-form-group">
+                            <label class="draft-label">Notes (optional)</label>
+                            <textarea id="ccNotes" class="draft-textarea draft-textarea-sm" placeholder="Key messages, audience, special instructions..."></textarea>
+                        </div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+                            <button class="btn-secondary" onclick="hideCalendarModal()">Cancel</button>
+                            <button class="btn-primary" id="ccSaveBtn" onclick="saveCalendarEntry()">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="page" id="page-teams">
                 <div class="teams-container">
                     <div class="teams-header">
@@ -12564,6 +12660,8 @@
                             <div class="draft-output-actions">
                                 <button class="draft-action-btn" id="draftCopyBtn" title="Copy as plain text">📋 Copy</button>
                                 <button class="draft-action-btn" id="draftCopyHtmlBtn" style="display: none;" title="Copy as HTML for email tools">📧 Copy HTML</button>
+                                <button class="draft-action-btn" id="draftCopyMailchimpBtn" style="display: none;" title="Copy Mailchimp-ready HTML">📨 Mailchimp</button>
+                                <button class="draft-action-btn" id="draftCopyMetaBtn" style="display: none;" title="Copy structured data for Meta Ads Manager">📣 Meta Ads</button>
                                 <button class="draft-action-btn" id="draftRegenerateBtn">🔄 Regenerate</button>
                                 <button class="draft-action-btn draft-new-btn" id="draftNewBtn" title="Start a new draft">✨ New</button>
                             </div>

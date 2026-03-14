@@ -506,4 +506,114 @@ router.get('/rated-examples', authenticate, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/response-history/analytics
+ * Feedback analytics: ratings by tool, content type, trends over time, KB gap summary
+ */
+router.get('/analytics', authenticate, async (req, res) => {
+    try {
+        const orgResult = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [req.userId]
+        );
+        if (orgResult.rows.length === 0) return res.status(400).json({ error: 'No organization found' });
+        const organizationId = orgResult.rows[0].organization_id;
+
+        // 1. Ratings by tool
+        const byTool = await pool.query(
+            `SELECT tool,
+                    COUNT(*) FILTER (WHERE rating = 'positive') AS positive,
+                    COUNT(*) FILTER (WHERE rating = 'negative') AS negative,
+                    COUNT(*) FILTER (WHERE rating IS NOT NULL) AS total_rated,
+                    COUNT(*) AS total
+             FROM response_history
+             WHERE organization_id = $1
+             GROUP BY tool
+             ORDER BY total DESC`,
+            [organizationId]
+        );
+
+        // 2. Ratings by content type (for draft assistant)
+        const byContentType = await pool.query(
+            `SELECT format AS content_type,
+                    COUNT(*) FILTER (WHERE rating = 'positive') AS positive,
+                    COUNT(*) FILTER (WHERE rating = 'negative') AS negative,
+                    COUNT(*) AS total
+             FROM response_history
+             WHERE organization_id = $1 AND tool = 'draft_assistant' AND rating IS NOT NULL
+             GROUP BY format
+             ORDER BY total DESC`,
+            [organizationId]
+        );
+
+        // 3. Weekly trend (last 12 weeks)
+        const weeklyTrend = await pool.query(
+            `SELECT date_trunc('week', created_at) AS week,
+                    COUNT(*) FILTER (WHERE rating = 'positive') AS positive,
+                    COUNT(*) FILTER (WHERE rating = 'negative') AS negative,
+                    COUNT(*) AS total
+             FROM response_history
+             WHERE organization_id = $1 AND created_at > NOW() - INTERVAL '12 weeks'
+             GROUP BY week
+             ORDER BY week ASC`,
+            [organizationId]
+        );
+
+        // 4. Top negative feedback topics (most-complained-about inquiries)
+        const topNegative = await pool.query(
+            `SELECT inquiry, rating_feedback, tool, format, created_at
+             FROM response_history
+             WHERE organization_id = $1 AND rating = 'negative' AND rating_feedback IS NOT NULL
+             ORDER BY created_at DESC
+             LIMIT 10`,
+            [organizationId]
+        );
+
+        // 5. KB gaps summary
+        let kbGaps = [];
+        try {
+            const gapsResult = await pool.query(
+                `SELECT inquiry, tool, kb_results_count, created_at
+                 FROM kb_gaps
+                 WHERE organization_id = $1
+                 ORDER BY created_at DESC
+                 LIMIT 20`,
+                [organizationId]
+            );
+            kbGaps = gapsResult.rows;
+        } catch (_e) {
+            // kb_gaps table may not exist yet
+        }
+
+        // 6. Overall satisfaction rate
+        const satisfaction = await pool.query(
+            `SELECT
+                COUNT(*) FILTER (WHERE rating = 'positive') AS positive,
+                COUNT(*) FILTER (WHERE rating = 'negative') AS negative,
+                COUNT(*) FILTER (WHERE rating IS NOT NULL) AS rated
+             FROM response_history
+             WHERE organization_id = $1`,
+            [organizationId]
+        );
+
+        const sat = satisfaction.rows[0];
+        const satisfactionRate = sat.rated > 0
+            ? Math.round((parseInt(sat.positive) / parseInt(sat.rated)) * 100)
+            : null;
+
+        res.json({
+            satisfactionRate,
+            totalRated: parseInt(sat.rated),
+            byTool: byTool.rows,
+            byContentType: byContentType.rows,
+            weeklyTrend: weeklyTrend.rows,
+            topNegative: topNegative.rows,
+            kbGaps
+        });
+    } catch (error) {
+        console.error('Analytics error:', error);
+        res.status(500).json({ error: 'Failed to load analytics' });
+    }
+});
+
 module.exports = router;

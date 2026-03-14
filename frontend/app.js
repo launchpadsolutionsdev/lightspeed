@@ -3989,7 +3989,15 @@ function updateAlsContextBar() {
     if (!barEl) return;
 
     const msgCount = askConversation.length;
+    const AUTO_SUMMARIZE_THRESHOLD = 20; // Auto-summarize at 10 turns (20 messages)
     const CONTEXT_THRESHOLD = 16;
+
+    // Auto-summarize when conversation gets long (non-blocking)
+    if (msgCount >= AUTO_SUMMARIZE_THRESHOLD && !window._alsSummarizing) {
+        window._alsSummarizing = true;
+        summarizeAlsConversation().finally(() => { window._alsSummarizing = false; });
+        return;
+    }
 
     if (msgCount >= CONTEXT_THRESHOLD) {
         barEl.style.display = 'block';
@@ -6876,11 +6884,148 @@ function switchPage(pageId) {
     } else if (pageId === "teams") {
         // Load team management data
         loadTeamData();
+    } else if (pageId === "content-calendar") {
+        loadContentCalendar();
     } else if (pageId === "admin") {
         // Load admin dashboard data
         if (typeof loadAdminDashboard === 'function') {
             loadAdminDashboard();
         }
+    }
+}
+
+// ==================== CONTENT CALENDAR ====================
+let calendarView = 'upcoming';
+let calendarEditId = null;
+
+async function loadContentCalendar() {
+    const listEl = document.getElementById('calendarList');
+    if (!listEl) return;
+    listEl.innerHTML = '<p style="color:#9ca3af;text-align:center;">Loading...</p>';
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar?view=${calendarView}`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load');
+        const entries = await resp.json();
+
+        if (entries.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;">No content planned yet. Click "Plan Content" to get started.</div>';
+            return;
+        }
+
+        const TYPE_ICONS = { email: '📧', social: '📱', 'media-release': '📰', ad: '📣', 'write-anything': '✨' };
+        const STATUS_COLORS = { planned: '#3b82f6', 'in-progress': '#f59e0b', done: '#10b981' };
+
+        listEl.innerHTML = entries.map(e => {
+            const icon = TYPE_ICONS[e.content_type] || '📄';
+            const statusColor = STATUS_COLORS[e.status] || '#6b7280';
+            const dateStr = new Date(e.scheduled_date).toLocaleDateString('en-CA');
+            const isPast = new Date(e.scheduled_date) < new Date(new Date().toDateString());
+            return `<div class="card" style="padding:16px;${isPast ? 'opacity:0.7;' : ''}" data-cc-id="${e.id}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div style="flex:1;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                            <span>${icon}</span>
+                            <strong>${escapeHtml(e.title)}</strong>
+                            <span style="background:${statusColor};color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:10px;">${e.status}</span>
+                        </div>
+                        <div style="font-size:0.85rem;color:#6b7280;">${dateStr} &middot; ${DRAFT_TYPE_LABELS[e.content_type] || e.content_type}${e.created_by_name ? ' &middot; ' + escapeHtml(e.created_by_name) : ''}</div>
+                        ${e.notes ? '<div style="font-size:0.85rem;color:#374151;margin-top:6px;">' + escapeHtml(e.notes) + '</div>' : ''}
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                        <select style="font-size:0.75rem;border:1px solid #e5e7eb;border-radius:4px;padding:2px 4px;" onchange="updateCalendarStatus('${e.id}', this.value)">
+                            <option value="planned" ${e.status === 'planned' ? 'selected' : ''}>Planned</option>
+                            <option value="in-progress" ${e.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="done" ${e.status === 'done' ? 'selected' : ''}>Done</option>
+                        </select>
+                        <button style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:1rem;" onclick="deleteCalendarEntry('${e.id}')" title="Delete">×</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        listEl.innerHTML = '<p style="color:#dc2626;text-align:center;">Failed to load calendar.</p>';
+    }
+}
+
+function switchCalendarView(view) {
+    calendarView = view;
+    document.querySelectorAll('[data-cc-view]').forEach(b => b.classList.remove('active'));
+    const btn = document.querySelector(`[data-cc-view="${view}"]`);
+    if (btn) btn.classList.add('active');
+    loadContentCalendar();
+}
+
+function showCalendarAddForm() {
+    calendarEditId = null;
+    document.getElementById('calendarModalTitle').textContent = 'Plan Content';
+    document.getElementById('ccTitle').value = '';
+    document.getElementById('ccContentType').value = 'email';
+    document.getElementById('ccDate').value = '';
+    document.getElementById('ccNotes').value = '';
+    document.getElementById('calendarModal').style.display = 'flex';
+}
+
+function hideCalendarModal() {
+    document.getElementById('calendarModal').style.display = 'none';
+}
+
+async function saveCalendarEntry() {
+    const title = document.getElementById('ccTitle').value.trim();
+    const content_type = document.getElementById('ccContentType').value;
+    const scheduled_date = document.getElementById('ccDate').value;
+    const notes = document.getElementById('ccNotes').value.trim();
+
+    if (!title || !scheduled_date) {
+        showToast('Please enter a title and date', 'error');
+        return;
+    }
+
+    try {
+        const url = calendarEditId
+            ? `${API_BASE_URL}/api/content-calendar/${calendarEditId}`
+            : `${API_BASE_URL}/api/content-calendar`;
+        const method = calendarEditId ? 'PUT' : 'POST';
+
+        const resp = await fetch(url, {
+            method,
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ title, content_type, scheduled_date, notes })
+        });
+
+        if (!resp.ok) throw new Error('Failed to save');
+
+        hideCalendarModal();
+        showToast('Content planned!', 'success');
+        loadContentCalendar();
+    } catch (e) {
+        showToast('Failed to save: ' + e.message, 'error');
+    }
+}
+
+async function updateCalendarStatus(id, status) {
+    try {
+        await fetch(`${API_BASE_URL}/api/content-calendar/${id}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status })
+        });
+        loadContentCalendar();
+    } catch (e) {
+        showToast('Failed to update status', 'error');
+    }
+}
+
+async function deleteCalendarEntry(id) {
+    if (!confirm('Delete this calendar entry?')) return;
+    try {
+        await fetch(`${API_BASE_URL}/api/content-calendar/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        loadContentCalendar();
+    } catch (e) {
+        showToast('Failed to delete', 'error');
     }
 }
 
@@ -9303,7 +9448,76 @@ async function updateAnalytics() {
         console.warn('Analytics fetch error, falling back to localStorage:', error);
         updateAnalyticsFromLocalStorage();
     }
+
+    // Fetch feedback intelligence data
+    loadFeedbackIntelligence();
 }
+
+async function loadFeedbackIntelligence() {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/response-history/analytics`, { headers: getAuthHeaders() });
+        if (!resp.ok) return;
+        const data = await resp.json();
+
+        const satEl = document.getElementById('fiSatisfaction');
+        if (satEl) satEl.textContent = data.satisfactionRate !== null ? data.satisfactionRate + '%' : '-';
+        const ratedEl = document.getElementById('fiTotalRated');
+        if (ratedEl) ratedEl.textContent = data.totalRated || 0;
+        const gapsEl = document.getElementById('fiKbGaps');
+        if (gapsEl) gapsEl.textContent = data.kbGaps?.length || 0;
+
+        // Render ratings by tool
+        const toolEl = document.getElementById('fiByTool');
+        if (toolEl && data.byTool) {
+            const TOOL_LABELS = { response_assistant: 'Response', draft_assistant: 'Draft', ask_lightspeed: 'Ask LS', insights_engine: 'Insights' };
+            toolEl.innerHTML = data.byTool.map(t => {
+                const label = TOOL_LABELS[t.tool] || t.tool;
+                const pos = parseInt(t.positive) || 0;
+                const neg = parseInt(t.negative) || 0;
+                const total = pos + neg;
+                const pct = total > 0 ? Math.round((pos / total) * 100) : 0;
+                return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <span style="width:70px;font-weight:500;">${label}</span>
+                    <div style="flex:1;height:18px;background:#f3f4f6;border-radius:4px;overflow:hidden;display:flex;">
+                        <div style="width:${pct}%;background:#10b981;"></div>
+                        <div style="width:${100 - pct}%;background:#ef4444;"></div>
+                    </div>
+                    <span style="width:45px;text-align:right;font-size:0.8rem;">${pos}/${total}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // Render KB gaps
+        const gapsListEl = document.getElementById('fiKbGapsList');
+        if (gapsListEl && data.kbGaps && data.kbGaps.length > 0) {
+            gapsListEl.innerHTML = data.kbGaps.slice(0, 10).map(g => {
+                const date = new Date(g.created_at).toLocaleDateString('en-CA');
+                return `<div style="padding:4px 0;border-bottom:1px solid #f3f4f6;">
+                    <span style="color:#6b7280;font-size:0.75rem;">${date}</span>
+                    <span style="margin-left:6px;">${escapeHtml((g.inquiry || '').substring(0, 80))}${g.inquiry?.length > 80 ? '...' : ''}</span>
+                </div>`;
+            }).join('');
+        } else if (gapsListEl) {
+            gapsListEl.innerHTML = '<p style="color:#9ca3af;">No KB gaps detected yet. This is good!</p>';
+        }
+
+        // Render negative feedback
+        const negEl = document.getElementById('fiNegativeFeedback');
+        if (negEl && data.topNegative && data.topNegative.length > 0) {
+            negEl.innerHTML = data.topNegative.slice(0, 5).map(n => {
+                const date = new Date(n.created_at).toLocaleDateString('en-CA');
+                return `<div style="padding:6px 0;border-bottom:1px solid #f3f4f6;">
+                    <div style="color:#6b7280;font-size:0.75rem;">${date} &middot; ${n.tool || 'response_assistant'}</div>
+                    <div style="margin-top:2px;"><strong>Q:</strong> ${escapeHtml((n.inquiry || '').substring(0, 100))}</div>
+                    <div style="margin-top:2px;color:#dc2626;"><strong>Feedback:</strong> ${escapeHtml((n.rating_feedback || '').substring(0, 150))}</div>
+                </div>`;
+            }).join('');
+        } else if (negEl) {
+            negEl.innerHTML = '<p style="color:#9ca3af;">No negative feedback yet.</p>';
+        }
+    } catch (e) {
+        console.warn('Feedback intelligence load failed:', e);
+    }
 
 // Fallback analytics using localStorage (when backend is unreachable)
 function updateAnalyticsFromLocalStorage() {
@@ -11113,6 +11327,58 @@ function setupDraftAssistant() {
         });
     });
 
+    // Copy for Mailchimp (HTML with inline styles and template tags)
+    document.getElementById('draftCopyMailchimpBtn').addEventListener('click', () => {
+        const plainText = document.getElementById('draftOutputContent').textContent;
+        const paragraphs = plainText.split(/\n\n+/);
+        const htmlContent = paragraphs.map(p => {
+            const styled = p.replace(/\n/g, '<br>');
+            return `<p style="margin: 0 0 16px 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333;">${styled}</p>`;
+        }).join('\n');
+        const mailchimpHtml = `<div style="max-width: 600px; margin: 0 auto; padding: 20px;">\n${htmlContent}\n</div>`;
+        const blob = new Blob([mailchimpHtml], { type: 'text/html' });
+        const textBlob = new Blob([plainText], { type: 'text/plain' });
+        navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })]).then(() => {
+            showToast('Copied Mailchimp-ready HTML \u2014 paste into a Mailchimp content block', 'success');
+        }).catch(() => {
+            navigator.clipboard.writeText(mailchimpHtml).then(() => showToast('Copied Mailchimp HTML to clipboard', 'info'));
+        });
+    });
+
+    // Copy for Meta Ads Manager (structured JSON format)
+    document.getElementById('draftCopyMetaBtn').addEventListener('click', () => {
+        const content = document.getElementById('draftOutputContent').textContent;
+        // Try to parse structured variants from the output
+        const variants = [];
+        const variantBlocks = content.split(/---\s*Variant\s*\d+\s*---/i).filter(b => b.trim());
+        if (variantBlocks.length > 0) {
+            variantBlocks.forEach((block, idx) => {
+                const headlineMatch = block.match(/Headline[^:]*:\s*(.+)/i);
+                const primaryMatch = block.match(/Primary Text[^:]*:\s*(.+)/i);
+                const descMatch = block.match(/Description[^:]*:\s*(.+)/i);
+                variants.push({
+                    variant: idx + 1,
+                    headline: headlineMatch ? headlineMatch[1].trim() : '',
+                    primaryText: primaryMatch ? primaryMatch[1].trim() : '',
+                    description: descMatch ? descMatch[1].trim() : ''
+                });
+            });
+        }
+
+        if (variants.length > 0 && variants[0].headline) {
+            const formatted = variants.map(v =>
+                `Variant ${v.variant}:\n  Headline: ${v.headline}\n  Primary Text: ${v.primaryText}\n  Description: ${v.description}`
+            ).join('\n\n');
+            navigator.clipboard.writeText(formatted).then(() => {
+                showToast('Copied ' + variants.length + ' ad variants \u2014 paste into Meta Ads Manager', 'success');
+            });
+        } else {
+            navigator.clipboard.writeText(content).then(() => {
+                showToast('Copied ad content to clipboard', 'info');
+            });
+        }
+    });
+
     // Regenerate button
     document.getElementById('draftRegenerateBtn').addEventListener('click', () => {
         if (lastDraftRequest) {
@@ -11169,6 +11435,9 @@ function selectDraftTab(tabId) {
     if (panelId) document.getElementById(panelId).style.display = 'flex';
     currentDraftType = tabId;
 
+    // Restore last-used template data for this content type
+    restoreDraftTemplate(tabId);
+
     // Update empty state (only if output is not showing)
     const outputEl = document.getElementById('draftStudioOutput');
     if (outputEl && outputEl.style.display === 'none') {
@@ -11199,6 +11468,17 @@ function showDraftMain(section) {
     if (section === 'empty') document.getElementById('draftStudioEmpty').style.display = 'flex';
     else if (section === 'loading') document.getElementById('draftStudioLoading').style.display = 'flex';
     else if (section === 'output') document.getElementById('draftStudioOutput').style.display = 'flex';
+}
+
+function updateDraftExportButtons(contentType) {
+    const htmlBtn = document.getElementById('draftCopyHtmlBtn');
+    const mailchimpBtn = document.getElementById('draftCopyMailchimpBtn');
+    const metaBtn = document.getElementById('draftCopyMetaBtn');
+    // Email: show HTML + Mailchimp
+    htmlBtn.style.display = (contentType === 'email') ? 'inline-flex' : 'none';
+    mailchimpBtn.style.display = (contentType === 'email') ? 'inline-flex' : 'none';
+    // Ad: show Meta Ads
+    metaBtn.style.display = (contentType === 'ad') ? 'inline-flex' : 'none';
 }
 
 async function generateDraft() {
@@ -11283,14 +11563,15 @@ async function generateDraft() {
         return;
     }
 
-    lastDraftRequest = { topic, details, type: currentDraftType };
+    saveDraftTemplate(currentDraftType);
+    lastDraftRequest = { topic, details, type: currentDraftType, _originalUserPrompt: userPrompt };
 
     // Show output area immediately for streaming
     showDraftMain('output');
     document.getElementById('draftOutputBadge').textContent = DRAFT_TYPE_LABELS[currentDraftType];
     const outputEl = document.getElementById('draftOutputContent');
     outputEl.innerHTML = '';
-    document.getElementById('draftCopyHtmlBtn').style.display = 'none';
+    updateDraftExportButtons(currentDraftType);
 
     const maxTokens = currentDraftType === 'ad' ? 2048 : (currentDraftType === 'media-release' ? 2048 : 1500);
 
@@ -11323,6 +11604,67 @@ async function generateDraft() {
         showDraftMain('empty');
         if (!['TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error generating draft: ' + error.message, 'error');
+        }
+    }
+}
+
+// Template memory — auto-save/restore last-used details per content type
+function saveDraftTemplate(contentType) {
+    const templates = JSON.parse(localStorage.getItem('ls_draft_templates') || '{}');
+    const data = {};
+    if (contentType === 'social') {
+        data.topic = document.getElementById('socialTopicInput')?.value || '';
+        data.details = document.getElementById('socialDetailsInput')?.value || '';
+        data.platform = document.querySelector('.wa-toggle-pill[data-social-platform].active')?.dataset.socialPlatform || 'facebook';
+    } else if (contentType === 'media-release') {
+        data.topic = document.getElementById('releaseTopicInput')?.value || '';
+        data.details = document.getElementById('releaseDetailsInput')?.value || '';
+        data.releaseType = document.getElementById('releaseTypeSelect')?.value || 'immediate';
+    } else if (contentType === 'ad') {
+        data.topic = document.getElementById('adTopicInput')?.value || '';
+        data.details = document.getElementById('adDetailsInput')?.value || '';
+    } else if (contentType === 'email') {
+        data.emailType = document.getElementById('draftEmailTypeSelect')?.value || '';
+        data.details = document.getElementById('draftEmailDetails')?.value || '';
+        data.impactContext = document.getElementById('draftImpactContext')?.value || '';
+    } else if (contentType === 'write-anything') {
+        data.topic = document.getElementById('writeAnythingTopic')?.value || '';
+        data.context = document.getElementById('writeAnythingContext')?.value || '';
+        data.contentPreset = document.getElementById('writeAnythingTypeSelect')?.value || '';
+    }
+    templates[contentType] = data;
+    localStorage.setItem('ls_draft_templates', JSON.stringify(templates));
+}
+
+function restoreDraftTemplate(contentType) {
+    const templates = JSON.parse(localStorage.getItem('ls_draft_templates') || '{}');
+    const data = templates[contentType];
+    if (!data) return;
+    if (contentType === 'social') {
+        if (data.topic) document.getElementById('socialTopicInput').value = data.topic;
+        if (data.details) document.getElementById('socialDetailsInput').value = data.details;
+    } else if (contentType === 'media-release') {
+        if (data.topic) document.getElementById('releaseTopicInput').value = data.topic;
+        if (data.details) document.getElementById('releaseDetailsInput').value = data.details;
+        if (data.releaseType) document.getElementById('releaseTypeSelect').value = data.releaseType;
+    } else if (contentType === 'ad') {
+        if (data.topic) document.getElementById('adTopicInput').value = data.topic;
+        if (data.details) document.getElementById('adDetailsInput').value = data.details;
+    } else if (contentType === 'email') {
+        if (data.emailType) {
+            const select = document.getElementById('draftEmailTypeSelect');
+            select.value = data.emailType;
+            select.dispatchEvent(new Event('change'));
+        }
+        if (data.details) document.getElementById('draftEmailDetails').value = data.details;
+        if (data.impactContext) document.getElementById('draftImpactContext').value = data.impactContext;
+    } else if (contentType === 'write-anything') {
+        if (data.topic) document.getElementById('writeAnythingTopic').value = data.topic;
+        if (data.context) document.getElementById('writeAnythingContext').value = data.context;
+        if (data.contentPreset) {
+            const select = document.getElementById('writeAnythingTypeSelect');
+            select.value = data.contentPreset;
+            select.dispatchEvent(new Event('change'));
         }
     }
 }
@@ -11368,7 +11710,8 @@ async function generateWriteAnything() {
     userPrompt += '\nFormat: ' + format.replace('-', ' ');
     userPrompt += '\nLength: ' + length;
 
-    lastDraftRequest = { topic, context, isWriteAnything: true, contentType };
+    saveDraftTemplate('write-anything');
+    lastDraftRequest = { topic, context, isWriteAnything: true, contentType, _originalUserPrompt: userPrompt };
 
     // Show output area immediately for streaming
     const badgeLabel = contentType && WRITE_ANYTHING_PRESETS[contentType] ? WRITE_ANYTHING_PRESETS[contentType].label : 'Write Anything';
@@ -11376,7 +11719,7 @@ async function generateWriteAnything() {
     document.getElementById('draftOutputBadge').textContent = '\u2728 ' + badgeLabel;
     const outputEl = document.getElementById('draftOutputContent');
     outputEl.innerHTML = '';
-    document.getElementById('draftCopyHtmlBtn').style.display = 'none';
+    updateDraftExportButtons('write-anything');
 
     try {
         const dynamicSystem = await buildDraftDynamicPrompt('write-anything', null, topic);
@@ -11477,14 +11820,15 @@ async function generateEmailDraft() {
         }
     }
 
-    lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details, addSubscriptions, addCatchTheAce, addOther, campaignMode };
+    saveDraftTemplate('email');
+    lastDraftRequest = { isEmail: true, emailType: currentEmailType, details: details, addSubscriptions, addCatchTheAce, addOther, campaignMode, _originalUserPrompt: userPrompt };
 
     // Show output area immediately for streaming
     showDraftMain('output');
     document.getElementById('draftOutputBadge').textContent = campaignMode ? '📧 Campaign: ' + EMAIL_TYPE_LABELS[currentEmailType] : '📧 ' + EMAIL_TYPE_LABELS[currentEmailType];
     const outputEl = document.getElementById('draftOutputContent');
     outputEl.innerHTML = '';
-    document.getElementById('draftCopyHtmlBtn').style.display = 'inline-flex';
+    updateDraftExportButtons('email');
 
     try {
         const dynamicSystem = await buildDraftDynamicPrompt('email', currentEmailType, details);
@@ -11639,7 +11983,7 @@ async function refineDraft(instruction) {
         const dynamicSystem = await buildDraftDynamicPrompt(contentType, emailType, refineInquiry);
 
         const messages = [
-            { role: 'user', content: 'Generate the content as requested.' },
+            { role: 'user', content: lastDraftRequest?._originalUserPrompt || 'Generate the content as requested.' },
             { role: 'assistant', content: currentContent },
             { role: 'user', content: instruction + '\n\nPlease provide the updated content only, without any explanations or preamble.' }
         ];

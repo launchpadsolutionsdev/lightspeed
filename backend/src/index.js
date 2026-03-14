@@ -31,6 +31,7 @@ const conversationRoutes = require('./routes/conversations');
 const sharedPromptRoutes = require('./routes/sharedPrompts');
 const shopifyRoutes = require('./routes/shopify');
 const responseRulesRoutes = require('./routes/responseRules');
+const contentCalendarRoutes = require('./routes/contentCalendar');
 const pool = require('../config/database');
 
 // Validate required environment variables
@@ -180,6 +181,7 @@ app.use('/api/conversations', conversationRoutes);
 app.use('/api/shared-prompts', sharedPromptRoutes);
 app.use('/api/shopify', shopifyRoutes);
 app.use('/api/response-rules', responseRulesRoutes);
+app.use('/api/content-calendar', contentCalendarRoutes);
 
 // 404 handler
 app.use((req, res) => {
