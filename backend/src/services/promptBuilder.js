@@ -14,6 +14,8 @@ const { cache, TTL } = require('./cache');
 const { truncateEntriesToBudget } = require('./tokenCounter');
 const { getConversationMemory, getCrossToolContext } = require('./conversationMemory');
 const { getVoiceProfileContext } = require('./voiceFingerprint');
+const { embedQuery, formatForPgvector } = require('./embeddingService');
+const { getBudgetAllocation } = require('./budgetAllocator');
 
 /**
  * Inject organization-level response rules into the system prompt.
@@ -74,35 +76,47 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
             kbFilter = "AND kb_type = 'internal'";
         }
 
-        // Try full-text search pre-filtering first (scales to 100K+ entries)
+        // Dynamic budget allocation based on inquiry complexity
+        const { complexity, budgets } = getBudgetAllocation(inquiry);
+        const kbTokenBudget = budgets.knowledgeBase;
+        const maxEntries = budgets.maxKbEntries;
+
+        // --- Strategy: try semantic search on chunks first, then FTS, then full fallback ---
         let kbRows;
-        try {
-            const ftsResult = await pool.query(
-                `SELECT id, title, content, category, tags, updated_at,
-                        ts_rank(search_vector, plainto_tsquery('english', $2)) AS rank
-                 FROM knowledge_base
-                 WHERE organization_id = $1 ${kbFilter}
-                   AND search_vector @@ plainto_tsquery('english', $2)
-                 ORDER BY rank DESC
-                 LIMIT 30`,
-                [organizationId, inquiry]
-            );
-            kbRows = ftsResult.rows;
-        } catch (ftsErr) {
-            // search_vector column may not exist yet (migration not run)
-            kbRows = [];
+
+        // Tier 1: Semantic search on chunks (best quality)
+        kbRows = await semanticChunkSearch(inquiry, organizationId, kbFilter, maxEntries);
+
+        // Tier 2: Full-text search on chunks
+        if (kbRows.length === 0) {
+            kbRows = await ftsChunkSearch(inquiry, organizationId, kbFilter);
         }
 
-        // Fall back to loading all entries only if FTS returned nothing.
-        // If FTS found 1-4 results, those are still the most relevant — don't
-        // dilute them by loading the entire KB alphabetically.
+        // Tier 3: Full-text search on parent entries (original behavior)
+        if (kbRows.length === 0) {
+            try {
+                const ftsResult = await pool.query(
+                    `SELECT id, title, content, category, tags, updated_at,
+                            ts_rank(search_vector, plainto_tsquery('english', $2)) AS rank
+                     FROM knowledge_base
+                     WHERE organization_id = $1 ${kbFilter}
+                       AND search_vector @@ plainto_tsquery('english', $2)
+                     ORDER BY rank DESC
+                     LIMIT 30`,
+                    [organizationId, inquiry]
+                );
+                kbRows = ftsResult.rows;
+            } catch (ftsErr) {
+                kbRows = [];
+            }
+        }
+
+        // Tier 4: Load all entries with tag-match scoring (last resort)
         if (kbRows.length === 0) {
             const allResult = await pool.query(
                 `SELECT id, title, content, category, tags, updated_at FROM knowledge_base WHERE organization_id = $1 ${kbFilter} ORDER BY category, title`,
                 [organizationId]
             );
-            // Pre-filter large KBs with tag-match scoring so Haiku gets a
-            // manageable, pre-ranked pool instead of hundreds of unsorted entries
             if (allResult.rows.length > 30) {
                 kbRows = claudeService.tagMatchFallback(inquiry, allResult.rows, 30);
             } else {
@@ -112,16 +126,22 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
 
         if (kbRows.length === 0) return { system, entries: [] };
 
-        const relevantEntries = await claudeService.pickRelevantKnowledge(
-            inquiry,
-            kbRows,
-            8
-        );
+        // If we got chunks via semantic/FTS search, skip Haiku picking (already ranked)
+        let relevantEntries;
+        if (kbRows.length > 0 && kbRows[0]._fromSemanticSearch) {
+            relevantEntries = kbRows.slice(0, maxEntries);
+        } else {
+            relevantEntries = await claudeService.pickRelevantKnowledge(
+                inquiry,
+                kbRows,
+                maxEntries
+            );
+        }
 
         if (relevantEntries.length === 0) return { system, entries: [] };
 
-        // Truncate entries that are too long (>3K chars) to prevent context overflow
-        const budgetedEntries = truncateEntriesToBudget(relevantEntries, 30000);
+        // Use dynamic budget instead of hardcoded 30000
+        const budgetedEntries = truncateEntriesToBudget(relevantEntries, kbTokenBudget);
 
         const referencedKbEntries = budgetedEntries.map((entry, idx) => ({
             id: entry.id,
@@ -159,6 +179,62 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
     } catch (err) {
         console.warn('KB relevance picking failed, continuing without:', err.message);
         return { system, entries: [] };
+    }
+}
+
+/**
+ * Search kb_chunks using vector similarity (semantic search).
+ * Returns chunks ranked by cosine similarity to the inquiry embedding.
+ * Falls back gracefully if pgvector or embeddings are not available.
+ */
+async function semanticChunkSearch(inquiry, organizationId, kbFilter, limit = 15) {
+    try {
+        const queryEmbedding = await embedQuery(inquiry);
+        if (!queryEmbedding) return [];
+
+        const result = await pool.query(
+            `SELECT id, knowledge_base_id, title, content, category, tags, updated_at,
+                    1 - (embedding <=> $2::vector) AS similarity
+             FROM kb_chunks
+             WHERE organization_id = $1 ${kbFilter.replace('kb_type', 'kb_type')}
+               AND embedding IS NOT NULL
+             ORDER BY embedding <=> $2::vector
+             LIMIT $3`,
+            [organizationId, formatForPgvector(queryEmbedding), limit]
+        );
+
+        // Mark results so we know to skip Haiku picking
+        return result.rows.map(r => ({ ...r, _fromSemanticSearch: true }));
+    } catch (err) {
+        // pgvector extension or kb_chunks table may not exist yet
+        if (!err.message.includes('does not exist')) {
+            console.warn('[SEMANTIC SEARCH] Error:', err.message);
+        }
+        return [];
+    }
+}
+
+/**
+ * Search kb_chunks using PostgreSQL full-text search.
+ * Fallback when embeddings are not available but chunks exist.
+ */
+async function ftsChunkSearch(inquiry, organizationId, kbFilter) {
+    try {
+        const result = await pool.query(
+            `SELECT id, knowledge_base_id, title, content, category, tags, updated_at,
+                    ts_rank(search_vector, plainto_tsquery('english', $2)) AS rank
+             FROM kb_chunks
+             WHERE organization_id = $1 ${kbFilter.replace('kb_type', 'kb_type')}
+               AND search_vector @@ plainto_tsquery('english', $2)
+             ORDER BY rank DESC
+             LIMIT 30`,
+            [organizationId, inquiry]
+        );
+
+        return result.rows.map(r => ({ ...r, _fromSemanticSearch: true }));
+    } catch (err) {
+        // kb_chunks table may not exist yet
+        return [];
     }
 }
 
@@ -240,5 +316,7 @@ module.exports = {
     buildEnhancedPrompt,
     injectResponseRules,
     injectKnowledgeBase,
-    injectShopifyContext
+    injectShopifyContext,
+    semanticChunkSearch,
+    ftsChunkSearch
 };
