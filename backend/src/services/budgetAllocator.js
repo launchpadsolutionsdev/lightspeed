@@ -11,8 +11,6 @@
  * - complex: Multi-part troubleshooting, complaints, technical issues — max KB + memory
  */
 
-const { estimateTokens } = require('./tokenCounter');
-
 /**
  * Classify inquiry complexity based on text signals.
  * Uses heuristics rather than an LLM call to keep it fast and free.
@@ -25,7 +23,6 @@ function classifyComplexity(inquiry) {
 
     const text = inquiry.toLowerCase();
     const wordCount = text.split(/\s+/).length;
-    const sentenceCount = (text.match(/[.!?]+/g) || []).length + 1;
     const questionCount = (text.match(/\?/g) || []).length;
 
     // Simple signals: very short, greetings, basic questions
