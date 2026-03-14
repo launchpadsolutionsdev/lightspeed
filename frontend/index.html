@@ -6369,13 +6369,33 @@
         }
 
         /* ==================== Content Calendar (Google Calendar Style) ==================== */
+
+        /* When calendar is active, the .app and .container must become a
+           flex chain that fills exactly the viewport height (minus header). */
+        .app.cal-fullscreen {
+            height: 100vh;
+            min-height: 0;
+            max-height: 100vh;
+            overflow: hidden;
+        }
+        .app.cal-fullscreen > .site-footer {
+            display: none;
+        }
+        .container.cal-fullscreen {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
         #page-content-calendar.active {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 57px);
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            flex: 1;
+            min-height: 0;
             overflow: hidden;
         }
         .cal-wrapper {
