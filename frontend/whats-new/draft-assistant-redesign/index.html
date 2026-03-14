@@ -3,29 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Draft Assistant Writing Studio | What's New | Lightspeed</title>
+    <title>Draft Assistant Redesign &amp; Platform Intelligence | What's New | Lightspeed</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <meta name="description" content="Draft Assistant now features a redesigned two-column writing studio layout for composing, previewing, and refining marketing content.">
+    <meta name="description" content="Draft Assistant gets type-specific panels, multi-variant generation, campaign sequences, and a content calendar. Plus: smarter knowledge retrieval, feedback analytics, and platform-wide intelligence upgrades.">
     <link rel="canonical" href="https://www.lightspeedutility.ca/whats-new/draft-assistant-redesign/">
     <meta property="og:type" content="article">
-    <meta property="og:title" content="Draft Assistant Writing Studio | Lightspeed">
-    <meta property="og:description" content="The Draft Assistant is now a full writing studio with a two-column layout.">
+    <meta property="og:title" content="Draft Assistant Redesign &amp; Platform Intelligence | Lightspeed">
+    <meta property="og:description" content="Draft Assistant gets type-specific panels, multi-variant generation, campaign sequences, and a content calendar. Plus: smarter knowledge retrieval, feedback analytics, and platform-wide intelligence upgrades.">
     <meta property="og:url" content="https://www.lightspeedutility.ca/whats-new/draft-assistant-redesign/">
     <meta property="og:site_name" content="Lightspeed by Launchpad">
     <meta property="og:image" content="https://www.lightspeedutility.ca/Social-Share-Image.jpg">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Draft Assistant Writing Studio | Lightspeed">
-    <meta name="twitter:description" content="The Draft Assistant is now a full writing studio with a two-column layout.">
+    <meta name="twitter:title" content="Draft Assistant Redesign &amp; Platform Intelligence | Lightspeed">
+    <meta name="twitter:description" content="Draft Assistant gets type-specific panels, multi-variant generation, campaign sequences, and a content calendar.">
     <meta name="twitter:image" content="https://www.lightspeedutility.ca/Social-Share-Image.jpg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/design-system.css?v=20260301">
-    <link rel="stylesheet" href="/landing.css?v=20260301">
-    <link rel="stylesheet" href="/whats-new.css?v=20260301">
+    <link rel="stylesheet" href="/design-system.css?v=20260314">
+    <link rel="stylesheet" href="/landing.css?v=20260314">
+    <link rel="stylesheet" href="/whats-new.css?v=20260314">
 </head>
 <body>
 
+    <!-- Navigation -->
     <nav class="landing-nav">
         <div class="landing-nav-inner">
             <a href="/" class="landing-nav-logo">
@@ -57,38 +58,114 @@
         <section class="wn-detail-hero">
             <div class="wn-detail-meta">
                 <span class="wn-card-badge wn-card-badge--tools">Tools</span>
-                <span class="wn-detail-date">February 13, 2026</span>
+                <span class="wn-card-badge wn-card-badge--ai">AI</span>
+                <span class="wn-detail-date">March 14, 2026</span>
             </div>
-            <h1 class="wn-detail-title">The Draft Assistant Is Now a Full Writing Studio</h1>
-            <p class="wn-detail-lede">We've completely redesigned the Draft Assistant with a two-column layout that gives you more space to compose, preview, and refine marketing content, social media posts, and communications.</p>
+            <h1 class="wn-detail-title">Lightspeed Gets Smarter: Draft Assistant Redesign, Semantic Search, and 9 New Intelligence Features</h1>
+            <p class="wn-detail-lede">The biggest update to Lightspeed since launch. Draft Assistant has been completely rethought for each content type, knowledge retrieval now uses semantic search, and the entire platform learns from your feedback in ways it never could before.</p>
         </section>
 
         <div class="wn-detail-divider"><hr></div>
 
         <section class="wn-detail-body">
-            <p>The Draft Assistant has always been one of Lightspeed's most-used tools. Lottery operators use it to write everything from social media announcements and email campaigns to winner press releases and regulatory communications. But the original single-column layout made it hard to work with longer content and forced users to scroll between their inputs and the generated output.</p>
+            <p>We spent the last few weeks asking a simple question: <em>what would it take for Lightspeed to go from useful to indispensable?</em> The answer turned out to be a lot of small things done right. Today we're shipping the result &mdash; a sweeping upgrade that touches knowledge retrieval, Draft Assistant, Ask Lightspeed, analytics, and the platform as a whole.</p>
 
-            <p>The redesigned Draft Assistant takes a fundamentally different approach. A two-column writing studio layout puts your inputs and controls on the left and the generated content on the right, visible side by side at all times. It's the same experience you'd expect from a professional writing tool, purpose-built for lottery marketing and communications.</p>
+            <p>Here's everything that's new.</p>
 
-            <h2>What's changed</h2>
+            <h2>Smarter Knowledge Retrieval</h2>
+            <p>Every tool in Lightspeed depends on finding the right information from your knowledge base at the right time. Until now, that search was keyword-based &mdash; it worked, but it missed connections that were obvious to a human reader.</p>
+
+            <p>Today, knowledge retrieval works on three levels:</p>
+
             <ul>
-                <li><strong>Two-column layout</strong> &mdash; Input controls on the left, generated content on the right. See your prompt and the result simultaneously without scrolling</li>
-                <li><strong>Full-width design</strong> &mdash; The Draft Assistant now uses the full available width of your browser window, giving you significantly more workspace</li>
-                <li><strong>Card-based content grid</strong> &mdash; Generated drafts are organized in a clean card layout that matches the Response Assistant's design, creating a consistent experience across tools</li>
-                <li><strong>Improved editing flow</strong> &mdash; Edit your inputs on the left, regenerate, and see the updated output on the right instantly. No more losing your place in long documents</li>
+                <li><strong>Semantic search</strong> &mdash; Lightspeed now understands meaning, not just keywords. Ask about "lottery deadline pressure" and it finds your "Last Chance email" templates, even if those words never appear together. This is powered by vector embeddings and pgvector for sub-second similarity search.</li>
+                <li><strong>Smart chunking</strong> &mdash; Long knowledge base entries are now split at paragraph and sentence boundaries into focused chunks. Each chunk is independently searchable, so Lightspeed can surface the exact paragraph you need from a 2,000-word policy document.</li>
+                <li><strong>Dynamic budget allocation</strong> &mdash; Simple questions get a focused set of 3 knowledge base sources. Complex, multi-part questions get up to 15. Lightspeed now reads the complexity of your request and allocates its context budget accordingly.</li>
             </ul>
 
-            <h2>Why we redesigned it</h2>
-            <p>Feedback from operators was consistent: the Draft Assistant needed more room. Teams writing multi-paragraph press releases or detailed email campaigns were fighting the layout instead of focusing on their content. The two-column approach solves this by treating the Draft Assistant as a workspace rather than a form.</p>
+            <p>The result: more relevant context, less noise, and faster responses. You can re-index your existing knowledge base at any time from the Knowledge Base page using the new <strong>Re-index Search</strong> button.</p>
 
-            <p>The card-based output grid also brings visual consistency with the Response Assistant, so switching between tools feels natural and familiar.</p>
+            <h2>Draft Assistant: Rebuilt from the Ground Up</h2>
+            <p>Draft Assistant used to treat social media posts, press releases, and Facebook ads almost identically &mdash; same input fields, same generation logic. That's over. Each content type now has its own purpose-built panel with type-specific controls.</p>
 
-            <h3>What's next</h3>
-            <p>We're exploring inline editing capabilities that would let you modify generated content directly in the output panel, along with template libraries for common content types like winner announcements, draw reminders, and social media campaigns.</p>
+            <h3>Social Media</h3>
+            <ul>
+                <li><strong>Platform selector</strong> &mdash; Choose Facebook, Instagram, or LinkedIn. Each platform gets tailored character limits, hashtag guidance, and tone adjustments. A LinkedIn post shouldn't read like an Instagram caption.</li>
+                <li><strong>Multi-variant generation</strong> &mdash; Generate 3 distinct post variants in one click. Each variant uses a different opening hook and angle so you can pick the one that feels right, not settle for the first draft.</li>
+            </ul>
+
+            <h3>Email</h3>
+            <ul>
+                <li><strong>Campaign sequence mode</strong> &mdash; Toggle this on and Lightspeed generates a complete 3-email series: announcement, reminder, and last chance. Each email has its own subject line and builds on the previous one. Plan an entire campaign in 30 seconds.</li>
+                <li><strong>Mailchimp export</strong> &mdash; A new "Mailchimp" button copies your email as inline-styled HTML ready to paste directly into a Mailchimp content block. No more reformatting.</li>
+            </ul>
+
+            <h3>Media Releases</h3>
+            <ul>
+                <li><strong>Release type selector</strong> &mdash; Choose from For Immediate Release, Embargo Until Date, Award/Recognition, or Community Impact. Each type gets proper formatting, the right header, and type-specific structure.</li>
+                <li><strong>Auto-populated boilerplate</strong> &mdash; Lightspeed pulls your organization's "About" section from the knowledge base automatically. No more copy-pasting the same boilerplate into every release.</li>
+            </ul>
+
+            <h3>Facebook/Instagram Ads</h3>
+            <ul>
+                <li><strong>Structured output</strong> &mdash; Each ad variant is generated with separate Headline (40 chars), Primary Text (125 chars), and Description/CTA (30 chars) fields &mdash; matching Meta Ads Manager's exact structure with character counts shown per field.</li>
+                <li><strong>Up to 5 variants</strong> &mdash; Generate a batch of ad variants to A/B test. Each varies the angle: urgency, excitement, social proof, FOMO, and value.</li>
+                <li><strong>Meta Ads export</strong> &mdash; A new "Meta Ads" button parses the structured output and copies it in a clean format for direct paste into Ads Manager.</li>
+            </ul>
+
+            <h3>Write Anything</h3>
+            <ul>
+                <li><strong>Content type presets</strong> &mdash; A new dropdown with five common content types: Board Report, Grant Application, Talking Points, Internal Memo, and Volunteer Recruitment. Select one and Lightspeed loads type-specific section structure, tone guidance, and formatting rules. Or leave it on "Freeform" for anything else.</li>
+            </ul>
+
+            <h2>Draft Assistant Learns Your Writing Style</h2>
+            <p>The voice fingerprint system &mdash; which already learned your team's reply style from Response Assistant &mdash; now builds a <strong>separate writing voice profile</strong> specifically for Draft Assistant. It analyzes your approved drafts to learn your content writing patterns: how you structure headlines, your CTA style, your emoji and punctuation preferences, and how you open and close different content types.</p>
+
+            <p>The more drafts you rate, the more Lightspeed sounds like your team wrote it.</p>
+
+            <h2>Template Memory</h2>
+            <p>Every time you generate a draft, Lightspeed now saves the form data you entered &mdash; topic, details, platform selection, tone &mdash; per content type. Switch to a different tab, come back, and your last-used data is restored automatically. No more re-typing the same details when you want to tweak and regenerate.</p>
+
+            <h2>Smarter Refinements</h2>
+            <p>When you click "Refine" after generating a draft, the model now sees your <strong>original prompt</strong> in full &mdash; not just a generic placeholder. This means refinements are truly iterative: the model understands what you asked for, what it produced, and what you want changed.</p>
+
+            <h2>Ask Lightspeed: Better Memory</h2>
+            <p>Two improvements to how Ask Lightspeed handles long conversations:</p>
+
+            <ul>
+                <li><strong>Semantic conversation memory</strong> &mdash; Past conversations are now searchable by meaning, not just keywords. Lightspeed uses vector similarity to find the most relevant past discussions, even when the wording is different.</li>
+                <li><strong>Auto-summarization</strong> &mdash; When a conversation reaches 20 messages, Lightspeed automatically summarizes the older messages to keep the context window focused. The running summary accumulates across multiple summarizations, so early context is never truly lost.</li>
+            </ul>
+
+            <h2>Feedback Intelligence Dashboard</h2>
+            <p>A new section on the Analytics page gives you visibility into how your team's AI outputs are performing:</p>
+
+            <ul>
+                <li><strong>Satisfaction rate by tool</strong> &mdash; See approval percentages for Response Assistant, Draft Assistant, and Ask Lightspeed side by side with visual breakdowns.</li>
+                <li><strong>KB coverage gaps</strong> &mdash; When Lightspeed searches your knowledge base and finds nothing relevant, it now logs the query. Over time, this builds a list of topics your knowledge base should cover but doesn't. These gaps are surfaced directly in the dashboard.</li>
+                <li><strong>Negative feedback feed</strong> &mdash; See the most recent negative ratings with the original question and the user's explanation of what went wrong &mdash; so you can spot patterns and improve your knowledge base or response rules.</li>
+            </ul>
+
+            <h2>Content Calendar</h2>
+            <p>A brand-new page in the sidebar: <strong>Content Calendar</strong>. Plan your content across all types &mdash; emails, social posts, press releases, ads &mdash; on a simple date-based timeline.</p>
+
+            <ul>
+                <li>Create entries with a title, content type, scheduled date, and notes</li>
+                <li>Track status: Planned, In Progress, or Done</li>
+                <li>Filter by upcoming, past, or all entries</li>
+                <li>The whole team can see what's planned and who created it</li>
+            </ul>
+
+            <p>It's not a full marketing automation suite &mdash; it's a lightweight planner that lives where you already work. Map out a month of content in minutes, then use Draft Assistant to generate each piece when the time comes.</p>
+
+            <h2>What it all adds up to</h2>
+            <p>This update touches almost every part of the platform, but the theme is consistent: <strong>Lightspeed should get smarter the longer you use it</strong>. Semantic search finds what keyword search can't. Per-tool voice profiles match your writing style, not just your reply style. Template memory eliminates repetitive data entry. KB gap detection tells you what your knowledge base is missing. And the feedback intelligence dashboard closes the loop between what you generate and what actually works.</p>
+
+            <p>These aren't features you need to configure or think about. They work in the background, compounding over time. Your Lightspeed instance tomorrow will be better than the one you used yesterday.</p>
 
             <div class="wn-detail-cta">
-                <p>Try the new writing studio.</p>
-                <a href="/" class="wn-cta-btn">Get started with Lightspeed</a>
+                <p>Ready to try the new Draft Assistant?</p>
+                <a href="/" class="wn-cta-btn">Open Draft Assistant</a>
             </div>
         </section>
 
@@ -134,7 +211,6 @@
             </div>
         </div>
     </footer>
-
 
     <!-- Cookie Consent Banner -->
     <div class="cookie-banner" id="cookieBanner">
