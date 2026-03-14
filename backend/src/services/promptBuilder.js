@@ -16,6 +16,7 @@ const { getConversationMemory, getCrossToolContext } = require('./conversationMe
 const { getVoiceProfileContext } = require('./voiceFingerprint');
 const { embedQuery, formatForPgvector } = require('./embeddingService');
 const { getBudgetAllocation } = require('./budgetAllocator');
+const { fetchRelevantCorrections, buildCorrectionsContext } = require('./systemPromptBuilder');
 
 /**
  * Inject organization-level response rules into the system prompt.
@@ -307,6 +308,18 @@ async function buildEnhancedPrompt(baseSystem, inquiry, organizationId, options 
     if (organizationId) {
         const voiceContext = await getVoiceProfileContext(organizationId);
         if (voiceContext) system += voiceContext;
+    }
+
+    // 7. Corrections from past feedback — highest priority context
+    if (inquiry && organizationId) {
+        try {
+            const tool = options.tool || 'response_assistant';
+            const corrections = await fetchRelevantCorrections(organizationId, inquiry, tool, options.format);
+            const correctionsCtx = buildCorrectionsContext(corrections);
+            if (correctionsCtx) system += correctionsCtx;
+        } catch (_e) {
+            // Continue without corrections
+        }
     }
 
     return { system, referencedKbEntries };

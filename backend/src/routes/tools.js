@@ -224,7 +224,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
     };
 
     try {
-        const { messages, system, staticSystem, dynamicSystem, inquiry, max_tokens = 1024, model, kb_type, includeCitations } = req.body;
+        const { messages, system, staticSystem, dynamicSystem, inquiry, max_tokens = 1024, model, kb_type, includeCitations, tool } = req.body;
 
         // Whitelist allowed models to prevent abuse
         const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
@@ -243,7 +243,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
             // Split-prompt path (Ask Lightspeed): Layer 1 is static and cached; Layer 2+3 is dynamic.
             // Run buildEnhancedPrompt only on the dynamic portion so Layer 1 is never modified.
             const enhanced = await buildEnhancedPrompt(dynamicSystem, inquiry, organizationId, {
-                kb_type, userId: req.userId, includeCitations: !!includeCitations
+                kb_type, userId: req.userId, includeCitations: !!includeCitations, tool
             });
             finalStaticSystem = staticSystem;
             finalDynamicSystem = enhanced.system;
@@ -251,7 +251,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
         } else {
             // Legacy path: single system string — enhance the whole thing as before
             const enhanced = await buildEnhancedPrompt(system, inquiry, organizationId, {
-                kb_type, userId: req.userId, includeCitations: !!includeCitations
+                kb_type, userId: req.userId, includeCitations: !!includeCitations, tool
             });
             finalStaticSystem = null;
             finalDynamicSystem = enhanced.system;
@@ -284,9 +284,9 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
             const totalTokens = (usage.input_tokens || 0) + (usage.output_tokens || 0);
             await pool.query(
                 `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, $4, TRUE, NOW())`,
-                [organizationId, req.userId, totalTokens, responseTimeMs]
-            ).catch(err => console.warn('Usage logging failed:', err.message));
+                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, TRUE, NOW())`,
+                [organizationId, req.userId, tool || 'response_assistant', totalTokens, responseTimeMs]
+            ).catch(_e => console.warn('Usage logging failed:', _e.message));
         }
 
         sendEvent({ type: 'done', usage: usage || {} });
@@ -565,115 +565,10 @@ router.post('/normalize/log', authenticate, async (req, res) => {
     }
 });
 
-/**
- * POST /api/draft
- * Generate draft content (Draft Assistant)
- */
-router.post('/draft', authenticate, checkUsageLimit, async (req, res) => {
-    try {
-        const { prompt, draftType, tone, length, additionalContext } = req.body;
-
-        if (!prompt) {
-            return res.status(400).json({ error: 'Prompt required' });
-        }
-
-        const organizationId = req.organizationId;
-
-        // Fetch brand voice for the org
-        let brandVoice = '';
-        if (organizationId) {
-            const orgResult = await pool.query('SELECT brand_voice FROM organizations WHERE id = $1', [organizationId]);
-            brandVoice = orgResult.rows[0]?.brand_voice || '';
-        }
-
-        let systemPrompt = `You are a professional content writer for a nonprofit organization.`;
-
-        if (brandVoice) {
-            systemPrompt += ` Use this brand voice: ${brandVoice}`;
-        }
-
-        if (tone) {
-            systemPrompt += ` Write in a ${tone} tone.`;
-        }
-
-        if (length) {
-            systemPrompt += ` Keep the content ${length}.`;
-        }
-
-        let userPrompt = prompt;
-
-        if (draftType) {
-            userPrompt = `Write a ${draftType}: ${prompt}`;
-        }
-
-        if (additionalContext) {
-            userPrompt += `\n\nAdditional context: ${additionalContext}`;
-        }
-
-        // Server-side KB injection for Draft Assistant — uses internal KB
-        if (organizationId) {
-            try {
-                const kbResult = await pool.query(
-                    `SELECT id, title, content, category, tags FROM knowledge_base
-                     WHERE organization_id = $1 AND kb_type = 'internal'
-                     ORDER BY category, title`,
-                    [organizationId]
-                );
-                if (kbResult.rows.length > 0) {
-                    const relevantEntries = await claudeService.pickRelevantKnowledge(
-                        prompt,
-                        kbResult.rows,
-                        8
-                    );
-                    if (relevantEntries.length > 0) {
-                        const kbContext = relevantEntries
-                            .map(entry => `[${entry.category}] ${entry.title}: ${entry.content}`)
-                            .join('\n\n');
-                        systemPrompt += `\n\nInternal knowledge base:\n${kbContext}`;
-                    }
-                }
-            } catch (kbErr) {
-                console.warn('Draft KB injection failed, continuing without:', kbErr.message);
-            }
-
-            // Inject Shopify product context for product-related drafts
-            try {
-                const productContext = await shopifyService.buildProductContext(organizationId, { limit: 15 });
-                if (productContext) {
-                    systemPrompt += productContext;
-                    systemPrompt += '\n\nYou have access to the product catalog above. When writing about products, use accurate names, prices, and details from this catalog.';
-                }
-            } catch (shopifyErr) {
-                // Continue without Shopify context
-            }
-        }
-
-        // Call Claude API
-        const startTime2 = Date.now();
-        const response = await claudeService.generateResponse({
-            messages: [{ role: 'user', content: userPrompt }],
-            system: systemPrompt,
-            max_tokens: 2048
-        });
-        const responseTimeMs2 = Date.now() - startTime2;
-
-        // Log usage
-        if (organizationId && response.usage) {
-            const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
-            await pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'draft_assistant', $3, $4, TRUE, NOW())`,
-                [organizationId, req.userId, totalTokens, responseTimeMs2]
-            );
-        }
-
-        res.json(response);
-
-    } catch (error) {
-        console.error('Draft error:', error);
-        res.status(500).json({ error: error.message || 'Failed to generate draft' });
-    }
-});
+// NOTE: The legacy POST /api/draft endpoint has been removed.
+// Draft Assistant now uses /api/generate-stream exclusively, which provides
+// streaming, semantic search, corrections, voice fingerprint, and all other
+// context injection via buildEnhancedPrompt().
 
 /**
  * GET /api/tools/shopify-analytics

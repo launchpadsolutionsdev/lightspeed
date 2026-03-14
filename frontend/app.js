@@ -10924,15 +10924,9 @@ async function buildDraftDynamicPrompt(contentType, emailType = null, userInquir
         dynamic += '\n\nDRAW SCHEDULE (source of truth for dates, prizes, and deadlines):\n' + drawCtx;
     }
 
-    // Internal KB entries
-    const draftKb = (typeof internalKnowledge !== 'undefined' && internalKnowledge.length > 0)
-        ? internalKnowledge : customKnowledge;
-    if (draftKb && draftKb.length > 0) {
-        const kbContext = draftKb.slice(0, 15).map(k =>
-            `Topic: ${k.question || k.title}\nContent: ${(k.response || k.content || '').substring(0, 500)}`
-        ).join('\n\n---\n\n');
-        dynamic += '\n\nKnowledge base:\n' + kbContext;
-    }
+    // NOTE: KB entries are now injected server-side via buildEnhancedPrompt()
+    // with semantic search, smart chunking, and dynamic budget allocation.
+    // Removed client-side KB injection to avoid duplicate context.
 
     // Rated examples from feedback loop
     const ratedExamples = await getRatedExamples('draft_assistant', null, userInquiry);
@@ -11211,6 +11205,7 @@ async function generateDraft() {
             dynamicSystem,
             inquiry: topic,
             kb_type: 'all',
+            tool: 'draft_assistant',
             messages: [{ role: 'user', content: userPrompt }],
             max_tokens: 1024,
             model: draftModel
@@ -11284,6 +11279,7 @@ async function generateWriteAnything() {
             dynamicSystem,
             inquiry: topic,
             kb_type: 'all',
+            tool: 'draft_assistant',
             messages: [{ role: 'user', content: userPrompt }],
             max_tokens: 2048,
             model: draftModel
@@ -11383,6 +11379,7 @@ async function generateEmailDraft() {
             dynamicSystem,
             inquiry: details,
             kb_type: 'all',
+            tool: 'draft_assistant',
             messages: [{ role: 'user', content: userPrompt }],
             max_tokens: 2048,
             model: draftModel
@@ -11505,6 +11502,7 @@ async function refineDraft(instruction) {
             dynamicSystem,
             inquiry: refineInquiry,
             kb_type: 'all',
+            tool: 'draft_assistant',
             messages: messages,
             max_tokens: 2048,
             model: draftModel
