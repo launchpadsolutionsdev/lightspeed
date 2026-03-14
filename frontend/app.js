@@ -2400,11 +2400,9 @@ function updateSidebarForTool(toolId) {
             if (genBtn) genBtn.classList.add("active");
             const genPage = document.getElementById('page-response');
             if (genPage) genPage.classList.add("active");
-            // Remove calendar fullscreen
+            // Remove calendar zero-padding
             const container = document.querySelector('.container.cal-fullscreen');
-            const app = document.querySelector('.app.cal-fullscreen');
             if (container) container.classList.remove('cal-fullscreen');
-            if (app) app.classList.remove('cal-fullscreen');
         }
     }
 }
@@ -6897,17 +6895,14 @@ function switchPage(pageId) {
         page.classList.toggle("active", page.id === `page-${pageId}`);
     });
 
-    // Calendar fullscreen mode: add/remove classes on parent .app and .container
+    // Calendar zero-padding: toggle on .container only (full-height handled globally)
     const calPage = document.getElementById('page-content-calendar');
     if (calPage) {
         const container = calPage.closest('.container');
-        const app = calPage.closest('.app');
         if (pageId === 'content-calendar') {
             if (container) container.classList.add('cal-fullscreen');
-            if (app) app.classList.add('cal-fullscreen');
         } else {
             if (container) container.classList.remove('cal-fullscreen');
-            if (app) app.classList.remove('cal-fullscreen');
         }
     }
 

@@ -2204,14 +2204,19 @@
 
         .app {
             display: none;
-            min-height: 100vh;
+            height: 100vh;
             flex: 1;
+            min-height: 0;
         }
 
         .app.visible {
             display: flex;
             flex-direction: column;
             animation: fadeIn 0.5s ease;
+        }
+
+        .app.visible > .site-footer {
+            display: none;
         }
 
         .app-main {
@@ -2585,10 +2590,22 @@
             padding: 24px 32px;
         }
 
+        /* Inside the app tools area, containers fill the full width */
+        .app.visible > .container {
+            max-width: 100%;
+            margin: 0;
+            padding: 16px 24px;
+            flex: 1;
+            min-height: 0;
+        }
+
         /* Pages */
         .page { display: none; }
         .page.active {
-            display: block;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
             animation: fadeIn 0.3s ease;
         }
 
@@ -2844,6 +2861,8 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 24px;
+            flex: 1;
+            min-height: 0;
         }
 
         .response-placeholder {
@@ -5882,7 +5901,8 @@
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 24px;
-            height: calc(100vh - 64px);
+            flex: 1;
+            min-height: 0;
         }
 
         /* Sidebar */
@@ -6370,26 +6390,9 @@
 
         /* ==================== Content Calendar (Google Calendar Style) ==================== */
 
-        /* When calendar is active, the .app and .container must become a
-           flex chain that fills exactly the viewport height (minus header). */
-        .app.cal-fullscreen {
-            height: 100vh;
-            min-height: 0;
-            max-height: 100vh;
-            overflow: hidden;
-        }
-        .app.cal-fullscreen > .site-footer {
-            display: none;
-        }
+        /* Calendar needs zero padding on container */
         .container.cal-fullscreen {
-            max-width: 100% !important;
             padding: 0 !important;
-            margin: 0 !important;
-            flex: 1;
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
         }
         #page-content-calendar.active {
             display: flex;
