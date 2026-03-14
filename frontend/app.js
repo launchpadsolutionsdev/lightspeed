@@ -2389,10 +2389,22 @@ function updateSidebarForTool(toolId) {
 
     // If switching to Response Assistant, make sure Generator is active by default
     if (toolId === 'customer-response') {
-        const hasActivePage = document.querySelector(".sidebar-btn[data-page].active");
-        if (!hasActivePage) {
+        // Check if a Response Assistant sub-page is active (not Runway)
+        const hasActiveSubPage = document.querySelector('.sidebar-btn[data-page="response"].active, .sidebar-btn[data-page="thread"].active, .sidebar-btn[data-page="templates"].active, .sidebar-btn[data-page="analytics"].active');
+        if (!hasActiveSubPage) {
+            // Deactivate any non-RA pages (like Runway's content-calendar)
+            document.querySelectorAll(".sidebar-btn[data-page]").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+            // Activate Generator
             const genBtn = document.querySelector('.sidebar-btn[data-page="response"]');
             if (genBtn) genBtn.classList.add("active");
+            const genPage = document.getElementById('page-response');
+            if (genPage) genPage.classList.add("active");
+            // Remove calendar fullscreen
+            const container = document.querySelector('.container.cal-fullscreen');
+            const app = document.querySelector('.app.cal-fullscreen');
+            if (container) container.classList.remove('cal-fullscreen');
+            if (app) app.classList.remove('cal-fullscreen');
         }
     }
 }
@@ -4974,10 +4986,16 @@ function setupEventListeners() {
     // Navigation - page switching buttons in sidebar
     document.querySelectorAll(".sidebar-btn[data-page]").forEach(btn => {
         btn.addEventListener("click", () => {
-            // Runway (content-calendar) is a standalone page, not a Response Assistant sub-page
+            // Runway (content-calendar) is a standalone page inside #mainApp
             if (btn.dataset.page === 'content-calendar') {
                 // Deactivate all tool buttons so only Runway is highlighted
                 document.querySelectorAll(".sidebar-btn[data-tool]").forEach(b => b.classList.remove("active"));
+                // Make sure mainApp is visible (Runway lives inside it)
+                currentTool = 'customer-response';
+                document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
+                document.getElementById("appWrapper").classList.add("visible");
+                document.querySelectorAll(".app").forEach(a => a.classList.remove("visible"));
+                document.getElementById("mainApp").classList.add("visible");
                 switchPage(btn.dataset.page);
                 return;
             }
