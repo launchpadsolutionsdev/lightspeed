@@ -6894,13 +6894,18 @@ function switchPage(pageId) {
     }
 }
 
-// ==================== CONTENT CALENDAR ====================
+// ==================== CONTENT CALENDAR (Google Calendar Style) ====================
 const CAL_MIN_DATE = new Date(2020, 0, 1);
 const CAL_MAX_DATE = new Date(2030, 2, 31); // March 2030
+const CAL_MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CAL_MAX_VISIBLE_EVENTS = 3; // show "+N more" after this many
+
 let calYear, calMonth; // 0-indexed month
 let calEvents = [];
 let calEditId = null;
 let calSelectedColor = 'blue';
+let calSelectedVis = 'personal';
+let calCurrentView = 'all'; // personal | team | all
 
 function calInit() {
     const now = new Date();
@@ -6914,18 +6919,19 @@ async function calLoadMonth() {
     const grid = document.getElementById('calDays');
     if (!label || !grid) return;
 
-    const monthStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
-    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    label.textContent = `${monthNames[calMonth]} ${calYear}`;
+    label.textContent = `${CAL_MONTH_NAMES[calMonth]} ${calYear}`;
 
-    // Disable nav buttons at bounds
-    const prevBtn = label.parentElement.querySelector('[onclick="calNavigateMonth(-1)"]');
-    const nextBtn = label.parentElement.querySelector('[onclick="calNavigateMonth(1)"]');
+    // Disable nav at bounds
+    const prevBtn = document.getElementById('calPrevBtn');
+    const nextBtn = document.getElementById('calNextBtn');
     if (prevBtn) prevBtn.disabled = (calYear === CAL_MIN_DATE.getFullYear() && calMonth === CAL_MIN_DATE.getMonth());
     if (nextBtn) nextBtn.disabled = (calYear === CAL_MAX_DATE.getFullYear() && calMonth === CAL_MAX_DATE.getMonth());
 
     try {
-        const resp = await fetch(`${API_BASE_URL}/api/content-calendar?month=${monthStr}`, { headers: getAuthHeaders() });
+        const resp = await fetch(
+            `${API_BASE_URL}/api/content-calendar?year=${calYear}&month=${calMonth + 1}&view=${calCurrentView}`,
+            { headers: getAuthHeaders() }
+        );
         if (!resp.ok) throw new Error('Failed to load');
         calEvents = await resp.json();
     } catch (e) {
@@ -6941,16 +6947,16 @@ function calRenderGrid() {
     if (!grid) return;
 
     const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const todayStr = calDateStr(today.getFullYear(), today.getMonth() + 1, today.getDate());
 
-    const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
     const daysInPrev = new Date(calYear, calMonth, 0).getDate();
 
-    // Build event lookup by date string
+    // Build event lookup by date
     const eventsByDate = {};
     calEvents.forEach(ev => {
-        const d = ev.event_date.substring(0, 10); // YYYY-MM-DD
+        const d = ev.event_date.substring(0, 10);
         if (!eventsByDate[d]) eventsByDate[d] = [];
         eventsByDate[d].push(ev);
     });
@@ -6962,22 +6968,20 @@ function calRenderGrid() {
         let dayNum, dateStr, isOutside = false;
 
         if (i < firstDay) {
-            // Previous month
             dayNum = daysInPrev - firstDay + 1 + i;
             const pm = calMonth === 0 ? 12 : calMonth;
             const py = calMonth === 0 ? calYear - 1 : calYear;
-            dateStr = `${py}-${String(pm).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+            dateStr = calDateStr(py, pm, dayNum);
             isOutside = true;
         } else if (i - firstDay >= daysInMonth) {
-            // Next month
             dayNum = i - firstDay - daysInMonth + 1;
             const nm = calMonth === 11 ? 1 : calMonth + 2;
             const ny = calMonth === 11 ? calYear + 1 : calYear;
-            dateStr = `${ny}-${String(nm).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+            dateStr = calDateStr(ny, nm, dayNum);
             isOutside = true;
         } else {
             dayNum = i - firstDay + 1;
-            dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+            dateStr = calDateStr(calYear, calMonth + 1, dayNum);
         }
 
         const isToday = dateStr === todayStr;
@@ -6985,27 +6989,76 @@ function calRenderGrid() {
         if (isOutside) classes.push('cal-day-outside');
         if (isToday) classes.push('cal-day-today');
 
+        // Format day number — show "Mon D" for first row or day 1
+        let dayLabel = String(dayNum);
+        if (i < 7 || dayNum === 1) {
+            const d = new Date(dateStr);
+            const mon = CAL_MONTH_NAMES[d.getMonth()].substring(0, 3);
+            dayLabel = `${mon} ${dayNum}`;
+        }
+
         const dayEvents = eventsByDate[dateStr] || [];
-        const eventsHtml = dayEvents.map(ev => {
-            const timeStr = ev.event_time ? formatCalTime(ev.event_time) + ' ' : '';
-            return `<div class="cal-event-chip cal-chip-${escapeHtml(ev.color || 'blue')}" onclick="calEditEvent('${ev.id}');event.stopPropagation();" title="${escapeHtml(ev.title)}${ev.notes ? '\n' + escapeHtml(ev.notes) : ''}">${timeStr}${escapeHtml(ev.title)}</div>`;
-        }).join('');
+        const eventsHtml = calRenderDayEvents(dayEvents, dateStr);
 
         html += `<div class="${classes.join(' ')}" onclick="calShowModal('${dateStr}')">
-            <span class="cal-day-number">${dayNum}</span>
-            ${eventsHtml}
+            <div class="cal-day-num-row"><span class="cal-day-number">${dayLabel}</span></div>
+            <div class="cal-day-events">${eventsHtml}</div>
         </div>`;
     }
 
     grid.innerHTML = html;
 }
 
-function formatCalTime(timeStr) {
+function calRenderDayEvents(events, dateStr) {
+    if (events.length === 0) return '';
+
+    // Sort: all-day first, then by time
+    const sorted = [...events].sort((a, b) => {
+        if (a.all_day && !b.all_day) return -1;
+        if (!a.all_day && b.all_day) return 1;
+        return (a.event_time || '').localeCompare(b.event_time || '');
+    });
+
+    const visible = sorted.slice(0, CAL_MAX_VISIBLE_EVENTS);
+    const overflow = sorted.length - CAL_MAX_VISIBLE_EVENTS;
+
+    let html = visible.map(ev => calRenderEvent(ev)).join('');
+
+    if (overflow > 0) {
+        html += `<div class="cal-more-link" onclick="calShowMore(event, '${dateStr}')">${overflow} more</div>`;
+    }
+
+    return html;
+}
+
+function calRenderEvent(ev) {
+    const color = ev.color || 'blue';
+    const title = escapeHtml(ev.title);
+    const teamSuffix = (calCurrentView === 'all' || calCurrentView === 'team') && ev.visibility === 'team' && ev.created_by_name
+        ? `<span class="cal-ev-team-name">- ${escapeHtml(ev.created_by_name)}</span>` : '';
+
+    if (ev.all_day) {
+        return `<div class="cal-ev-bar cal-bg-${color}" onclick="calEditEvent('${ev.id}');event.stopPropagation();" title="${title}">${title}${teamSuffix}</div>`;
+    } else {
+        const timeStr = calFormatTime(ev.event_time);
+        return `<div class="cal-ev-timed" onclick="calEditEvent('${ev.id}');event.stopPropagation();">
+            <span class="cal-ev-dot cal-dot-${color}"></span>
+            <span class="cal-ev-timed-text">${timeStr} ${title}${teamSuffix}</span>
+        </div>`;
+    }
+}
+
+function calDateStr(y, m, d) {
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function calFormatTime(timeStr) {
     if (!timeStr) return '';
     const [h, m] = timeStr.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
+    const ampm = h >= 12 ? 'pm' : 'am';
     const h12 = h % 12 || 12;
-    return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+    if (m === 0) return `${h12}${ampm}`;
+    return `${h12}:${String(m).padStart(2, '0')}${ampm}`;
 }
 
 function calNavigateMonth(delta) {
@@ -7013,14 +7066,11 @@ function calNavigateMonth(delta) {
     if (calMonth > 11) { calMonth = 0; calYear++; }
     if (calMonth < 0) { calMonth = 11; calYear--; }
 
-    // Clamp to bounds
     if (calYear < CAL_MIN_DATE.getFullYear() || (calYear === CAL_MIN_DATE.getFullYear() && calMonth < CAL_MIN_DATE.getMonth())) {
-        calYear = CAL_MIN_DATE.getFullYear();
-        calMonth = CAL_MIN_DATE.getMonth();
+        calYear = CAL_MIN_DATE.getFullYear(); calMonth = CAL_MIN_DATE.getMonth();
     }
     if (calYear > CAL_MAX_DATE.getFullYear() || (calYear === CAL_MAX_DATE.getFullYear() && calMonth > CAL_MAX_DATE.getMonth())) {
-        calYear = CAL_MAX_DATE.getFullYear();
-        calMonth = CAL_MAX_DATE.getMonth();
+        calYear = CAL_MAX_DATE.getFullYear(); calMonth = CAL_MAX_DATE.getMonth();
     }
 
     calLoadMonth();
@@ -7033,15 +7083,34 @@ function calGoToToday() {
     calLoadMonth();
 }
 
+function calSwitchView(view) {
+    calCurrentView = view;
+    document.querySelectorAll('.cal-view-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.calView === view);
+    });
+    calLoadMonth();
+}
+
+// --- Modal ---
+
 function calShowModal(dateStr, eventData) {
     calEditId = eventData ? eventData.id : null;
     document.getElementById('calModalTitle').textContent = eventData ? 'Edit Event' : 'Add Event';
     document.getElementById('calEvTitle').value = eventData ? eventData.title : '';
     document.getElementById('calEvDate').value = dateStr;
-    document.getElementById('calEvTime').value = eventData && eventData.event_time ? eventData.event_time.substring(0, 5) : '';
-    document.getElementById('calEvNotes').value = eventData && eventData.notes ? eventData.notes : '';
+
+    const isAllDay = eventData ? eventData.all_day : false;
+    document.getElementById('calEvAllDay').checked = isAllDay;
+    calToggleAllDay();
+
+    document.getElementById('calEvStartTime').value = eventData && eventData.event_time ? eventData.event_time.substring(0, 5) : '';
+    document.getElementById('calEvEndTime').value = eventData && eventData.end_time ? eventData.end_time.substring(0, 5) : '';
+    document.getElementById('calEvDesc').value = eventData && eventData.description ? eventData.description : '';
     document.getElementById('calDeleteBtn').style.display = eventData ? '' : 'none';
+
     calPickColor(eventData ? (eventData.color || 'blue') : 'blue');
+    calPickVis(eventData ? (eventData.visibility || 'personal') : 'personal');
+
     document.getElementById('calEventModal').classList.add('active');
     setTimeout(() => document.getElementById('calEvTitle').focus(), 100);
 }
@@ -7051,6 +7120,11 @@ function calHideModal() {
     calEditId = null;
 }
 
+function calToggleAllDay() {
+    const checked = document.getElementById('calEvAllDay').checked;
+    document.getElementById('calTimeFields').classList.toggle('hidden', checked);
+}
+
 function calPickColor(color) {
     calSelectedColor = color;
     document.querySelectorAll('#calColorPicker .cal-color-swatch').forEach(s => {
@@ -7058,18 +7132,29 @@ function calPickColor(color) {
     });
 }
 
+function calPickVis(vis) {
+    calSelectedVis = vis;
+    document.querySelectorAll('#calVisToggle .cal-vis-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.vis === vis);
+    });
+}
+
 function calEditEvent(id) {
     const ev = calEvents.find(e => e.id === id);
     if (!ev) return;
+    calCloseMorePopover();
     calShowModal(ev.event_date.substring(0, 10), ev);
 }
 
 async function calSaveEvent() {
     const title = document.getElementById('calEvTitle').value.trim();
     const event_date = document.getElementById('calEvDate').value;
-    const event_time = document.getElementById('calEvTime').value || null;
-    const notes = document.getElementById('calEvNotes').value.trim() || null;
+    const all_day = document.getElementById('calEvAllDay').checked;
+    const event_time = all_day ? null : (document.getElementById('calEvStartTime').value || null);
+    const end_time = all_day ? null : (document.getElementById('calEvEndTime').value || null);
+    const description = document.getElementById('calEvDesc').value.trim() || null;
     const color = calSelectedColor;
+    const visibility = calSelectedVis;
 
     if (!title || !event_date) {
         showToast('Please enter a title and date', 'error');
@@ -7085,16 +7170,19 @@ async function calSaveEvent() {
         const resp = await fetch(url, {
             method,
             headers: getAuthHeaders(),
-            body: JSON.stringify({ title, event_date, event_time, notes, color })
+            body: JSON.stringify({ title, description, event_date, event_time, end_time, all_day, color, visibility })
         });
 
-        if (!resp.ok) throw new Error('Failed to save');
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to save');
+        }
 
         calHideModal();
         showToast(calEditId ? 'Event updated!' : 'Event added!', 'success');
         calLoadMonth();
     } catch (e) {
-        showToast('Failed to save event', 'error');
+        showToast(e.message || 'Failed to save event', 'error');
     }
 }
 
@@ -7102,17 +7190,53 @@ async function calDeleteEvent() {
     if (!calEditId) return;
     if (!confirm('Delete this event?')) return;
     try {
-        await fetch(`${API_BASE_URL}/api/content-calendar/${calEditId}`, {
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar/${calEditId}`, {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to delete');
+        }
         calHideModal();
         showToast('Event deleted', 'success');
         calLoadMonth();
     } catch (e) {
-        showToast('Failed to delete event', 'error');
+        showToast(e.message || 'Failed to delete event', 'error');
     }
 }
+
+// --- "+N more" popover ---
+
+function calShowMore(e, dateStr) {
+    e.stopPropagation();
+    const dayEvents = calEvents.filter(ev => ev.event_date.substring(0, 10) === dateStr);
+    const popover = document.getElementById('calMorePopover');
+    const list = document.getElementById('calMoreList');
+    const title = document.getElementById('calMoreTitle');
+
+    const d = new Date(dateStr + 'T12:00:00');
+    title.textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    list.innerHTML = dayEvents.map(ev => calRenderEvent(ev)).join('');
+
+    // Position near click
+    const rect = e.target.getBoundingClientRect();
+    popover.style.top = Math.min(rect.bottom + 4, window.innerHeight - 320) + 'px';
+    popover.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
+    popover.style.display = 'block';
+}
+
+function calCloseMorePopover() {
+    document.getElementById('calMorePopover').style.display = 'none';
+}
+
+// Close popover on outside click
+document.addEventListener('click', function(e) {
+    const pop = document.getElementById('calMorePopover');
+    if (pop && pop.style.display === 'block' && !pop.contains(e.target) && !e.target.classList.contains('cal-more-link')) {
+        pop.style.display = 'none';
+    }
+});
 
 // ==================== TEAM MANAGEMENT ====================
 let currentOrgId = null;
