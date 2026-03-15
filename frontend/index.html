@@ -2431,6 +2431,10 @@
             box-sizing: border-box;
         }
 
+        #dataAnalysisApp .header-inner {
+            max-width: 100%;
+        }
+
         .header-inner {
             max-width: var(--max-width);
             margin: 0 auto;
@@ -7300,6 +7304,11 @@
 
         /* ==================== DATA ANALYSIS TOOL STYLES ==================== */
         .data-analysis-container {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Page header */
