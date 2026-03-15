@@ -1,12 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+const multer = require('multer');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 
 const VALID_CATEGORIES = ['urgent', 'fyi', 'draw_update', 'campaign', 'general'];
 const VALID_REACTIONS = ['👍', '✅', '👀', '🎉', '❤️', '😂'];
 const MAX_PINNED = 3;
+const EDIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_ATTACHMENT_SIZE },
+    fileFilter: (_req, file, cb) => {
+        if (ALLOWED_FILE_TYPES.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('File type not allowed. Use JPEG, PNG, GIF, WebP, or PDF.'));
+        }
+    }
+});
 
 /**
  * Helper: check if the current user is admin/owner in their org.
@@ -44,9 +60,10 @@ router.get('/posts', authenticate, async (req, res) => {
 
         const result = await pool.query(
             `SELECT p.id, p.body, p.category, p.pinned, p.created_at, p.updated_at,
-                    p.author_id,
+                    p.author_id, p.edited_at,
                     u.first_name, u.last_name,
-                    COALESCE(c.comment_count, 0)::int AS comment_count
+                    COALESCE(c.comment_count, 0)::int AS comment_count,
+                    COALESCE(a.attachment_count, 0)::int AS attachment_count
              FROM home_base_posts p
              JOIN users u ON u.id = p.author_id
              LEFT JOIN (
@@ -54,7 +71,12 @@ router.get('/posts', authenticate, async (req, res) => {
                  FROM home_base_comments
                  GROUP BY post_id
              ) c ON c.post_id = p.id
-             WHERE p.organization_id = $1${categoryFilter}
+             LEFT JOIN (
+                 SELECT post_id, COUNT(*) AS attachment_count
+                 FROM home_base_attachments
+                 GROUP BY post_id
+             ) a ON a.post_id = p.id
+             WHERE p.organization_id = $1 AND COALESCE(p.archived, false) = false${categoryFilter}
              ORDER BY p.pinned DESC, p.created_at DESC`,
             params
         );
@@ -80,9 +102,28 @@ router.get('/posts', authenticate, async (req, res) => {
             } catch (_e) { /* reactions table may not exist yet */ }
         }
 
+        // Batch-load attachment metadata (no file_data)
+        let attachmentsMap = {};
+        if (postIds.length > 0) {
+            try {
+                const attResult = await pool.query(
+                    `SELECT id, post_id, file_name, file_type, file_size
+                     FROM home_base_attachments
+                     WHERE post_id = ANY($1)
+                     ORDER BY created_at`,
+                    [postIds]
+                );
+                for (const a of attResult.rows) {
+                    if (!attachmentsMap[a.post_id]) attachmentsMap[a.post_id] = [];
+                    attachmentsMap[a.post_id].push({ id: a.id, file_name: a.file_name, file_type: a.file_type, file_size: a.file_size });
+                }
+            } catch (_e) { /* attachments table may not exist yet */ }
+        }
+
         const posts = result.rows.map(p => ({
             ...p,
-            reactions: reactionsMap[p.id] || []
+            reactions: reactionsMap[p.id] || [],
+            attachments: attachmentsMap[p.id] || []
         }));
 
         res.json({ posts });
@@ -148,13 +189,13 @@ router.post('/posts', authenticate, [
 
 /**
  * DELETE /api/home-base/posts/:id
- * Delete a post. Only the original author OR an admin can delete.
+ * Archive (soft-delete) a post. Only the original author OR an admin can archive.
  */
 router.delete('/posts/:id', authenticate, async (req, res) => {
     try {
         const organizationId = req.organizationId;
         const postResult = await pool.query(
-            'SELECT author_id FROM home_base_posts WHERE id = $1 AND organization_id = $2',
+            'SELECT author_id FROM home_base_posts WHERE id = $1 AND organization_id = $2 AND COALESCE(archived, false) = false',
             [req.params.id, organizationId]
         );
 
@@ -170,8 +211,9 @@ router.delete('/posts/:id', authenticate, async (req, res) => {
         }
 
         await pool.query(
-            'DELETE FROM home_base_posts WHERE id = $1 AND organization_id = $2',
-            [req.params.id, organizationId]
+            `UPDATE home_base_posts SET archived = true, archived_at = NOW(), archived_by = $3
+             WHERE id = $1 AND organization_id = $2`,
+            [req.params.id, organizationId, req.userId]
         );
 
         res.json({ message: 'Post deleted' });
@@ -234,6 +276,224 @@ router.patch('/posts/:id/pin', authenticate, async (req, res) => {
     } catch (error) {
         console.error('Failed to toggle pin:', error.message);
         res.status(500).json({ error: 'Failed to toggle pin' });
+    }
+});
+
+// ── Edit Post ─────────────────────────────────────────────────────────
+
+/**
+ * PATCH /api/home-base/posts/:id
+ * Edit a post body. Author only, within 15 minute window.
+ */
+router.patch('/posts/:id', authenticate, [
+    body('body').trim().notEmpty().withMessage('Post body is required')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const organizationId = req.organizationId;
+        const postResult = await pool.query(
+            'SELECT author_id, created_at FROM home_base_posts WHERE id = $1 AND organization_id = $2 AND COALESCE(archived, false) = false',
+            [req.params.id, organizationId]
+        );
+
+        if (postResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        if (postResult.rows[0].author_id !== req.userId) {
+            return res.status(403).json({ error: 'Only the author can edit this post' });
+        }
+
+        const createdAt = new Date(postResult.rows[0].created_at);
+        if (Date.now() - createdAt.getTime() > EDIT_WINDOW_MS) {
+            return res.status(400).json({ error: 'Edit window has expired (15 minutes)' });
+        }
+
+        const result = await pool.query(
+            `UPDATE home_base_posts SET body = $1, edited_at = NOW(), updated_at = NOW(),
+                    search_vector = to_tsvector('english', $1)
+             WHERE id = $2 AND organization_id = $3
+             RETURNING *`,
+            [req.body.body, req.params.id, organizationId]
+        );
+
+        res.json({ post: result.rows[0] });
+    } catch (error) {
+        console.error('Failed to edit post:', error.message);
+        res.status(500).json({ error: 'Failed to edit post' });
+    }
+});
+
+// ── Archive / Restore ─────────────────────────────────────────────────
+
+/**
+ * PATCH /api/home-base/posts/:id/restore
+ * Restore an archived post. Admin only.
+ */
+router.patch('/posts/:id/restore', authenticate, async (req, res) => {
+    try {
+        const organizationId = req.organizationId;
+        const admin = await isAdmin(req.userId, organizationId);
+        if (!admin) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const result = await pool.query(
+            `UPDATE home_base_posts SET archived = false, archived_at = NULL, archived_by = NULL
+             WHERE id = $1 AND organization_id = $2 AND archived = true
+             RETURNING id`,
+            [req.params.id, organizationId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Archived post not found' });
+        }
+
+        res.json({ message: 'Post restored' });
+    } catch (error) {
+        console.error('Failed to restore post:', error.message);
+        res.status(500).json({ error: 'Failed to restore post' });
+    }
+});
+
+/**
+ * GET /api/home-base/posts/archived
+ * List archived posts. Admin only.
+ */
+router.get('/posts/archived', authenticate, async (req, res) => {
+    try {
+        const organizationId = req.organizationId;
+        const admin = await isAdmin(req.userId, organizationId);
+        if (!admin) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const result = await pool.query(
+            `SELECT p.id, p.body, p.category, p.created_at, p.archived_at,
+                    u.first_name, u.last_name,
+                    ab.first_name AS archived_by_first, ab.last_name AS archived_by_last
+             FROM home_base_posts p
+             JOIN users u ON u.id = p.author_id
+             LEFT JOIN users ab ON ab.id = p.archived_by
+             WHERE p.organization_id = $1 AND p.archived = true
+             ORDER BY p.archived_at DESC`,
+            [organizationId]
+        );
+
+        res.json({ posts: result.rows });
+    } catch (error) {
+        console.error('Failed to get archived posts:', error.message);
+        res.status(500).json({ error: 'Failed to get archived posts' });
+    }
+});
+
+// ── Attachments ───────────────────────────────────────────────────────
+
+/**
+ * POST /api/home-base/posts/:id/attachments
+ * Upload a file attachment to a post. Author only. Max 3 attachments per post.
+ */
+router.post('/posts/:id/attachments', authenticate, upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const organizationId = req.organizationId;
+        const postResult = await pool.query(
+            'SELECT author_id FROM home_base_posts WHERE id = $1 AND organization_id = $2 AND COALESCE(archived, false) = false',
+            [req.params.id, organizationId]
+        );
+
+        if (postResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        if (postResult.rows[0].author_id !== req.userId) {
+            return res.status(403).json({ error: 'Only the author can add attachments' });
+        }
+
+        // Check max attachments
+        const countResult = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM home_base_attachments WHERE post_id = $1',
+            [req.params.id]
+        );
+        if (countResult.rows[0].count >= 3) {
+            return res.status(400).json({ error: 'Maximum 3 attachments per post' });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO home_base_attachments (post_id, file_name, file_type, file_size, file_data)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, file_name, file_type, file_size`,
+            [req.params.id, req.file.originalname, req.file.mimetype, req.file.size, req.file.buffer]
+        );
+
+        res.status(201).json({ attachment: result.rows[0] });
+    } catch (error) {
+        console.error('Failed to upload attachment:', error.message);
+        if (error.message && error.message.includes('File type not allowed')) {
+            return res.status(400).json({ error: error.message });
+        }
+        res.status(500).json({ error: 'Failed to upload attachment' });
+    }
+});
+
+/**
+ * GET /api/home-base/attachments/:id
+ * Download/view an attachment by ID.
+ */
+router.get('/attachments/:id', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT a.file_name, a.file_type, a.file_data, a.file_size
+             FROM home_base_attachments a
+             JOIN home_base_posts p ON p.id = a.post_id
+             WHERE a.id = $1 AND p.organization_id = $2`,
+            [req.params.id, req.organizationId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Attachment not found' });
+        }
+
+        const att = result.rows[0];
+        res.setHeader('Content-Type', att.file_type);
+        res.setHeader('Content-Disposition', `inline; filename="${att.file_name}"`);
+        res.setHeader('Content-Length', att.file_size);
+        res.send(att.file_data);
+    } catch (error) {
+        console.error('Failed to get attachment:', error.message);
+        res.status(500).json({ error: 'Failed to get attachment' });
+    }
+});
+
+/**
+ * DELETE /api/home-base/attachments/:id
+ * Delete an attachment. Author of the post only.
+ */
+router.delete('/attachments/:id', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `DELETE FROM home_base_attachments a
+             USING home_base_posts p
+             WHERE a.id = $1 AND a.post_id = p.id AND p.author_id = $2
+             RETURNING a.id`,
+            [req.params.id, req.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Attachment not found or not authorized' });
+        }
+
+        res.json({ message: 'Attachment deleted' });
+    } catch (error) {
+        console.error('Failed to delete attachment:', error.message);
+        res.status(500).json({ error: 'Failed to delete attachment' });
     }
 });
 
@@ -573,7 +833,7 @@ router.get('/search', authenticate, async (req, res) => {
 
         const result = await pool.query(
             `SELECT p.id, p.body, p.category, p.pinned, p.created_at, p.updated_at,
-                    p.author_id,
+                    p.author_id, p.edited_at,
                     u.first_name, u.last_name,
                     COALESCE(c.comment_count, 0)::int AS comment_count,
                     ts_rank(p.search_vector, plainto_tsquery('english', $2)) AS rank
@@ -585,6 +845,7 @@ router.get('/search', authenticate, async (req, res) => {
                  GROUP BY post_id
              ) c ON c.post_id = p.id
              WHERE p.organization_id = $1
+               AND COALESCE(p.archived, false) = false
                AND p.search_vector @@ plainto_tsquery('english', $2)
              ORDER BY rank DESC, p.created_at DESC
              LIMIT 50`,

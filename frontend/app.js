@@ -16621,6 +16621,12 @@ async function hbLoadPosts() {
 
     // Update notification badge
     hbUpdateNotifBadge();
+
+    // Show archive toggle for admins
+    const archiveToggle = document.getElementById('hbArchiveToggle');
+    if (archiveToggle) {
+        archiveToggle.style.display = (hbUserRole === 'admin' || hbUserRole === 'owner') ? 'inline' : 'none';
+    }
 }
 
 function hbRenderFeed() {
@@ -16669,12 +16675,25 @@ function hbRenderPost(post) {
     const canDelete = isAuthor || canAdmin;
     const commentCount = post.comment_count || 0;
 
+    // Check if still within edit window (15 min)
+    const createdAt = new Date(post.created_at);
+    const canEdit = isAuthor && (Date.now() - createdAt.getTime() < 15 * 60 * 1000);
+
     let pinHtml = '';
     if (post.pinned) {
         pinHtml = '<span class="hb-pin-indicator" title="Pinned">&#128204;</span>';
     }
 
+    // Edited indicator
+    let editedHtml = '';
+    if (post.edited_at) {
+        editedHtml = `<span class="hb-edited" title="Edited ${hbRelativeTime(post.edited_at)}">(edited)</span>`;
+    }
+
     let actionsHtml = '';
+    if (canEdit) {
+        actionsHtml += `<button class="hb-action-btn" title="Edit" onclick="hbStartEdit('${post.id}')">&#9998;</button>`;
+    }
     if (canAdmin) {
         const pinIcon = post.pinned ? '&#128204;' : '&#128392;';
         const pinTitle = post.pinned ? 'Unpin' : 'Pin';
@@ -16693,7 +16712,6 @@ function hbRenderPost(post) {
         const meClass = r.me ? ' me' : '';
         reactionsHtml += `<button class="hb-reaction-chip${meClass}" onclick="hbToggleReaction('${post.id}','${r.emoji}')">${r.emoji} <span class="hb-reaction-count">${r.count}</span></button>`;
     });
-    // Add reaction button with picker
     reactionsHtml += `<button class="hb-add-reaction" onclick="hbOpenReactionPicker(event, '${post.id}')" title="Add reaction">+`;
     reactionsHtml += `<div class="hb-reaction-picker" id="hb-picker-${post.id}">`;
     HB_REACTIONS.forEach(emoji => {
@@ -16702,11 +16720,41 @@ function hbRenderPost(post) {
     reactionsHtml += '</div></button>';
     reactionsHtml += '</div>';
 
+    // Attachments
+    const attachments = post.attachments || [];
+    let attachmentsHtml = '';
+    if (attachments.length > 0) {
+        attachmentsHtml = '<div class="hb-attachments">';
+        attachments.forEach(att => {
+            const icon = att.file_type.startsWith('image/') ? '&#128247;' : '&#128196;';
+            const size = hbFormatFileSize(att.file_size);
+            const deleteBtn = isAuthor
+                ? `<button class="hb-attachment-delete" onclick="event.preventDefault();event.stopPropagation();hbDeleteAttachment('${att.id}','${post.id}')" title="Remove">&times;</button>`
+                : '';
+            attachmentsHtml += `<a class="hb-attachment" href="${API_BASE_URL}/api/home-base/attachments/${att.id}" target="_blank" title="${hbEsc(att.file_name)}">
+                <span class="hb-attachment-icon">${icon}</span>
+                <span class="hb-attachment-name">${hbEsc(att.file_name)}</span>
+                <span class="hb-attachment-size">${size}</span>
+                ${deleteBtn}
+            </a>`;
+        });
+        attachmentsHtml += '</div>';
+
+        // Image previews
+        const images = attachments.filter(a => a.file_type.startsWith('image/'));
+        if (images.length > 0) {
+            attachmentsHtml += images.map(img =>
+                `<img class="hb-img-preview" src="${API_BASE_URL}/api/home-base/attachments/${img.id}" alt="${hbEsc(img.file_name)}" onclick="window.open(this.src,'_blank')">`
+            ).join('');
+        }
+    }
+
     return `<div class="hb-post" id="hb-post-${post.id}">
         <div class="hb-post-header">
             <div class="hb-post-author-row">
                 <div class="hb-avatar" style="background:${color}">${initial}</div>
                 <span class="hb-author-name">${hbEsc(name)}</span>
+                ${editedHtml}
                 <span class="hb-badge ${catClass} hb-badge">${catLabel}</span>
                 ${pinHtml}
             </div>
@@ -16715,7 +16763,8 @@ function hbRenderPost(post) {
                 <div class="hb-post-actions">${actionsHtml}</div>
             </div>
         </div>
-        <div class="hb-post-body">${hbRenderBody(post.body)}</div>
+        <div class="hb-post-body" id="hb-body-${post.id}">${hbRenderBody(post.body)}</div>
+        ${attachmentsHtml}
         ${reactionsHtml}
         <div class="hb-post-footer" style="margin-top:0.5rem">
             <button class="hb-reply-toggle" onclick="hbToggleComments('${post.id}')">${replyLabel}</button>
@@ -16769,6 +16818,38 @@ async function hbToggleReaction(postId, emoji) {
 
 // ── Create Post ───────────────────────────────────────────────────────
 
+let hbPendingFiles = []; // files queued for upload after post creation
+
+function hbOnFilesSelected(input) {
+    const files = Array.from(input.files || []);
+    const maxFiles = 3 - hbPendingFiles.length;
+    const toAdd = files.slice(0, maxFiles);
+    hbPendingFiles.push(...toAdd);
+    input.value = '';
+    hbRenderPendingFiles();
+    if (files.length > maxFiles) alert('Maximum 3 attachments per post');
+}
+
+function hbRemovePendingFile(index) {
+    hbPendingFiles.splice(index, 1);
+    hbRenderPendingFiles();
+}
+
+function hbRenderPendingFiles() {
+    const container = document.getElementById('hbPendingFiles');
+    if (!container) return;
+    if (hbPendingFiles.length === 0) { container.innerHTML = ''; return; }
+    container.innerHTML = hbPendingFiles.map((f, i) =>
+        `<span class="hb-pending-file">${hbEsc(f.name)} (${hbFormatFileSize(f.size)}) <button class="hb-pending-file-remove" onclick="hbRemovePendingFile(${i})">&times;</button></span>`
+    ).join('');
+}
+
+function hbFormatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
 async function hbCreatePost() {
     const textarea = document.getElementById('hbComposeBody');
     const body = (textarea.value || '').trim();
@@ -16788,12 +16869,29 @@ async function hbCreatePost() {
             const errData = await resp.json().catch(() => ({}));
             throw new Error(errData.error || 'Failed to create post');
         }
+        const postData = await resp.json();
+        const postId = postData.post?.id;
+
+        // Upload pending files
+        if (postId && hbPendingFiles.length > 0) {
+            for (const file of hbPendingFiles) {
+                const formData = new FormData();
+                formData.append('file', file);
+                const token = localStorage.getItem('authToken');
+                await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/attachments`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                }).catch(err => console.error('Attachment upload failed:', err));
+            }
+            hbPendingFiles = [];
+            hbRenderPendingFiles();
+        }
+
         textarea.value = '';
-        // Reset category to general
         document.querySelectorAll('#hbCategoryPills .hb-cat-pill').forEach(p => p.classList.remove('active'));
         document.querySelector('#hbCategoryPills .hb-cat-pill[data-cat="general"]').classList.add('active');
         hbSelectedCategory = 'general';
-        // Clear search if active
         hbClearSearch();
         hbLoadPosts();
     } catch (err) {
@@ -16801,6 +16899,136 @@ async function hbCreatePost() {
     } finally {
         btn.disabled = false;
         btn.textContent = 'Post';
+    }
+}
+
+// ── Edit Post ─────────────────────────────────────────────────────────
+
+function hbStartEdit(postId) {
+    const post = hbPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    const bodyEl = document.getElementById(`hb-body-${postId}`);
+    if (!bodyEl) return;
+
+    // Calculate remaining edit time
+    const createdAt = new Date(post.created_at);
+    const remainingMs = Math.max(0, 15 * 60 * 1000 - (Date.now() - createdAt.getTime()));
+    const remainingMin = Math.ceil(remainingMs / 60000);
+
+    bodyEl.innerHTML = `
+        <textarea class="hb-edit-textarea" id="hb-edit-input-${postId}">${hbEsc(post.body)}</textarea>
+        <div class="hb-edit-actions">
+            <span class="hb-edit-timer">${remainingMin}m left to edit</span>
+            <button class="hb-edit-cancel" onclick="hbCancelEdit('${postId}')">Cancel</button>
+            <button class="hb-edit-save" onclick="hbSaveEdit('${postId}')">Save</button>
+        </div>`;
+
+    const input = document.getElementById(`hb-edit-input-${postId}`);
+    if (input) { input.focus(); input.selectionStart = input.value.length; }
+}
+
+function hbCancelEdit(postId) {
+    const post = hbPosts.find(p => p.id === postId);
+    if (!post) return;
+    const bodyEl = document.getElementById(`hb-body-${postId}`);
+    if (bodyEl) bodyEl.innerHTML = hbRenderBody(post.body);
+}
+
+async function hbSaveEdit(postId) {
+    const input = document.getElementById(`hb-edit-input-${postId}`);
+    if (!input) return;
+    const newBody = input.value.trim();
+    if (!newBody) return;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ body: newBody })
+        });
+        if (!resp.ok) {
+            const data = await resp.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to edit post');
+        }
+        hbLoadPosts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ── Attachment Management ─────────────────────────────────────────────
+
+async function hbDeleteAttachment(attachmentId, postId) {
+    if (!confirm('Remove this attachment?')) return;
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/attachments/${attachmentId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to delete attachment');
+        hbLoadPosts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ── Archive / Restore ─────────────────────────────────────────────────
+
+async function hbToggleArchivePanel() {
+    const panel = document.getElementById('hbArchivePanel');
+    if (!panel) return;
+    const isOpen = panel.classList.contains('open');
+    if (isOpen) {
+        panel.classList.remove('open');
+        return;
+    }
+    panel.classList.add('open');
+    await hbLoadArchivedPosts();
+}
+
+async function hbLoadArchivedPosts() {
+    const list = document.getElementById('hbArchiveList');
+    if (!list) return;
+    list.innerHTML = '<div class="hb-loading" style="padding:0.5rem">Loading...</div>';
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/archived`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load archived posts');
+        const data = await resp.json();
+        const posts = data.posts || [];
+
+        if (posts.length === 0) {
+            list.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);padding:0.5rem 0">No archived posts</div>';
+            return;
+        }
+
+        list.innerHTML = posts.map(p => {
+            const preview = (p.body || '').substring(0, 80) + ((p.body || '').length > 80 ? '...' : '');
+            const archivedBy = hbDisplayName(p.archived_by_first, p.archived_by_last);
+            const time = hbRelativeTime(p.archived_at);
+            return `<div class="hb-archived-post">
+                <div class="hb-archived-post-body" title="${hbEsc(p.body)}">${hbEsc(preview)}</div>
+                <span style="font-size:0.7rem;color:var(--text-muted);white-space:nowrap;margin-right:0.5rem">${time} by ${hbEsc(archivedBy)}</span>
+                <button class="hb-restore-btn" onclick="hbRestorePost('${p.id}')">Restore</button>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        list.innerHTML = '<div style="font-size:0.8rem;color:#DC2626">Failed to load archived posts</div>';
+    }
+}
+
+async function hbRestorePost(postId) {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/restore`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to restore post');
+        await hbLoadArchivedPosts();
+        hbLoadPosts();
+    } catch (err) {
+        alert(err.message);
     }
 }
 
