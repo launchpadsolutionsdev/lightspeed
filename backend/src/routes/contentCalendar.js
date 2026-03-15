@@ -52,7 +52,7 @@ router.get('/', authenticate, async (req, res) => {
         // 'all' = no filter
 
         const result = await pool.query(
-            `SELECT ce.*, u.name as created_by_name
+            `SELECT ce.*, CONCAT(u.first_name, ' ', u.last_name) as created_by_name
              FROM calendar_events ce
              LEFT JOIN users u ON ce.created_by = u.id
              WHERE ce.organization_id = $1
@@ -104,7 +104,7 @@ router.post('/', authenticate, async (req, res) => {
 
         // Re-fetch with creator name
         const full = await pool.query(
-            `SELECT ce.*, u.name as created_by_name FROM calendar_events ce LEFT JOIN users u ON ce.created_by = u.id WHERE ce.id = $1`,
+            `SELECT ce.*, CONCAT(u.first_name, ' ', u.last_name) as created_by_name FROM calendar_events ce LEFT JOIN users u ON ce.created_by = u.id WHERE ce.id = $1`,
             [result.rows[0].id]
         );
 
@@ -167,7 +167,7 @@ router.put('/:id', authenticate, async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
 
         const full = await pool.query(
-            `SELECT ce.*, u.name as created_by_name FROM calendar_events ce LEFT JOIN users u ON ce.created_by = u.id WHERE ce.id = $1`,
+            `SELECT ce.*, CONCAT(u.first_name, ' ', u.last_name) as created_by_name FROM calendar_events ce LEFT JOIN users u ON ce.created_by = u.id WHERE ce.id = $1`,
             [result.rows[0].id]
         );
 
