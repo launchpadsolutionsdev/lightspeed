@@ -222,10 +222,10 @@ router.post('/posts', authenticate, [
             return res.status(400).json({ error: 'Organization required' });
         }
 
-        const { body: postBody, category, requires_ack, scheduled_for } = req.body;
+        const { body: postBody, category, requires_ack, scheduled_for, is_draft } = req.body;
 
-        // Scheduled post = saved as draft until publish time
-        const isDraft = !!scheduled_for;
+        // A post is a draft if explicitly flagged or if scheduled
+        const isDraft = !!is_draft || !!scheduled_for;
         const scheduledTime = scheduled_for ? new Date(scheduled_for) : null;
 
         if (scheduledTime && scheduledTime <= new Date()) {
@@ -1163,18 +1163,18 @@ router.delete('/templates/:id', authenticate, async (req, res) => {
 
 /**
  * GET /api/home-base/posts/scheduled
- * List scheduled (draft) posts for the current user.
+ * List all draft posts (both scheduled and unscheduled) for the current user.
  */
 router.get('/posts/scheduled', authenticate, async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT p.id, p.body, p.category, p.requires_ack, p.scheduled_for, p.created_at,
+            `SELECT p.id, p.body, p.category, p.requires_ack, p.scheduled_for, p.created_at, p.updated_at,
                     u.first_name, u.last_name
              FROM home_base_posts p
              JOIN users u ON u.id = p.author_id
              WHERE p.organization_id = $1 AND p.is_draft = true AND p.author_id = $2
                AND COALESCE(p.archived, false) = false
-             ORDER BY p.scheduled_for ASC`,
+             ORDER BY COALESCE(p.scheduled_for, p.updated_at) ASC`,
             [req.organizationId, req.userId]
         );
         res.json({ posts: result.rows });
@@ -1203,6 +1203,106 @@ router.delete('/posts/:id/schedule', authenticate, async (req, res) => {
     } catch (error) {
         console.error('Failed to cancel scheduled post:', error.message);
         res.status(500).json({ error: 'Failed to cancel scheduled post' });
+    }
+});
+
+// ── Draft Management ─────────────────────────────────────────────────
+
+/**
+ * PATCH /api/home-base/posts/:id/draft
+ * Update a draft post (body, category). No time limit — drafts are always editable.
+ */
+router.patch('/posts/:id/draft', authenticate, [
+    body('body').trim().notEmpty().withMessage('Post body is required'),
+    body('category').optional().isIn(VALID_CATEGORIES)
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const postResult = await pool.query(
+            'SELECT author_id, is_draft FROM home_base_posts WHERE id = $1 AND organization_id = $2',
+            [req.params.id, req.organizationId]
+        );
+
+        if (postResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Draft not found' });
+        }
+        if (postResult.rows[0].author_id !== req.userId) {
+            return res.status(403).json({ error: 'Only the author can edit this draft' });
+        }
+        if (!postResult.rows[0].is_draft) {
+            return res.status(400).json({ error: 'Post is not a draft' });
+        }
+
+        const updates = ['body = $1', 'updated_at = NOW()', "search_vector = to_tsvector('english', $1)"];
+        const params = [req.body.body];
+        let paramIdx = 2;
+
+        if (req.body.category) {
+            updates.push(`category = $${paramIdx}`);
+            params.push(req.body.category);
+            paramIdx++;
+        }
+
+        params.push(req.params.id, req.organizationId);
+        const result = await pool.query(
+            `UPDATE home_base_posts SET ${updates.join(', ')} WHERE id = $${paramIdx} AND organization_id = $${paramIdx + 1} RETURNING *`,
+            params
+        );
+
+        res.json({ post: result.rows[0] });
+    } catch (error) {
+        console.error('Failed to update draft:', error.message);
+        res.status(500).json({ error: 'Failed to update draft' });
+    }
+});
+
+/**
+ * POST /api/home-base/posts/:id/publish
+ * Publish a draft post (set is_draft=false, update created_at to now).
+ */
+router.post('/posts/:id/publish', authenticate, async (req, res) => {
+    try {
+        const postResult = await pool.query(
+            'SELECT author_id, is_draft, body, organization_id FROM home_base_posts WHERE id = $1 AND organization_id = $2',
+            [req.params.id, req.organizationId]
+        );
+
+        if (postResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Draft not found' });
+        }
+        if (postResult.rows[0].author_id !== req.userId) {
+            return res.status(403).json({ error: 'Only the author can publish this draft' });
+        }
+        if (!postResult.rows[0].is_draft) {
+            return res.status(400).json({ error: 'Post is already published' });
+        }
+
+        const result = await pool.query(
+            `UPDATE home_base_posts SET is_draft = false, scheduled_for = NULL, created_at = NOW(), updated_at = NOW()
+             WHERE id = $1 RETURNING *`,
+            [req.params.id]
+        );
+
+        const post = result.rows[0];
+
+        // Process @mentions (fire-and-forget)
+        const mentions = extractMentions(post.body);
+        if (mentions.length > 0) {
+            resolveMentions(mentions, req.organizationId, req.userId).then(ids => {
+                if (ids.length > 0) createMentionNotifications(ids, req.userId, req.organizationId, post.id, null);
+            }).catch(() => {});
+        }
+
+        logActivity(req.organizationId, req.userId, 'post', post.id);
+
+        res.json({ post });
+    } catch (error) {
+        console.error('Failed to publish draft:', error.message);
+        res.status(500).json({ error: 'Failed to publish draft' });
     }
 });
 

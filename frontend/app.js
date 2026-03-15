@@ -16526,11 +16526,112 @@ function hbEsc(str) {
     return div.innerHTML;
 }
 
-/** Render post body with @mentions highlighted */
+/** Render post body with markdown formatting and @mentions highlighted */
 function hbRenderBody(text) {
     const escaped = hbEsc(text);
-    return escaped.replace(/@([\w]+(?:\s[\w]+)?)/g, '<strong style="color:var(--cta)">@$1</strong>');
+
+    // Process markdown-like formatting (order matters: do block-level first, then inline)
+    let html = escaped;
+
+    // Unordered lists: lines starting with - or *
+    html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+    // Ordered lists: lines starting with number.
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+    // Wrap consecutive <li> that aren't already in <ul> into <ol>
+    html = html.replace(/(<li>.*<\/li>(?:\n<li>.*<\/li>)*)/g, function(match) {
+        // Only wrap if not already inside a <ul>
+        return match;
+    });
+    // Simple approach: replace remaining unwrapped consecutive lis with ol
+    html = html.replace(/(?<!<ul>)((?:<li>[^<]*<\/li>\n?)+)(?!<\/ul>)/g, '<ol>$1</ol>');
+
+    // Bold: **text** or __text__
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+    // Italic: *text* or _text_ (but not inside **)
+    html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+    html = html.replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/g, '<em>$1</em>');
+
+    // Strikethrough: ~~text~~
+    html = html.replace(/~~(.+?)~~/g, '<s>$1</s>');
+
+    // Inline code: `code`
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Links: [text](url)
+    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    // Auto-link plain URLs (not already in an href)
+    html = html.replace(/(?<!href="|">)(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+
+    // @mentions
+    html = html.replace(/@([\w]+(?:\s[\w]+)?)/g, '<strong style="color:var(--cta)">@$1</strong>');
+
+    // Line breaks
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
 }
+
+/** Formatting toolbar — insert markdown syntax around selection or at cursor */
+function hbFmt(type) {
+    const ta = document.getElementById('hbComposeBody');
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const sel = ta.value.substring(start, end);
+    let before = '', after = '', insert = '';
+
+    switch (type) {
+        case 'bold':    before = '**'; after = '**'; insert = sel || 'bold text'; break;
+        case 'italic':  before = '_'; after = '_'; insert = sel || 'italic text'; break;
+        case 'strike':  before = '~~'; after = '~~'; insert = sel || 'text'; break;
+        case 'code':    before = '`'; after = '`'; insert = sel || 'code'; break;
+        case 'link':
+            const url = sel.startsWith('http') ? sel : 'https://';
+            if (sel && !sel.startsWith('http')) {
+                before = '['; after = '](https://)'; insert = sel;
+            } else {
+                before = '[link text]('; after = ')'; insert = url;
+            }
+            break;
+        case 'ul': {
+            const lines = (sel || 'item').split('\n');
+            insert = lines.map(l => `- ${l}`).join('\n');
+            break;
+        }
+        case 'ol': {
+            const lines = (sel || 'item').split('\n');
+            insert = lines.map((l, i) => `${i + 1}. ${l}`).join('\n');
+            break;
+        }
+    }
+
+    const newText = ta.value.substring(0, start) + before + insert + after + ta.value.substring(end);
+    ta.value = newText;
+    // Place cursor after the inserted text (select the placeholder if no selection was made)
+    const cursorPos = start + before.length + insert.length + after.length;
+    ta.focus();
+    if (!sel && type !== 'ul' && type !== 'ol') {
+        ta.selectionStart = start + before.length;
+        ta.selectionEnd = start + before.length + insert.length;
+    } else {
+        ta.selectionStart = ta.selectionEnd = cursorPos;
+    }
+}
+
+/** Keyboard shortcuts for formatting (Ctrl+B, Ctrl+I) */
+document.addEventListener('keydown', function(e) {
+    const ta = document.getElementById('hbComposeBody');
+    if (!ta || document.activeElement !== ta) return;
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        if (e.key === 'b') { e.preventDefault(); hbFmt('bold'); }
+        if (e.key === 'i') { e.preventDefault(); hbFmt('italic'); }
+    }
+});
 
 // Compose category pills
 (function() {
@@ -16888,25 +16989,54 @@ async function hbCreatePost() {
     btn.textContent = 'Posting...';
 
     try {
-        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                body,
-                category: hbSelectedCategory,
-                requires_ack: document.getElementById('hbRequiresAck')?.checked || false,
-                scheduled_for: document.getElementById('hbScheduleFor')?.value || null
-            })
-        });
-        if (!resp.ok) {
-            const errData = await resp.json().catch(() => ({}));
-            throw new Error(errData.error || 'Failed to create post');
-        }
-        const postData = await resp.json();
-        const postId = postData.post?.id;
-        const isDraft = postData.post?.is_draft;
+        let postId, isDraft;
 
-        // Upload pending files (only for non-draft posts, or allow on drafts too)
+        if (hbEditingDraftId) {
+            // Publishing an existing draft: update body first, then publish
+            const updateResp = await fetch(`${API_BASE_URL}/api/home-base/posts/${hbEditingDraftId}/draft`, {
+                method: 'PATCH',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ body, category: hbSelectedCategory })
+            });
+            if (!updateResp.ok) throw new Error('Failed to update draft');
+
+            const schedFor = document.getElementById('hbScheduleFor')?.value;
+            if (schedFor) {
+                // Re-schedule instead of publish now — leave as draft
+                isDraft = true;
+                postId = hbEditingDraftId;
+            } else {
+                const pubResp = await fetch(`${API_BASE_URL}/api/home-base/posts/${hbEditingDraftId}/publish`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                if (!pubResp.ok) throw new Error('Failed to publish draft');
+                postId = hbEditingDraftId;
+                isDraft = false;
+            }
+            hbEditingDraftId = null;
+        } else {
+            // Create new post
+            const resp = await fetch(`${API_BASE_URL}/api/home-base/posts`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    body,
+                    category: hbSelectedCategory,
+                    requires_ack: document.getElementById('hbRequiresAck')?.checked || false,
+                    scheduled_for: document.getElementById('hbScheduleFor')?.value || null
+                })
+            });
+            if (!resp.ok) {
+                const errData = await resp.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to create post');
+            }
+            const postData = await resp.json();
+            postId = postData.post?.id;
+            isDraft = postData.post?.is_draft;
+        }
+
+        // Upload pending files
         if (postId && hbPendingFiles.length > 0) {
             for (const file of hbPendingFiles) {
                 const formData = new FormData();
@@ -16923,15 +17053,7 @@ async function hbCreatePost() {
         }
 
         textarea.value = '';
-        document.querySelectorAll('#hbCategoryPills .hb-cat-pill').forEach(p => p.classList.remove('active'));
-        document.querySelector('#hbCategoryPills .hb-cat-pill[data-cat="general"]').classList.add('active');
-        hbSelectedCategory = 'general';
-
-        // Reset ack and schedule inputs
-        const ackCb = document.getElementById('hbRequiresAck');
-        if (ackCb) ackCb.checked = false;
-        const schedInput = document.getElementById('hbScheduleFor');
-        if (schedInput) schedInput.value = '';
+        hbResetCompose();
 
         hbClearSearch();
         if (isDraft) hbLoadScheduledPosts();
@@ -17222,6 +17344,8 @@ document.addEventListener('click', function(e) {
 
 // ── Scheduled Posts ───────────────────────────────────────────────────
 
+let hbEditingDraftId = null; // Track if we're editing an existing draft
+
 async function hbLoadScheduledPosts() {
     const container = document.getElementById('hbScheduledList');
     if (!container) return;
@@ -17232,14 +17356,25 @@ async function hbLoadScheduledPosts() {
         const data = await resp.json();
         const posts = data.posts || [];
 
-        if (posts.length === 0) {
+        // Update drafts badge count
+        const badge = document.getElementById('hbDraftsBadge');
+        const draftCount = posts.filter(p => !p.scheduled_for).length;
+        if (badge) {
+            badge.textContent = draftCount;
+            badge.style.display = draftCount > 0 ? 'inline' : 'none';
+        }
+
+        // Separate scheduled vs pure drafts for the sidebar list
+        const scheduled = posts.filter(p => p.scheduled_for);
+
+        if (scheduled.length === 0) {
             container.style.display = 'none';
             return;
         }
 
         container.style.display = 'block';
         container.innerHTML = '<div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-bottom:0.375rem;text-transform:uppercase;letter-spacing:0.05em">Scheduled Posts</div>' +
-            posts.map(p => {
+            scheduled.map(p => {
                 const preview = (p.body || '').substring(0, 60) + ((p.body || '').length > 60 ? '...' : '');
                 const time = new Date(p.scheduled_for).toLocaleString('en-US', {
                     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
@@ -17269,6 +17404,182 @@ async function hbCancelScheduled(postId) {
     }
 }
 
+// ── Draft Management ─────────────────────────────────────────────────
+
+async function hbSaveDraft() {
+    const textarea = document.getElementById('hbComposeBody');
+    const body = (textarea.value || '').trim();
+    if (!body) { alert('Write something before saving a draft.'); return; }
+
+    const btn = document.getElementById('hbDraftBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try {
+        if (hbEditingDraftId) {
+            // Update existing draft
+            const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${hbEditingDraftId}/draft`, {
+                method: 'PATCH',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ body, category: hbSelectedCategory })
+            });
+            if (!resp.ok) throw new Error('Failed to update draft');
+        } else {
+            // Create new draft
+            const resp = await fetch(`${API_BASE_URL}/api/home-base/posts`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    body,
+                    category: hbSelectedCategory,
+                    is_draft: true,
+                    requires_ack: document.getElementById('hbRequiresAck')?.checked || false
+                })
+            });
+            if (!resp.ok) throw new Error('Failed to save draft');
+        }
+
+        // Clear compose
+        textarea.value = '';
+        hbEditingDraftId = null;
+        hbResetCompose();
+        hbLoadScheduledPosts();
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Draft';
+    }
+}
+
+function hbResumeDraft(postId, body, category) {
+    const textarea = document.getElementById('hbComposeBody');
+    if (!textarea) return;
+
+    hbEditingDraftId = postId;
+    textarea.value = body;
+    textarea.focus();
+
+    // Set category
+    if (category) {
+        document.querySelectorAll('#hbCategoryPills .hb-cat-pill').forEach(p => {
+            p.classList.toggle('active', p.dataset.cat === category);
+        });
+        hbSelectedCategory = category;
+    }
+
+    // Update Post button to show "Publish Draft"
+    const postBtn = document.getElementById('hbPostBtn');
+    if (postBtn) postBtn.textContent = 'Publish';
+    const draftBtn = document.getElementById('hbDraftBtn');
+    if (draftBtn) draftBtn.textContent = 'Update Draft';
+
+    // Scroll to compose area
+    const compose = document.querySelector('.hb-compose');
+    if (compose) compose.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Switch back to All filter
+    hbFilterPosts('all');
+}
+
+async function hbDeleteDraft(postId) {
+    if (!confirm('Delete this draft?')) return;
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/schedule`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to delete draft');
+        if (hbEditingDraftId === postId) {
+            hbEditingDraftId = null;
+            hbResetCompose();
+            document.getElementById('hbComposeBody').value = '';
+        }
+        hbLoadScheduledPosts();
+        // Refresh drafts view if currently showing
+        if (hbCurrentFilter === 'drafts') hbLoadDrafts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function hbPublishDraft(postId) {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/publish`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to publish draft');
+        if (hbEditingDraftId === postId) {
+            hbEditingDraftId = null;
+            hbResetCompose();
+            document.getElementById('hbComposeBody').value = '';
+        }
+        hbLoadScheduledPosts();
+        hbLoadPosts();
+        if (hbCurrentFilter === 'drafts') hbLoadDrafts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function hbLoadDrafts() {
+    const feed = document.getElementById('hbFeed');
+    if (!feed) return;
+    feed.innerHTML = '<div class="hb-loading">Loading drafts...</div>';
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/scheduled`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load drafts');
+        const data = await resp.json();
+        const drafts = (data.posts || []).filter(p => !p.scheduled_for);
+
+        if (drafts.length === 0) {
+            feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">&#128221;</div>No drafts yet. Save a post as draft to find it here.</div>';
+            return;
+        }
+
+        feed.innerHTML = '<div class="hb-drafts-panel"><div class="hb-drafts-panel-header"><span>&#128221; Your Drafts</span><span style="font-size:0.75rem;font-weight:400;color:var(--text-muted)">' + drafts.length + ' draft' + (drafts.length !== 1 ? 's' : '') + '</span></div>' +
+            drafts.map(p => {
+                const preview = (p.body || '').substring(0, 100) + ((p.body || '').length > 100 ? '...' : '');
+                const catLabel = hbCategoryLabel(p.category);
+                const time = hbRelativeTime(p.updated_at || p.created_at);
+                return `<div class="hb-draft-item">
+                    <div class="hb-draft-preview">
+                        <div class="hb-draft-category">${catLabel} &middot; ${time}</div>
+                        ${hbEsc(preview)}
+                    </div>
+                    <div class="hb-draft-actions">
+                        <button class="hb-draft-resume" onclick="hbResumeDraft('${p.id}',${JSON.stringify(JSON.stringify(p.body))},'${p.category}')">Edit</button>
+                        <button class="hb-draft-resume" onclick="hbPublishDraft('${p.id}')">Publish</button>
+                        <button class="hb-draft-delete" onclick="hbDeleteDraft('${p.id}')">Delete</button>
+                    </div>
+                </div>`;
+            }).join('') + '</div>';
+    } catch (err) {
+        feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">⚠️</div>Failed to load drafts.</div>';
+    }
+}
+
+/** Reset compose area to default state */
+function hbResetCompose() {
+    hbEditingDraftId = null;
+    document.querySelectorAll('#hbCategoryPills .hb-cat-pill').forEach(p => p.classList.remove('active'));
+    const generalPill = document.querySelector('#hbCategoryPills .hb-cat-pill[data-cat="general"]');
+    if (generalPill) generalPill.classList.add('active');
+    hbSelectedCategory = 'general';
+
+    const ackCb = document.getElementById('hbRequiresAck');
+    if (ackCb) ackCb.checked = false;
+    const schedInput = document.getElementById('hbScheduleFor');
+    if (schedInput) schedInput.value = '';
+
+    const postBtn = document.getElementById('hbPostBtn');
+    if (postBtn) postBtn.textContent = 'Post';
+    const draftBtn = document.getElementById('hbDraftBtn');
+    if (draftBtn) draftBtn.textContent = 'Save Draft';
+}
+
 // ── Filters ───────────────────────────────────────────────────────────
 
 function hbFilterPosts(filter) {
@@ -17280,6 +17591,8 @@ function hbFilterPosts(filter) {
 
     if (filter === 'bookmarks') {
         hbLoadBookmarkedPosts();
+    } else if (filter === 'drafts') {
+        hbLoadDrafts();
     } else {
         hbLoadPosts();
     }
