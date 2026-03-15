@@ -1354,7 +1354,12 @@ function buildAgenticSystemPrompt(org) {
         orgProfile += `\n\nIMPORTANT: Only use the URLs listed above. Do NOT invent or guess other URLs, licence numbers, or contact information.`;
     }
 
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
     return `You are Ask Lightspeed, an AI assistant for lottery operators built into the Lightspeed platform. You work for ${orgName}.
+
+TODAY'S DATE: ${dayOfWeek}, ${today}
 ${orgProfile}
 
 You have access to tools that let you interact with other parts of the platform:

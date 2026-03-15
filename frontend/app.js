@@ -3507,7 +3507,12 @@ async function alsCancelAction() {
  * Build agentic system prompt (with tool awareness)
  */
 function buildAlsAgenticSystemPrompt(orgName, toneDesc) {
+    const today = new Date().toISOString().split('T')[0];
+    const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
     return `You are Ask Lightspeed, a powerful AI assistant built by Launchpad Solutions into the Lightspeed platform. You work for ${orgName}.
+
+TODAY'S DATE: ${dayOfWeek}, ${today}
 
 TONE: Respond in a ${toneDesc} tone.
 ${getLanguageInstruction()}
@@ -4027,6 +4032,8 @@ async function sendAlsMessage() {
         }
 
         const systemPrompt = `You are Lightspeed AI, a powerful, full-featured AI assistant built by Launchpad Solutions. You work for ${orgName}.
+
+TODAY'S DATE: ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}, ${new Date().toISOString().split('T')[0]}
 
 TONE: Respond in a ${toneDesc} tone.
 ${getLanguageInstruction()}
