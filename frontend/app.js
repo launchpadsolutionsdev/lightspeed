@@ -3146,7 +3146,10 @@ function alsNeedsAgenticMode(message) {
         'previous response', 'past responses', 'what did i say about',
         // Insights
         'analyze this data', 'run insights', 'run analysis', 'analyze the data',
-        'generate insights', 'data analysis'
+        'generate insights', 'data analysis',
+        // Home Base
+        'home base', 'homebase', 'team post', 'team posts', 'team announcement',
+        'team announcements', 'bulletin board', 'internal post', 'internal posts'
     ];
     if (patterns.some(p => lower.includes(p))) return true;
 
@@ -4039,8 +4042,10 @@ TOOLS & CAPABILITIES: You have agentic capabilities that activate for certain re
 - "What did I write about X?" — searches past AI-generated content
 - "Analyze this data..." — runs Insights Engine analysis
 - "What's on Runway?" / "Check the calendar" — searches calendar events
+- "Check Home Base" / "What did the team post?" — searches Home Base bulletin board for internal posts and announcements
 
 IMPORTANT: If the user asks to add, create, or schedule events on Runway or the calendar, you CAN do that — use phrasing like "add to Runway" to activate the calendar tool. Never tell the user you cannot add events to Runway. If the tools don't activate, ask the user to try rephrasing with "add to Runway" or "add to calendar" so the calendar tool activates.
+IMPORTANT: If the user asks about Home Base, team posts, announcements, or internal updates, you CAN search Home Base. Never tell the user you cannot access Home Base.
 
 Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
