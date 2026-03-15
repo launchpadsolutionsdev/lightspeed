@@ -186,6 +186,20 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
         }
     },
     {
+        name: 'search_home_base',
+        description: 'Search the team\'s Home Base bulletin board for internal posts, announcements, updates, and team communications. Use this to find information shared by team members — urgent notices, draw updates, campaign plans, FYI posts, and other internal knowledge that may not be in the Knowledge Base.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                query: { type: 'string', description: 'Search term to find in Home Base posts' },
+                category: { type: 'string', enum: ['general', 'urgent', 'fyi', 'draw_update', 'campaign'], description: 'Optional: filter by post category' },
+                pinned_only: { type: 'boolean', description: 'If true, only return pinned (important) posts' },
+                limit: { type: 'number', description: 'Max results to return (default 10, max 20)' }
+            },
+            required: ['query']
+        }
+    },
+    {
         name: 'run_insights_analysis',
         description: 'Run an Insights Engine analysis on provided data. Use this when the user asks for analysis of sales data, customer data, seller performance, or any structured data they\'ve shared in the conversation. The data should already be available from an uploaded file or conversation context.',
         input_schema: {
@@ -329,6 +343,103 @@ async function executeSearchKnowledgeBase(input, organizationId) {
             category: r.category,
             content: r.content.substring(0, 500),
             updated_at: r.updated_at
+        }));
+    } catch (_e) {
+        return [];
+    }
+}
+
+async function executeSearchHomeBase(input, organizationId) {
+    const query = input.query;
+    if (!query) return [];
+
+    const conditions = ['p.organization_id = $1', 'COALESCE(p.archived, false) = false', 'COALESCE(p.is_draft, false) = false'];
+    const params = [organizationId];
+    let paramIdx = 2;
+
+    if (input.category) {
+        conditions.push(`p.category = $${paramIdx}`);
+        params.push(input.category);
+        paramIdx++;
+    }
+    if (input.pinned_only) {
+        conditions.push('p.pinned = true');
+    }
+
+    const limit = Math.min(input.limit || 10, 20);
+
+    // Try FTS first
+    try {
+        conditions.push(`p.search_vector @@ plainto_tsquery('english', $${paramIdx})`);
+        params.push(query);
+
+        const result = await pool.query(
+            `SELECT p.id, p.body, p.category, p.pinned, p.created_at,
+                    u.first_name, u.last_name,
+                    COALESCE(c.comment_count, 0)::int AS comment_count,
+                    ts_rank(p.search_vector, plainto_tsquery('english', $${paramIdx})) AS rank
+             FROM home_base_posts p
+             JOIN users u ON u.id = p.author_id
+             LEFT JOIN (
+                 SELECT post_id, COUNT(*) AS comment_count
+                 FROM home_base_comments
+                 GROUP BY post_id
+             ) c ON c.post_id = p.id
+             WHERE ${conditions.join(' AND ')}
+             ORDER BY p.pinned DESC, rank DESC, p.created_at DESC
+             LIMIT $${paramIdx + 1}`,
+            [...params, limit]
+        );
+
+        if (result.rows.length > 0) {
+            return result.rows.map(r => ({
+                author: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+                category: r.category,
+                pinned: r.pinned,
+                body: r.body.substring(0, 600),
+                comment_count: r.comment_count,
+                created_at: r.created_at
+            }));
+        }
+    } catch (_e) { /* FTS may fail, try fallback */ }
+
+    // Fallback: ILIKE search
+    try {
+        const fallbackConditions = ['p.organization_id = $1', 'COALESCE(p.archived, false) = false', 'COALESCE(p.is_draft, false) = false'];
+        const fallbackParams = [organizationId];
+        let fbIdx = 2;
+
+        if (input.category) {
+            fallbackConditions.push(`p.category = $${fbIdx}`);
+            fallbackParams.push(input.category);
+            fbIdx++;
+        }
+        if (input.pinned_only) {
+            fallbackConditions.push('p.pinned = true');
+        }
+
+        fallbackConditions.push(`p.body ILIKE $${fbIdx}`);
+        fallbackParams.push(`%${query}%`);
+        fbIdx++;
+
+        const fallback = await pool.query(
+            `SELECT p.id, p.body, p.category, p.pinned, p.created_at,
+                    u.first_name, u.last_name
+             FROM home_base_posts p
+             JOIN users u ON u.id = p.author_id
+             WHERE ${fallbackConditions.join(' AND ')}
+             ORDER BY p.pinned DESC, p.created_at DESC
+             LIMIT $${fbIdx}`,
+            [...fallbackParams, limit]
+        );
+
+        return fallback.rows.map(r => ({
+            author: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+            category: r.category,
+            pinned: r.pinned,
+            body: r.body.substring(0, 600),
+            comment_count: 0,
+            created_at: r.created_at
         }));
     } catch (_e) {
         return [];
@@ -879,6 +990,34 @@ async function processResponse(response, messages, system, organizationId, userI
             await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
             return;
 
+        } else if (toolUse.name === 'search_home_base') {
+            // Read action — search Home Base posts
+            sendEvent({ type: 'status', message: 'Searching Home Base...' });
+            const results = await executeSearchHomeBase(toolUse.input, organizationId);
+            const toolResult = results.length > 0
+                ? `Found ${results.length} Home Base posts:\n${results.map((r, i) => {
+                    const date = r.created_at ? new Date(r.created_at).toLocaleDateString('en-CA') : 'unknown';
+                    return `${i + 1}. [${r.category}]${r.pinned ? ' [PINNED]' : ''} by ${r.author} (${date}):\n   ${r.body}${r.comment_count ? ` (${r.comment_count} comments)` : ''}`;
+                }).join('\n\n')}`
+                : 'No matching Home Base posts found.';
+
+            const followUpMessages = [
+                ...messages,
+                { role: 'assistant', content: response.content },
+                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+            ];
+
+            const followUp = await claudeService.generateResponse({
+                messages: followUpMessages,
+                system,
+                max_tokens: 4096,
+                tools: TOOLS,
+                model
+            });
+
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            return;
+
         } else if (toolUse.name === 'run_insights_analysis') {
             // Read action — run data analysis
             sendEvent({ type: 'status', message: 'Running insights analysis...' });
@@ -1091,6 +1230,9 @@ KNOWLEDGE & CONTENT TOOLS:
   - Use the details field for additional context the user provides
   - Set tone_name to match the user's requested tone (default "balanced")
 
+TEAM & INTERNAL TOOLS:
+- search_home_base: Search the team's Home Base bulletin board for internal posts, announcements, urgent notices, draw updates, campaign plans, and other team communications. Posts may contain important operational details, decisions, or context shared by team members.
+
 ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
 - run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
@@ -1107,6 +1249,7 @@ TOOL USAGE GUIDELINES:
 - For "what did I write about X?": Call search_response_history
 - For data analysis requests: Call run_insights_analysis with the data
 - For policy/procedure questions: Call search_knowledge_base
+- For team announcements, internal updates, or "what did the team post about X?": Call search_home_base
 - For calendar questions: Call search_runway_events
 
 For draw events, use category "Draw" and color "blue" by default. Format titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
