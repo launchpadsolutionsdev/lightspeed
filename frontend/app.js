@@ -17689,17 +17689,82 @@ function hbRenderComment(comment, postId) {
         ? `<button class="hb-comment-delete" onclick="hbDeleteComment('${comment.id}','${postId || ''}')">delete</button>`
         : '';
 
-    return `<div class="hb-comment">
+    // Quote-reply block
+    let quoteHtml = '';
+    if (comment.reply_to) {
+        const quotePreview = (comment.reply_to.body || '').substring(0, 80) + ((comment.reply_to.body || '').length > 80 ? '...' : '');
+        quoteHtml = `<div class="hb-quote-reply">
+            <span class="hb-quote-reply-author">${hbEsc(comment.reply_to.author_name)}</span>
+            <div class="hb-quote-reply-body">${hbEsc(quotePreview)}</div>
+        </div>`;
+    }
+
+    // Comment reactions
+    const reactions = comment.reactions || [];
+    let reactionsHtml = '<div class="hb-comment-reactions">';
+    reactions.forEach(r => {
+        const meClass = r.me ? ' me' : '';
+        reactionsHtml += `<button class="hb-comment-reaction-chip${meClass}" onclick="hbToggleCommentReaction('${comment.id}','${r.emoji}','${postId}')">${r.emoji} <span>${r.count}</span></button>`;
+    });
+    reactionsHtml += `<button class="hb-comment-add-reaction" onclick="hbOpenCommentReactionPicker(event, '${comment.id}')">+`;
+    reactionsHtml += `<div class="hb-comment-reaction-picker" id="hb-cpicker-${comment.id}">`;
+    HB_REACTIONS.forEach(emoji => {
+        reactionsHtml += `<button onclick="event.stopPropagation();hbToggleCommentReaction('${comment.id}','${emoji}','${postId}')">${emoji}</button>`;
+    });
+    reactionsHtml += '</div></button>';
+    reactionsHtml += '</div>';
+
+    // Reply button
+    const replyBtn = `<button class="hb-comment-reply-btn" onclick="hbSetReplyTo('${postId}','${comment.id}',${JSON.stringify(JSON.stringify(name))},${JSON.stringify(JSON.stringify(comment.body))})">reply</button>`;
+
+    return `<div class="hb-comment" id="hb-comment-${comment.id}">
         <div class="hb-comment-avatar" style="background:${color}">${initial}</div>
         <div class="hb-comment-content">
             <div class="hb-comment-header">
                 <span class="hb-comment-author">${hbEsc(name)}</span>
                 <span class="hb-comment-time">${time}</span>
+                ${replyBtn}
                 ${deleteBtn}
             </div>
+            ${quoteHtml}
             <div class="hb-comment-body">${hbRenderBody(comment.body)}</div>
+            ${reactionsHtml}
         </div>
     </div>`;
+}
+
+// Track reply-to context per post
+const hbReplyToMap = {}; // { postId: { commentId, authorName, body } }
+
+function hbSetReplyTo(postId, commentId, authorName, commentBody) {
+    hbReplyToMap[postId] = { commentId, authorName, body: commentBody };
+
+    // Show reply preview above comment input
+    const form = document.querySelector(`#hb-comments-${postId} .hb-comment-form`);
+    if (!form) return;
+
+    // Remove existing preview
+    const existing = form.querySelector('.hb-reply-preview');
+    if (existing) existing.remove();
+
+    const preview = (commentBody || '').substring(0, 60) + ((commentBody || '').length > 60 ? '...' : '');
+    const previewEl = document.createElement('div');
+    previewEl.className = 'hb-reply-preview';
+    previewEl.innerHTML = `<span class="hb-reply-preview-text">Replying to <strong>${hbEsc(authorName)}</strong>: ${hbEsc(preview)}</span><button class="hb-reply-preview-close" onclick="hbClearReplyTo('${postId}')">&times;</button>`;
+    form.insertBefore(previewEl, form.firstChild);
+
+    // Focus the input
+    const input = document.getElementById(`hb-comment-input-${postId}`);
+    if (input) input.focus();
+}
+
+function hbClearReplyTo(postId) {
+    delete hbReplyToMap[postId];
+    const form = document.querySelector(`#hb-comments-${postId} .hb-comment-form`);
+    if (form) {
+        const preview = form.querySelector('.hb-reply-preview');
+        if (preview) preview.remove();
+    }
 }
 
 async function hbSubmitComment(postId) {
@@ -17707,14 +17772,18 @@ async function hbSubmitComment(postId) {
     const body = (input.value || '').trim();
     if (!body) return;
 
+    const replyTo = hbReplyToMap[postId];
+    const replyToId = replyTo ? replyTo.commentId : null;
+
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/comments`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ body })
+            body: JSON.stringify({ body, reply_to_id: replyToId })
         });
         if (!resp.ok) throw new Error('Failed to post comment');
         input.value = '';
+        hbClearReplyTo(postId);
 
         // Reload comments
         const list = document.getElementById(`hb-comments-list-${postId}`);
@@ -17762,6 +17831,52 @@ async function hbDeleteComment(commentId, postId) {
         alert(err.message);
     }
 }
+
+// ── Comment Reactions ─────────────────────────────────────────────────
+
+function hbOpenCommentReactionPicker(event, commentId) {
+    event.stopPropagation();
+    document.querySelectorAll('.hb-comment-reaction-picker.open').forEach(p => p.classList.remove('open'));
+    const picker = document.getElementById(`hb-cpicker-${commentId}`);
+    if (picker) picker.classList.toggle('open');
+}
+
+async function hbToggleCommentReaction(commentId, emoji, postId) {
+    document.querySelectorAll('.hb-comment-reaction-picker.open').forEach(p => p.classList.remove('open'));
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/comments/${commentId}/reactions`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ emoji })
+        });
+        if (!resp.ok) throw new Error('Failed to toggle comment reaction');
+
+        // Reload comments for this post to refresh reaction counts
+        if (postId) {
+            const list = document.getElementById(`hb-comments-list-${postId}`);
+            const commResp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/comments`, { headers: getAuthHeaders() });
+            if (commResp.ok) {
+                const data = await commResp.json();
+                const comments = data.comments || [];
+                if (list) {
+                    list.innerHTML = comments.length === 0
+                        ? '<div style="font-size:0.8rem;color:var(--text-muted);padding:0.25rem 0">No comments yet</div>'
+                        : comments.map(c => hbRenderComment(c, postId)).join('');
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Comment reaction error:', err);
+    }
+}
+
+// Close comment reaction pickers on outside click
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.hb-comment-reaction-picker') && !e.target.closest('.hb-comment-add-reaction')) {
+        document.querySelectorAll('.hb-comment-reaction-picker.open').forEach(p => p.classList.remove('open'));
+    }
+});
 
 // ── Search ────────────────────────────────────────────────────────────
 
