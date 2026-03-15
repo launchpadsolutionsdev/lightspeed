@@ -16,7 +16,7 @@ const pool = require('../../config/database');
 const { authenticate, checkUsageLimit } = require('../middleware/auth');
 const claudeService = require('../services/claude');
 const { buildEnhancedPrompt } = require('../services/promptBuilder');
-const { buildResponseAssistantPrompt } = require('../services/systemPromptBuilder');
+const { DRAFT_STATIC_PROMPT, buildDraftDynamicPrompt, buildDraftUserPrompt, getMaxTokensForContentType } = require('../services/draftPromptBuilder');
 
 // Multer config: in-memory storage, 10MB limit
 const upload = multer({
@@ -95,18 +95,67 @@ const TOOLS = [
     },
     {
         name: 'draft_content',
-        description: 'Draft professional content using the full Lightspeed content pipeline with brand voice, knowledge base, and org context. Use this when the user asks you to draft an email, social media post, customer response, or any written content that should match their organization\'s tone and style.',
+        description: `Draft professional content using the full Draft Assistant pipeline with brand voice, knowledge base, templates, and org context. Supports ALL content types:
+
+CONTENT TYPES (content_type parameter):
+- "email": Email copy — new draw announcements, reminders, winner announcements, impact/donor stories, last chance emails. Set email_type for the specific category. Set campaign_mode=true for a 3-email sequence.
+- "social": Social media posts for Facebook, Instagram, or LinkedIn. Set platform and variant_count.
+- "media-release": Professional media/press releases. Set release_type and include quotes array for leadership quotes.
+- "ad": Facebook/Instagram ad copy with structured Headline/Primary Text/Description fields. Set variant_count.
+- "write-anything": Free-form content — board reports, grant applications, talking points, internal memos, volunteer recruitment, or any custom content. Set preset for a specific format.
+
+Use this tool whenever the user asks you to draft, write, compose, or generate ANY type of content.`,
         input_schema: {
             type: 'object',
             properties: {
-                inquiry: { type: 'string', description: 'The content request or customer inquiry to respond to. For response drafts, include the original message to respond to.' },
-                format: { type: 'string', enum: ['email', 'facebook'], description: 'Content format. Use "email" for emails, letters, and general content. Use "facebook" for social media posts (enforces <400 char limit).' },
-                tone: { type: 'number', description: 'Tone slider 0-100. 0=formal, 50=balanced, 100=warm/friendly. Default 50.' },
-                length: { type: 'number', description: 'Length slider 0-100. 0=brief, 50=moderate, 100=detailed. Default 50.' },
-                staffName: { type: 'string', description: 'Name to sign off with (e.g., "Sarah" or "Support Team"). Default "Support Team".' },
+                inquiry: { type: 'string', description: 'The main topic, announcement, or content request. For emails, include the key details. For media releases, describe the announcement. For social posts, describe what to promote.' },
+                content_type: { type: 'string', enum: ['email', 'social', 'media-release', 'ad', 'write-anything'], description: 'The type of content to draft. Determines formatting rules and output structure.' },
+                details: { type: 'string', description: 'Additional context, key details, or supporting information to include in the content.' },
+                tone_name: { type: 'string', enum: ['balanced', 'exciting', 'professional', 'urgent', 'warm', 'formal', 'persuasive', 'conversational'], description: 'Tone for the content. Default "balanced".' },
+
+                // Email-specific
+                email_type: { type: 'string', enum: ['new-draw', 'draw-reminder', 'winners', 'impact-sunday', 'last-chance'], description: 'Email category (only for content_type="email"). Determines structure and guidance.' },
+                campaign_mode: { type: 'boolean', description: 'If true, generates a 3-email campaign sequence: Announcement → Reminder → Last Chance (only for content_type="email").' },
+                email_addons: {
+                    type: 'object',
+                    description: 'Optional email add-on sections (only for content_type="email").',
+                    properties: {
+                        subscriptions: { type: 'boolean', description: 'Include subscriptions promo section' },
+                        catch_the_ace: { type: 'boolean', description: 'Include Catch The Ace promo section' },
+                        other: { type: 'boolean', description: 'Include other program section' }
+                    }
+                },
+
+                // Social-specific
+                platform: { type: 'string', enum: ['facebook', 'instagram', 'linkedin'], description: 'Social media platform (only for content_type="social"). Default "facebook".' },
+                variant_count: { type: 'number', description: 'Number of variants to generate (for "social": 1-5, default 3; for "ad": 1-5, default 5).' },
+
+                // Media Release-specific
+                release_type: { type: 'string', enum: ['immediate', 'embargo', 'award', 'community-impact'], description: 'Type of media release (only for content_type="media-release"). Default "immediate".' },
+                embargo_date: { type: 'string', description: 'Embargo date if release_type is "embargo" (e.g., "April 15, 2026").' },
+                quotes: {
+                    type: 'array',
+                    description: 'Leadership quotes to include in the media release (only for content_type="media-release").',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            name: { type: 'string', description: 'Person\'s name' },
+                            title: { type: 'string', description: 'Person\'s title/role' },
+                            text: { type: 'string', description: 'The quote text — what they said or the sentiment to express' }
+                        },
+                        required: ['name', 'text']
+                    }
+                },
+
+                // Write Anything-specific
+                preset: { type: 'string', enum: ['board-report', 'grant-application', 'talking-points', 'internal-memo', 'volunteer-recruitment'], description: 'Content preset with specific formatting guidance (only for content_type="write-anything"). Omit for freeform.' },
+                format_style: { type: 'string', enum: ['paragraphs', 'bullet-points', 'numbered-list', 'outline'], description: 'Output format (only for content_type="write-anything"). Default "paragraphs".' },
+                length: { type: 'string', enum: ['brief', 'standard', 'detailed'], description: 'Output length (only for content_type="write-anything"). Default "standard".' },
+
+                // Legacy/general
                 agentInstructions: { type: 'string', description: 'Optional special instructions for how to draft the content (e.g., "mention the upcoming draw", "keep it under 3 paragraphs")' }
             },
-            required: ['inquiry']
+            required: ['inquiry', 'content_type']
         }
     },
     {
@@ -314,35 +363,51 @@ async function executeCreateRunwayEvents(events, organizationId, userId) {
 
 async function executeDraftContent(input, organizationId) {
     try {
-        // Build prompt using the full Response Assistant pipeline
-        const { systemPrompt, userPrompt, maxTokens } = await buildResponseAssistantPrompt({
-            organizationId,
-            inquiry: input.inquiry,
-            format: input.format || 'email',
-            tone: input.tone ?? 50,
-            length: input.length ?? 50,
-            includeLinks: true,
-            includeSteps: false,
-            agentInstructions: input.agentInstructions || '',
-            staffName: input.staffName || 'Support Team',
-            language: 'en',
-            tool: 'ask_lightspeed'
-        });
+        const contentType = input.content_type || 'email';
 
-        // Enhance with KB, rules, voice
-        const { system: enhancedSystem } = await buildEnhancedPrompt(
-            systemPrompt, input.inquiry, organizationId,
-            { kb_type: 'all', tool: 'response_assistant', includeCitations: false }
+        // Build the dynamic Layer 2 prompt (org context, templates, calendar, rated examples)
+        const { dynamic: dynamicSystem, org } = await buildDraftDynamicPrompt(
+            organizationId, contentType, input.email_type || null, input.inquiry
         );
 
-        const response = await claudeService.generateResponse({
-            messages: [{ role: 'user', content: userPrompt }],
-            system: enhancedSystem,
-            max_tokens: maxTokens || 1024
+        // Enhance Layer 2 with KB entries, rules, voice fingerprint
+        const { system: enhancedDynamic } = await buildEnhancedPrompt(
+            dynamicSystem, input.inquiry, organizationId,
+            { kb_type: 'all', tool: 'draft_assistant', includeCitations: false }
+        );
+
+        // Build the content-type-specific user prompt
+        const userPrompt = buildDraftUserPrompt(input, org);
+
+        // Add any agent instructions as a prefix
+        const finalUserPrompt = input.agentInstructions
+            ? `SPECIAL INSTRUCTIONS: ${input.agentInstructions}\n\n${userPrompt}`
+            : userPrompt;
+
+        const maxTokens = getMaxTokensForContentType(input);
+
+        // Use the two-layer prompt system (static cached + dynamic)
+        const response = await claudeService.streamResponse({
+            staticSystem: DRAFT_STATIC_PROMPT,
+            dynamicSystem: enhancedDynamic,
+            messages: [{ role: 'user', content: finalUserPrompt }],
+            max_tokens: maxTokens,
+            onText: () => {},   // Collect full text, no streaming needed here
+            onDone: () => {}
         });
 
-        const draft = response.content?.find(b => b.type === 'text')?.text || '';
-        return { draft, format: input.format || 'email' };
+        const draft = response.text || '';
+
+        // Content type label for the response
+        const typeLabels = {
+            'email': 'email',
+            'social': 'social media post',
+            'media-release': 'media release',
+            'ad': 'ad copy',
+            'write-anything': 'content'
+        };
+
+        return { draft, contentType, label: typeLabels[contentType] || 'content' };
     } catch (err) {
         return { draft: '', error: err.message };
     }
@@ -716,12 +781,19 @@ async function processResponse(response, messages, system, organizationId, userI
             return;
 
         } else if (toolUse.name === 'draft_content') {
-            // Read action — generates draft content using Response Assistant pipeline
-            sendEvent({ type: 'status', message: 'Drafting content with brand voice...' });
+            // Read action — generates draft content using full Draft Assistant pipeline
+            const contentTypeStatus = {
+                'email': 'Drafting email with brand voice...',
+                'social': 'Drafting social media post...',
+                'media-release': 'Drafting media release...',
+                'ad': 'Generating ad copy variants...',
+                'write-anything': 'Drafting content...'
+            };
+            sendEvent({ type: 'status', message: contentTypeStatus[toolUse.input.content_type] || 'Drafting content with brand voice...' });
             const result = await executeDraftContent(toolUse.input, organizationId);
             const toolResult = result.error
                 ? `Draft generation failed: ${result.error}`
-                : `Here is the drafted ${result.format === 'facebook' ? 'social media post' : 'content'}:\n\n${result.draft}`;
+                : `Here is the drafted ${result.label || 'content'}:\n\n${result.draft}`;
 
             const followUpMessages = [
                 ...messages,
@@ -930,7 +1002,23 @@ CALENDAR TOOLS:
 KNOWLEDGE & CONTENT TOOLS:
 - search_knowledge_base: Search the org's Knowledge Base for policies, procedures, FAQs
 - save_to_knowledge_base: Save new information to the KB (requires user confirmation)
-- draft_content: Draft professional emails, social posts, and responses using the full content pipeline with brand voice and KB context
+- draft_content: Draft professional content using the FULL Draft Assistant pipeline with brand voice, templates, knowledge base, and org context. Supports ALL content types:
+
+  DRAFT_CONTENT — CONTENT TYPES:
+  1. content_type="email": Email copy. Set email_type to one of: "new-draw", "draw-reminder", "winners", "impact-sunday", "last-chance". Set campaign_mode=true for a 3-email sequence (Announcement → Reminder → Last Chance). Can include email_addons for subscriptions/catch-the-ace sections.
+  2. content_type="social": Social media posts. Set platform ("facebook", "instagram", "linkedin") and variant_count (1-5). Each variant is distinct with different hooks and angles.
+  3. content_type="media-release": Professional media/press releases. Set release_type ("immediate", "embargo", "award", "community-impact"). Include quotes array with name/title/text for leadership quotes. Set embargo_date for embargoed releases.
+  4. content_type="ad": Facebook/Instagram ad copy. Outputs structured Headline (40 chars) / Primary Text (125 chars) / Description (30 chars) per variant. Set variant_count (1-5).
+  5. content_type="write-anything": Free-form content. Set preset for specific formats: "board-report", "grant-application", "talking-points", "internal-memo", "volunteer-recruitment". Or omit preset for freeform. Set format_style, length, and tone_name.
+
+  IMPORTANT RULES FOR draft_content:
+  - ALWAYS set content_type — this determines which Draft Assistant pipeline is used
+  - For media releases, extract and pass quotes as structured data in the quotes array
+  - For social posts, pass the platform and desired variant_count
+  - For emails, set the email_type to get category-specific guidance
+  - The inquiry field should contain the topic/announcement/details — be thorough
+  - Use the details field for additional context the user provides
+  - Set tone_name to match the user's requested tone (default "balanced")
 
 ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
@@ -939,7 +1027,12 @@ ANALYSIS & HISTORY TOOLS:
 TOOL USAGE GUIDELINES:
 - For file uploads with draw schedules: Parse carefully, then call create_runway_events with all events immediately. The system will show the user a confirmation dialog — you do NOT need to ask for confirmation in text.
 - For "remember that..." or "our policy is...": Call save_to_knowledge_base directly. The system handles confirmation.
-- For "draft me an email/post about...": Call draft_content with appropriate format and tone
+- For "draft/write/compose me a..." requests: Call draft_content with the appropriate content_type and parameters. ALWAYS call the tool — never just write content inline without it. The tool uses the full Draft Assistant pipeline with brand voice, knowledge base, templates, and org context.
+- For "media release", "press release": Call draft_content with content_type="media-release"
+- For "social post", "Facebook post", "Instagram post": Call draft_content with content_type="social"
+- For "email", "newsletter", "email blast": Call draft_content with content_type="email"
+- For "ad", "ad copy", "Facebook ad": Call draft_content with content_type="ad"
+- For "board report", "memo", "grant application", "talking points", or any other written content: Call draft_content with content_type="write-anything"
 - For "what did I write about X?": Call search_response_history
 - For data analysis requests: Call run_insights_analysis with the data
 - For policy/procedure questions: Call search_knowledge_base
@@ -948,6 +1041,8 @@ TOOL USAGE GUIDELINES:
 For draw events, use category "Draw" and color "blue" by default. Format titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
 
 IMPORTANT: For write actions (create_runway_events, save_to_knowledge_base), call the tool directly. The system will present a confirmation dialog to the user before executing. Do NOT ask "shall I go ahead?" or "would you like me to create these?" in text — just call the tool and the confirmation UI will handle it. Read-only actions (search, draft, analyze) execute immediately.
+
+CRITICAL: When the user asks you to draft or write ANY content, you MUST call the draft_content tool. Do NOT write content directly in your response without calling the tool first. The draft_content tool gives you access to the organization's brand voice, knowledge base, content templates, calendar events, and response rules — writing content without it will produce generic output that misses the organization's context and style.
 
 Keep responses concise. Use markdown formatting when helpful.`;
 }
