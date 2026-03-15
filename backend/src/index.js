@@ -197,6 +197,12 @@ if (homeBaseRoutes.publishScheduledPosts) {
     console.log('Home Base scheduled post publisher started (60s interval)');
 }
 
+// Start Home Base digest email checker (runs every hour)
+if (homeBaseRoutes.sendDigestEmails) {
+    setInterval(homeBaseRoutes.sendDigestEmails, 60 * 60 * 1000);
+    console.log('Home Base digest email checker started (hourly)');
+}
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Not found' });

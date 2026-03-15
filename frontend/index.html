@@ -10508,6 +10508,175 @@
             color: #D97706;
         }
 
+        /* Activity button */
+        .hb-activity-btn, .hb-digest-btn {
+            background: none;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 0.4rem 0.5rem;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .hb-activity-btn:hover, .hb-digest-btn:hover { background: #f1f5f9; }
+
+        /* Activity panel */
+        .hb-activity-panel {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .hb-activity-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+        .hb-activity-panel-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .hb-activity-period {
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-family: var(--font-family);
+        }
+        .hb-activity-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.625rem;
+            margin-bottom: 0.75rem;
+        }
+        .hb-stat-card {
+            background: var(--bg-alt);
+            border-radius: var(--radius-md);
+            padding: 0.625rem 0.75rem;
+            text-align: center;
+        }
+        .hb-stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .hb-stat-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.125rem;
+        }
+        .hb-activity-section {
+            margin-top: 0.75rem;
+        }
+        .hb-activity-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.375rem;
+        }
+        .hb-contributor-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.375rem 0;
+            border-bottom: 1px solid #f8fafc;
+            font-size: 0.8rem;
+        }
+        .hb-contributor-row:last-child { border-bottom: none; }
+        .hb-contributor-name { color: var(--text-primary); font-weight: 500; }
+        .hb-contributor-count { color: var(--text-muted); font-size: 0.75rem; }
+        .hb-top-post {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f8fafc;
+        }
+        .hb-top-post:last-child { border-bottom: none; }
+        .hb-top-post-body {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hb-top-post-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.125rem;
+        }
+        .hb-trend-bar {
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            height: 48px;
+            margin-top: 0.375rem;
+        }
+        .hb-trend-col {
+            flex: 1;
+            background: var(--cta);
+            border-radius: 2px 2px 0 0;
+            min-height: 2px;
+            opacity: 0.7;
+            transition: opacity 0.15s;
+            position: relative;
+        }
+        .hb-trend-col:hover { opacity: 1; }
+        .hb-trend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Digest dropdown */
+        .hb-digest-dropdown {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 4px);
+            width: 260px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+            padding: 0.75rem 1rem;
+        }
+        .hb-digest-dropdown-header {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+        .hb-digest-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin: 0 0 0.5rem;
+        }
+        .hb-digest-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+        .hb-digest-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .hb-digest-option input { cursor: pointer; }
+        .hb-digest-status {
+            font-size: 0.7rem;
+            color: var(--cta);
+            margin-top: 0.375rem;
+            min-height: 1em;
+        }
+
         @media (max-width: 600px) {
             #page-home-base { padding: 1rem; }
             .hb-compose-footer { flex-direction: column; align-items: stretch; }
@@ -13301,6 +13470,8 @@
                                 <p>Team bulletin board — share updates, announcements, and discussions</p>
                             </div>
                             <div class="hb-header-actions">
+                                <button class="hb-digest-btn" id="hbDigestBtn" onclick="hbToggleDigestPanel()" title="Email digest settings">&#9993;</button>
+                                <button class="hb-activity-btn" id="hbActivityBtn" onclick="hbToggleActivityPanel()" title="Activity & engagement" style="display:none">&#128200;</button>
                                 <button class="hb-notif-btn" id="hbNotifBtn" onclick="hbToggleNotifications()" title="Notifications">
                                     &#128276;
                                     <span class="hb-notif-badge" id="hbNotifBadge" style="display:none">0</span>
@@ -13321,6 +13492,41 @@
                             <div class="hb-notif-list" id="hbNotifList">
                                 <div class="hb-loading" style="padding:0.75rem">Loading...</div>
                             </div>
+                        </div>
+                        <!-- Digest preferences dropdown -->
+                        <div class="hb-digest-dropdown" id="hbDigestDropdown" style="display:none">
+                            <div class="hb-digest-dropdown-header">Email Digest</div>
+                            <p class="hb-digest-desc">Get a summary of Home Base activity delivered to your inbox.</p>
+                            <div class="hb-digest-options">
+                                <label class="hb-digest-option">
+                                    <input type="radio" name="hbDigest" value="off" onchange="hbSetDigest('off')"> Off
+                                </label>
+                                <label class="hb-digest-option">
+                                    <input type="radio" name="hbDigest" value="daily" onchange="hbSetDigest('daily')"> Daily
+                                </label>
+                                <label class="hb-digest-option">
+                                    <input type="radio" name="hbDigest" value="weekly" onchange="hbSetDigest('weekly')"> Weekly (Mondays)
+                                </label>
+                            </div>
+                            <div class="hb-digest-status" id="hbDigestStatus"></div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Feed Panel (admin only) -->
+                    <div class="hb-activity-panel" id="hbActivityPanel" style="display:none">
+                        <div class="hb-activity-panel-header">
+                            <span class="hb-activity-panel-title">&#128200; Engagement Analytics</span>
+                            <div style="display:flex;align-items:center;gap:0.5rem">
+                                <select class="hb-activity-period" id="hbActivityPeriod" onchange="hbLoadActivity()">
+                                    <option value="7">Last 7 days</option>
+                                    <option value="14">Last 14 days</option>
+                                    <option value="30">Last 30 days</option>
+                                </select>
+                                <button class="hb-archive-close" onclick="hbToggleActivityPanel()">&times;</button>
+                            </div>
+                        </div>
+                        <div id="hbActivityContent">
+                            <div class="hb-loading" style="padding:1rem">Loading...</div>
                         </div>
                     </div>
 
