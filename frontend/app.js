@@ -6957,6 +6957,7 @@ function switchPage(pageId) {
     } else if (pageId === "content-calendar") {
         calInit();
     } else if (pageId === "home-base") {
+        hbLoadPinLimit();
         hbLoadCategories().then(() => hbLoadPosts());
         hbStartNotifPolling();
     } else if (pageId === "admin") {
@@ -16480,6 +16481,8 @@ let hbNotifOpen = false;
 
 let hbCategories = []; // populated from API
 
+let MAX_PINNED_DISPLAY = 3; // Updated from API
+
 const HB_AVATAR_COLORS = ['#E91E8C', '#635BFF', '#F47B3A', '#059669', '#7C3AED', '#DC2626', '#2563EB', '#D97706'];
 const HB_REACTIONS = ['👍', '✅', '👀', '🎉', '❤️', '😂'];
 
@@ -16767,8 +16770,16 @@ function hbRenderFeed() {
         const unpinned = hbPosts.filter(p => !p.pinned);
 
         if (pinned.length > 0) {
-            html += '<div class="hb-pinned-label">Pinned</div>';
-            pinned.forEach(p => { html += hbRenderPost(p); });
+            const canAdmin = hbUserRole === 'admin' || hbUserRole === 'owner';
+            const countLabel = `<span class="hb-pin-count">${pinned.length}/${MAX_PINNED_DISPLAY} pinned</span>`;
+            html += `<div class="hb-pinned-label"><span>&#128204; Pinned</span>${countLabel}</div>`;
+            html += '<div class="hb-pinned-container" id="hbPinnedContainer">';
+            pinned.sort((a, b) => (a.pin_order || 0) - (b.pin_order || 0));
+            pinned.forEach(p => {
+                const dragHandle = canAdmin ? `<div class="hb-drag-handle" title="Drag to reorder">&#9776;</div>` : '';
+                html += `<div class="hb-pin-wrapper${canAdmin ? ' pinned-draggable' : ''}" data-post-id="${p.id}" draggable="${canAdmin}">${dragHandle}${hbRenderPost(p)}</div>`;
+            });
+            html += '</div>';
             if (unpinned.length > 0) {
                 html += '<hr class="hb-pinned-divider">';
             }
@@ -16777,6 +16788,12 @@ function hbRenderFeed() {
     }
 
     feed.innerHTML = html;
+
+    // Set up drag-and-drop for pinned posts
+    hbSetupPinDragDrop();
+
+    // Load link previews for posts containing URLs
+    hbPosts.forEach(p => hbLoadLinkPreviews(p.id, p.body));
 }
 
 // ── Render Post (with reactions) ──────────────────────────────────────
@@ -16898,6 +16915,7 @@ function hbRenderPost(post) {
             </div>
         </div>
         <div class="hb-post-body" id="hb-body-${post.id}">${hbRenderBody(post.body)}</div>
+        <div class="hb-link-previews" id="hb-links-${post.id}"></div>
         ${attachmentsHtml}
         ${hbRenderAckBar(post)}
         ${reactionsHtml}
@@ -17585,6 +17603,151 @@ function hbResetCompose() {
     if (postBtn) postBtn.textContent = 'Post';
     const draftBtn = document.getElementById('hbDraftBtn');
     if (draftBtn) draftBtn.textContent = 'Save Draft';
+}
+
+// ── Pinned Post Drag-and-Drop Reorder ─────────────────────────────────
+
+function hbSetupPinDragDrop() {
+    const container = document.getElementById('hbPinnedContainer');
+    if (!container) return;
+
+    const items = container.querySelectorAll('.hb-pin-wrapper[draggable="true"]');
+    if (items.length < 2) return; // No point in reorder with 0-1 items
+
+    items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', item.dataset.postId);
+        });
+
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        });
+
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const dragging = container.querySelector('.dragging');
+            if (dragging && dragging !== item) {
+                item.classList.add('drag-over');
+            }
+        });
+
+        item.addEventListener('dragleave', () => {
+            item.classList.remove('drag-over');
+        });
+
+        item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            item.classList.remove('drag-over');
+            const dragging = container.querySelector('.dragging');
+            if (!dragging || dragging === item) return;
+
+            // Reorder DOM
+            const allItems = [...container.querySelectorAll('.hb-pin-wrapper')];
+            const dragIdx = allItems.indexOf(dragging);
+            const dropIdx = allItems.indexOf(item);
+
+            if (dragIdx < dropIdx) {
+                container.insertBefore(dragging, item.nextSibling);
+            } else {
+                container.insertBefore(dragging, item);
+            }
+
+            // Save new order
+            const newOrder = [...container.querySelectorAll('.hb-pin-wrapper')].map(el => el.dataset.postId);
+            hbSavePinOrder(newOrder);
+        });
+    });
+}
+
+async function hbSavePinOrder(order) {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/reorder-pins`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ order })
+        });
+        if (!resp.ok) console.error('Failed to save pin order');
+    } catch (err) {
+        console.error('Pin reorder error:', err);
+    }
+}
+
+// Fetch pin limit from API
+async function hbLoadPinLimit() {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/pin-limit`, { headers: getAuthHeaders() });
+        if (resp.ok) {
+            const data = await resp.json();
+            MAX_PINNED_DISPLAY = data.max_pinned || 3;
+        }
+    } catch (_e) {}
+}
+
+// ── Link Previews ────────────────────────────────────────────────────
+
+const hbLinkPreviewCache = {}; // url -> preview data
+
+function hbExtractUrls(text) {
+    if (!text) return [];
+    const regex = /https?:\/\/[^\s<]+/g;
+    const matches = text.match(regex) || [];
+    // Deduplicate and limit to 3
+    return [...new Set(matches)].slice(0, 3);
+}
+
+async function hbLoadLinkPreviews(postId, body) {
+    const urls = hbExtractUrls(body);
+    if (urls.length === 0) return;
+
+    const container = document.getElementById(`hb-links-${postId}`);
+    if (!container) return;
+
+    let html = '';
+    for (const url of urls) {
+        let preview = hbLinkPreviewCache[url];
+
+        if (preview === undefined) {
+            try {
+                const resp = await fetch(`${API_BASE_URL}/api/home-base/link-preview`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ url })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    preview = data.preview;
+                } else {
+                    preview = null;
+                }
+            } catch (_e) {
+                preview = null;
+            }
+            hbLinkPreviewCache[url] = preview;
+        }
+
+        if (preview && preview.title) {
+            const imgHtml = preview.image
+                ? `<img class="hb-link-preview-img" src="${hbEsc(preview.image)}" alt="" onerror="this.style.display='none'">`
+                : '';
+            const descHtml = preview.description
+                ? `<div class="hb-link-preview-desc">${hbEsc(preview.description)}</div>`
+                : '';
+            html += `<a class="hb-link-preview" href="${hbEsc(url)}" target="_blank" rel="noopener">
+                ${imgHtml}
+                <div class="hb-link-preview-text">
+                    <div class="hb-link-preview-title">${hbEsc(preview.title)}</div>
+                    ${descHtml}
+                    <div class="hb-link-preview-site">${hbEsc(preview.site_name || '')}</div>
+                </div>
+            </a>`;
+        }
+    }
+
+    if (html) container.innerHTML = html;
 }
 
 // ── Dynamic Categories ────────────────────────────────────────────────
