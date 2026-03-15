@@ -42,7 +42,6 @@ router.get('/:orgId/export', authenticate, async (req, res) => {
             historyResult,
             templatesResult,
             contentTemplatesResult,
-            drawSchedulesResult,
             favoritesResult,
             usageSummaryResult
         ] = await Promise.all([
@@ -77,13 +76,6 @@ router.get('/:orgId/export', authenticate, async (req, res) => {
                 `SELECT id, template_type, name, subject, headline, content, metadata, created_at
                  FROM content_templates WHERE organization_id = $1 AND is_active = TRUE
                  ORDER BY template_type, sort_order`,
-                [orgId]
-            ),
-            pool.query(
-                `SELECT id, draw_name, grand_prize_date, ticket_sales_start, ticket_sales_end,
-                        guaranteed_prize, prize_description, early_birds, pricing, is_active, created_at
-                 FROM draw_schedules WHERE organization_id = $1
-                 ORDER BY grand_prize_date DESC`,
                 [orgId]
             ),
             pool.query(
@@ -125,7 +117,6 @@ router.get('/:orgId/export', authenticate, async (req, res) => {
             },
             response_templates: templatesResult.rows,
             content_templates: contentTemplatesResult.rows,
-            draw_schedules: drawSchedulesResult.rows,
             favorites: favoritesResult.rows,
             usage_summary: usageSummaryResult.rows
         };
@@ -226,7 +217,7 @@ router.delete('/:orgId/data', authenticate, async (req, res) => {
         // Delete the organization — ON DELETE CASCADE removes:
         // organization_memberships, knowledge_base, response_history,
         // usage_logs, favorites, response_templates, content_templates,
-        // draw_schedules, organization_invitations, response_rules,
+        // organization_invitations, response_rules,
         // shopify_stores (and nested shopify tables)
         await pool.query('DELETE FROM organizations WHERE id = $1', [orgId]);
 

@@ -740,7 +740,6 @@ function renderOrgSetupPanel(panel, data) {
                     <span>${checkIcon(cl.missionSet)} Mission</span>
                     <span>${checkIcon(cl.kbPopulated)} KB (${data.kbCount})</span>
                     <span>${checkIcon(cl.templatesImported)} Templates (${data.templateCount})</span>
-                    <span>${checkIcon(cl.drawScheduleUploaded)} Draw Schedule</span>
                     <span>${checkIcon(cl.brandTerminologySet)} Brand Rules</span>
                     <span>${checkIcon(cl.emailAddonsSet)} Email Add-Ons</span>
                     <span>${checkIcon(cl.membersAdded)} Members (${data.memberCount})</span>
@@ -823,17 +822,6 @@ function renderOrgSetupPanel(panel, data) {
                 </div>
             </div>
 
-            <!-- Draw Schedule Section -->
-            <div style="padding: 1.25rem; border-top: 1px solid #e5e7eb;">
-                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; color: #374151;">Draw Schedule</h4>
-                ${data.drawSchedule
-                    ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.75rem;">
-                        <span style="color: #16a34a; font-weight: 600;">${escapeHtmlAdmin(data.drawSchedule.draw_name)}</span>
-                        <span class="text-muted" style="margin-left: 0.5rem; font-size: 0.8rem;">Active</span>
-                       </div>`
-                    : `<div style="color: #9ca3af; font-size: 0.9rem;">No draw schedule uploaded. The org admin can upload one from their Settings tab.</div>`
-                }
-            </div>
         </div>
     `;
 

@@ -62,100 +62,6 @@ const LANGUAGE_INSTRUCTIONS = {
     es: '\nLANGUAGE: You MUST write your entire response in Spanish (Español). The customer inquiry may be in any language, but your response must always be in Spanish.\n'
 };
 
-// ─── Draw schedule context builder ───────────────────────────────────
-
-function buildDrawScheduleContext(schedule) {
-    if (!schedule) return '';
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return '';
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    };
-
-    const formatTime = (dateStr) => {
-        if (!dateStr) return '';
-        const d = new Date(dateStr);
-        return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    };
-
-    let context = `CURRENT DRAW SCHEDULE (${schedule.draw_name}):\n`;
-    if (schedule.grand_prize_date) {
-        context += `- Grand Prize Draw: ${formatDate(schedule.grand_prize_date)} at ${formatTime(schedule.grand_prize_date)}`;
-        if (schedule.prize_description) context += ` (${schedule.prize_description})`;
-        else if (schedule.guaranteed_prize) context += ` (${schedule.guaranteed_prize})`;
-        context += `\n`;
-    }
-    if (schedule.ticket_sales_end) {
-        context += `- Ticket sales end: ${formatDate(schedule.ticket_sales_end)} at ${formatTime(schedule.ticket_sales_end)}\n`;
-    }
-    context += '\n';
-
-    const earlyBirds = typeof schedule.early_birds === 'string' ? JSON.parse(schedule.early_birds) : (schedule.early_birds || []);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Check for imminent draws
-    const imminent = earlyBirds.filter(eb => {
-        if (!eb.date) return false;
-        const drawDate = new Date(eb.date);
-        drawDate.setHours(0, 0, 0, 0);
-        const daysUntil = Math.ceil((drawDate - today) / (1000 * 60 * 60 * 24));
-        return daysUntil >= 0 && daysUntil <= 1;
-    });
-
-    // Also check grand prize
-    if (schedule.grand_prize_date) {
-        const gpDate = new Date(schedule.grand_prize_date);
-        gpDate.setHours(0, 0, 0, 0);
-        const gpDaysUntil = Math.ceil((gpDate - today) / (1000 * 60 * 60 * 24));
-        if (gpDaysUntil >= 0 && gpDaysUntil <= 1) {
-            imminent.push({ type: 'Grand Prize', date: schedule.grand_prize_date, prize: schedule.guaranteed_prize || 'Grand Prize', _daysUntil: gpDaysUntil });
-        }
-    }
-
-    if (imminent.length > 0) {
-        context += `IMMINENT DRAWS (mention these if relevant!):\n`;
-        for (const draw of imminent) {
-            const drawDate = new Date(draw.date);
-            drawDate.setHours(0, 0, 0, 0);
-            const daysUntil = draw._daysUntil !== undefined ? draw._daysUntil : Math.ceil((drawDate - today) / (1000 * 60 * 60 * 24));
-            const label = daysUntil === 0 ? 'TODAY' : 'TOMORROW';
-            const type = draw.type || 'Early Bird';
-            const num = draw.number ? ` #${draw.number}` : '';
-            context += `- ${label}: ${type}${num} - ${draw.prize}!\n`;
-        }
-        context += '\n';
-    }
-
-    // Upcoming early birds
-    const upcoming = earlyBirds.filter(eb => {
-        if (!eb.date) return false;
-        const drawDate = new Date(eb.date);
-        drawDate.setHours(0, 0, 0, 0);
-        return drawDate >= today;
-    }).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 5);
-
-    if (upcoming.length > 0) {
-        context += `UPCOMING EARLY BIRD DRAWS:\n`;
-        for (const eb of upcoming) {
-            const day = eb.day || new Date(eb.date).toLocaleDateString('en-US', { weekday: 'long' });
-            const qty = eb.quantity > 1 ? `${eb.quantity} x ` : '';
-            context += `- ${day}, ${formatDate(eb.date)}: Early Bird #${eb.number} - ${qty}${eb.prize}\n`;
-        }
-    }
-
-    // Include pricing if available
-    const pricing = typeof schedule.pricing === 'string' ? JSON.parse(schedule.pricing) : (schedule.pricing || []);
-    if (pricing.length > 0) {
-        context += `\nTICKET PRICING:\n`;
-        for (const p of pricing) {
-            context += `- ${p.price} = ${p.numbers} numbers\n`;
-        }
-    }
-
-    return context;
-}
 
 // ─── Calendar events context builder ─────────────────────────────────
 
@@ -560,20 +466,6 @@ async function buildResponseAssistantPrompt(params) {
     const orgWebsite = org.website_url || '';
     const orgSupportEmail = org.support_email || '';
 
-    // Fetch draw schedule
-    let drawScheduleContext = '';
-    try {
-        const scheduleResult = await pool.query(
-            `SELECT * FROM draw_schedules WHERE organization_id = $1 AND is_active = TRUE ORDER BY created_at DESC LIMIT 1`,
-            [organizationId]
-        );
-        if (scheduleResult.rows.length > 0) {
-            drawScheduleContext = buildDrawScheduleContext(scheduleResult.rows[0]);
-        }
-    } catch (err) {
-        console.warn('Draw schedule fetch failed:', err.message);
-    }
-
     // Fetch calendar events context
     let calendarContext = '';
     try {
@@ -655,19 +547,16 @@ ${languageInstruction}${formatInstructions}
 
 ${orgInfoSection}
 
-${drawScheduleContext}
 ${calendarContext}
 GENERAL LOTTERY KNOWLEDGE (use only when relevant and not contradicted by the organization's knowledge base):
 - Winners are typically contacted directly by phone
 - Tax receipts generally cannot be issued for lottery tickets (they are not charitable donations under CRA rules)
 
-DRAW DATE AWARENESS: If the customer asks about draw dates, Early Birds, or when the next draw is, use the draw schedule information above and the calendar events to give them accurate, specific dates. If no draw schedule is available, let the customer know they can check the organization's website for the latest schedule. If there's an Early Bird draw happening today or tomorrow and it's relevant to mention, include that information naturally.
-
-CALENDAR AWARENESS: When the user asks about upcoming dates, events, draws, campaigns, or deadlines, use the UPCOMING CALENDAR EVENTS data to give specific, accurate answers. Prefer calendar event data over guessing.
+CALENDAR AWARENESS: When the customer asks about upcoming dates, draws, events, campaigns, or deadlines, use the UPCOMING CALENDAR EVENTS data to give specific, accurate answers. If no calendar events are available, let the customer know they can check the organization's website for the latest schedule.
 
 ESCALATION: If the inquiry is unclear, bizarre, nonsensical, confrontational, threatening, or simply cannot be answered with the knowledge available, write a polite response explaining that you will pass the email along to your manager who can look into it further. Do not attempt to answer questions you don't have information for.
 
-IMPORTANT: Only reference information from the organization knowledge base below and the draw schedule above. Do not assume details about websites, locations, game types, eligibility rules, or operational procedures that are not explicitly provided.
+IMPORTANT: Only reference information from the organization knowledge base below and the calendar events above. Do not assume details about websites, locations, game types, eligibility rules, or operational procedures that are not explicitly provided.
 
 Knowledge base:
 ${correctionsContext}${ratedExamplesContext}${!correctionsContext.trim() && !ratedExamplesContext.trim() ? '\n(No knowledge base entries are available yet. Only provide general information and recommend the customer contact support directly for specific questions.)\n' : ''}`;
@@ -709,7 +598,6 @@ Sign as: ${staffName}`;
 module.exports = {
     buildResponseAssistantPrompt,
     buildCalendarContext,
-    buildDrawScheduleContext,
     buildRatedExamplesContext,
     buildCorrectionsContext,
     fetchRatedExamples,

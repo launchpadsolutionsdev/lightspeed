@@ -541,7 +541,6 @@ let supportKnowledge = [];
 let internalKnowledge = [];
 let activeKbTab = 'support'; // 'support' or 'internal'
 let kbDisplayLimit = 50; // How many entries to show before "Load More"
-let orgDrawSchedule = null; // Active draw schedule from database
 let orgContentTemplates = []; // Per-org content templates from database
 let feedbackList = [];
 let responseHistory = [];
@@ -642,121 +641,6 @@ function setInquiryType(type) {
     }
 }
 
-// ==================== DRAW SCHEDULE FUNCTIONS ====================
-
-/**
- * Build AI context string from an org-specific draw schedule (database).
- * Mirrors the format of DRAW_SCHEDULE.getAIContext() so all AI tools get consistent context.
- */
-function getOrgDrawScheduleAIContext(schedule) {
-    if (!schedule) return '';
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return '';
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    };
-
-    const formatTime = (dateStr) => {
-        if (!dateStr) return '';
-        const d = new Date(dateStr);
-        return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    };
-
-    let context = `CURRENT DRAW SCHEDULE (${schedule.draw_name}):\n`;
-    if (schedule.grand_prize_date) {
-        context += `- Grand Prize Draw: ${formatDate(schedule.grand_prize_date)} at ${formatTime(schedule.grand_prize_date)}`;
-        if (schedule.prize_description) context += ` (${schedule.prize_description})`;
-        else if (schedule.guaranteed_prize) context += ` (${schedule.guaranteed_prize})`;
-        context += `\n`;
-    }
-    if (schedule.ticket_sales_end) {
-        context += `- Ticket sales end: ${formatDate(schedule.ticket_sales_end)} at ${formatTime(schedule.ticket_sales_end)}\n`;
-    }
-    context += '\n';
-
-    const earlyBirds = typeof schedule.early_birds === 'string' ? JSON.parse(schedule.early_birds) : (schedule.early_birds || []);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Check for imminent draws
-    const imminent = earlyBirds.filter(eb => {
-        if (!eb.date) return false;
-        const drawDate = new Date(eb.date);
-        drawDate.setHours(0, 0, 0, 0);
-        const daysUntil = Math.ceil((drawDate - today) / (1000 * 60 * 60 * 24));
-        return daysUntil >= 0 && daysUntil <= 1;
-    });
-
-    // Also check grand prize
-    if (schedule.grand_prize_date) {
-        const gpDate = new Date(schedule.grand_prize_date);
-        gpDate.setHours(0, 0, 0, 0);
-        const gpDaysUntil = Math.ceil((gpDate - today) / (1000 * 60 * 60 * 24));
-        if (gpDaysUntil >= 0 && gpDaysUntil <= 1) {
-            imminent.push({ type: 'Grand Prize', date: schedule.grand_prize_date, prize: schedule.guaranteed_prize || 'Grand Prize', _daysUntil: gpDaysUntil });
-        }
-    }
-
-    if (imminent.length > 0) {
-        context += `⚠️ IMMINENT DRAWS (mention these if relevant!):\n`;
-        for (const draw of imminent) {
-            const drawDate = new Date(draw.date);
-            drawDate.setHours(0, 0, 0, 0);
-            const daysUntil = draw._daysUntil !== undefined ? draw._daysUntil : Math.ceil((drawDate - today) / (1000 * 60 * 60 * 24));
-            const label = daysUntil === 0 ? 'TODAY' : 'TOMORROW';
-            const type = draw.type || 'Early Bird';
-            const num = draw.number ? ` #${draw.number}` : '';
-            context += `- ${label}: ${type}${num} - ${draw.prize}!\n`;
-        }
-        context += '\n';
-    }
-
-    // Show all early bird draws sorted by date, marking upcoming vs completed
-    const sorted = earlyBirds.filter(eb => eb.date).sort((a, b) => new Date(a.date) - new Date(b.date));
-    const upcoming = sorted.filter(eb => new Date(eb.date) >= today);
-    const passed = sorted.filter(eb => new Date(eb.date) < today);
-
-    if (upcoming.length > 0) {
-        context += `UPCOMING EARLY BIRD DRAWS:\n`;
-        for (const eb of upcoming) {
-            const day = eb.day || new Date(eb.date).toLocaleDateString('en-US', { weekday: 'long' });
-            const qty = eb.quantity > 1 ? `${eb.quantity} x ` : '';
-            context += `- ${day}, ${formatDate(eb.date)}: Early Bird #${eb.number} - ${qty}${eb.prize}\n`;
-        }
-    }
-    if (passed.length > 0) {
-        context += `\nCOMPLETED EARLY BIRD DRAWS (already drawn):\n`;
-        for (const eb of passed) {
-            const day = eb.day || new Date(eb.date).toLocaleDateString('en-US', { weekday: 'long' });
-            const qty = eb.quantity > 1 ? `${eb.quantity} x ` : '';
-            context += `- ${day}, ${formatDate(eb.date)}: Early Bird #${eb.number} - ${qty}${eb.prize}\n`;
-        }
-    }
-
-    // Include pricing if available
-    const pricing = typeof schedule.pricing === 'string' ? JSON.parse(schedule.pricing) : (schedule.pricing || []);
-    if (pricing.length > 0) {
-        context += `\nTICKET PRICING:\n`;
-        for (const p of pricing) {
-            context += `- ${p.price} = ${p.numbers} numbers\n`;
-        }
-    }
-
-    return context;
-}
-
-/**
- * Get draw schedule AI context — uses org-specific schedule from database only.
- * No hardcoded fallback — each org must configure their own draw schedule.
- */
-function getDrawScheduleContext() {
-    if (orgDrawSchedule) {
-        return getOrgDrawScheduleAIContext(orgDrawSchedule);
-    }
-    return '';
-}
-
 /**
  * Fetch upcoming calendar events formatted as AI context.
  * Cached for 5 minutes to avoid repeated API calls during a session.
@@ -775,46 +659,6 @@ async function getCalendarContext() {
     } catch (e) {
         console.warn('Calendar context fetch failed:', e);
         return '';
-    }
-}
-
-function renderDrawSchedule() {
-    const container = document.getElementById("drawScheduleContainer");
-    if (!container) return;
-
-    // Prefer org-specific schedule for the display too
-    if (orgDrawSchedule) {
-        const schedule = orgDrawSchedule;
-        const earlyBirds = typeof schedule.early_birds === 'string' ? JSON.parse(schedule.early_birds) : (schedule.early_birds || []);
-        let html = `<div class="draw-schedule-content">`;
-        html += `<div class="draw-info-header">
-            <strong>${schedule.draw_name}</strong>`;
-        if (schedule.grand_prize_date) {
-            const gpd = new Date(schedule.grand_prize_date);
-            html += `<span class="draw-prize-badge">Grand Prize: ${schedule.guaranteed_prize || ''}${schedule.guaranteed_prize ? '+' : ''} on ${gpd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>`;
-        }
-        html += `</div>`;
-        html += `<div class="early-bird-list">`;
-        for (const eb of earlyBirds) {
-            const isUpcoming = new Date(eb.date) >= new Date();
-            const statusClass = isUpcoming ? 'upcoming' : 'passed';
-            const day = eb.day || new Date(eb.date).toLocaleDateString('en-US', { weekday: 'long' });
-            const dateStr = new Date(eb.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            html += `<div class="early-bird-item ${statusClass}">
-                <span class="eb-date">${day}, ${dateStr}</span>
-                <span class="eb-prize">${eb.quantity > 1 ? eb.quantity + ' x ' : ''}${eb.prize}</span>
-            </div>`;
-        }
-        html += `</div></div>`;
-        container.innerHTML = html;
-    } else {
-        container.innerHTML = `<div class="response-placeholder">
-            <div class="placeholder-icon">📅</div>
-            <div class="placeholder-text">No draw schedule configured</div>
-            <div class="placeholder-subtext" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">
-                Upload your Rules of Play document or manually add your draw schedule in Organization Settings.
-            </div>
-        </div>`;
     }
 }
 
@@ -2648,7 +2492,7 @@ async function sendAskMessage() {
                              responseLanguage;
             return `\nLANGUAGE: You MUST write your entire response in ${langName}. The customer inquiry may be in any language, but your response must always be in ${langName}.
 When responding in a non-English language:
-- Translate all content naturally, including any knowledge base excerpts or draw schedule details
+- Translate all content naturally, including any knowledge base excerpts or calendar event details
 - Do not quote English-language source material in a non-English response
 - Maintain the same tone and professionalism in the target language
 - Use region-appropriate terminology (e.g., Canadian French conventions if responding in French)\n`;
@@ -2683,7 +2527,7 @@ ACCURACY RULES:
 - Never fabricate regulatory guidance, draw dates, prize amounts, ticket information, or organizational policies
 - If the knowledge base does not contain information relevant to the user's question, say so honestly (e.g., "I don't have that information in my knowledge base — you may want to check with [appropriate source]")
 - Never guess at AGCO regulations or compliance requirements — if unsure, recommend the user verify with their regulatory body
-- Treat draw schedule data, calendar events, organization rules, and knowledge base entries as the source of truth — never contradict them
+- Treat calendar events, organization rules, and knowledge base entries as the source of truth — never contradict them
 - CALENDAR AWARENESS: When the user asks about upcoming dates, events, draws, campaigns, or deadlines, use the UPCOMING CALENDAR EVENTS data to give specific, accurate answers. Prefer calendar event data over guessing.
 - When answering compliance or regulatory questions using knowledge base content, note that the information comes from the organization's knowledge base (e.g., "Based on your organization's records..." or "According to your knowledge base...")
 - For general operational questions, stating information as fact is fine — no attribution needed
@@ -2708,7 +2552,7 @@ DATA HANDLING:
 - When drafting customer communications, use placeholders like [Customer Name] or [Ticket Number] unless the actual data has been provided in context
 
 MISSING CONTEXT:
-- If no draw schedule data is provided, do not make up draw dates or prize amounts — say the draw schedule hasn't been configured yet
+- If no calendar events are provided, do not make up draw dates or prize amounts — suggest the user check the Runway calendar
 - If no knowledge base entries are returned, rely on general expertise but clearly note that the answer isn't from the organization's specific knowledge base
 - If Shopify context is empty or missing, do not fabricate order or product information
 - Always proceed gracefully with whatever context is available rather than erroring out or producing empty responses
@@ -2727,25 +2571,19 @@ SECURITY:
         const ratedExamples = await getRatedExamples('ask_lightspeed', null, message);
         const feedbackSection = buildRatedExamplesContext(ratedExamples);
 
-        // Inject draw schedule context for accurate date/prize awareness
-        const drawScheduleSection = getDrawScheduleContext();
-        const drawScheduleBlock = drawScheduleSection
-            ? '\n\nDRAW SCHEDULE (source of truth — always use this data when answering questions about upcoming draws, deadlines, prizes, Early Bird dates, and ticket sales windows. Never contradict this information):\n' + drawScheduleSection
-            : '';
-
         // Inject calendar events context for date/event awareness
         const calendarSection = await getCalendarContext();
         const calendarBlock = calendarSection
             ? '\n\n' + calendarSection
             : '';
 
-        // Layer 2: all dynamic content — org name, tone, language, draw schedule, calendar events, rated examples.
+        // Layer 2: all dynamic content — org name, tone, language, calendar events, rated examples.
         // Sent separately from Layer 1 (staticSystem) so the backend can cache only the static
         // base prompt and leave dynamic content uncached.
-        // IMPORTANT: draw schedule + calendar go BEFORE "Knowledge base:" so server-side KB injection
+        // IMPORTANT: calendar goes BEFORE "Knowledge base:" so server-side KB injection
         // (which replaces "Knowledge base:\n") doesn't bury it under KB entries.
         const dynamicSystem = `ORGANIZATION: ${orgName}
-TONE SETTING: Respond in a ${toneDesc} tone. This overrides the default tone guidance above.${languageBlock}${drawScheduleBlock}${calendarBlock}
+TONE SETTING: Respond in a ${toneDesc} tone. This overrides the default tone guidance above.${languageBlock}${calendarBlock}
 Knowledge base:
 ${feedbackSection}`;
 
@@ -3764,11 +3602,9 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
         const ratedExamples = await getRatedExamples('ask_lightspeed', null, message);
         const feedbackSection = buildRatedExamplesContext(ratedExamples);
-        const drawScheduleSection = getDrawScheduleContext();
-        const drawScheduleBlock = drawScheduleSection
-            ? '\n\nDRAW SCHEDULE (source of truth — always use this data when answering questions about upcoming draws, deadlines, prizes, Early Bird dates, and ticket sales windows. Never contradict this information):\n' + drawScheduleSection
-            : '';
-        const fullSystemPrompt = systemPrompt + drawScheduleBlock + '\n\nKnowledge base:\n' + feedbackSection;
+        const calendarCtx = await getCalendarContext();
+        const calendarBlock = calendarCtx ? '\n\n' + calendarCtx : '';
+        const fullSystemPrompt = systemPrompt + calendarBlock + '\n\nKnowledge base:\n' + feedbackSection;
 
         const typing = document.getElementById('alsTyping');
         if (typing) typing.remove();
@@ -4484,7 +4320,6 @@ function loadUserData(user) {
     // Load data from backend and merge with local
     loadKnowledgeFromBackend('support');
     loadKnowledgeFromBackend('internal');
-    loadDrawScheduleFromBackend();
     loadContentTemplatesFromBackend();
     loadFavoritesFromBackend();
     loadResponseHistoryFromBackend();
@@ -4563,29 +4398,6 @@ async function loadKnowledgeFromBackend(kbType) {
     }
 }
 
-async function loadDrawScheduleFromBackend() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/draw-schedules/active`, {
-            headers: getAuthHeaders()
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            if (data.schedule) {
-                orgDrawSchedule = data.schedule;
-                displayActiveSchedule(data.schedule);
-            } else {
-                orgDrawSchedule = null;
-                displayNoSchedule();
-            }
-            // Re-render the Response Assistant draw schedule display
-            renderDrawSchedule();
-        }
-    } catch (error) {
-        console.warn('Could not load draw schedule from backend:', error);
-    }
-}
-
 async function loadContentTemplatesFromBackend() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/content-templates`, {
@@ -4601,263 +4413,7 @@ async function loadContentTemplatesFromBackend() {
     }
 }
 
-function displayActiveSchedule(schedule) {
-    const activeDisplay = document.getElementById('activeScheduleDisplay');
-    const noDisplay = document.getElementById('noScheduleDisplay');
-    const editForm = document.getElementById('scheduleEditForm');
-    if (!activeDisplay) return;
-
-    activeDisplay.style.display = 'block';
-    if (noDisplay) noDisplay.style.display = 'none';
-    if (editForm) editForm.style.display = 'none';
-
-    document.getElementById('activeScheduleName').textContent = schedule.draw_name;
-    document.getElementById('activeScheduleUpdated').textContent = 'Updated ' + new Date(schedule.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-    let details = '';
-    if (schedule.grand_prize_date) {
-        const gpd = new Date(schedule.grand_prize_date);
-        details += `<div>Grand Prize: ${gpd.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${gpd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-        if (schedule.guaranteed_prize) details += ` — ${schedule.guaranteed_prize}`;
-        details += `</div>`;
-    }
-    if (schedule.ticket_sales_end) {
-        const tse = new Date(schedule.ticket_sales_end);
-        details += `<div>Ticket Sales End: ${tse.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${tse.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>`;
-    }
-    const earlyBirds = typeof schedule.early_birds === 'string' ? JSON.parse(schedule.early_birds) : (schedule.early_birds || []);
-    if (earlyBirds.length > 0) {
-        const totalDraws = earlyBirds.reduce((sum, eb) => sum + (parseInt(eb.quantity) || 1), 0);
-        details += `<div style="margin-top: 0.35rem;">Early Birds: ${totalDraws} draw${totalDraws !== 1 ? 's' : ''} scheduled</div>`;
-    }
-    document.getElementById('activeScheduleDetails').innerHTML = details;
-}
-
-function displayNoSchedule() {
-    const activeDisplay = document.getElementById('activeScheduleDisplay');
-    const noDisplay = document.getElementById('noScheduleDisplay');
-    if (activeDisplay) activeDisplay.style.display = 'none';
-    if (noDisplay) noDisplay.style.display = 'block';
-}
-
-async function handleDrawScheduleUpload(input) {
-    if (!input.files || !input.files[0]) return;
-
-    const file = input.files[0];
-    const progress = document.getElementById('scheduleUploadProgress');
-    const noDisplay = document.getElementById('noScheduleDisplay');
-
-    noDisplay.style.display = 'none';
-    progress.style.display = 'block';
-
-    try {
-        const formData = new FormData();
-        formData.append('document', file);
-
-        const response = await fetch(`${API_BASE_URL}/api/draw-schedules/upload`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-            body: formData
-        });
-
-        progress.style.display = 'none';
-
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || 'Upload failed');
-        }
-
-        const data = await response.json();
-        orgDrawSchedule = data.schedule;
-        displayActiveSchedule(data.schedule);
-        showToast('Draw schedule uploaded and parsed!', 'success');
-
-    } catch (error) {
-        progress.style.display = 'none';
-        noDisplay.style.display = 'block';
-        console.error('Draw schedule upload error:', error);
-        showToast('Failed to parse schedule: ' + error.message, 'error');
-    }
-
-    // Reset the file input
-    input.value = '';
-}
-
-async function handleDrawSchedulePaste() {
-    const textarea = document.getElementById('drawSchedulePasteInput');
-    const text = textarea.value.trim();
-    if (!text) {
-        showToast('Please paste your draw schedule text first', 'error');
-        return;
-    }
-
-    const progress = document.getElementById('scheduleUploadProgress');
-    const noDisplay = document.getElementById('noScheduleDisplay');
-    const btn = document.getElementById('parseScheduleTextBtn');
-
-    noDisplay.style.display = 'none';
-    progress.style.display = 'block';
-    btn.disabled = true;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/draw-schedules/upload`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ text: text })
-        });
-
-        progress.style.display = 'none';
-        btn.disabled = false;
-
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || 'Parse failed');
-        }
-
-        const data = await response.json();
-        orgDrawSchedule = data.schedule;
-        displayActiveSchedule(data.schedule);
-        textarea.value = '';
-        showToast('Draw schedule parsed and saved!', 'success');
-
-    } catch (error) {
-        progress.style.display = 'none';
-        noDisplay.style.display = 'block';
-        btn.disabled = false;
-        console.error('Draw schedule parse error:', error);
-        showToast('Failed to parse schedule: ' + error.message, 'error');
-    }
-}
-
-function toggleEditSchedule() {
-    if (!orgDrawSchedule) return;
-    const editForm = document.getElementById('scheduleEditForm');
-    const activeDisplay = document.getElementById('activeScheduleDisplay');
-
-    editForm.style.display = 'block';
-    activeDisplay.style.display = 'none';
-
-    // Populate form
-    document.getElementById('editDrawName').value = orgDrawSchedule.draw_name || '';
-    document.getElementById('editGuaranteedPrize').value = orgDrawSchedule.guaranteed_prize || '';
-    document.getElementById('editPrizeDescription').value = orgDrawSchedule.prize_description || '';
-
-    if (orgDrawSchedule.grand_prize_date) {
-        document.getElementById('editGrandPrizeDate').value = toLocalDatetimeValue(orgDrawSchedule.grand_prize_date);
-    }
-    if (orgDrawSchedule.ticket_sales_start) {
-        document.getElementById('editTicketSalesStart').value = toLocalDatetimeValue(orgDrawSchedule.ticket_sales_start);
-    }
-    if (orgDrawSchedule.ticket_sales_end) {
-        document.getElementById('editTicketSalesEnd').value = toLocalDatetimeValue(orgDrawSchedule.ticket_sales_end);
-    }
-
-    // Populate early birds
-    const container = document.getElementById('editEarlyBirdsContainer');
-    container.innerHTML = '';
-    const earlyBirds = typeof orgDrawSchedule.early_birds === 'string' ? JSON.parse(orgDrawSchedule.early_birds) : (orgDrawSchedule.early_birds || []);
-    earlyBirds.forEach(eb => addEarlyBirdRow(eb));
-}
-
-function toLocalDatetimeValue(isoStr) {
-    if (!isoStr) return '';
-    const d = new Date(isoStr);
-    const pad = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function addEarlyBirdRow(eb = {}) {
-    const container = document.getElementById('editEarlyBirdsContainer');
-    const row = document.createElement('div');
-    row.className = 'early-bird-edit-row';
-    row.innerHTML = `
-        <input type="text" placeholder="#" value="${eb.number || ''}" style="width:50px" data-field="number">
-        <input type="date" value="${eb.date || ''}" data-field="date">
-        <input type="text" placeholder="Prize" value="${eb.prize || ''}" data-field="prize">
-        <input type="text" placeholder="Day" value="${eb.day || ''}" data-field="day">
-        <input type="number" placeholder="Qty" value="${eb.quantity || 1}" min="1" data-field="quantity">
-        <button type="button" class="eb-remove-btn" onclick="this.parentElement.remove()">&times;</button>
-    `;
-    container.appendChild(row);
-}
-
-function cancelEditSchedule() {
-    document.getElementById('scheduleEditForm').style.display = 'none';
-    if (orgDrawSchedule) {
-        displayActiveSchedule(orgDrawSchedule);
-    } else {
-        displayNoSchedule();
-    }
-}
-
-async function saveDrawScheduleEdits() {
-    if (!orgDrawSchedule) return;
-
-    // Collect early birds from the edit rows
-    const earlyBirdRows = document.querySelectorAll('#editEarlyBirdsContainer .early-bird-edit-row');
-    const earlyBirds = Array.from(earlyBirdRows).map(row => ({
-        number: row.querySelector('[data-field="number"]').value,
-        date: row.querySelector('[data-field="date"]').value,
-        prize: row.querySelector('[data-field="prize"]').value,
-        day: row.querySelector('[data-field="day"]').value,
-        quantity: parseInt(row.querySelector('[data-field="quantity"]').value) || 1
-    })).filter(eb => eb.date); // only keep rows with a date
-
-    const payload = {
-        drawName: document.getElementById('editDrawName').value.trim(),
-        grandPrizeDate: document.getElementById('editGrandPrizeDate').value || null,
-        ticketSalesStart: document.getElementById('editTicketSalesStart').value || null,
-        ticketSalesEnd: document.getElementById('editTicketSalesEnd').value || null,
-        guaranteedPrize: document.getElementById('editGuaranteedPrize').value.trim() || null,
-        prizeDescription: document.getElementById('editPrizeDescription').value.trim() || null,
-        earlyBirds: earlyBirds
-    };
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/draw-schedules/${orgDrawSchedule.id}`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || 'Failed to save');
-        }
-
-        const data = await response.json();
-        orgDrawSchedule = data.schedule;
-        displayActiveSchedule(data.schedule);
-        document.getElementById('scheduleEditForm').style.display = 'none';
-        showToast('Draw schedule updated!', 'success');
-    } catch (error) {
-        console.error('Save draw schedule error:', error);
-        showToast('Failed to save: ' + error.message, 'error');
-    }
-}
-
-async function deleteDrawSchedule() {
-    if (!orgDrawSchedule) return;
-    if (!confirm('Remove this draw schedule? The AI tools will fall back to the default schedule.')) return;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/draw-schedules/${orgDrawSchedule.id}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to delete');
-        }
-
-        orgDrawSchedule = null;
-        displayNoSchedule();
-        showToast('Draw schedule removed', 'success');
-    } catch (error) {
-        console.error('Delete draw schedule error:', error);
-        showToast('Failed to remove schedule: ' + error.message, 'error');
-    }
-}
+/* displayActiveSchedule through deleteDrawSchedule removed — see Runway calendar */
 
 async function loadFavoritesFromBackend() {
     try {
@@ -5150,8 +4706,6 @@ function setupEventListeners() {
     document.getElementById("toggleEmail").addEventListener("click", () => setInquiryType("email"));
     document.getElementById("toggleFacebook").addEventListener("click", () => setInquiryType("facebook"));
 
-    // Initialize draw schedule display
-    renderDrawSchedule();
 
     // Settings
     document.getElementById("settingsToggle").addEventListener("click", () =>
@@ -7999,7 +7553,6 @@ async function loadTeamData() {
         const canManageOrg = ['owner', 'admin'].includes(currentUserRole);
         document.getElementById('inviteSection').style.display = canManageOrg ? 'block' : 'none';
         document.getElementById('orgProfileSection').style.display = canManageOrg ? 'block' : 'none';
-        document.getElementById('drawScheduleSection').style.display = canManageOrg ? 'block' : 'none';
         document.getElementById('contentTemplatesSection').style.display = canManageOrg ? 'block' : 'none';
 
         // Populate org profile fields
@@ -11959,12 +11512,12 @@ PRIORITY ORDER:
 ACCURACY RULES:
 - Never fabricate draw dates, prize amounts, ticket information, regulatory guidance, or organizational policies
 - Never guess at compliance requirements — if unsure, omit rather than risk inaccuracy
-- Treat draw schedule data, calendar events, organization rules, and knowledge base entries as the source of truth — never contradict them
+- Treat calendar events, organization rules, and knowledge base entries as the source of truth — never contradict them
 - CALENDAR AWARENESS: When writing content that references dates, events, draws, or campaigns, use the UPCOMING CALENDAR EVENTS data for accurate scheduling details. Prefer calendar event data over guessing.
 - Never fabricate statistics, quotes, or specific claims unless the user provides them
 
 MISSING CONTEXT:
-- If no draw schedule data or calendar events are provided, do not make up draw dates or prize amounts
+- If no calendar events are provided, do not make up draw dates or prize amounts
 - If no brand guidelines are provided, write in a clean, professional nonprofit voice
 - If no knowledge base entries are returned, rely on general expertise but keep claims generic
 - Always produce useful output with whatever context is available — never return empty responses
@@ -12088,12 +11641,6 @@ async function buildDraftDynamicPrompt(contentType, emailType = null, userInquir
             });
             dynamic += examplesBlock;
         }
-    }
-
-    // Draw schedule context — placed before KB so it's not buried under KB entries
-    const drawCtx = getDrawScheduleContext();
-    if (drawCtx) {
-        dynamic += '\n\nDRAW SCHEDULE (source of truth for dates, prizes, and deadlines):\n' + drawCtx;
     }
 
     // Calendar events context — upcoming events from Runway
