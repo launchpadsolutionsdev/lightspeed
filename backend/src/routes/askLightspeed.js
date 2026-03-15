@@ -623,8 +623,9 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
             ? (message || 'Please analyze the uploaded file.') + fileContext
             : message;
 
-        // Build system prompt
-        const systemPrompt = clientSystem || buildAgenticSystemPrompt(currentUser(req));
+        // Build system prompt with full org profile
+        const orgProfile = await fetchOrgProfile(organizationId);
+        const systemPrompt = clientSystem || buildAgenticSystemPrompt(orgProfile);
 
         // Build messages array
         const messages = [
@@ -1007,13 +1008,61 @@ router.post('/cancel-action', authenticate, async (req, res) => {
 
 // ─── Helper ──────────────────────────────────────────────────────────
 
-function currentUser(req) {
-    return { organizationName: req.organizationName || 'your organization' };
+async function fetchOrgProfile(organizationId) {
+    try {
+        const result = await pool.query(
+            `SELECT name, website_url, support_email, store_location, licence_number,
+                    cta_website_url, ceo_name, ceo_title, media_contact_name,
+                    media_contact_email, mission, default_draw_time, ticket_deadline_time,
+                    social_required_line, brand_terminology, email_addons
+             FROM organizations WHERE id = $1`,
+            [organizationId]
+        );
+        return result.rows[0] || {};
+    } catch (_e) {
+        return {};
+    }
 }
 
-function buildAgenticSystemPrompt(user) {
-    const orgName = user.organizationName || 'your organization';
+function buildAgenticSystemPrompt(org) {
+    const orgName = org.name || 'your organization';
+
+    // Build organization profile section from Teams/Manage data
+    let orgProfile = `\nORGANIZATION PROFILE (from the Teams page under Manage):\n- Organization: ${orgName}`;
+    if (org.website_url) orgProfile += `\n- Lottery Website: ${org.website_url}`;
+    if (org.support_email) orgProfile += `\n- Support Email: ${org.support_email}`;
+    if (org.store_location) orgProfile += `\n- In-Person Location: ${org.store_location}`;
+    if (org.licence_number) orgProfile += `\n- Licence Number: ${org.licence_number}`;
+    if (org.cta_website_url) orgProfile += `\n- Catch The Ace Website: ${org.cta_website_url}`;
+    if (org.ceo_name) orgProfile += `\n- CEO/President: ${org.ceo_name}${org.ceo_title ? ` (${org.ceo_title})` : ''}`;
+    if (org.media_contact_name) orgProfile += `\n- Media Contact: ${org.media_contact_name}${org.media_contact_email ? ` (${org.media_contact_email})` : ''}`;
+    if (org.mission) orgProfile += `\n- Mission: ${org.mission}`;
+    if (org.default_draw_time) orgProfile += `\n- Default Draw Time: ${org.default_draw_time}`;
+    if (org.ticket_deadline_time) orgProfile += `\n- Ticket Deadline Time: ${org.ticket_deadline_time}`;
+    if (org.social_required_line) orgProfile += `\n- Social Required Line: ${org.social_required_line}`;
+    if (org.brand_terminology) {
+        try {
+            const terms = typeof org.brand_terminology === 'string' ? JSON.parse(org.brand_terminology) : org.brand_terminology;
+            if (terms && Object.keys(terms).length > 0) {
+                orgProfile += `\n- Brand Terminology: ${JSON.stringify(terms)}`;
+            }
+        } catch (_e) { /* skip */ }
+    }
+    if (org.email_addons) {
+        try {
+            const addons = typeof org.email_addons === 'string' ? JSON.parse(org.email_addons) : org.email_addons;
+            if (addons && Object.keys(addons).length > 0) {
+                orgProfile += `\n- Email Add-ons: ${JSON.stringify(addons)}`;
+            }
+        } catch (_e) { /* skip */ }
+    }
+
+    if (org.website_url) {
+        orgProfile += `\n\nIMPORTANT: Only use the URLs listed above. Do NOT invent or guess other URLs, licence numbers, or contact information.`;
+    }
+
     return `You are Ask Lightspeed, an AI assistant for lottery operators built into the Lightspeed platform. You work for ${orgName}.
+${orgProfile}
 
 You have access to tools that let you interact with other parts of the platform:
 
