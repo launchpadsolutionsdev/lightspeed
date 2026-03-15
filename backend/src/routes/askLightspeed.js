@@ -16,6 +16,7 @@ const pool = require('../../config/database');
 const { authenticate, checkUsageLimit } = require('../middleware/auth');
 const claudeService = require('../services/claude');
 const { buildEnhancedPrompt } = require('../services/promptBuilder');
+const { buildResponseAssistantPrompt } = require('../services/systemPromptBuilder');
 
 // Multer config: in-memory storage, 10MB limit
 const upload = multer({
@@ -90,6 +91,62 @@ const TOOLS = [
                 query: { type: 'string', description: 'Search query to find relevant knowledge base articles' }
             },
             required: ['query']
+        }
+    },
+    {
+        name: 'draft_content',
+        description: 'Draft professional content using the full Lightspeed content pipeline with brand voice, knowledge base, and org context. Use this when the user asks you to draft an email, social media post, customer response, or any written content that should match their organization\'s tone and style.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                inquiry: { type: 'string', description: 'The content request or customer inquiry to respond to. For response drafts, include the original message to respond to.' },
+                format: { type: 'string', enum: ['email', 'facebook'], description: 'Content format. Use "email" for emails, letters, and general content. Use "facebook" for social media posts (enforces <400 char limit).' },
+                tone: { type: 'number', description: 'Tone slider 0-100. 0=formal, 50=balanced, 100=warm/friendly. Default 50.' },
+                length: { type: 'number', description: 'Length slider 0-100. 0=brief, 50=moderate, 100=detailed. Default 50.' },
+                staffName: { type: 'string', description: 'Name to sign off with (e.g., "Sarah" or "Support Team"). Default "Support Team".' },
+                agentInstructions: { type: 'string', description: 'Optional special instructions for how to draft the content (e.g., "mention the upcoming draw", "keep it under 3 paragraphs")' }
+            },
+            required: ['inquiry']
+        }
+    },
+    {
+        name: 'save_to_knowledge_base',
+        description: 'Save information to the organization\'s Knowledge Base. Use this when the user says "remember that...", "our policy is...", "save this to the KB", or explicitly asks to store information for future reference. This is a WRITE action — always confirm with the user what you plan to save before calling this tool.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                title: { type: 'string', description: 'A clear, descriptive title for the KB entry (e.g., "Office Hours Policy", "Refund Procedure for Online Orders")' },
+                content: { type: 'string', description: 'The full content to save. Be thorough and well-structured.' },
+                category: { type: 'string', description: 'Category for the entry. Common categories: "faqs", "policies", "procedures", "general", "product-info"' },
+                tags: { type: 'array', items: { type: 'string' }, description: 'Optional tags for better searchability (e.g., ["refunds", "online-orders"])' }
+            },
+            required: ['title', 'content', 'category']
+        }
+    },
+    {
+        name: 'search_response_history',
+        description: 'Search past AI-generated responses across all Lightspeed tools (Response Assistant, Draft Assistant, Insights Engine, etc.). Use this when the user asks about previous work, wants to find something they wrote earlier, or needs to reference past content.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                query: { type: 'string', description: 'Search term to find in past inquiries and responses' },
+                tool: { type: 'string', enum: ['response_assistant', 'draft_assistant', 'ask_lightspeed', 'insights_engine', 'content_generator'], description: 'Optional: filter by specific tool' },
+                limit: { type: 'number', description: 'Max results to return (default 10, max 20)' }
+            },
+            required: ['query']
+        }
+    },
+    {
+        name: 'run_insights_analysis',
+        description: 'Run an Insights Engine analysis on provided data. Use this when the user asks for analysis of sales data, customer data, seller performance, or any structured data they\'ve shared in the conversation. The data should already be available from an uploaded file or conversation context.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                data: { type: 'object', description: 'The data to analyze — can be an object or array of records' },
+                reportType: { type: 'string', enum: ['customer_purchases', 'sellers', 'payment_tickets', 'shopify', 'general'], description: 'Type of analysis to run. Use "general" if unsure.' },
+                additionalContext: { type: 'string', description: 'Optional extra context or specific questions about the data' }
+            },
+            required: ['data']
         }
     }
 ];
@@ -253,6 +310,161 @@ async function executeCreateRunwayEvents(events, organizationId, userId) {
     }
 
     return { created, errors };
+}
+
+async function executeDraftContent(input, organizationId) {
+    try {
+        // Build prompt using the full Response Assistant pipeline
+        const { systemPrompt, userPrompt, maxTokens } = await buildResponseAssistantPrompt({
+            organizationId,
+            inquiry: input.inquiry,
+            format: input.format || 'email',
+            tone: input.tone ?? 50,
+            length: input.length ?? 50,
+            includeLinks: true,
+            includeSteps: false,
+            agentInstructions: input.agentInstructions || '',
+            staffName: input.staffName || 'Support Team',
+            language: 'en',
+            tool: 'ask_lightspeed'
+        });
+
+        // Enhance with KB, rules, voice
+        const { system: enhancedSystem } = await buildEnhancedPrompt(
+            systemPrompt, input.inquiry, organizationId,
+            { kb_type: 'all', tool: 'response_assistant', includeCitations: false }
+        );
+
+        const response = await claudeService.generateResponse({
+            messages: [{ role: 'user', content: userPrompt }],
+            system: enhancedSystem,
+            max_tokens: maxTokens || 1024
+        });
+
+        const draft = response.content?.find(b => b.type === 'text')?.text || '';
+        return { draft, format: input.format || 'email' };
+    } catch (err) {
+        return { draft: '', error: err.message };
+    }
+}
+
+async function executeSaveToKnowledgeBase(input, organizationId, userId) {
+    try {
+        // Extract keywords from title for tags
+        const autoTags = ['source:ask_lightspeed'];
+        if (input.tags && Array.isArray(input.tags)) {
+            autoTags.push(...input.tags);
+        }
+
+        const result = await pool.query(
+            `INSERT INTO knowledge_base (id, organization_id, title, content, category, tags, kb_type, created_by, created_at, updated_at)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'support', $6, NOW(), NOW())
+             RETURNING id, title, category`,
+            [organizationId, input.title, input.content, input.category || 'general', autoTags, userId]
+        );
+
+        // Invalidate KB cache
+        try {
+            const kbCache = require('../services/kbCache');
+            if (kbCache && kbCache.invalidate) kbCache.invalidate(organizationId);
+        } catch (_e) { /* cache service may not exist */ }
+
+        return { saved: true, entry: result.rows[0] };
+    } catch (err) {
+        return { saved: false, error: err.message };
+    }
+}
+
+async function executeSearchResponseHistory(input, organizationId) {
+    const query = input.query;
+    if (!query) return [];
+
+    const limit = Math.min(input.limit || 10, 20);
+    const conditions = ['rh.organization_id = $1', '(rh.inquiry ILIKE $2 OR rh.response ILIKE $2)'];
+    const params = [organizationId, `%${query}%`];
+    let paramIdx = 3;
+
+    if (input.tool) {
+        conditions.push(`rh.tool = $${paramIdx}`);
+        params.push(input.tool);
+        paramIdx++;
+    }
+
+    try {
+        const result = await pool.query(
+            `SELECT rh.id, rh.inquiry, rh.response, rh.tool, rh.format, rh.tone,
+                    rh.rating, rh.created_at, u.name AS user_name
+             FROM response_history rh
+             LEFT JOIN users u ON rh.user_id = u.id
+             WHERE ${conditions.join(' AND ')}
+             ORDER BY rh.created_at DESC
+             LIMIT $${paramIdx}`,
+            [...params, limit]
+        );
+
+        return result.rows.map(r => ({
+            tool: r.tool,
+            inquiry: (r.inquiry || '').substring(0, 300),
+            response: (r.response || '').substring(0, 400),
+            format: r.format,
+            rating: r.rating,
+            user: r.user_name,
+            date: r.created_at
+        }));
+    } catch (_e) {
+        return [];
+    }
+}
+
+async function executeRunInsightsAnalysis(input, organizationId, userId) {
+    const reportType = input.reportType || 'general';
+    const data = input.data;
+
+    // Build insights-specific system prompt
+    const REPORT_PROMPTS = {
+        customer_purchases: 'Analyze this customer purchase data. Identify revenue trends, top customers, purchase patterns, and actionable recommendations.',
+        sellers: 'Analyze this seller performance data. Identify top performers, areas for improvement, and support recommendations.',
+        payment_tickets: 'Analyze this payment/ticket data. Summarize status overview, identify issues, and suggest follow-ups.',
+        shopify: 'Analyze this Shopify store data. Cover revenue, top products, customer acquisition, fulfillment, and recommendations.',
+        general: 'Analyze this data thoroughly. Identify key trends, patterns, anomalies, and provide actionable insights.'
+    };
+
+    const systemPrompt = `You are the Lightspeed Insights Engine, an expert data analyst. ${REPORT_PROMPTS[reportType] || REPORT_PROMPTS.general}
+
+Present your analysis in a clear, structured format with:
+- Key metrics and highlights
+- Trends and patterns
+- Actionable recommendations
+Use markdown formatting for readability.`;
+
+    const additionalCtx = input.additionalContext ? `\n\nAdditional context: ${input.additionalContext}` : '';
+
+    // Enhance with light KB + calendar context
+    const { system: enhancedSystem } = await buildEnhancedPrompt(
+        systemPrompt, 'data analysis', organizationId,
+        { kb_type: 'all', userId, tool: 'insights_engine' }
+    );
+
+    try {
+        const response = await claudeService.generateResponse({
+            messages: [{ role: 'user', content: `Please analyze this data:\n\n${JSON.stringify(data, null, 2)}${additionalCtx}` }],
+            system: enhancedSystem,
+            max_tokens: 2048
+        });
+
+        const analysis = response.content?.find(b => b.type === 'text')?.text || '';
+
+        // Save to response history for cross-tool context
+        pool.query(
+            `INSERT INTO response_history (id, organization_id, user_id, inquiry, response, format, tone, tool, created_at)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, 'analysis', 'professional', 'insights_engine', NOW())`,
+            [organizationId, userId, `[Insights Analysis] ${reportType}`, analysis]
+        ).catch(_e => {});
+
+        return { analysis };
+    } catch (err) {
+        return { analysis: '', error: err.message };
+    }
 }
 
 // ─── Duplicate Detection ─────────────────────────────────────────────
@@ -502,6 +714,100 @@ async function processResponse(response, messages, system, organizationId, userI
 
             await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
             return;
+
+        } else if (toolUse.name === 'draft_content') {
+            // Read action — generates draft content using Response Assistant pipeline
+            sendEvent({ type: 'status', message: 'Drafting content with brand voice...' });
+            const result = await executeDraftContent(toolUse.input, organizationId);
+            const toolResult = result.error
+                ? `Draft generation failed: ${result.error}`
+                : `Here is the drafted ${result.format === 'facebook' ? 'social media post' : 'content'}:\n\n${result.draft}`;
+
+            const followUpMessages = [
+                ...messages,
+                { role: 'assistant', content: response.content },
+                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+            ];
+
+            const followUp = await claudeService.generateResponse({
+                messages: followUpMessages,
+                system,
+                max_tokens: 4096,
+                tools: TOOLS,
+                model
+            });
+
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            return;
+
+        } else if (toolUse.name === 'save_to_knowledge_base') {
+            // Write action — requires confirmation
+            sendEvent({
+                type: 'confirm',
+                action: 'save_to_knowledge_base',
+                toolUseId: toolUse.id,
+                data: {
+                    title: toolUse.input.title,
+                    content: toolUse.input.content,
+                    category: toolUse.input.category,
+                    tags: toolUse.input.tags || [],
+                    message: textParts.join('\n')
+                }
+            });
+            return; // Stop — wait for user confirmation
+
+        } else if (toolUse.name === 'search_response_history') {
+            // Read action — search past responses
+            sendEvent({ type: 'status', message: 'Searching past responses...' });
+            const results = await executeSearchResponseHistory(toolUse.input, organizationId);
+            const toolResult = results.length > 0
+                ? `Found ${results.length} past responses:\n${results.map((r, i) => {
+                    const date = r.date ? new Date(r.date).toLocaleDateString('en-CA') : 'unknown';
+                    return `${i + 1}. [${r.tool}] ${date} by ${r.user || 'Unknown'}:\n   Inquiry: ${r.inquiry}\n   Response: ${r.response}${r.rating ? ' (rated: ' + r.rating + ')' : ''}`;
+                }).join('\n\n')}`
+                : 'No matching past responses found.';
+
+            const followUpMessages = [
+                ...messages,
+                { role: 'assistant', content: response.content },
+                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+            ];
+
+            const followUp = await claudeService.generateResponse({
+                messages: followUpMessages,
+                system,
+                max_tokens: 4096,
+                tools: TOOLS,
+                model
+            });
+
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            return;
+
+        } else if (toolUse.name === 'run_insights_analysis') {
+            // Read action — run data analysis
+            sendEvent({ type: 'status', message: 'Running insights analysis...' });
+            const result = await executeRunInsightsAnalysis(toolUse.input, organizationId, userId);
+            const toolResult = result.error
+                ? `Analysis failed: ${result.error}`
+                : `Insights Analysis Results:\n\n${result.analysis}`;
+
+            const followUpMessages = [
+                ...messages,
+                { role: 'assistant', content: response.content },
+                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+            ];
+
+            const followUp = await claudeService.generateResponse({
+                messages: followUpMessages,
+                system,
+                max_tokens: 4096,
+                tools: TOOLS,
+                model
+            });
+
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            return;
         }
     }
 }
@@ -526,12 +832,27 @@ router.post('/confirm-action', authenticate, async (req, res) => {
     };
 
     try {
-        const { action, events, conversation, system, model } = req.body;
+        const { action, events, conversation, system, model, kbEntry } = req.body;
         const organizationId = req.organizationId;
         const userId = req.userId;
 
+        // Handle save_to_knowledge_base confirmation
+        if (action === 'save_to_knowledge_base' && kbEntry) {
+            sendEvent({ type: 'status', message: 'Saving to Knowledge Base...' });
+            const result = await executeSaveToKnowledgeBase(kbEntry, organizationId, userId);
+
+            if (result.saved) {
+                sendEvent({ type: 'text', content: `Saved to Knowledge Base: **${result.entry.title}** (${result.entry.category}). This information is now available across all Lightspeed tools.` });
+                sendEvent({ type: 'kb_saved', entry: result.entry });
+            } else {
+                sendEvent({ type: 'text', content: `Failed to save to Knowledge Base: ${result.error}` });
+            }
+            sendEvent({ type: 'done', usage: {} });
+            return res.end();
+        }
+
         if (action !== 'create_runway_events' || !events || !Array.isArray(events)) {
-            sendEvent({ type: 'error', error: 'Invalid action or missing events' });
+            sendEvent({ type: 'error', error: 'Invalid action or missing data' });
             return res.end();
         }
 
@@ -601,23 +922,32 @@ function buildAgenticSystemPrompt(user) {
     return `You are Ask Lightspeed, an AI assistant for lottery operators built into the Lightspeed platform. You work for ${orgName}.
 
 You have access to tools that let you interact with other parts of the platform:
-- You can search and create events on Runway (the content calendar) — use this for draw schedules, campaign deadlines, and team events
-- You can search the Knowledge Base for information about lottery operations and policies
 
-When a user uploads a file containing a draw schedule or event list:
-1. Parse the file carefully — extract all dates, event names, times, jackpot amounts, and any other relevant details
-2. Present a clear, formatted summary of the events you found and what you plan to create on Runway
-3. Call the create_runway_events tool with the parsed events — the system will ask the user to confirm before creating anything
-4. After confirmation, the events will be created and you'll provide a summary
+CALENDAR TOOLS:
+- search_runway_events: Search existing events on the Runway content calendar
+- create_runway_events: Create new events on Runway (requires user confirmation)
 
-When answering questions:
-- Check Runway for upcoming draws and deadlines when relevant
-- Search the Knowledge Base for policy and procedure questions
-- Always be specific about dates and times — don't guess, use the data from your tools
+KNOWLEDGE & CONTENT TOOLS:
+- search_knowledge_base: Search the org's Knowledge Base for policies, procedures, FAQs
+- save_to_knowledge_base: Save new information to the KB (requires user confirmation)
+- draft_content: Draft professional emails, social posts, and responses using the full content pipeline with brand voice and KB context
 
-For draw events, use the category "Draw" and color "blue" by default. Format draw titles clearly, e.g., "Draw #47 — $250,000 Jackpot" or "Friday Night Draw — June 15".
+ANALYSIS & HISTORY TOOLS:
+- search_response_history: Search past AI-generated content across all Lightspeed tools
+- run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
 
-Always confirm before taking any action that creates, modifies, or deletes data.
+TOOL USAGE GUIDELINES:
+- For file uploads with draw schedules: Parse carefully, present summary, then call create_runway_events
+- For "remember that..." or "our policy is...": Confirm what to save, then call save_to_knowledge_base
+- For "draft me an email/post about...": Call draft_content with appropriate format and tone
+- For "what did I write about X?": Call search_response_history
+- For data analysis requests: Call run_insights_analysis with the data
+- For policy/procedure questions: Call search_knowledge_base
+- For calendar questions: Call search_runway_events
+
+For draw events, use category "Draw" and color "blue" by default. Format titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
+
+Always confirm before taking any action that creates, modifies, or deletes data. Read-only actions (search, draft, analyze) execute immediately.
 
 Keep responses concise. Use markdown formatting when helpful.`;
 }

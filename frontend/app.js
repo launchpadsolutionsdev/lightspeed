@@ -3118,6 +3118,34 @@ function alsHasServerParsedFiles(attachments) {
 }
 
 /**
+ * Check if a message likely needs agentic tool use based on intent keywords.
+ * This routes the message through the agentic endpoint with tool definitions.
+ */
+function alsNeedsAgenticMode(message) {
+    if (!message) return false;
+    const lower = message.toLowerCase();
+    const patterns = [
+        // Calendar actions
+        'add to runway', 'add to calendar', 'create event', 'schedule event', 'add event',
+        'what\'s on runway', 'what\'s scheduled', 'upcoming draws', 'upcoming events',
+        'check the calendar', 'check runway',
+        // KB save
+        'remember that', 'remember this', 'save to kb', 'save to knowledge base',
+        'add to knowledge base', 'our policy is', 'store this',
+        // Draft content
+        'draft me', 'draft a', 'draft an', 'write me a', 'compose a', 'compose an',
+        'write an email', 'write a response', 'write a post', 'draft email', 'draft response',
+        // Response history
+        'what did i write', 'what did we write', 'find my past', 'search my history',
+        'previous response', 'past responses', 'what did i say about',
+        // Insights
+        'analyze this data', 'run insights', 'run analysis', 'analyze the data',
+        'generate insights', 'data analysis'
+    ];
+    return patterns.some(p => lower.includes(p));
+}
+
+/**
  * Send message via the agentic endpoint with file upload support.
  * Handles SSE events: status, text, confirm, events_created, done, error.
  */
@@ -3219,11 +3247,12 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
                             action: event.action,
                             events: event.data.events,
                             duplicates: event.data.duplicates || [],
+                            kbEntry: event.data.title ? { title: event.data.title, content: event.data.content, category: event.data.category, tags: event.data.tags || [] } : null,
                             toolUseId: event.toolUseId,
                             model: alsModel
                         };
                         // Render confirmation UI
-                        renderAlsConfirmation(msgDiv, event.data, fullText);
+                        renderAlsConfirmation(msgDiv, event.data, fullText, event.action);
                         chatArea.scrollTop = chatArea.scrollHeight;
                         return fullText; // Stop — waiting for user action
 
@@ -3255,42 +3284,61 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
 /**
  * Render confirmation UI for write actions (event creation)
  */
-function renderAlsConfirmation(msgDiv, data, preText) {
-    const events = data.events || [];
-    const duplicates = data.duplicates || [];
-
+function renderAlsConfirmation(msgDiv, data, preText, action) {
     let html = '';
 
-    // Show duplicate warning if any
-    if (duplicates.length > 0) {
-        html += '<div class="als-confirm-warning">';
-        html += '<strong>Possible duplicates found on these dates:</strong><ul>';
-        duplicates.forEach(d => {
-            const date = d.event_date instanceof Date ? d.event_date.toISOString().split('T')[0] : d.event_date;
-            html += '<li>' + escapeHtml(date) + ': ' + escapeHtml(d.title) + ' [' + escapeHtml(d.category || '') + ']</li>';
+    if (action === 'save_to_knowledge_base') {
+        // KB save confirmation
+        html += '<div class="als-confirm-kb">';
+        html += '<div class="als-confirm-kb-header">Save to Knowledge Base?</div>';
+        html += '<div class="als-confirm-kb-detail">';
+        html += '<div><strong>Title:</strong> ' + escapeHtml(data.title || '') + '</div>';
+        html += '<div><strong>Category:</strong> ' + escapeHtml(data.category || 'general') + '</div>';
+        if (data.tags && data.tags.length > 0) {
+            html += '<div><strong>Tags:</strong> ' + data.tags.map(t => escapeHtml(t)).join(', ') + '</div>';
+        }
+        html += '<div class="als-confirm-kb-content"><strong>Content:</strong><br>' + escapeHtml(data.content || '').substring(0, 500) + (data.content && data.content.length > 500 ? '...' : '') + '</div>';
+        html += '</div>';
+        html += '<div class="als-confirm-actions">';
+        html += '<button class="als-confirm-btn als-confirm-yes" onclick="alsConfirmAction()">Save to KB</button>';
+        html += '<button class="als-confirm-btn als-confirm-no" onclick="alsCancelAction()">Cancel</button>';
+        html += '</div></div>';
+    } else {
+        // Event creation confirmation
+        const events = data.events || [];
+        const duplicates = data.duplicates || [];
+
+        // Show duplicate warning if any
+        if (duplicates.length > 0) {
+            html += '<div class="als-confirm-warning">';
+            html += '<strong>Possible duplicates found on these dates:</strong><ul>';
+            duplicates.forEach(d => {
+                const date = d.event_date instanceof Date ? d.event_date.toISOString().split('T')[0] : d.event_date;
+                html += '<li>' + escapeHtml(date) + ': ' + escapeHtml(d.title) + ' [' + escapeHtml(d.category || '') + ']</li>';
+            });
+            html += '</ul></div>';
+        }
+
+        // Events table
+        html += '<div class="als-confirm-table-wrap"><table class="als-confirm-table">';
+        html += '<thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Time</th><th>Color</th></tr></thead><tbody>';
+        events.forEach(e => {
+            html += '<tr>';
+            html += '<td>' + escapeHtml(e.event_date || '') + '</td>';
+            html += '<td>' + escapeHtml(e.title || '') + '</td>';
+            html += '<td>' + escapeHtml(e.category || 'Draw') + '</td>';
+            html += '<td>' + (e.all_day ? 'All day' : escapeHtml(e.event_time || 'All day')) + '</td>';
+            html += '<td><span class="als-color-dot" style="background:' + escapeHtml(e.color || 'blue') + '"></span>' + escapeHtml(e.color || 'blue') + '</td>';
+            html += '</tr>';
         });
-        html += '</ul></div>';
+        html += '</tbody></table></div>';
+
+        // Action buttons
+        html += '<div class="als-confirm-actions">';
+        html += '<button class="als-confirm-btn als-confirm-yes" onclick="alsConfirmAction()">Create ' + events.length + ' Event' + (events.length > 1 ? 's' : '') + '</button>';
+        html += '<button class="als-confirm-btn als-confirm-no" onclick="alsCancelAction()">Cancel</button>';
+        html += '</div>';
     }
-
-    // Events table
-    html += '<div class="als-confirm-table-wrap"><table class="als-confirm-table">';
-    html += '<thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Time</th><th>Color</th></tr></thead><tbody>';
-    events.forEach(e => {
-        html += '<tr>';
-        html += '<td>' + escapeHtml(e.event_date || '') + '</td>';
-        html += '<td>' + escapeHtml(e.title || '') + '</td>';
-        html += '<td>' + escapeHtml(e.category || 'Draw') + '</td>';
-        html += '<td>' + (e.all_day ? 'All day' : escapeHtml(e.event_time || 'All day')) + '</td>';
-        html += '<td><span class="als-color-dot" style="background:' + escapeHtml(e.color || 'blue') + '"></span>' + escapeHtml(e.color || 'blue') + '</td>';
-        html += '</tr>';
-    });
-    html += '</tbody></table></div>';
-
-    // Action buttons
-    html += '<div class="als-confirm-actions">';
-    html += '<button class="als-confirm-btn als-confirm-yes" onclick="alsConfirmAction()">Create ' + events.length + ' Event' + (events.length > 1 ? 's' : '') + '</button>';
-    html += '<button class="als-confirm-btn als-confirm-no" onclick="alsCancelAction()">Cancel</button>';
-    html += '</div>';
 
     // Append to the message div
     const confirmDiv = document.createElement('div');
@@ -3316,25 +3364,34 @@ async function alsConfirmAction() {
     const chatArea = document.getElementById('alsChatArea');
     const messagesEl = document.getElementById('alsMessages');
 
-    // Create a new message div for the creation result
+    const isKbSave = alsPendingConfirmation.action === 'save_to_knowledge_base';
+    const statusLabel = isKbSave ? 'Saving to Knowledge Base...' : 'Creating events on Runway...';
+
+    // Create a new message div for the result
     const resultDiv = document.createElement('div');
     resultDiv.className = 'als-msg als-msg-ai als-streaming';
-    resultDiv.innerHTML = '<div class="als-tool-status" style="display:flex"><div class="als-tool-spinner"></div><span>Creating events on Runway...</span></div><div class="als-agent-text"></div>';
+    resultDiv.innerHTML = '<div class="als-tool-status" style="display:flex"><div class="als-tool-spinner"></div><span>' + statusLabel + '</span></div><div class="als-agent-text"></div>';
     messagesEl.appendChild(resultDiv);
     chatArea.scrollTop = chatArea.scrollHeight;
 
     try {
+        const confirmBody = {
+            action: alsPendingConfirmation.action,
+            model: alsPendingConfirmation.model
+        };
+        if (isKbSave) {
+            confirmBody.kbEntry = alsPendingConfirmation.kbEntry;
+        } else {
+            confirmBody.events = alsPendingConfirmation.events;
+        }
+
         const response = await fetch(`${API_BASE_URL}/api/ask-lightspeed/confirm-action`, {
             method: 'POST',
             headers: {
                 ...getAuthHeaders(),
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                action: alsPendingConfirmation.action,
-                events: alsPendingConfirmation.events,
-                model: alsPendingConfirmation.model
-            })
+            body: JSON.stringify(confirmBody)
         });
 
         // Parse SSE response
@@ -3365,8 +3422,8 @@ async function alsConfirmAction() {
                     statusEl.style.display = 'none';
                     resultText += (resultText ? '\n' : '') + (event.content || '');
                     textEl.innerHTML = renderAlsMarkdownWithCitations(resultText, []);
-                } else if (event.type === 'events_created') {
-                    // Could refresh calendar if on that page
+                } else if (event.type === 'events_created' || event.type === 'kb_saved') {
+                    // Action completed successfully
                 } else if (event.type === 'error') {
                     statusEl.style.display = 'none';
                     textEl.innerHTML = '<span class="als-error-text">' + escapeHtml(event.error) + '</span>';
@@ -3419,29 +3476,29 @@ function buildAlsAgenticSystemPrompt(orgName, toneDesc) {
 TONE: Respond in a ${toneDesc} tone.
 ${getLanguageInstruction()}
 You have access to tools that let you interact with other parts of the platform:
-- You can search and create events on Runway (the content calendar) — use this for draw schedules, campaign deadlines, and team events
-- You can search the Knowledge Base for information about lottery operations and policies
 
-When a user uploads a file containing a draw schedule or event list:
-1. Parse the file carefully — extract all dates, event names, times, jackpot amounts, and any other relevant details
-2. Present a clear, formatted summary of the events you found and what you plan to create on Runway
-3. Call the create_runway_events tool with the parsed events — the system will ask the user to confirm before creating anything
+CALENDAR: search_runway_events (search calendar), create_runway_events (create events — needs confirmation)
+KNOWLEDGE: search_knowledge_base (search KB), save_to_knowledge_base (save to KB — needs confirmation)
+CONTENT: draft_content (draft emails/posts using brand voice pipeline)
+ANALYSIS: run_insights_analysis (analyze data with Insights Engine), search_response_history (find past AI outputs)
 
-When answering questions:
-- Check Runway for upcoming draws and deadlines when relevant
-- Search the Knowledge Base for policy and procedure questions
-- Always be specific about dates and times — don't guess, use the data from your tools
+TOOL USAGE:
+- File uploads with schedules → parse, summarize, call create_runway_events
+- "Remember that..." / "Our policy is..." → confirm, then call save_to_knowledge_base
+- "Draft me an email/post about..." → call draft_content with format and tone
+- "What did I write about X?" → call search_response_history
+- Data analysis requests → call run_insights_analysis
+- Policy/procedure questions → call search_knowledge_base
+- Calendar questions → call search_runway_events
 
-For draw events, use the category "Draw" and color "blue" by default. Format draw titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
+For draw events, use category "Draw" and color "blue". Format titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
 
 CORE BEHAVIOR:
 Respond directly to the user's request. If the request is clear enough to produce useful output, do so immediately. Only ask clarifying questions when the request is genuinely ambiguous.
 
-TEACH MODE: If the user says something like "remember that...", acknowledge what you've learned and confirm you'll remember it.
+TEACH MODE: If the user says "remember that...", confirm what you'll save, then call save_to_knowledge_base.
 
-You are a fully capable AI assistant. You can help with anything: drafting content, data analysis, coding, research, brainstorming, and more.
-
-Always confirm before taking any action that creates, modifies, or deletes data. Keep responses concise. Use markdown formatting when helpful.`;
+Always confirm before taking any action that creates, modifies, or deletes data. Read-only tools execute immediately. Keep responses concise. Use markdown formatting when helpful.`;
 }
 
 function initAskLightspeedPage() {
@@ -3949,7 +4006,13 @@ You are a fully capable AI assistant. You can help with absolutely anything:
 - Research, brainstorming, planning, and general knowledge
 - Anything else the user asks — you are not limited in scope
 
-UPLOAD & TOOLS: Users can upload PDF, Excel, and CSV files. When files contain draw schedules or event lists, you can help add them to the Runway content calendar. You can also search Runway and the Knowledge Base.
+TOOLS & CAPABILITIES: You have agentic capabilities that activate for certain requests:
+- Upload PDF, Excel, CSV files to parse and create Runway calendar events
+- "Draft me an email/post about..." — drafts content using your org's brand voice
+- "Remember that..." / "Save to KB..." — saves information to the Knowledge Base
+- "What did I write about X?" — searches past AI-generated content
+- "Analyze this data..." — runs Insights Engine analysis
+- "What's on Runway?" / "Check the calendar" — searches calendar events
 
 Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
@@ -3973,7 +4036,8 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             msgDiv, txt => renderAlsMarkdownWithCitations(txt, alsKbEntries), chatArea);
 
         // Check if we should use the agentic endpoint (server-parsed files)
-        const useAgentic = alsHasServerParsedFiles(currentAttachments);
+        // Use agentic endpoint when server-parsed files are attached or message likely needs tools
+        const useAgentic = alsHasServerParsedFiles(currentAttachments) || alsNeedsAgenticMode(message);
         let aiText = '';
 
         if (useAgentic) {
