@@ -12876,6 +12876,10 @@
 
                 <div class="sidebar-group">
                     <div class="sidebar-group-label">Tools</div>
+                    <button class="sidebar-btn" data-tool="ask-lightspeed">
+                        <span class="sidebar-btn-icon">&#10024;</span>
+                        <span class="sidebar-btn-label">Ask Lightspeed</span>
+                    </button>
                     <button class="sidebar-btn active" data-tool="customer-response">
                         <span class="sidebar-btn-icon">&#9889;</span>
                         <span class="sidebar-btn-label">Response Assistant</span>
@@ -12883,6 +12887,11 @@
                     <button class="sidebar-btn" data-tool="draft-assistant">
                         <span class="sidebar-btn-icon">&#9997;&#65039;</span>
                         <span class="sidebar-btn-label">Draft Assistant</span>
+                    </button>
+                    <button class="sidebar-btn" data-page="content-calendar">
+                        <span class="sidebar-btn-icon">&#128197;</span>
+                        <span class="sidebar-btn-label">Runway</span>
+                        <span class="cal-notif-badge" id="calNotifBadge" style="display:none;" onclick="event.stopPropagation(); calToggleNotifDropdown();">0</span>
                     </button>
                     <button class="sidebar-btn" data-tool="data-analysis">
                         <span class="sidebar-btn-icon">&#128200;</span>
@@ -12892,18 +12901,9 @@
                         <span class="sidebar-btn-icon">&#128221;</span>
                         <span class="sidebar-btn-label">List Normalizer</span>
                     </button>
-                    <button class="sidebar-btn" data-tool="ask-lightspeed">
-                        <span class="sidebar-btn-icon">&#10024;</span>
-                        <span class="sidebar-btn-label">Ask Lightspeed</span>
-                    </button>
                     <button class="sidebar-btn" data-tool="rules-of-play">
                         <span class="sidebar-btn-icon">&#9878;</span>
                         <span class="sidebar-btn-label">Rules of Play</span>
-                    </button>
-                    <button class="sidebar-btn" data-page="content-calendar">
-                        <span class="sidebar-btn-icon">&#128197;</span>
-                        <span class="sidebar-btn-label">Runway</span>
-                        <span class="cal-notif-badge" id="calNotifBadge" style="display:none;" onclick="event.stopPropagation(); calToggleNotifDropdown();">0</span>
                     </button>
                     <!-- Notification dropdown -->
                     <div class="cal-notif-dropdown" id="calNotifDropdown" style="display:none;">
