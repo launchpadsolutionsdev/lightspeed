@@ -3502,6 +3502,7 @@ You have access to tools that let you interact with other parts of the platform:
 CALENDAR: search_runway_events (search calendar), create_runway_events (create events — needs confirmation)
 KNOWLEDGE: search_knowledge_base (search KB), save_to_knowledge_base (save to KB — needs confirmation)
 CONTENT: draft_content (draft emails/posts using brand voice pipeline)
+TEAM: search_home_base (search the Home Base bulletin board for internal posts, announcements, updates, and team communications)
 ANALYSIS: run_insights_analysis (analyze data with Insights Engine), search_response_history (find past AI outputs)
 
 TOOL USAGE:
@@ -3511,6 +3512,7 @@ TOOL USAGE:
 - "What did I write about X?" → call search_response_history
 - Data analysis requests → call run_insights_analysis
 - Policy/procedure questions → call search_knowledge_base
+- Team announcements, internal updates, or "what did the team post about X?" → call search_home_base
 - Calendar questions → call search_runway_events
 
 For draw events, use category "Draw" and color "blue". Format titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
