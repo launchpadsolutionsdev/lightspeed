@@ -7414,7 +7414,6 @@
 
         /* Workflow content area */
         .data-workflow-area {
-            max-width: 960px;
         }
 
         /* Combined Upload Section */
@@ -7440,7 +7439,7 @@
         /* Report type card grid */
         .data-report-type-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 16px;
         }
 
@@ -7484,6 +7483,11 @@
             line-height: 1.5;
         }
 
+        @media (max-width: 1200px) {
+            .data-report-type-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
         @media (max-width: 768px) {
             .data-report-type-grid {
                 grid-template-columns: repeat(2, 1fr);
