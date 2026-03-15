@@ -9788,6 +9788,9 @@
 
         /* Pinned section */
         .hb-pinned-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
@@ -9795,6 +9798,42 @@
             color: var(--text-muted);
             margin-bottom: 8px;
             padding-left: 2px;
+        }
+        .hb-pin-count {
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: none;
+            letter-spacing: normal;
+            background: var(--bg-alt, #f6f9fc);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        /* Drag handle for pinned posts */
+        .hb-post.pinned-draggable { position: relative; }
+        .hb-drag-handle {
+            position: absolute;
+            top: 12px;
+            left: -6px;
+            width: 18px;
+            height: 18px;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            opacity: 0;
+            transition: opacity 0.15s;
+            user-select: none;
+        }
+        .hb-post.pinned-draggable:hover .hb-drag-handle { opacity: 1; }
+        .hb-drag-handle:active { cursor: grabbing; }
+        .hb-post.dragging {
+            opacity: 0.5;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        .hb-post.drag-over {
+            border-top: 2px solid var(--cta);
         }
         .hb-pinned-divider {
             border: none;

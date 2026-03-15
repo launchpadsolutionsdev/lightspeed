@@ -335,7 +335,7 @@ router.get('/posts', authenticate, async (req, res) => {
         }
 
         const result = await pool.query(
-            `SELECT p.id, p.body, p.category, p.pinned, p.created_at, p.updated_at,
+            `SELECT p.id, p.body, p.category, p.pinned, COALESCE(p.pin_order, 0) AS pin_order, p.created_at, p.updated_at,
                     p.author_id, p.edited_at, p.requires_ack,
                     u.first_name, u.last_name,
                     COALESCE(c.comment_count, 0)::int AS comment_count,
@@ -355,7 +355,7 @@ router.get('/posts', authenticate, async (req, res) => {
              WHERE p.organization_id = $1
                AND COALESCE(p.archived, false) = false
                AND COALESCE(p.is_draft, false) = false${categoryFilter}
-             ORDER BY p.pinned DESC, p.created_at DESC`,
+             ORDER BY p.pinned DESC, p.pin_order ASC, p.created_at DESC`,
             params
         );
 
@@ -619,10 +619,10 @@ router.patch('/posts/:id/pin', authenticate, async (req, res) => {
 
         const currentlyPinned = postResult.rows[0].pinned;
 
-        // If unpinning, just do it
+        // If unpinning, just do it and reset pin_order
         if (currentlyPinned) {
             await pool.query(
-                'UPDATE home_base_posts SET pinned = false, updated_at = NOW() WHERE id = $1',
+                'UPDATE home_base_posts SET pinned = false, pin_order = 0, updated_at = NOW() WHERE id = $1',
                 [req.params.id]
             );
             return res.json({ pinned: false });
@@ -630,26 +630,70 @@ router.patch('/posts/:id/pin', authenticate, async (req, res) => {
 
         // If pinning, check max limit
         const pinnedCount = await pool.query(
-            'SELECT COUNT(*) FROM home_base_posts WHERE organization_id = $1 AND pinned = true',
+            'SELECT COUNT(*)::int AS count FROM home_base_posts WHERE organization_id = $1 AND pinned = true',
             [organizationId]
         );
 
-        if (parseInt(pinnedCount.rows[0].count) >= MAX_PINNED) {
+        if (pinnedCount.rows[0].count >= MAX_PINNED) {
             return res.status(400).json({
-                error: `Maximum ${MAX_PINNED} pinned posts allowed. Unpin one first.`
+                error: `Maximum ${MAX_PINNED} pinned posts allowed. Unpin one first.`,
+                max_pinned: MAX_PINNED
             });
         }
 
-        await pool.query(
-            'UPDATE home_base_posts SET pinned = true, updated_at = NOW() WHERE id = $1',
-            [req.params.id]
+        // Assign next pin_order
+        const maxOrder = await pool.query(
+            'SELECT COALESCE(MAX(pin_order), 0) + 1 AS next FROM home_base_posts WHERE organization_id = $1 AND pinned = true',
+            [organizationId]
         );
 
-        res.json({ pinned: true });
+        await pool.query(
+            'UPDATE home_base_posts SET pinned = true, pin_order = $2, updated_at = NOW() WHERE id = $1',
+            [req.params.id, maxOrder.rows[0].next]
+        );
+
+        res.json({ pinned: true, pin_order: maxOrder.rows[0].next });
     } catch (error) {
         console.error('Failed to toggle pin:', error.message);
         res.status(500).json({ error: 'Failed to toggle pin' });
     }
+});
+
+/**
+ * PUT /api/home-base/posts/reorder-pins
+ * Reorder pinned posts. Admin only. Body: { order: [postId1, postId2, ...] }
+ */
+router.put('/posts/reorder-pins', authenticate, async (req, res) => {
+    try {
+        const admin = await isAdmin(req.userId, req.organizationId);
+        if (!admin) return res.status(403).json({ error: 'Admin access required' });
+
+        const { order } = req.body;
+        if (!Array.isArray(order) || order.length === 0) {
+            return res.status(400).json({ error: 'Order array is required' });
+        }
+
+        // Update pin_order for each post
+        for (let i = 0; i < order.length; i++) {
+            await pool.query(
+                'UPDATE home_base_posts SET pin_order = $1 WHERE id = $2 AND organization_id = $3 AND pinned = true',
+                [i + 1, order[i], req.organizationId]
+            );
+        }
+
+        res.json({ message: 'Pin order updated' });
+    } catch (error) {
+        console.error('Failed to reorder pins:', error.message);
+        res.status(500).json({ error: 'Failed to reorder pins' });
+    }
+});
+
+/**
+ * GET /api/home-base/pin-limit
+ * Returns the current max pinned post limit.
+ */
+router.get('/pin-limit', authenticate, async (req, res) => {
+    res.json({ max_pinned: MAX_PINNED });
 });
 
 // ── Edit Post ─────────────────────────────────────────────────────────
