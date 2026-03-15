@@ -986,7 +986,7 @@ async function addAdminKBEntry(orgId) {
 }
 
 async function deleteAdminKBEntry(orgId, entryId) {
-    if (!confirm('Delete this KB entry?')) return;
+    if (!await lsModal.confirm({ title: 'Delete KB entry', message: 'This Knowledge Base entry will be permanently removed.', confirmLabel: 'Delete', variant: 'danger' })) return;
     try {
         const response = await fetch(`${API_BASE_URL}/api/admin/organizations/${orgId}/knowledge-base/${entryId}`, {
             method: 'DELETE',
@@ -1447,7 +1447,7 @@ function adminOrgsGoToPage(page) {
 }
 
 async function toggleSuperAdmin(userId, makeAdmin) {
-    if (!confirm(`Are you sure you want to ${makeAdmin ? 'grant' : 'revoke'} super admin access?`)) return;
+    if (!await lsModal.confirm({ title: makeAdmin ? 'Grant super admin' : 'Revoke super admin', message: makeAdmin ? 'This user will have full administrative access to all organizations.' : 'This user will lose super admin privileges.', confirmLabel: makeAdmin ? 'Grant access' : 'Revoke access', variant: 'warning' })) return;
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/super-admin`, {
@@ -1472,8 +1472,7 @@ async function toggleSuperAdmin(userId, makeAdmin) {
 }
 
 async function adminDeleteUser(userId, email) {
-    if (!confirm('Are you sure you want to permanently delete the user "' + email + '"?\n\nThis cannot be undone. The user will be removed from all organizations and their account will be permanently deleted.')) return;
-    if (!confirm('FINAL CONFIRMATION: Delete user "' + email + '" and all associated data?')) return;
+    if (!await lsModal.confirmDangerous({ title: 'Permanently delete user', message: 'This will remove "' + email + '" from all organizations and permanently delete their account and all associated data. This cannot be undone.', confirmText: email, confirmLabel: 'Delete user permanently' })) return;
 
     try {
         const response = await fetch(API_BASE_URL + '/api/admin/users/' + userId, {
@@ -1497,8 +1496,7 @@ async function adminDeleteUser(userId, email) {
 }
 
 async function adminDeleteOrganization(orgId, name, status) {
-    if (!confirm('Are you sure you want to permanently delete the organization "' + name + '"?\n\nThis will delete ALL associated data including:\n- Knowledge base entries\n- Response history\n- Content templates\n- Conversations & shared prompts\n- All member associations\n\nThis cannot be undone.')) return;
-    if (!confirm('FINAL CONFIRMATION: Permanently delete "' + name + '" and all its data?')) return;
+    if (!await lsModal.confirmDangerous({ title: 'Permanently delete organization', message: 'This will permanently delete "' + name + '" and ALL associated data including knowledge base entries, response history, content templates, conversations, shared prompts, and all member associations. This cannot be undone.', confirmText: name, confirmLabel: 'Delete organization permanently' })) return;
 
     try {
         const response = await fetch(API_BASE_URL + '/api/admin/organizations/' + orgId, {
@@ -1663,7 +1661,7 @@ async function saveUserOrgAssignment(userId) {
 }
 
 async function removeUserFromOrg(userId) {
-    if (!confirm('Remove this user from their organization?')) return;
+    if (!await lsModal.confirm({ title: 'Remove from organization', message: 'This user will be removed from their organization and lose access to all its resources.', confirmLabel: 'Remove', variant: 'danger' })) return;
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/organization`, {
