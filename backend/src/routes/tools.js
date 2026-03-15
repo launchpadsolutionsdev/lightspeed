@@ -618,7 +618,7 @@ router.get('/shopify-analytics', authenticate, async (req, res) => {
  */
 router.get('/calendar-context', authenticate, async (req, res) => {
     try {
-        const context = await buildCalendarContext(req.user.organization_id);
+        const context = await buildCalendarContext(req.organizationId);
         res.json({ context });
     } catch (error) {
         console.error('Calendar context error:', error);
