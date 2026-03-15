@@ -2088,6 +2088,77 @@
             transform: translateY(-1px);
         }
 
+        /* ==================== ALS PROACTIVE SUGGESTIONS ==================== */
+        .als-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            align-items: center;
+        }
+        .als-suggestions-label {
+            font-size: 11px;
+            color: #8898aa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 2px;
+        }
+        .als-suggestion-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #f0f4ff;
+            border: 1px solid #d4deff;
+            border-radius: 20px;
+            padding: 0;
+            font-size: 13px;
+            color: #4a5568;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .als-suggestion-label {
+            padding: 6px 4px 6px 14px;
+            cursor: pointer;
+        }
+        .als-suggestion-label:hover {
+            color: #2d3748;
+        }
+        .als-suggestion-chip:hover {
+            background: #dce4ff;
+            border-color: #635BFF;
+            transform: translateY(-1px);
+        }
+        .als-suggestion-dismiss {
+            background: none;
+            border: none;
+            color: #a0aec0;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px 4px 2px;
+            line-height: 1;
+            font-family: inherit;
+        }
+        .als-suggestion-dismiss:hover {
+            color: #e53e3e;
+        }
+        .als-suggestion-disable-btn {
+            background: #fff5f5;
+            border-color: #feb2b2;
+            color: #c53030;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+        }
+        .als-suggestion-disable-btn:hover {
+            background: #fed7d7;
+            border-color: #fc8181;
+        }
+
         /* ==================== ALS KB CITATIONS ==================== */
         .als-citation {
             display: inline;

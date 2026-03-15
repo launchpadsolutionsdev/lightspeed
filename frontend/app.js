@@ -3214,6 +3214,7 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
     msgDiv.appendChild(textDiv);
 
     let fullText = '';
+    let alsPendingSuggestions = null;
     alsKbEntries = [];
 
     try {
@@ -3285,6 +3286,10 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
                         // Events were successfully created
                         break;
 
+                    case 'suggestions':
+                        alsPendingSuggestions = event.items;
+                        break;
+
                     case 'done':
                         break;
 
@@ -3295,6 +3300,12 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
         }
 
         msgDiv.classList.remove('als-streaming');
+
+        // Render proactive suggestions if available and not disabled
+        if (alsPendingSuggestions && alsPendingSuggestions.length > 0 && !localStorage.getItem('alsSuggestionsDisabled')) {
+            renderAlsSuggestions(msgDiv, alsPendingSuggestions);
+        }
+
         return fullText;
 
     } catch (error) {
@@ -4286,6 +4297,60 @@ function sendAlsRefinement(instruction) {
     const input = document.getElementById('alsInput');
     input.value = instruction;
     sendAlsMessage();
+}
+
+// ===== PROACTIVE SUGGESTIONS =====
+
+function renderAlsSuggestions(msgDiv, suggestions) {
+    const existing = msgDiv.querySelector('.als-suggestions');
+    if (existing) existing.remove();
+
+    const wrap = document.createElement('div');
+    wrap.className = 'als-suggestions';
+    wrap.innerHTML = '<span class="als-suggestions-label">Suggested next steps</span>';
+
+    suggestions.forEach(s => {
+        const chip = document.createElement('span');
+        chip.className = 'als-suggestion-chip';
+
+        const label = document.createElement('span');
+        label.className = 'als-suggestion-label';
+        label.textContent = (s.icon ? s.icon + ' ' : '') + s.label;
+        label.onclick = () => {
+            wrap.remove();
+            sendAlsMessage(s.prompt);
+        };
+        chip.appendChild(label);
+
+        const dismiss = document.createElement('button');
+        dismiss.className = 'als-suggestion-dismiss';
+        dismiss.innerHTML = '&times;';
+        dismiss.title = 'Dismiss';
+        dismiss.onclick = (e) => {
+            e.stopPropagation();
+            chip.remove();
+            // Track dismissals for disable prompt
+            const count = parseInt(localStorage.getItem('alsSuggestionDismissals') || '0', 10) + 1;
+            localStorage.setItem('alsSuggestionDismissals', String(count));
+            // After 3 dismissals, offer disable option
+            if (count >= 3 && !wrap.querySelector('.als-suggestion-disable')) {
+                const disableBtn = document.createElement('button');
+                disableBtn.className = 'als-suggestion-chip als-suggestion-disable-btn';
+                disableBtn.textContent = "Don't show suggestions";
+                disableBtn.onclick = () => {
+                    localStorage.setItem('alsSuggestionsDisabled', '1');
+                    wrap.remove();
+                };
+                wrap.appendChild(disableBtn);
+            }
+            // Remove container if no chips left
+            if (!wrap.querySelector('.als-suggestion-chip')) wrap.remove();
+        };
+        chip.appendChild(dismiss);
+        wrap.appendChild(chip);
+    });
+
+    msgDiv.appendChild(wrap);
 }
 
 // ===== TEACH MODE =====
