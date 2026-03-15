@@ -4318,7 +4318,9 @@ function renderAlsSuggestions(msgDiv, suggestions) {
         label.textContent = (s.icon ? s.icon + ' ' : '') + s.label;
         label.onclick = () => {
             wrap.remove();
-            sendAlsMessage(s.prompt);
+            const input = document.getElementById('alsInput');
+            input.value = s.prompt;
+            sendAlsMessage();
         };
         chip.appendChild(label);
 
