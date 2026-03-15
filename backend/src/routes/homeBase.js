@@ -5,7 +5,48 @@ const multer = require('multer');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 
-const VALID_CATEGORIES = ['urgent', 'fyi', 'draw_update', 'campaign', 'general'];
+const DEFAULT_CATEGORIES = [
+    { slug: 'general', label: 'General', color: '#6B7280', sort_order: 0, is_default: true },
+    { slug: 'urgent', label: 'Urgent', color: '#DC2626', sort_order: 1 },
+    { slug: 'fyi', label: 'FYI', color: '#2563EB', sort_order: 2 },
+    { slug: 'draw_update', label: 'Draw Update', color: '#059669', sort_order: 3 },
+    { slug: 'campaign', label: 'Campaign', color: '#7C3AED', sort_order: 4 },
+];
+
+/** Fetch valid category slugs for an org (falls back to defaults if table doesn't exist yet) */
+async function getOrgCategories(organizationId) {
+    try {
+        const result = await pool.query(
+            'SELECT slug, label, color, sort_order, is_default FROM home_base_categories WHERE organization_id = $1 ORDER BY sort_order',
+            [organizationId]
+        );
+        if (result.rows.length > 0) return result.rows;
+    } catch (_e) { /* table may not exist yet */ }
+    return DEFAULT_CATEGORIES;
+}
+
+async function getValidCategorySlugs(organizationId) {
+    const cats = await getOrgCategories(organizationId);
+    return cats.map(c => c.slug);
+}
+
+/** Seed default categories for an org if none exist */
+async function seedDefaultCategories(organizationId) {
+    try {
+        const existing = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM home_base_categories WHERE organization_id = $1',
+            [organizationId]
+        );
+        if (existing.rows[0].count > 0) return;
+        for (const cat of DEFAULT_CATEGORIES) {
+            await pool.query(
+                'INSERT INTO home_base_categories (organization_id, slug, label, color, sort_order, is_default) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING',
+                [organizationId, cat.slug, cat.label, cat.color, cat.sort_order, cat.is_default || false]
+            );
+        }
+    } catch (_e) { /* migration may not have run yet */ }
+}
+
 const VALID_REACTIONS = ['👍', '✅', '👀', '🎉', '❤️', '😂'];
 const MAX_PINNED = 3;
 const EDIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
@@ -36,6 +77,128 @@ async function isAdmin(userId, organizationId) {
     return result.rows[0].role === 'admin' || result.rows[0].role === 'owner';
 }
 
+// ── Categories ────────────────────────────────────────────────────────
+
+/**
+ * GET /api/home-base/categories
+ * List categories for the current org. Seeds defaults if none exist.
+ */
+router.get('/categories', authenticate, async (req, res) => {
+    try {
+        await seedDefaultCategories(req.organizationId);
+        const cats = await getOrgCategories(req.organizationId);
+        res.json({ categories: cats });
+    } catch (error) {
+        console.error('Failed to get categories:', error.message);
+        res.status(500).json({ error: 'Failed to get categories' });
+    }
+});
+
+/**
+ * POST /api/home-base/categories
+ * Create a custom category. Admin only. Body: { slug, label, color }
+ */
+router.post('/categories', authenticate, [
+    body('slug').trim().notEmpty().matches(/^[a-z0-9_]+$/).withMessage('Slug must be lowercase alphanumeric with underscores'),
+    body('label').trim().notEmpty().withMessage('Label is required'),
+    body('color').optional().matches(/^#[0-9A-Fa-f]{6}$/).withMessage('Color must be a hex code')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        const admin = await isAdmin(req.userId, req.organizationId);
+        if (!admin) return res.status(403).json({ error: 'Admin access required' });
+
+        // Get next sort order
+        const maxOrder = await pool.query(
+            'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM home_base_categories WHERE organization_id = $1',
+            [req.organizationId]
+        );
+
+        const result = await pool.query(
+            'INSERT INTO home_base_categories (organization_id, slug, label, color, sort_order) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [req.organizationId, req.body.slug, req.body.label, req.body.color || '#6B7280', maxOrder.rows[0].next]
+        );
+
+        res.status(201).json({ category: result.rows[0] });
+    } catch (error) {
+        if (error.code === '23505') return res.status(409).json({ error: 'Category slug already exists' });
+        console.error('Failed to create category:', error.message);
+        res.status(500).json({ error: 'Failed to create category' });
+    }
+});
+
+/**
+ * PATCH /api/home-base/categories/:id
+ * Update a category. Admin only. Body: { label?, color?, sort_order? }
+ */
+router.patch('/categories/:id', authenticate, async (req, res) => {
+    try {
+        const admin = await isAdmin(req.userId, req.organizationId);
+        if (!admin) return res.status(403).json({ error: 'Admin access required' });
+
+        const { label, color, sort_order } = req.body;
+        const updates = [];
+        const params = [];
+        let idx = 1;
+
+        if (label) { updates.push(`label = $${idx}`); params.push(label); idx++; }
+        if (color) { updates.push(`color = $${idx}`); params.push(color); idx++; }
+        if (sort_order !== undefined) { updates.push(`sort_order = $${idx}`); params.push(sort_order); idx++; }
+
+        if (updates.length === 0) return res.status(400).json({ error: 'No updates provided' });
+
+        params.push(req.params.id, req.organizationId);
+        const result = await pool.query(
+            `UPDATE home_base_categories SET ${updates.join(', ')} WHERE id = $${idx} AND organization_id = $${idx + 1} RETURNING *`,
+            params
+        );
+
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Category not found' });
+        res.json({ category: result.rows[0] });
+    } catch (error) {
+        console.error('Failed to update category:', error.message);
+        res.status(500).json({ error: 'Failed to update category' });
+    }
+});
+
+/**
+ * DELETE /api/home-base/categories/:id
+ * Delete a custom category. Admin only. Cannot delete default categories.
+ * Posts with this category are reassigned to 'general'.
+ */
+router.delete('/categories/:id', authenticate, async (req, res) => {
+    try {
+        const admin = await isAdmin(req.userId, req.organizationId);
+        if (!admin) return res.status(403).json({ error: 'Admin access required' });
+
+        // Check if it's a default category
+        const cat = await pool.query(
+            'SELECT slug, is_default FROM home_base_categories WHERE id = $1 AND organization_id = $2',
+            [req.params.id, req.organizationId]
+        );
+        if (cat.rows.length === 0) return res.status(404).json({ error: 'Category not found' });
+        if (cat.rows[0].is_default) return res.status(400).json({ error: 'Cannot delete the default category' });
+
+        // Reassign posts with this category to 'general'
+        await pool.query(
+            "UPDATE home_base_posts SET category = 'general' WHERE organization_id = $1 AND category = $2",
+            [req.organizationId, cat.rows[0].slug]
+        );
+
+        await pool.query(
+            'DELETE FROM home_base_categories WHERE id = $1 AND organization_id = $2',
+            [req.params.id, req.organizationId]
+        );
+
+        res.json({ message: 'Category deleted' });
+    } catch (error) {
+        console.error('Failed to delete category:', error.message);
+        res.status(500).json({ error: 'Failed to delete category' });
+    }
+});
+
 // ── Posts ──────────────────────────────────────────────────────────────
 
 /**
@@ -53,7 +216,8 @@ router.get('/posts', authenticate, async (req, res) => {
         let categoryFilter = '';
         const params = [organizationId];
 
-        if (category && category !== 'all' && VALID_CATEGORIES.includes(category)) {
+        const validSlugs = await getValidCategorySlugs(organizationId);
+        if (category && category !== 'all' && validSlugs.includes(category)) {
             categoryFilter = ' AND p.category = $2';
             params.push(category);
         }
@@ -209,7 +373,7 @@ router.get('/posts', authenticate, async (req, res) => {
  */
 router.post('/posts', authenticate, [
     body('body').trim().notEmpty().withMessage('Post body is required'),
-    body('category').optional().isIn(VALID_CATEGORIES).withMessage('Invalid category')
+    body('category').optional().isString()
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -223,6 +387,14 @@ router.post('/posts', authenticate, [
         }
 
         const { body: postBody, category, requires_ack, scheduled_for, is_draft } = req.body;
+
+        // Validate category against org's custom categories
+        if (category) {
+            const validSlugs = await getValidCategorySlugs(organizationId);
+            if (!validSlugs.includes(category)) {
+                return res.status(400).json({ error: 'Invalid category' });
+            }
+        }
 
         // A post is a draft if explicitly flagged or if scheduled
         const isDraft = !!is_draft || !!scheduled_for;
@@ -1170,7 +1342,7 @@ router.get('/templates', authenticate, async (req, res) => {
 router.post('/templates', authenticate, [
     body('name').trim().notEmpty().withMessage('Template name is required'),
     body('body').trim().notEmpty().withMessage('Template body is required'),
-    body('category').optional().isIn(VALID_CATEGORIES).withMessage('Invalid category')
+    body('category').optional().isString()
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -1199,7 +1371,7 @@ router.post('/templates', authenticate, [
 router.put('/templates/:id', authenticate, [
     body('name').trim().notEmpty().withMessage('Template name is required'),
     body('body').trim().notEmpty().withMessage('Template body is required'),
-    body('category').optional().isIn(VALID_CATEGORIES).withMessage('Invalid category')
+    body('category').optional().isString()
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -1302,7 +1474,7 @@ router.delete('/posts/:id/schedule', authenticate, async (req, res) => {
  */
 router.patch('/posts/:id/draft', authenticate, [
     body('body').trim().notEmpty().withMessage('Post body is required'),
-    body('category').optional().isIn(VALID_CATEGORIES)
+    body('category').optional().isString()
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
