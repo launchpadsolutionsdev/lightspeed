@@ -154,13 +154,46 @@ router.get('/posts', authenticate, async (req, res) => {
             } catch (_e) {}
         }
 
+        // Batch-load view counts for all posts
+        let viewCountMap = {};
+        if (postIds.length > 0) {
+            try {
+                const viewResult = await pool.query(
+                    `SELECT post_id, COUNT(*)::int AS view_count
+                     FROM home_base_post_views
+                     WHERE post_id = ANY($1)
+                     GROUP BY post_id`,
+                    [postIds]
+                );
+                for (const v of viewResult.rows) {
+                    viewCountMap[v.post_id] = v.view_count;
+                }
+            } catch (_e) { /* views table may not exist yet */ }
+        }
+
+        // Batch-load bookmark status for current user
+        let bookmarkSet = new Set();
+        if (postIds.length > 0) {
+            try {
+                const bmResult = await pool.query(
+                    'SELECT post_id FROM home_base_bookmarks WHERE post_id = ANY($1) AND user_id = $2',
+                    [postIds, req.userId]
+                );
+                for (const b of bmResult.rows) {
+                    bookmarkSet.add(b.post_id);
+                }
+            } catch (_e) { /* bookmarks table may not exist yet */ }
+        }
+
         const posts = result.rows.map(p => ({
             ...p,
             reactions: reactionsMap[p.id] || [],
             attachments: attachmentsMap[p.id] || [],
             acks: p.requires_ack ? (ackMap[p.id] || []) : undefined,
             ack_total: p.requires_ack ? orgMemberCount : undefined,
-            user_acked: p.requires_ack ? (ackMap[p.id] || []).some(a => a.user_id === req.userId) : undefined
+            user_acked: p.requires_ack ? (ackMap[p.id] || []).some(a => a.user_id === req.userId) : undefined,
+            view_count: viewCountMap[p.id] || 0,
+            bookmarked: bookmarkSet.has(p.id)
         }));
 
         res.json({ posts });
@@ -1160,6 +1193,151 @@ router.delete('/posts/:id/schedule', authenticate, async (req, res) => {
     } catch (error) {
         console.error('Failed to cancel scheduled post:', error.message);
         res.status(500).json({ error: 'Failed to cancel scheduled post' });
+    }
+});
+
+// ── Post Views (Read Receipts / "Seen by") ──────────────────────────
+
+/**
+ * POST /api/home-base/posts/:id/view
+ * Record that the current user viewed a post. Idempotent (UPSERT).
+ */
+router.post('/posts/:id/view', authenticate, async (req, res) => {
+    try {
+        await pool.query(
+            `INSERT INTO home_base_post_views (post_id, user_id)
+             VALUES ($1, $2)
+             ON CONFLICT (post_id, user_id) DO UPDATE SET viewed_at = NOW()`,
+            [req.params.id, req.userId]
+        );
+        res.json({ viewed: true });
+    } catch (error) {
+        console.error('Failed to record view:', error.message);
+        res.status(500).json({ error: 'Failed to record view' });
+    }
+});
+
+/**
+ * GET /api/home-base/posts/:id/views
+ * Get list of users who have viewed a post with timestamps.
+ */
+router.get('/posts/:id/views', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT pv.user_id, u.first_name, u.last_name, pv.viewed_at
+             FROM home_base_post_views pv
+             JOIN users u ON u.id = pv.user_id
+             WHERE pv.post_id = $1
+             ORDER BY pv.viewed_at DESC`,
+            [req.params.id]
+        );
+
+        const total = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM organization_memberships WHERE organization_id = $1',
+            [req.organizationId]
+        );
+
+        res.json({
+            views: result.rows,
+            view_count: result.rows.length,
+            total_members: total.rows[0].count
+        });
+    } catch (error) {
+        console.error('Failed to get views:', error.message);
+        res.status(500).json({ error: 'Failed to get views' });
+    }
+});
+
+// ── Bookmarks ────────────────────────────────────────────────────────
+
+/**
+ * POST /api/home-base/posts/:id/bookmark
+ * Toggle bookmark on a post. Returns { bookmarked: true/false }.
+ */
+router.post('/posts/:id/bookmark', authenticate, async (req, res) => {
+    try {
+        // Toggle: if already bookmarked, remove; otherwise add
+        const existing = await pool.query(
+            'DELETE FROM home_base_bookmarks WHERE post_id = $1 AND user_id = $2 RETURNING id',
+            [req.params.id, req.userId]
+        );
+
+        if (existing.rows.length > 0) {
+            return res.json({ bookmarked: false });
+        }
+
+        await pool.query(
+            'INSERT INTO home_base_bookmarks (post_id, user_id) VALUES ($1, $2)',
+            [req.params.id, req.userId]
+        );
+
+        res.status(201).json({ bookmarked: true });
+    } catch (error) {
+        console.error('Failed to toggle bookmark:', error.message);
+        res.status(500).json({ error: 'Failed to toggle bookmark' });
+    }
+});
+
+/**
+ * GET /api/home-base/bookmarks
+ * List all bookmarked posts for the current user.
+ */
+router.get('/bookmarks', authenticate, async (req, res) => {
+    try {
+        const organizationId = req.organizationId;
+
+        const result = await pool.query(
+            `SELECT p.id, p.body, p.category, p.pinned, p.created_at, p.updated_at,
+                    p.author_id, p.edited_at, p.requires_ack,
+                    u.first_name, u.last_name,
+                    COALESCE(c.comment_count, 0)::int AS comment_count,
+                    b.created_at AS bookmarked_at
+             FROM home_base_bookmarks b
+             JOIN home_base_posts p ON p.id = b.post_id
+             JOIN users u ON u.id = p.author_id
+             LEFT JOIN (
+                 SELECT post_id, COUNT(*) AS comment_count
+                 FROM home_base_comments
+                 GROUP BY post_id
+             ) c ON c.post_id = p.id
+             WHERE b.user_id = $1 AND p.organization_id = $2
+               AND COALESCE(p.archived, false) = false
+               AND COALESCE(p.is_draft, false) = false
+             ORDER BY b.created_at DESC`,
+            [req.userId, organizationId]
+        );
+
+        // Batch-load reactions
+        const postIds = result.rows.map(p => p.id);
+        let reactionsMap = {};
+        if (postIds.length > 0) {
+            try {
+                const reactResult = await pool.query(
+                    `SELECT post_id, emoji, COUNT(*)::int AS count,
+                            bool_or(user_id = $2) AS me
+                     FROM home_base_reactions
+                     WHERE post_id = ANY($1)
+                     GROUP BY post_id, emoji
+                     ORDER BY MIN(created_at)`,
+                    [postIds, req.userId]
+                );
+                for (const r of reactResult.rows) {
+                    if (!reactionsMap[r.post_id]) reactionsMap[r.post_id] = [];
+                    reactionsMap[r.post_id].push({ emoji: r.emoji, count: r.count, me: r.me });
+                }
+            } catch (_e) {}
+        }
+
+        const posts = result.rows.map(p => ({
+            ...p,
+            reactions: reactionsMap[p.id] || [],
+            bookmarked: true
+        }));
+
+        res.json({ posts });
+    } catch (error) {
+        console.error('Failed to get bookmarks:', error.message);
+        res.status(500).json({ error: 'Failed to get bookmarks' });
     }
 });
 
