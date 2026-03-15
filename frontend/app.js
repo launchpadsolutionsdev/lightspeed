@@ -3124,11 +3124,14 @@ function alsHasServerParsedFiles(attachments) {
 function alsNeedsAgenticMode(message) {
     if (!message) return false;
     const lower = message.toLowerCase();
+
+    // Exact-substring patterns (fast check)
     const patterns = [
         // Calendar actions
         'add to runway', 'add to calendar', 'create event', 'schedule event', 'add event',
+        'put on runway', 'put on calendar', 'add to the calendar', 'add to the runway',
         'what\'s on runway', 'what\'s scheduled', 'upcoming draws', 'upcoming events',
-        'check the calendar', 'check runway',
+        'check the calendar', 'check runway', 'on the runway', 'on runway',
         // KB save
         'remember that', 'remember this', 'save to kb', 'save to knowledge base',
         'add to knowledge base', 'our policy is', 'store this',
@@ -3142,7 +3145,18 @@ function alsNeedsAgenticMode(message) {
         'analyze this data', 'run insights', 'run analysis', 'analyze the data',
         'generate insights', 'data analysis'
     ];
-    return patterns.some(p => lower.includes(p));
+    if (patterns.some(p => lower.includes(p))) return true;
+
+    // Regex patterns for flexible phrasing (e.g., "add a draw to runway", "schedule draw on runway")
+    const regexPatterns = [
+        /add\b.*\b(?:to|on)\s+(?:the\s+)?runway/,
+        /add\b.*\b(?:to|on)\s+(?:the\s+)?calendar/,
+        /(?:schedule|create|put)\b.*\b(?:on|to|in)\s+(?:the\s+)?runway/,
+        /(?:schedule|create|put)\b.*\b(?:on|to|in)\s+(?:the\s+)?calendar/,
+        /(?:add|schedule|create)\b.*\bdraw\b/,
+        /\bdraw\b.*\b(?:to|on)\s+(?:the\s+)?runway/,
+    ];
+    return regexPatterns.some(r => r.test(lower));
 }
 
 /**
@@ -4007,12 +4021,15 @@ You are a fully capable AI assistant. You can help with absolutely anything:
 - Anything else the user asks — you are not limited in scope
 
 TOOLS & CAPABILITIES: You have agentic capabilities that activate for certain requests:
+- "Add to Runway" / "Add [event] to calendar" — creates Runway calendar events
 - Upload PDF, Excel, CSV files to parse and create Runway calendar events
 - "Draft me an email/post about..." — drafts content using your org's brand voice
 - "Remember that..." / "Save to KB..." — saves information to the Knowledge Base
 - "What did I write about X?" — searches past AI-generated content
 - "Analyze this data..." — runs Insights Engine analysis
 - "What's on Runway?" / "Check the calendar" — searches calendar events
+
+IMPORTANT: If the user asks to add, create, or schedule events on Runway or the calendar, you CAN do that — use phrasing like "add to Runway" to activate the calendar tool. Never tell the user you cannot add events to Runway. If the tools don't activate, ask the user to try rephrasing with "add to Runway" or "add to calendar" so the calendar tool activates.
 
 Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
