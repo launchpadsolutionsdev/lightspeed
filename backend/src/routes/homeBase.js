@@ -266,6 +266,9 @@ router.post('/posts', authenticate, [
             }).catch(() => {});
         }
 
+        // Log activity
+        if (!isDraft) logActivity(organizationId, req.userId, 'post', post.id);
+
         res.status(201).json({ post });
     } catch (error) {
         console.error('Failed to create home base post:', error.message);
@@ -649,6 +652,9 @@ router.post('/posts/:id/comments', authenticate, [
         const postAuthorId = postCheck.rows[0].author_id;
         createReplyNotification(postAuthorId, req.userId, req.organizationId, req.params.id, comment.id);
 
+        // Log activity
+        logActivity(req.organizationId, req.userId, 'comment', req.params.id);
+
         // Process @mentions in comment (fire-and-forget)
         const mentions = extractMentions(req.body.body);
         if (mentions.length > 0) {
@@ -743,6 +749,8 @@ router.post('/posts/:id/reactions', authenticate, [
             'INSERT INTO home_base_reactions (post_id, user_id, emoji) VALUES ($1, $2, $3)',
             [req.params.id, req.userId, emoji]
         );
+
+        logActivity(req.organizationId, req.userId, 'reaction', req.params.id);
 
         res.status(201).json({ toggled: true, emoji });
     } catch (error) {
@@ -1003,6 +1011,8 @@ router.post('/posts/:id/ack', authenticate, async (req, res) => {
             [req.params.id, req.userId]
         );
 
+        logActivity(req.organizationId, req.userId, 'ack', req.params.id);
+
         res.status(201).json({ acked: true });
     } catch (error) {
         console.error('Failed to toggle ack:', error.message);
@@ -1204,12 +1214,17 @@ router.delete('/posts/:id/schedule', authenticate, async (req, res) => {
  */
 router.post('/posts/:id/view', authenticate, async (req, res) => {
     try {
-        await pool.query(
+        const result = await pool.query(
             `INSERT INTO home_base_post_views (post_id, user_id)
              VALUES ($1, $2)
-             ON CONFLICT (post_id, user_id) DO UPDATE SET viewed_at = NOW()`,
+             ON CONFLICT (post_id, user_id) DO UPDATE SET viewed_at = NOW()
+             RETURNING (xmax = 0) AS is_new`,
             [req.params.id, req.userId]
         );
+        // Only log first view, not re-views
+        if (result.rows[0]?.is_new) {
+            logActivity(req.organizationId, req.userId, 'view', req.params.id);
+        }
         res.json({ viewed: true });
     } catch (error) {
         console.error('Failed to record view:', error.message);
@@ -1270,6 +1285,8 @@ router.post('/posts/:id/bookmark', authenticate, async (req, res) => {
             'INSERT INTO home_base_bookmarks (post_id, user_id) VALUES ($1, $2)',
             [req.params.id, req.userId]
         );
+
+        logActivity(req.organizationId, req.userId, 'bookmark', req.params.id);
 
         res.status(201).json({ bookmarked: true });
     } catch (error) {
@@ -1341,6 +1358,158 @@ router.get('/bookmarks', authenticate, async (req, res) => {
     }
 });
 
+// ── Activity Logging (fire-and-forget) ──────────────────────────────
+
+function logActivity(organizationId, userId, action, postId) {
+    pool.query(
+        'INSERT INTO home_base_activity_log (organization_id, user_id, action, post_id) VALUES ($1, $2, $3, $4)',
+        [organizationId, userId, action, postId || null]
+    ).catch(() => {});
+}
+
+// ── Activity Feed (Admin only) ──────────────────────────────────────
+
+/**
+ * GET /api/home-base/activity?days=7
+ * Returns engagement stats for the admin dashboard.
+ */
+router.get('/activity', authenticate, async (req, res) => {
+    try {
+        const organizationId = req.organizationId;
+        const admin = await isAdmin(req.userId, organizationId);
+        if (!admin) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const days = Math.min(parseInt(req.query.days) || 7, 30);
+        const since = new Date();
+        since.setDate(since.getDate() - days);
+
+        // Summary counts by action type
+        const summaryResult = await pool.query(
+            `SELECT action, COUNT(*)::int AS count
+             FROM home_base_activity_log
+             WHERE organization_id = $1 AND created_at >= $2
+             GROUP BY action
+             ORDER BY count DESC`,
+            [organizationId, since]
+        );
+
+        // Daily activity trend
+        const trendResult = await pool.query(
+            `SELECT DATE(created_at) AS day, COUNT(*)::int AS count
+             FROM home_base_activity_log
+             WHERE organization_id = $1 AND created_at >= $2
+             GROUP BY DATE(created_at)
+             ORDER BY day`,
+            [organizationId, since]
+        );
+
+        // Top contributors (most actions)
+        const contributorsResult = await pool.query(
+            `SELECT al.user_id, u.first_name, u.last_name, COUNT(*)::int AS actions
+             FROM home_base_activity_log al
+             JOIN users u ON u.id = al.user_id
+             WHERE al.organization_id = $1 AND al.created_at >= $2
+             GROUP BY al.user_id, u.first_name, u.last_name
+             ORDER BY actions DESC
+             LIMIT 10`,
+            [organizationId, since]
+        );
+
+        // Most engaging posts (most reactions + comments)
+        const topPostsResult = await pool.query(
+            `SELECT al.post_id, p.body, u.first_name, u.last_name, COUNT(*)::int AS engagement
+             FROM home_base_activity_log al
+             JOIN home_base_posts p ON p.id = al.post_id
+             JOIN users u ON u.id = p.author_id
+             WHERE al.organization_id = $1 AND al.created_at >= $2
+               AND al.action IN ('comment', 'reaction', 'ack')
+               AND al.post_id IS NOT NULL
+             GROUP BY al.post_id, p.body, u.first_name, u.last_name
+             ORDER BY engagement DESC
+             LIMIT 5`,
+            [organizationId, since]
+        );
+
+        // Total org members for engagement rate
+        const memberCount = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM organization_memberships WHERE organization_id = $1',
+            [organizationId]
+        );
+
+        // Active users (users who did at least one action)
+        const activeUsers = await pool.query(
+            `SELECT COUNT(DISTINCT user_id)::int AS count
+             FROM home_base_activity_log
+             WHERE organization_id = $1 AND created_at >= $2`,
+            [organizationId, since]
+        );
+
+        res.json({
+            period_days: days,
+            summary: summaryResult.rows,
+            trend: trendResult.rows,
+            top_contributors: contributorsResult.rows,
+            top_posts: topPostsResult.rows,
+            total_members: memberCount.rows[0].count,
+            active_users: activeUsers.rows[0].count
+        });
+    } catch (error) {
+        console.error('Failed to get activity feed:', error.message);
+        res.status(500).json({ error: 'Failed to get activity feed' });
+    }
+});
+
+// ── Digest Email Preferences ────────────────────────────────────────
+
+/**
+ * GET /api/home-base/digest
+ * Returns current user's digest preference.
+ */
+router.get('/digest', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT frequency FROM home_base_digest_preferences WHERE user_id = $1 AND organization_id = $2',
+            [req.userId, req.organizationId]
+        );
+        res.json({ frequency: result.rows[0]?.frequency || 'off' });
+    } catch (error) {
+        console.error('Failed to get digest pref:', error.message);
+        res.status(500).json({ error: 'Failed to get digest preference' });
+    }
+});
+
+/**
+ * PUT /api/home-base/digest
+ * Update digest preference. Body: { frequency: 'off' | 'daily' | 'weekly' }
+ */
+router.put('/digest', authenticate, [
+    body('frequency').isIn(['off', 'daily', 'weekly']).withMessage('Invalid frequency')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        await pool.query(
+            `INSERT INTO home_base_digest_preferences (user_id, organization_id, frequency)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (user_id, organization_id)
+             DO UPDATE SET frequency = $3, updated_at = NOW()`,
+            [req.userId, req.organizationId, req.body.frequency]
+        );
+
+        res.json({ frequency: req.body.frequency });
+    } catch (error) {
+        console.error('Failed to update digest pref:', error.message);
+        res.status(500).json({ error: 'Failed to update digest preference' });
+    }
+});
+
+// ── Scheduled Tasks ─────────────────────────────────────────────────
+
 /**
  * Publish scheduled posts that are past their scheduled time.
  * Called on an interval from index.js (every 60 seconds).
@@ -1363,7 +1532,137 @@ async function publishScheduledPosts() {
     }
 }
 
+/**
+ * Send digest emails. Called hourly from index.js.
+ * Daily digests: sent at ~9 AM (checks last_sent_at > 20 hours ago)
+ * Weekly digests: sent on Mondays at ~9 AM (checks last_sent_at > 6 days ago)
+ */
+async function sendDigestEmails() {
+    const { sendEmail } = require('../services/email');
+    const now = new Date();
+    const hour = now.getUTCHours();
+
+    // Only send between 13-15 UTC (~9 AM EST)
+    if (hour < 13 || hour > 15) return;
+
+    const isMonday = now.getUTCDay() === 1;
+
+    try {
+        // Get users who need a digest
+        const dailyThreshold = new Date(now.getTime() - 20 * 60 * 60 * 1000); // 20 hours ago
+        const weeklyThreshold = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000); // 6 days ago
+
+        // Daily subscribers
+        const dailySubs = await pool.query(
+            `SELECT dp.user_id, dp.organization_id, u.email, u.first_name, o.name AS org_name
+             FROM home_base_digest_preferences dp
+             JOIN users u ON u.id = dp.user_id
+             JOIN organizations o ON o.id = dp.organization_id
+             WHERE dp.frequency = 'daily'
+               AND (dp.last_sent_at IS NULL OR dp.last_sent_at < $1)`,
+            [dailyThreshold]
+        );
+
+        // Weekly subscribers (only on Mondays)
+        let weeklySubs = { rows: [] };
+        if (isMonday) {
+            weeklySubs = await pool.query(
+                `SELECT dp.user_id, dp.organization_id, u.email, u.first_name, o.name AS org_name
+                 FROM home_base_digest_preferences dp
+                 JOIN users u ON u.id = dp.user_id
+                 JOIN organizations o ON o.id = dp.organization_id
+                 WHERE dp.frequency = 'weekly'
+                   AND (dp.last_sent_at IS NULL OR dp.last_sent_at < $1)`,
+                [weeklyThreshold]
+            );
+        }
+
+        const allSubs = [...dailySubs.rows, ...weeklySubs.rows];
+        if (allSubs.length === 0) return;
+
+        for (const sub of allSubs) {
+            try {
+                const lookback = sub.frequency === 'weekly' ? 7 : 1;
+                const since = new Date(now.getTime() - lookback * 24 * 60 * 60 * 1000);
+
+                // Get recent posts
+                const posts = await pool.query(
+                    `SELECT p.body, p.category, p.created_at, u.first_name, u.last_name,
+                            COALESCE(c.cnt, 0)::int AS comments, COALESCE(r.cnt, 0)::int AS reactions
+                     FROM home_base_posts p
+                     JOIN users u ON u.id = p.author_id
+                     LEFT JOIN (SELECT post_id, COUNT(*) AS cnt FROM home_base_comments GROUP BY post_id) c ON c.post_id = p.id
+                     LEFT JOIN (SELECT post_id, COUNT(*) AS cnt FROM home_base_reactions GROUP BY post_id) r ON r.post_id = p.id
+                     WHERE p.organization_id = $1 AND p.created_at >= $2
+                       AND COALESCE(p.archived, false) = false AND COALESCE(p.is_draft, false) = false
+                     ORDER BY p.created_at DESC
+                     LIMIT 15`,
+                    [sub.organization_id, since]
+                );
+
+                if (posts.rows.length === 0) continue; // skip if nothing new
+
+                const periodLabel = lookback === 7 ? 'this week' : 'today';
+                const catLabels = { urgent: 'Urgent', fyi: 'FYI', draw_update: 'Draw Update', campaign: 'Campaign', general: 'General' };
+
+                const postListHtml = posts.rows.map(p => {
+                    const author = [p.first_name, p.last_name].filter(Boolean).join(' ');
+                    const preview = (p.body || '').substring(0, 120) + ((p.body || '').length > 120 ? '...' : '');
+                    const cat = catLabels[p.category] || 'General';
+                    const stats = [];
+                    if (p.comments > 0) stats.push(`${p.comments} comment${p.comments !== 1 ? 's' : ''}`);
+                    if (p.reactions > 0) stats.push(`${p.reactions} reaction${p.reactions !== 1 ? 's' : ''}`);
+                    return `<tr>
+                        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9">
+                            <div style="font-weight:600;font-size:13px;color:#1e293b">${author} <span style="font-weight:400;color:#94a3b8;font-size:12px">[${cat}]</span></div>
+                            <div style="font-size:13px;color:#475569;margin-top:2px">${preview}</div>
+                            ${stats.length ? `<div style="font-size:11px;color:#94a3b8;margin-top:4px">${stats.join(' · ')}</div>` : ''}
+                        </td>
+                    </tr>`;
+                }).join('');
+
+                const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;margin:0;padding:0;background:#f8fafc}
+                .wrap{max-width:600px;margin:0 auto;padding:20px}
+                .card{background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0}
+                .header{background:#1e293b;color:#fff;padding:20px 24px}
+                .header h1{margin:0;font-size:18px;font-weight:600}
+                .header p{margin:4px 0 0;font-size:13px;opacity:0.8}
+                .footer{text-align:center;padding:16px;font-size:11px;color:#94a3b8}</style></head>
+                <body><div class="wrap"><div class="card">
+                <div class="header"><h1>Home Base Digest</h1><p>${posts.rows.length} new post${posts.rows.length !== 1 ? 's' : ''} ${periodLabel} in ${sub.org_name}</p></div>
+                <table style="width:100%;border-collapse:collapse">${postListHtml}</table>
+                </div><div class="footer">You're receiving this because you subscribed to ${lookback === 7 ? 'weekly' : 'daily'} digests. Log in to Home Base to change your preferences.</div></div></body></html>`;
+
+                const text = `Home Base Digest — ${posts.rows.length} new post(s) ${periodLabel} in ${sub.org_name}. Log in to see the latest updates.`;
+
+                await sendEmail({
+                    to: sub.email,
+                    subject: `Home Base: ${posts.rows.length} new post${posts.rows.length !== 1 ? 's' : ''} ${periodLabel}`,
+                    text,
+                    html
+                });
+
+                // Update last_sent_at
+                await pool.query(
+                    'UPDATE home_base_digest_preferences SET last_sent_at = NOW() WHERE user_id = $1 AND organization_id = $2',
+                    [sub.user_id, sub.organization_id]
+                );
+            } catch (subErr) {
+                console.error(`[HOME BASE DIGEST] Failed for user ${sub.user_id}:`, subErr.message);
+            }
+        }
+
+        if (allSubs.length > 0) {
+            console.log(`[HOME BASE DIGEST] Processed ${allSubs.length} digest subscriber(s)`);
+        }
+    } catch (error) {
+        console.error('[HOME BASE DIGEST] Failed:', error.message);
+    }
+}
+
 // Expose for interval setup in index.js
 router.publishScheduledPosts = publishScheduledPosts;
+router.sendDigestEmails = sendDigestEmails;
+router.logActivity = logActivity;
 
 module.exports = router;

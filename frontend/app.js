@@ -16625,12 +16625,14 @@ async function hbLoadPosts() {
     // Update notification badge
     hbUpdateNotifBadge();
 
-    // Show archive toggle and ack option for admins
+    // Show archive toggle, ack option, and activity button for admins
     const isAdminUser = hbUserRole === 'admin' || hbUserRole === 'owner';
     const archiveToggle = document.getElementById('hbArchiveToggle');
     if (archiveToggle) archiveToggle.style.display = isAdminUser ? 'inline' : 'none';
     const ackLabel = document.getElementById('hbAckLabel');
     if (ackLabel) ackLabel.style.display = isAdminUser ? 'inline-flex' : 'none';
+    const activityBtn = document.getElementById('hbActivityBtn');
+    if (activityBtn) activityBtn.style.display = isAdminUser ? 'inline' : 'none';
 
     // Load scheduled posts
     hbLoadScheduledPosts();
@@ -17763,6 +17765,151 @@ async function hbLoadSeenBy(postId) {
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.hb-seen-by-wrap')) {
         document.querySelectorAll('.hb-seen-by-tooltip').forEach(t => { t.style.display = 'none'; });
+    }
+});
+
+// ── Activity Feed (Admin) ─────────────────────────────────────────────
+
+let hbActivityOpen = false;
+
+function hbToggleActivityPanel() {
+    const panel = document.getElementById('hbActivityPanel');
+    if (!panel) return;
+    hbActivityOpen = !hbActivityOpen;
+    panel.style.display = hbActivityOpen ? 'block' : 'none';
+    if (hbActivityOpen) hbLoadActivity();
+}
+
+async function hbLoadActivity() {
+    const content = document.getElementById('hbActivityContent');
+    if (!content) return;
+    content.innerHTML = '<div class="hb-loading" style="padding:1rem">Loading analytics...</div>';
+
+    const days = document.getElementById('hbActivityPeriod')?.value || 7;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/activity?days=${days}`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load activity');
+        const data = await resp.json();
+
+        const actionLabels = { post: 'Posts', comment: 'Comments', reaction: 'Reactions', view: 'Views', ack: 'Acks', bookmark: 'Bookmarks' };
+        const totalActions = data.summary.reduce((sum, s) => sum + s.count, 0);
+        const engagementRate = data.total_members > 0
+            ? Math.round((data.active_users / data.total_members) * 100)
+            : 0;
+
+        // Stats cards
+        let html = '<div class="hb-activity-stats">';
+        html += `<div class="hb-stat-card"><div class="hb-stat-value">${totalActions}</div><div class="hb-stat-label">Total Actions</div></div>`;
+        html += `<div class="hb-stat-card"><div class="hb-stat-value">${data.active_users}</div><div class="hb-stat-label">Active Users</div></div>`;
+        html += `<div class="hb-stat-card"><div class="hb-stat-value">${engagementRate}%</div><div class="hb-stat-label">Engagement</div></div>`;
+
+        // Individual action counts
+        for (const s of data.summary) {
+            html += `<div class="hb-stat-card"><div class="hb-stat-value">${s.count}</div><div class="hb-stat-label">${actionLabels[s.action] || s.action}</div></div>`;
+        }
+        html += '</div>';
+
+        // Activity trend chart
+        if (data.trend.length > 0) {
+            html += '<div class="hb-activity-section"><div class="hb-activity-section-title">Daily Activity Trend</div>';
+            const maxCount = Math.max(...data.trend.map(t => t.count), 1);
+            html += '<div class="hb-trend-bar">';
+            data.trend.forEach(t => {
+                const pct = Math.max((t.count / maxCount) * 100, 4);
+                const day = new Date(t.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                html += `<div class="hb-trend-col" style="height:${pct}%" title="${day}: ${t.count} actions"></div>`;
+            });
+            html += '</div>';
+            if (data.trend.length > 1) {
+                const first = new Date(data.trend[0].day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const last = new Date(data.trend[data.trend.length - 1].day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                html += `<div class="hb-trend-labels"><span>${first}</span><span>${last}</span></div>`;
+            }
+            html += '</div>';
+        }
+
+        // Top contributors
+        if (data.top_contributors.length > 0) {
+            html += '<div class="hb-activity-section"><div class="hb-activity-section-title">Top Contributors</div>';
+            data.top_contributors.forEach((c, i) => {
+                const name = hbDisplayName(c.first_name, c.last_name);
+                html += `<div class="hb-contributor-row">
+                    <span class="hb-contributor-name">${i + 1}. ${hbEsc(name)}</span>
+                    <span class="hb-contributor-count">${c.actions} actions</span>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        // Top engaging posts
+        if (data.top_posts.length > 0) {
+            html += '<div class="hb-activity-section"><div class="hb-activity-section-title">Most Engaging Posts</div>';
+            data.top_posts.forEach(p => {
+                const author = hbDisplayName(p.first_name, p.last_name);
+                const preview = (p.body || '').substring(0, 80) + ((p.body || '').length > 80 ? '...' : '');
+                html += `<div class="hb-top-post">
+                    <div class="hb-top-post-body">${hbEsc(preview)}</div>
+                    <div class="hb-top-post-meta">by ${hbEsc(author)} · ${p.engagement} interactions</div>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        content.innerHTML = html;
+    } catch (err) {
+        content.innerHTML = '<div style="padding:1rem;font-size:0.8rem;color:#DC2626">Failed to load analytics</div>';
+        console.error('Activity load error:', err);
+    }
+}
+
+// ── Digest Email Preferences ──────────────────────────────────────────
+
+let hbDigestOpen = false;
+
+function hbToggleDigestPanel() {
+    const dd = document.getElementById('hbDigestDropdown');
+    if (!dd) return;
+    hbDigestOpen = !hbDigestOpen;
+    dd.style.display = hbDigestOpen ? 'block' : 'none';
+    if (hbDigestOpen) hbLoadDigestPref();
+}
+
+async function hbLoadDigestPref() {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/digest`, { headers: getAuthHeaders() });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const freq = data.frequency || 'off';
+        const radio = document.querySelector(`input[name="hbDigest"][value="${freq}"]`);
+        if (radio) radio.checked = true;
+    } catch (_e) {}
+}
+
+async function hbSetDigest(frequency) {
+    const status = document.getElementById('hbDigestStatus');
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/digest`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ frequency })
+        });
+        if (!resp.ok) throw new Error('Failed');
+        if (status) {
+            status.textContent = frequency === 'off' ? 'Digest disabled' : `${frequency.charAt(0).toUpperCase() + frequency.slice(1)} digest enabled`;
+            setTimeout(() => { status.textContent = ''; }, 3000);
+        }
+    } catch (_e) {
+        if (status) status.textContent = 'Failed to update';
+    }
+}
+
+// Close digest dropdown on outside click
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.hb-digest-dropdown') && !e.target.closest('.hb-digest-btn')) {
+        const dd = document.getElementById('hbDigestDropdown');
+        if (dd) dd.style.display = 'none';
+        hbDigestOpen = false;
     }
 });
 
