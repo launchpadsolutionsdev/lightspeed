@@ -69,12 +69,13 @@ const LANGUAGE_INSTRUCTIONS = {
  * Fetch upcoming calendar events (next 30 days) for an organization
  * and format them as a concise context block for AI tools.
  */
-async function buildCalendarContext(organizationId) {
+async function buildCalendarContext(organizationId, options = {}) {
     try {
+        const days = options.days || 30;
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
         const future = new Date(today);
-        future.setDate(future.getDate() + 30);
+        future.setDate(future.getDate() + days);
         const futureStr = future.toISOString().split('T')[0];
 
         const result = await pool.query(

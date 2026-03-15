@@ -126,6 +126,7 @@ async function fetchStream(body, { endpoint, onText, onKb, onDone, onError, sign
     let buffer = '';
     let fullText = '';
     let referencedKbEntries = [];
+    let contextSummary = null;
 
     while (true) {
         const { done, value } = await reader.read();
@@ -147,6 +148,7 @@ async function fetchStream(body, { endpoint, onText, onKb, onDone, onError, sign
                     referencedKbEntries = event.entries;
                     if (onKb) onKb(event.entries);
                 } else if (event.type === 'done') {
+                    if (event.contextSummary) contextSummary = event.contextSummary;
                     if (onDone) onDone(event);
                 } else if (event.type === 'error') {
                     // If we have partial text and the error is retryable,
@@ -165,7 +167,7 @@ async function fetchStream(body, { endpoint, onText, onKb, onDone, onError, sign
         }
     }
 
-    return { text: fullText, referencedKbEntries };
+    return { text: fullText, referencedKbEntries, contextSummary };
 }
 
 // ==================== STRIPE CHECKOUT ====================
@@ -8449,6 +8451,7 @@ async function handleGenerate() {
         const responseText = stripCitations(result.text);
         const referencedKbEntries = result.referencedKbEntries || [];
         const serverWarnings = result.serverWarnings || [];
+        const resultContextSummary = result.contextSummary || null;
 
         const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
         const responseTimeMs = Date.now() - startTime;
@@ -8506,7 +8509,7 @@ async function handleGenerate() {
             showToast("Response saved locally but cloud sync failed — it won't appear on other devices", "error");
         }
 
-        displayResults(responseText, historyEntry.id, serverWarnings);
+        displayResults(responseText, historyEntry.id, serverWarnings, 'responseArea', resultContextSummary);
 
     } catch (error) {
         console.error("Error:", error);
@@ -8577,6 +8580,7 @@ async function handleThreadGenerate() {
         let serverWarnings = [];
         let referencedKbEntries = [];
 
+        let streamContextSummary = null;
         const { text } = await fetchStream(requestBody, {
             endpoint: '/api/response-assistant/generate',
             onText: (chunk) => {
@@ -8590,6 +8594,7 @@ async function handleThreadGenerate() {
                 if (event.warnings && event.warnings.length > 0) {
                     serverWarnings = event.warnings;
                 }
+                if (event.contextSummary) streamContextSummary = event.contextSummary;
             }
         });
 
@@ -8644,7 +8649,7 @@ async function handleThreadGenerate() {
             console.warn('Failed to save thread response to backend:', err);
         }
 
-        displayResults(responseText, historyEntry.id, serverWarnings, 'threadResponseArea');
+        displayResults(responseText, historyEntry.id, serverWarnings, 'threadResponseArea', streamContextSummary);
 
     } catch (error) {
         console.error("Thread generate error:", error);
@@ -8763,6 +8768,7 @@ async function generateCustomResponse(customerEmail, staffName, options) {
     // Stream if a target element is provided
     if (streamTarget) {
         let serverWarnings = [];
+        let ctxSummary = null;
         const { text, referencedKbEntries } = await fetchStream(requestBody, {
             endpoint: '/api/response-assistant/generate',
             onText: (chunk) => {
@@ -8776,9 +8782,10 @@ async function generateCustomResponse(customerEmail, staffName, options) {
                 if (event.warnings && event.warnings.length > 0) {
                     serverWarnings = event.warnings;
                 }
+                if (event.contextSummary) ctxSummary = event.contextSummary;
             }
         });
-        return { text, referencedKbEntries, serverWarnings };
+        return { text, referencedKbEntries, serverWarnings, contextSummary: ctxSummary };
     }
 
     // Non-streaming fallback — use the legacy endpoint
@@ -8806,7 +8813,7 @@ async function generateCustomResponse(customerEmail, staffName, options) {
     };
 }
 
-function displayResults(response, historyId, serverWarnings = [], containerId = 'responseArea') {
+function displayResults(response, historyId, serverWarnings = [], containerId = 'responseArea', contextSummary = null) {
     const qualityChecks = performQualityChecks(response);
 
     // Merge server-side format violations into quality checks
@@ -8871,6 +8878,8 @@ function displayResults(response, historyId, serverWarnings = [], containerId = 
         </div>
         ` : ''}
 
+        ${buildContextIndicatorHtml(contextSummary, containerId)}
+
         <div class="quality-checks">
             ${qualityChecks.map(check => `
                 <div class="quality-item ${check.status}">
@@ -8920,6 +8929,53 @@ function toggleSources() {
     if (!list) return;
     const isHidden = list.style.display === 'none';
     list.style.display = isHidden ? 'block' : 'none';
+    if (toggle) toggle.textContent = isHidden ? '▾' : '▸';
+}
+
+/**
+ * Build the context indicator HTML showing which context layers informed a response.
+ * @param {object} summary - contextSummary object from the backend
+ * @param {string} id - unique DOM id suffix for toggling
+ * @returns {string} HTML string
+ */
+function buildContextIndicatorHtml(summary, id = 'ctx') {
+    if (!summary) return '';
+    const layers = [];
+    if (summary.kb > 0) layers.push(`${summary.kb} KB entries`);
+    if (summary.rules > 0) layers.push('Rules');
+    if (summary.calendar) layers.push('Calendar');
+    if (summary.memory > 0) layers.push('Memory');
+    if (summary.crossTool > 0) layers.push('Cross-tool');
+    if (summary.voice) layers.push('Voice');
+    if (summary.corrections > 0) layers.push(`${summary.corrections} Corrections`);
+    if (summary.shopify) layers.push('Shopify');
+    if (layers.length === 0) return '';
+
+    return `<div class="response-sources" style="margin-top: 0.5rem;">
+        <div class="response-sources-header" onclick="toggleContextDetail('${id}')">
+            <span class="response-sources-icon">🧠</span>
+            <span class="response-sources-title">Context used: ${layers.join(' · ')}</span>
+            <span class="response-sources-toggle" id="ctxToggle_${id}">▸</span>
+        </div>
+        <div id="ctxDetail_${id}" style="display:none; padding: 0.5rem 1rem; font-size: 0.85em; color: #666;">
+            ${summary.kb > 0 ? `<div style="margin: 0.25rem 0;"><strong>Knowledge Base:</strong> ${summary.kb} relevant entries injected</div>` : ''}
+            ${summary.rules > 0 ? `<div style="margin: 0.25rem 0;"><strong>Response Rules:</strong> Org-level rules applied</div>` : ''}
+            ${summary.calendar ? `<div style="margin: 0.25rem 0;"><strong>Calendar:</strong> Upcoming events referenced</div>` : ''}
+            ${summary.memory > 0 ? `<div style="margin: 0.25rem 0;"><strong>Conversation Memory:</strong> Past org discussions used for context</div>` : ''}
+            ${summary.crossTool > 0 ? `<div style="margin: 0.25rem 0;"><strong>Cross-Tool:</strong> Recent activity from other tools referenced</div>` : ''}
+            ${summary.voice ? `<div style="margin: 0.25rem 0;"><strong>Voice Profile:</strong> Org communication style matched</div>` : ''}
+            ${summary.corrections > 0 ? `<div style="margin: 0.25rem 0;"><strong>Corrections:</strong> ${summary.corrections} past feedback corrections applied</div>` : ''}
+            ${summary.shopify ? `<div style="margin: 0.25rem 0;"><strong>Shopify:</strong> Store data referenced</div>` : ''}
+        </div>
+    </div>`;
+}
+
+function toggleContextDetail(id) {
+    const detail = document.getElementById('ctxDetail_' + id);
+    const toggle = document.getElementById('ctxToggle_' + id);
+    if (!detail) return;
+    const isHidden = detail.style.display === 'none';
+    detail.style.display = isHidden ? 'block' : 'none';
     if (toggle) toggle.textContent = isHidden ? '▾' : '▸';
 }
 
@@ -12104,7 +12160,7 @@ async function generateDraft() {
     try {
         const dynamicSystem = await buildDraftDynamicPrompt(currentDraftType, null, topic);
 
-        const { text: generatedContent } = await fetchStream({
+        const { text: generatedContent, contextSummary: draftCtx } = await fetchStream({
             staticSystem: DRAFT_STATIC_PROMPT,
             dynamicSystem,
             inquiry: topic,
@@ -12121,6 +12177,14 @@ async function generateDraft() {
         });
 
         saveDraftToHistory(userPrompt, generatedContent, currentDraftType);
+
+        // Show context indicator
+        const ctxHtml = buildContextIndicatorHtml(draftCtx, 'draft');
+        if (ctxHtml) {
+            const ctxContainer = document.createElement('div');
+            ctxContainer.innerHTML = ctxHtml;
+            outputEl.parentNode.insertBefore(ctxContainer, outputEl.nextSibling);
+        }
 
         const disclaimer = document.getElementById('draftDisclaimer');
         disclaimer.innerHTML = '\u26A0\uFE0F Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
@@ -12250,7 +12314,7 @@ async function generateWriteAnything() {
     try {
         const dynamicSystem = await buildDraftDynamicPrompt('write-anything', null, topic);
 
-        const { text: generatedContent } = await fetchStream({
+        const { text: generatedContent, contextSummary: waCtx } = await fetchStream({
             staticSystem: DRAFT_STATIC_PROMPT,
             dynamicSystem,
             inquiry: topic,
@@ -12267,6 +12331,14 @@ async function generateWriteAnything() {
         });
 
         saveDraftToHistory(userPrompt, generatedContent, 'write-anything' + (contentType ? '-' + contentType : ''));
+
+        // Show context indicator
+        const waCtxHtml = buildContextIndicatorHtml(waCtx, 'writeAnything');
+        if (waCtxHtml) {
+            const ctxContainer = document.createElement('div');
+            ctxContainer.innerHTML = waCtxHtml;
+            outputEl.parentNode.insertBefore(ctxContainer, outputEl.nextSibling);
+        }
 
         const disclaimer = document.getElementById('draftDisclaimer');
         disclaimer.innerHTML = '\u26A0\uFE0F Always review AI-generated content before publishing. Verify all facts, dates, and figures.';
@@ -12359,7 +12431,7 @@ async function generateEmailDraft() {
     try {
         const dynamicSystem = await buildDraftDynamicPrompt('email', currentEmailType, details);
 
-        const { text: generatedContent } = await fetchStream({
+        const { text: generatedContent, contextSummary: emailCtx } = await fetchStream({
             staticSystem: DRAFT_STATIC_PROMPT,
             dynamicSystem,
             inquiry: details,
@@ -12376,6 +12448,14 @@ async function generateEmailDraft() {
         });
 
         saveDraftToHistory(userPrompt, generatedContent, 'email-' + currentEmailType);
+
+        // Show context indicator
+        const emailCtxHtml = buildContextIndicatorHtml(emailCtx, 'emailDraft');
+        if (emailCtxHtml) {
+            const ctxContainer = document.createElement('div');
+            ctxContainer.innerHTML = emailCtxHtml;
+            outputEl.parentNode.insertBefore(ctxContainer, outputEl.nextSibling);
+        }
 
         const disclaimer = document.getElementById('draftDisclaimer');
         disclaimer.innerHTML = '⚠️ Always review AI-generated content before publishing. Verify all facts, dates, and figures.';

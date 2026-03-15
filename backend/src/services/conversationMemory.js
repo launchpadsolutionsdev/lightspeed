@@ -114,26 +114,33 @@ async function getConversationMemory(inquiry, organizationId, userId) {
 
 /**
  * Get recent activity across all Lightspeed tools for the current user.
- * Provides cross-tool awareness so Ask Lightspeed can reference drafts,
+ * Provides cross-tool awareness so tools can reference drafts,
  * responses, and other work the user did recently.
+ *
+ * Enhanced: 72-hour window, excludes current tool, content type tags,
+ * structured summaries with truncation.
  *
  * @param {string} organizationId - Organization UUID
  * @param {string} userId - Current user UUID
+ * @param {object} options
+ * @param {string} options.tool - Current tool name (to exclude from results)
  * @returns {Promise<string>} Context block to inject into system prompt
  */
-async function getCrossToolContext(organizationId, userId) {
+async function getCrossToolContext(organizationId, userId, options = {}) {
     try {
-        // Pull the last 5 responses from other tools in the past 24 hours
+        const currentTool = options.tool || 'ask_lightspeed';
+
+        // Pull the last 8 responses from other tools in the past 72 hours
         const result = await pool.query(
-            `SELECT tool, inquiry, response, format, tone, created_at
+            `SELECT tool, inquiry, response, format, tone, content_type, created_at
              FROM response_history
              WHERE organization_id = $1
                AND user_id = $2
-               AND tool != 'ask_lightspeed'
-               AND created_at > NOW() - INTERVAL '24 hours'
+               AND tool != $3
+               AND created_at > NOW() - INTERVAL '72 hours'
              ORDER BY created_at DESC
-             LIMIT 5`,
-            [organizationId, userId]
+             LIMIT 8`,
+            [organizationId, userId, currentTool]
         );
 
         if (result.rows.length === 0) return '';
@@ -143,6 +150,7 @@ async function getCrossToolContext(organizationId, userId) {
             draft_assistant: 'Draft Assistant',
             insights_engine: 'Insights Engine',
             list_normalizer: 'List Normalizer',
+            ask_lightspeed: 'Ask Lightspeed',
             content_generator: 'Content Generator'
         };
 
@@ -151,17 +159,25 @@ async function getCrossToolContext(organizationId, userId) {
         for (let i = 0; i < result.rows.length; i++) {
             const entry = result.rows[i];
             const toolName = TOOL_LABELS[entry.tool] || entry.tool || 'Unknown Tool';
-            const timeStr = new Date(entry.created_at).toLocaleTimeString('en-CA', {
-                hour: '2-digit', minute: '2-digit'
-            });
+            const created = new Date(entry.created_at);
+            const now = new Date();
+            const hoursAgo = Math.round((now - created) / (1000 * 60 * 60));
+            const timeLabel = hoursAgo < 1 ? 'just now' :
+                              hoursAgo < 24 ? `${hoursAgo}h ago` :
+                              `${Math.round(hoursAgo / 24)}d ago`;
 
-            // Truncate for token efficiency
-            const shortInquiry = (entry.inquiry || '').substring(0, 150);
-            const shortResponse = (entry.response || '').substring(0, 200);
+            // Content type tag for relevance matching
+            const typeTag = entry.content_type ? ` (${entry.content_type})` : '';
 
-            context += `\n${i + 1}. [${toolName}] at ${timeStr}:`;
-            context += `\n   Topic: ${shortInquiry}${entry.inquiry?.length > 150 ? '...' : ''}`;
-            context += `\n   Output excerpt: ${shortResponse}${entry.response?.length > 200 ? '...' : ''}`;
+            // Truncate for token efficiency — longer excerpts for Ask Lightspeed context
+            const maxInquiry = 200;
+            const maxResponse = 250;
+            const shortInquiry = (entry.inquiry || '').substring(0, maxInquiry);
+            const shortResponse = (entry.response || '').substring(0, maxResponse);
+
+            context += `\n${i + 1}. [${toolName}]${typeTag} ${timeLabel}:`;
+            context += `\n   Topic: ${shortInquiry}${entry.inquiry?.length > maxInquiry ? '...' : ''}`;
+            context += `\n   Output: ${shortResponse}${entry.response?.length > maxResponse ? '...' : ''}`;
         }
 
         return context;
