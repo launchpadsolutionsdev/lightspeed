@@ -546,14 +546,18 @@ describe('Tool Definitions', () => {
         expect(source).toContain("name: 'run_insights_analysis'");
     });
 
-    it('has exactly 7 tools defined', () => {
+    it('defines search_home_base tool', () => {
+        expect(source).toContain("name: 'search_home_base'");
+    });
+
+    it('has exactly 8 tools defined', () => {
         const toolCount = (source.match(/name: '/g) || []).length;
-        // The TOOLS array should have 7 entries
+        // The TOOLS array should have 8 entries
         // (name: ' appears for each tool definition plus maybe elsewhere, so check the TOOLS array)
         expect(source).toContain('const TOOLS = [');
         // Count tool objects by looking for 'input_schema'
         const schemaCount = (source.match(/input_schema:/g) || []).length;
-        expect(schemaCount).toBe(7);
+        expect(schemaCount).toBe(8);
     });
 
     it('requires confirmation for write tools (create_runway_events, save_to_knowledge_base)', () => {
@@ -571,6 +575,7 @@ describe('Tool Definitions', () => {
         expect(source).toContain("'Drafting content with brand voice...'");
         expect(source).toContain("'Searching past responses...'");
         expect(source).toContain("'Running insights analysis...'");
+        expect(source).toContain("'Searching Home Base...'");
     });
 });
 
