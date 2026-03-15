@@ -791,25 +791,47 @@ async function processResponse(response, messages, system, organizationId, userI
             };
             sendEvent({ type: 'status', message: contentTypeStatus[toolUse.input.content_type] || 'Drafting content with brand voice...' });
             const result = await executeDraftContent(toolUse.input, organizationId);
-            const toolResult = result.error
-                ? `Draft generation failed: ${result.error}`
-                : `Here is the drafted ${result.label || 'content'}:\n\n${result.draft}`;
 
-            const followUpMessages = [
-                ...messages,
-                { role: 'assistant', content: response.content },
-                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
-            ];
+            if (result.error) {
+                // Draft failed — let Claude handle the error message
+                const toolResult = `Draft generation failed: ${result.error}`;
+                const followUpMessages = [
+                    ...messages,
+                    { role: 'assistant', content: response.content },
+                    { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+                ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 4096,
-                tools: TOOLS,
-                model
-            });
+                const followUp = await claudeService.generateResponse({
+                    messages: followUpMessages,
+                    system,
+                    max_tokens: 4096,
+                    tools: TOOLS,
+                    model
+                });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            } else {
+                // Draft succeeded — send the full draft directly to the user
+                sendEvent({ type: 'text', content: result.draft });
+
+                // Let Claude add a brief follow-up (review notes, suggestions, etc.)
+                const toolResult = `The drafted ${result.label || 'content'} has been displayed to the user. Provide a brief follow-up: mention any placeholders or details the user should review, and offer to make adjustments. Do NOT repeat or re-output the draft content — the user can already see it.`;
+                const followUpMessages = [
+                    ...messages,
+                    { role: 'assistant', content: response.content },
+                    { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+                ];
+
+                const followUp = await claudeService.generateResponse({
+                    messages: followUpMessages,
+                    system,
+                    max_tokens: 1024,
+                    tools: TOOLS,
+                    model
+                });
+
+                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            }
             return;
 
         } else if (toolUse.name === 'save_to_knowledge_base') {
