@@ -7778,7 +7778,7 @@ async function calSaveEvent() {
 
 async function calDeleteEvent() {
     if (!calEditId) return;
-    if (!confirm('Delete this event?')) return;
+    if (!await lsModal.confirm({ title: 'Delete event', message: 'This event will be permanently removed from the calendar.', confirmLabel: 'Delete', variant: 'danger' })) return;
     try {
         const resp = await fetch(`${API_BASE_URL}/api/content-calendar/${calEditId}`, {
             method: 'DELETE',
@@ -8698,7 +8698,7 @@ async function sendInvitation() {
 }
 
 async function removeMember(memberId) {
-    if (!confirm('Are you sure you want to remove this member from the organization?')) {
+    if (!await lsModal.confirm({ title: 'Remove member', message: 'This person will lose access to the organization and all its resources.', confirmLabel: 'Remove', variant: 'danger' })) {
         return;
     }
 
@@ -8748,7 +8748,7 @@ async function updateMemberRole(memberId, newRole) {
 }
 
 async function cancelInvitation(invitationId) {
-    if (!confirm('Are you sure you want to cancel this invitation?')) {
+    if (!await lsModal.confirm({ title: 'Cancel invitation', message: 'This invitation link will no longer work.', confirmLabel: 'Cancel invitation', variant: 'warning' })) {
         return;
     }
 
@@ -9937,9 +9937,13 @@ async function submitRatingFeedback() {
                     if (dupData.error === 'duplicate_found' && dupData.duplicates && dupData.duplicates.length > 0) {
                         const dupTitle = dupData.duplicates[0].title;
                         const dupId = dupData.duplicates[0].id;
-                        const userChoice = confirm(
-                            `A similar KB entry already exists:\n"${dupTitle}"\n\nClick OK to update the existing entry, or Cancel to create a new one.`
-                        );
+                        const userChoice = await lsModal.confirm({
+                            title: 'Similar entry exists',
+                            message: `A Knowledge Base entry titled "${dupTitle}" already exists. Would you like to update it, or create a new entry?`,
+                            confirmLabel: 'Update existing',
+                            cancelLabel: 'Create new',
+                            variant: 'info'
+                        });
                         if (userChoice) {
                             // Update the existing entry instead
                             const updateResp = await fetch(`${API_BASE_URL}/api/knowledge-base/${dupId}`, {
@@ -10008,7 +10012,7 @@ async function submitRatingFeedback() {
 async function saveToFavorites() {
     if (!currentResponse || !currentInquiry) return;
 
-    const title = prompt("Give this template a name:", detectCategory(currentInquiry));
+    const title = await lsModal.prompt({ title: 'Save as template', message: 'Give this template a name so you can find it later.', placeholder: 'Template name', defaultValue: detectCategory(currentInquiry), confirmLabel: 'Save' });
     if (!title) return;
 
     const favorite = {
@@ -10950,7 +10954,7 @@ async function addResponseRule() {
 }
 
 async function deleteResponseRule(id) {
-    if (!confirm('Delete this response rule?')) return;
+    if (!await lsModal.confirm({ title: 'Delete rule', message: 'This response rule will be permanently removed.', confirmLabel: 'Delete', variant: 'danger' })) return;
     try {
         var resp = await fetch(API_BASE_URL + '/api/response-rules/' + id, {
             method: 'DELETE',
@@ -10988,10 +10992,10 @@ async function toggleRuleActive(id, active) {
     }
 }
 
-function editResponseRule(id) {
+async function editResponseRule(id) {
     var rule = responseRules.find(function(r) { return r.id === id; });
     if (!rule) return;
-    var newText = prompt('Edit rule text:', rule.rule_text);
+    var newText = await lsModal.prompt({ title: 'Edit rule', message: 'Update the text for this response rule.', defaultValue: rule.rule_text, confirmLabel: 'Save' });
     if (newText === null || newText.trim() === '') return;
     updateResponseRule(id, { rule_text: newText.trim() });
 }
@@ -15153,7 +15157,7 @@ function ropRenderDraftsList() {
     container.querySelectorAll('.rop-delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            if (!confirm('Delete this draft?')) return;
+            if (!await lsModal.confirm({ title: 'Delete draft', message: 'This draft will be permanently removed.', confirmLabel: 'Delete', variant: 'danger' })) return;
             try {
                 await fetch(`${API_BASE_URL}/api/rules-of-play/${btn.dataset.id}`, {
                     method: 'DELETE', headers: getAuthHeaders()
@@ -16191,7 +16195,7 @@ async function syncShopifyData() {
  * Disconnect the Shopify store.
  */
 async function disconnectShopify() {
-    if (!confirm('Are you sure you want to disconnect your Shopify store? Cached data will no longer be used for AI tools.')) {
+    if (!await lsModal.confirm({ title: 'Disconnect Shopify', message: 'Your Shopify store will be disconnected and cached data will no longer be used for AI tools.', confirmLabel: 'Disconnect', variant: 'warning' })) {
         return;
     }
 
@@ -17230,7 +17234,7 @@ function hbOnFilesSelected(input) {
     hbPendingFiles.push(...toAdd);
     input.value = '';
     hbRenderPendingFiles();
-    if (files.length > maxFiles) alert('Maximum 3 attachments per post');
+    if (files.length > maxFiles) lsModal.alert({ title: 'Attachment limit', message: 'You can attach up to 3 files per post.', variant: 'warning' });
 }
 
 function hbRemovePendingFile(index) {
@@ -17333,7 +17337,8 @@ async function hbCreatePost() {
         if (isDraft) hbLoadScheduledPosts();
         hbLoadPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     } finally {
         btn.disabled = false;
         btn.textContent = 'Post';
@@ -17391,14 +17396,15 @@ async function hbSaveEdit(postId) {
         }
         hbLoadPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
 // ── Attachment Management ─────────────────────────────────────────────
 
 async function hbDeleteAttachment(attachmentId, postId) {
-    if (!confirm('Remove this attachment?')) return;
+    if (!await lsModal.confirm({ title: 'Remove attachment', message: 'This attachment will be permanently deleted.', confirmLabel: 'Remove', variant: 'danger' })) return;
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/attachments/${attachmentId}`, {
             method: 'DELETE',
@@ -17407,7 +17413,8 @@ async function hbDeleteAttachment(attachmentId, postId) {
         if (!resp.ok) throw new Error('Failed to delete attachment');
         hbLoadPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
@@ -17466,7 +17473,8 @@ async function hbRestorePost(postId) {
         await hbLoadArchivedPosts();
         hbLoadPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
@@ -17503,7 +17511,8 @@ async function hbToggleAck(postId) {
         if (!resp.ok) throw new Error('Failed to toggle acknowledgment');
         hbLoadPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
@@ -17574,11 +17583,11 @@ async function hbSaveAsTemplate() {
     const textarea = document.getElementById('hbComposeBody');
     const body = (textarea?.value || '').trim();
     if (!body) {
-        alert('Write a post first, then save it as a template.');
+        lsModal.alert({ title: 'Nothing to save', message: 'Write a post first, then save it as a template.', variant: 'info' });
         return;
     }
 
-    const name = prompt('Template name:');
+    const name = await lsModal.prompt({ title: 'Save template', message: 'Give this template a name.', placeholder: 'Template name', confirmLabel: 'Save' });
     if (!name || !name.trim()) return;
 
     try {
@@ -17590,12 +17599,13 @@ async function hbSaveAsTemplate() {
         if (!resp.ok) throw new Error('Failed to save template');
         await hbLoadTemplates();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
 async function hbDeleteTemplate(templateId) {
-    if (!confirm('Delete this template?')) return;
+    if (!await lsModal.confirm({ title: 'Delete template', message: 'This template will be permanently removed.', confirmLabel: 'Delete', variant: 'danger' })) return;
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/templates/${templateId}`, {
             method: 'DELETE',
@@ -17604,7 +17614,8 @@ async function hbDeleteTemplate(templateId) {
         if (!resp.ok) throw new Error('Failed to delete template');
         await hbLoadTemplates();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
@@ -17665,7 +17676,7 @@ async function hbLoadScheduledPosts() {
 }
 
 async function hbCancelScheduled(postId) {
-    if (!confirm('Cancel this scheduled post?')) return;
+    if (!await lsModal.confirm({ title: 'Cancel scheduled post', message: 'This post will not be published at its scheduled time.', confirmLabel: 'Cancel post', variant: 'warning' })) return;
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/schedule`, {
             method: 'DELETE',
@@ -17674,7 +17685,8 @@ async function hbCancelScheduled(postId) {
         if (!resp.ok) throw new Error('Failed to cancel scheduled post');
         hbLoadScheduledPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
@@ -17683,7 +17695,7 @@ async function hbCancelScheduled(postId) {
 async function hbSaveDraft() {
     const textarea = document.getElementById('hbComposeBody');
     const body = (textarea.value || '').trim();
-    if (!body) { alert('Write something before saving a draft.'); return; }
+    if (!body) { lsModal.alert({ title: 'Nothing to save', message: 'Write something before saving a draft.', variant: 'info' }); return; }
 
     const btn = document.getElementById('hbDraftBtn');
     btn.disabled = true;
@@ -17719,7 +17731,8 @@ async function hbSaveDraft() {
         hbResetCompose();
         hbLoadScheduledPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     } finally {
         btn.disabled = false;
         btn.textContent = 'Save Draft';
@@ -17757,7 +17770,7 @@ function hbResumeDraft(postId, body, category) {
 }
 
 async function hbDeleteDraft(postId) {
-    if (!confirm('Delete this draft?')) return;
+    if (!await lsModal.confirm({ title: 'Delete draft', message: 'This draft will be permanently removed.', confirmLabel: 'Delete', variant: 'danger' })) return;
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/schedule`, {
             method: 'DELETE',
@@ -17773,7 +17786,8 @@ async function hbDeleteDraft(postId) {
         // Refresh drafts view if currently showing
         if (hbCurrentFilter === 'drafts') hbLoadDrafts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
@@ -17793,7 +17807,8 @@ async function hbPublishDraft(postId) {
         hbLoadPosts();
         if (hbCurrentFilter === 'drafts') hbLoadDrafts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
@@ -18098,10 +18113,10 @@ async function hbCreateCategory() {
     const labelInput = document.getElementById('hbCatNewLabel');
     const colorInput = document.getElementById('hbCatNewColor');
     const label = (labelInput.value || '').trim();
-    if (!label) { alert('Enter a category name.'); return; }
+    if (!label) { lsModal.alert({ title: 'Name required', message: 'Please enter a name for the category.', variant: 'warning' }); return; }
 
     const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-    if (!slug) { alert('Invalid category name.'); return; }
+    if (!slug) { lsModal.alert({ title: 'Invalid name', message: 'Category names must contain at least one letter or number.', variant: 'warning' }); return; }
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/categories`, {
@@ -18119,21 +18134,22 @@ async function hbCreateCategory() {
         await hbLoadCategories();
         hbRenderCatManageList();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
-function hbEditCategory(catId, currentLabel, currentColor) {
-    const newLabel = prompt('Category label:', currentLabel);
-    if (!newLabel || newLabel === currentLabel) {
-        // Also offer color edit
-        const newColor = prompt('Category color (hex):', currentColor);
-        if (!newColor || newColor === currentColor) return;
-        hbUpdateCategory(catId, null, newColor);
-        return;
-    }
-    const newColor = prompt('Category color (hex):', currentColor);
-    hbUpdateCategory(catId, newLabel, newColor || currentColor);
+async function hbEditCategory(catId, currentLabel, currentColor) {
+    const newLabel = await lsModal.prompt({ title: 'Edit category name', placeholder: 'Category name', defaultValue: currentLabel, confirmLabel: 'Next' });
+    if (newLabel === null) return;
+
+    const newColor = await lsModal.prompt({ title: 'Edit category color', message: 'Pick a color for this category.', inputType: 'color', defaultValue: currentColor || '#635BFF', confirmLabel: 'Save' });
+    if (newColor === null) return;
+
+    const labelChanged = newLabel && newLabel !== currentLabel ? newLabel : null;
+    const colorChanged = newColor && newColor !== currentColor ? newColor : null;
+    if (!labelChanged && !colorChanged) return;
+    hbUpdateCategory(catId, labelChanged, colorChanged || currentColor);
 }
 
 async function hbUpdateCategory(catId, label, color) {
@@ -18150,12 +18166,13 @@ async function hbUpdateCategory(catId, label, color) {
         await hbLoadCategories();
         hbRenderCatManageList();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
 async function hbDeleteCategory(catId) {
-    if (!confirm('Delete this category? Posts using it will be reassigned to General.')) return;
+    if (!await lsModal.confirm({ title: 'Delete category', message: 'Posts using this category will be reassigned to General.', confirmLabel: 'Delete', variant: 'warning' })) return;
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/categories/${catId}`, {
             method: 'DELETE',
@@ -18165,7 +18182,8 @@ async function hbDeleteCategory(catId) {
         await hbLoadCategories();
         hbRenderCatManageList();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
@@ -18219,12 +18237,13 @@ async function hbTogglePin(postId) {
         }
         hbLoadPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
 async function hbDeletePost(postId) {
-    if (!confirm('Delete this post? This cannot be undone.')) return;
+    if (!await lsModal.confirm({ title: 'Delete post', message: 'This post and all its comments will be permanently removed. This cannot be undone.', confirmLabel: 'Delete', variant: 'danger' })) return;
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}`, {
             method: 'DELETE',
@@ -18233,7 +18252,8 @@ async function hbDeletePost(postId) {
         if (!resp.ok) throw new Error('Failed to delete post');
         hbLoadPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
@@ -18390,12 +18410,13 @@ async function hbSubmitComment(postId) {
             toggleBtn.textContent = count > 0 ? `${count} comment${count !== 1 ? 's' : ''}` : 'Reply';
         }
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 
 async function hbDeleteComment(commentId, postId) {
-    if (!confirm('Delete this comment?')) return;
+    if (!await lsModal.confirm({ title: 'Delete comment', message: 'This comment will be permanently removed.', confirmLabel: 'Delete', variant: 'danger' })) return;
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/comments/${commentId}`, {
             method: 'DELETE',
@@ -18417,7 +18438,8 @@ async function hbDeleteComment(commentId, postId) {
         }
         hbLoadPosts();
     } catch (err) {
-        alert(err.message);
+        console.error(err);
+        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     }
 }
 

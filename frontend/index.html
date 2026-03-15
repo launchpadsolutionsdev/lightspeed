@@ -3801,6 +3801,180 @@
             background: var(--border);
         }
 
+        /* ==================== LS MODAL SYSTEM ==================== */
+        .ls-modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(10, 37, 64, 0.45);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .ls-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .ls-modal {
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            max-width: 440px;
+            width: 92%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
+            transform: scale(0.95) translateY(8px);
+            transition: transform 0.2s ease;
+            text-align: center;
+        }
+        .ls-modal-overlay.show .ls-modal {
+            transform: scale(1) translateY(0);
+        }
+
+        /* Icon */
+        .ls-modal-icon {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .ls-modal-icon svg {
+            width: 24px; height: 24px;
+        }
+        .ls-modal-icon-danger { background: #FEE2E2; color: var(--danger); }
+        .ls-modal-icon-warning { background: #FEF3C7; color: #D97706; }
+        .ls-modal-icon-info { background: #EBF4FF; color: #635BFF; }
+        .ls-modal-icon-success { background: #D1FAE5; color: var(--success); }
+        .ls-modal-icon-input { background: #EBF4FF; color: #635BFF; }
+        .ls-modal-icon-error { background: #FEE2E2; color: var(--danger); }
+
+        /* Typography */
+        .ls-modal-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        .ls-modal-message {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.55;
+            margin-bottom: 0;
+        }
+
+        /* Input group */
+        .ls-modal-input-group {
+            margin-top: 16px;
+            text-align: left;
+        }
+        .ls-modal-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .ls-modal-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-family: var(--font-family);
+            color: var(--text-primary);
+            background: var(--bg-alt);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            outline: none;
+        }
+        .ls-modal-input:focus {
+            border-color: var(--cta);
+            box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.12);
+        }
+        .ls-modal-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* Color picker */
+        .ls-modal-color-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .ls-modal-color-picker {
+            width: 48px; height: 42px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 2px;
+            cursor: pointer;
+            background: none;
+        }
+        .ls-modal-color-text {
+            flex: 1;
+        }
+
+        /* Action buttons */
+        .ls-modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+            justify-content: center;
+        }
+        .ls-modal-btn {
+            padding: 10px 22px;
+            border-radius: var(--radius-pill);
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: var(--font-family);
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            line-height: 1;
+            min-width: 90px;
+        }
+        .ls-modal-btn:hover {
+            transform: translateY(-1px);
+        }
+        .ls-modal-btn:active {
+            transform: translateY(0);
+        }
+        .ls-modal-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .ls-modal-btn-primary {
+            background: var(--cta);
+            color: #fff;
+        }
+        .ls-modal-btn-primary:hover:not(:disabled) {
+            background: var(--cta-hover);
+        }
+        .ls-modal-btn-secondary {
+            background: var(--bg-alt);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .ls-modal-btn-secondary:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+        .ls-modal-btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+        .ls-modal-btn-danger:hover:not(:disabled) {
+            background: #C4183C;
+        }
+
         /* ==================== TOAST ==================== */
         .toast {
             position: fixed;
@@ -16979,6 +17153,7 @@ Answer to question 2..."></textarea>
     </script>
 
     <!-- JavaScript -->
+    <script src="ls-modal.js?v=20260301"></script>
     <script src="knowledge-base.js?v=20260301"></script>
     <script src="draft-knowledge-base.js?v=20260301"></script>
     <script src="admin-dashboard.js?v=20260301"></script>
