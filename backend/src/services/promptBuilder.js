@@ -16,7 +16,18 @@ const { getConversationMemory, getCrossToolContext } = require('./conversationMe
 const { getVoiceProfileContext } = require('./voiceFingerprint');
 const { embedQuery, formatForPgvector } = require('./embeddingService');
 const { getBudgetAllocation } = require('./budgetAllocator');
-const { fetchRelevantCorrections, buildCorrectionsContext } = require('./systemPromptBuilder');
+const { fetchRelevantCorrections, buildCorrectionsContext, buildCalendarContext } = require('./systemPromptBuilder');
+
+// ─── Per-tool context configuration ─────────────────────────────────
+// Each tool declares which context layers it wants injected.
+// 'true' = full injection, 'light' = reduced/capped injection, false = skip.
+const TOOL_CONTEXT_CONFIG = {
+    response_assistant: { kb: true, rules: true, shopify: true, calendar: true, memory: true, crossTool: true, voice: true, corrections: true },
+    ask_lightspeed:     { kb: true, rules: true, shopify: true, calendar: true, memory: true, crossTool: true, voice: true, corrections: true },
+    draft_assistant:    { kb: true, rules: true, shopify: true, calendar: true, memory: true, crossTool: true, voice: true, corrections: true },
+    insights_engine:    { kb: 'light', rules: false, shopify: false, calendar: 'light', memory: false, crossTool: true, voice: true, corrections: true },
+    list_normalizer:    { kb: false, rules: false, shopify: false, calendar: false, memory: false, crossTool: false, voice: false, corrections: false },
+};
 
 /** Log a KB gap (non-blocking, fire-and-forget) */
 function logKbGap(organizationId, inquiry, tool, kbResultsCount) {
@@ -78,7 +89,7 @@ async function injectResponseRules(system, organizationId) {
  * @returns {{ system: string, entries: Array }}
  */
 async function injectKnowledgeBase(system, inquiry, organizationId, kbType, options = {}) {
-    const { includeCitations = true } = options;
+    const { includeCitations = true, _lightMode = false } = options;
     try {
         let kbFilter = "AND kb_type = 'support'";
         if (kbType === 'all') {
@@ -89,8 +100,14 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
 
         // Dynamic budget allocation based on inquiry complexity
         const { budgets } = getBudgetAllocation(inquiry);
-        const kbTokenBudget = budgets.knowledgeBase;
-        const maxEntries = budgets.maxKbEntries;
+        let kbTokenBudget = budgets.knowledgeBase;
+        let maxEntries = budgets.maxKbEntries;
+
+        // Light mode: cap entries and budget for data-heavy tools (e.g., Insights Engine)
+        if (_lightMode) {
+            maxEntries = Math.min(maxEntries, 3);
+            kbTokenBudget = Math.min(kbTokenBudget, 5000);
+        }
 
         // --- Strategy: try semantic search on chunks first, then FTS, then full fallback ---
         let kbRows;
@@ -274,7 +291,7 @@ async function injectShopifyContext(system, inquiry, organizationId) {
  * Build the enhanced system prompt with org rules, KB entries, and Shopify context.
  *
  * This is the single function both /generate and /generate-stream should call,
- * eliminating the previous code duplication.
+ * eliminating the previous code duplication. Now config-driven via TOOL_CONTEXT_CONFIG.
  *
  * @param {string} baseSystem - The system prompt (from frontend or server-built)
  * @param {string} inquiry - The customer inquiry
@@ -283,63 +300,107 @@ async function injectShopifyContext(system, inquiry, organizationId) {
  * @param {string} options.kb_type - 'support' | 'internal' | 'all'
  * @param {boolean} options.includeCitations - Whether to add citation rules
  * @param {string} options.userId - Current user UUID (for memory and cross-tool context)
- * @returns {Promise<{ system: string, referencedKbEntries: Array }>}
+ * @param {string} options.tool - Tool identifier for config lookup
+ * @returns {Promise<{ system: string, referencedKbEntries: Array, contextSummary: object }>}
  */
 async function buildEnhancedPrompt(baseSystem, inquiry, organizationId, options = {}) {
     let system = baseSystem || '';
     let referencedKbEntries = [];
+    const toolName = options.tool || 'response_assistant';
+    const config = TOOL_CONTEXT_CONFIG[toolName] || TOOL_CONTEXT_CONFIG.response_assistant;
+
+    // Track which context layers were actually injected
+    const contextSummary = { rules: 0, kb: 0, shopify: false, memory: 0, crossTool: 0, voice: false, corrections: 0, calendar: false };
 
     // 1. Inject response rules
-    if (organizationId) {
+    if (config.rules && organizationId) {
+        const before = system.length;
         system = await injectResponseRules(system, organizationId);
+        if (system.length > before) contextSummary.rules = 1;
     }
 
     // 2. KB relevance picking
-    if (inquiry && organizationId) {
-        const kbResult = await injectKnowledgeBase(system, inquiry, organizationId, options.kb_type, {
-            includeCitations: options.includeCitations !== false
-        });
+    if (config.kb && inquiry && organizationId) {
+        const kbOptions = { includeCitations: options.includeCitations !== false, tool: toolName };
+        // 'light' mode: cap at 3 entries with smaller budget
+        if (config.kb === 'light') {
+            kbOptions._lightMode = true;
+        }
+        const kbResult = await injectKnowledgeBase(system, inquiry, organizationId, options.kb_type, kbOptions);
         system = kbResult.system;
         referencedKbEntries = kbResult.entries;
+        contextSummary.kb = referencedKbEntries.length;
     }
 
     // 3. Shopify context
-    if (inquiry && organizationId) {
+    if (config.shopify && inquiry && organizationId) {
+        const before = system.length;
         system = await injectShopifyContext(system, inquiry, organizationId);
+        if (system.length > before) contextSummary.shopify = true;
     }
 
-    // 4. Conversation memory — org-wide past conversation context
-    if (inquiry && organizationId && options.userId) {
-        const memoryContext = await getConversationMemory(inquiry, organizationId, options.userId);
-        if (memoryContext) system += memoryContext;
-    }
-
-    // 5. Cross-tool activity — recent work across other Lightspeed tools
-    if (organizationId && options.userId) {
-        const crossToolContext = await getCrossToolContext(organizationId, options.userId);
-        if (crossToolContext) system += crossToolContext;
-    }
-
-    // 6. Voice fingerprint — org-specific communication style (tool-aware)
-    if (organizationId) {
-        const tool = options.tool || 'general';
-        const voiceContext = await getVoiceProfileContext(organizationId, tool);
-        if (voiceContext) system += voiceContext;
-    }
-
-    // 7. Corrections from past feedback — highest priority context
-    if (inquiry && organizationId) {
+    // 4. Calendar context (server-side, for tools that don't build it frontend-side)
+    if (config.calendar && organizationId && options._injectCalendar) {
         try {
-            const tool = options.tool || 'response_assistant';
-            const corrections = await fetchRelevantCorrections(organizationId, inquiry, tool, options.format);
+            let calendarContext;
+            if (config.calendar === 'light') {
+                // Light mode: only next 7 days
+                calendarContext = await buildCalendarContext(organizationId, { days: 7 });
+            } else {
+                calendarContext = await buildCalendarContext(organizationId);
+            }
+            if (calendarContext) {
+                system += '\n\n' + calendarContext;
+                contextSummary.calendar = true;
+            }
+        } catch (_e) {
+            // Continue without calendar
+        }
+    }
+
+    // 5. Conversation memory — org-wide past conversation context
+    if (config.memory && inquiry && organizationId && options.userId) {
+        const memoryContext = await getConversationMemory(inquiry, organizationId, options.userId);
+        if (memoryContext) {
+            system += memoryContext;
+            contextSummary.memory = 1;
+        }
+    }
+
+    // 6. Cross-tool activity — recent work across other Lightspeed tools
+    if (config.crossTool && organizationId && options.userId) {
+        const crossToolContext = await getCrossToolContext(organizationId, options.userId, { tool: toolName });
+        if (crossToolContext) {
+            system += crossToolContext;
+            contextSummary.crossTool = 1;
+        }
+    }
+
+    // 7. Voice fingerprint — org-specific communication style (tool-aware)
+    if (config.voice && organizationId) {
+        const voiceTool = options.tool || 'general';
+        const voiceContext = await getVoiceProfileContext(organizationId, voiceTool);
+        if (voiceContext) {
+            system += voiceContext;
+            contextSummary.voice = true;
+        }
+    }
+
+    // 8. Corrections from past feedback — highest priority context
+    if (config.corrections && inquiry && organizationId) {
+        try {
+            const corrections = await fetchRelevantCorrections(organizationId, inquiry, toolName, options.format);
             const correctionsCtx = buildCorrectionsContext(corrections);
-            if (correctionsCtx) system += correctionsCtx;
+            if (correctionsCtx) {
+                system += correctionsCtx;
+                contextSummary.corrections = corrections.length;
+            }
         } catch (_e) {
             // Continue without corrections
         }
     }
 
-    return { system, referencedKbEntries };
+    return { system, referencedKbEntries, contextSummary };
 }
 
 module.exports = {
@@ -348,5 +409,6 @@ module.exports = {
     injectKnowledgeBase,
     injectShopifyContext,
     semanticChunkSearch,
-    ftsChunkSearch
+    ftsChunkSearch,
+    TOOL_CONTEXT_CONFIG
 };

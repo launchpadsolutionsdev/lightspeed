@@ -69,8 +69,8 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
 
         // 2. Enhance with KB entries, response rules, and Shopify context
         // Response Assistant should not include citation markers — those are only for Ask Lightspeed
-        const { system: enhancedSystem, referencedKbEntries } = await buildEnhancedPrompt(
-            systemPrompt, inquiry, organizationId, { kb_type: 'support', userId: req.userId, includeCitations: false }
+        const { system: enhancedSystem, referencedKbEntries, contextSummary } = await buildEnhancedPrompt(
+            systemPrompt, inquiry, organizationId, { kb_type: 'support', userId: req.userId, includeCitations: false, tool: 'response_assistant' }
         );
 
         // Send KB entries before streaming starts
@@ -119,6 +119,7 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
             type: 'done',
             usage: usage || {},
             warnings,
+            contextSummary,
             quality: {
                 charCount: text.length,
                 wordCount: text.trim().split(/\s+/).length,
@@ -239,8 +240,10 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
 
         let finalStaticSystem, finalDynamicSystem, referencedKbEntries;
 
+        let contextSummary = {};
+
         if (staticSystem !== undefined && dynamicSystem !== undefined) {
-            // Split-prompt path (Ask Lightspeed): Layer 1 is static and cached; Layer 2+3 is dynamic.
+            // Split-prompt path (Ask Lightspeed, Draft Assistant): Layer 1 is static and cached; Layer 2+3 is dynamic.
             // Run buildEnhancedPrompt only on the dynamic portion so Layer 1 is never modified.
             const enhanced = await buildEnhancedPrompt(dynamicSystem, inquiry, organizationId, {
                 kb_type, userId: req.userId, includeCitations: !!includeCitations, tool
@@ -248,6 +251,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
             finalStaticSystem = staticSystem;
             finalDynamicSystem = enhanced.system;
             referencedKbEntries = enhanced.referencedKbEntries;
+            contextSummary = enhanced.contextSummary || {};
         } else {
             // Legacy path: single system string — enhance the whole thing as before
             const enhanced = await buildEnhancedPrompt(system, inquiry, organizationId, {
@@ -256,6 +260,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
             finalStaticSystem = null;
             finalDynamicSystem = enhanced.system;
             referencedKbEntries = enhanced.referencedKbEntries;
+            contextSummary = enhanced.contextSummary || {};
         }
 
         // Send KB entries before streaming starts
@@ -289,7 +294,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
             ).catch(_e => console.warn('Usage logging failed:', _e.message));
         }
 
-        sendEvent({ type: 'done', usage: usage || {} });
+        sendEvent({ type: 'done', usage: usage || {}, contextSummary });
         res.end();
 
     } catch (error) {
@@ -340,6 +345,9 @@ router.get('/voice-profile', authenticate, async (req, res) => {
 /**
  * POST /api/analyze
  * Analyze uploaded data (Insights Engine)
+ *
+ * Now context-aware: injects light KB, calendar events, cross-tool context,
+ * voice fingerprint, and corrections via the unified context pipeline.
  */
 router.post('/analyze', authenticate, checkUsageLimit, async (req, res) => {
     try {
@@ -351,20 +359,18 @@ router.post('/analyze', authenticate, checkUsageLimit, async (req, res) => {
 
         const organizationId = req.organizationId;
 
-        // Fetch org details for brand voice
+        // Fetch org details
         let organization = null;
         if (organizationId) {
-            const orgResult = await pool.query('SELECT * FROM organizations WHERE id = $1', [organizationId]);
+            const orgResult = await pool.query('SELECT name, brand_voice FROM organizations WHERE id = $1', [organizationId]);
             organization = orgResult.rows[0] || null;
         }
-        const brandVoice = organization?.brand_voice || '';
+        const orgName = organization?.name || 'your organization';
 
         // Build analysis prompt based on report type
-        let systemPrompt = `You are a data analyst for a nonprofit organization. Analyze the provided data and generate actionable insights.`;
+        let systemPrompt = `You are a data analyst for ${orgName}, a charitable lottery / nonprofit organization. Analyze the provided data and generate actionable insights.
 
-        if (brandVoice) {
-            systemPrompt += ` Use this brand voice: ${brandVoice}`;
-        }
+When referencing organization-specific terminology, programs, events, or campaigns, use the context provided below for accuracy. If upcoming calendar events are relevant to the data trends, reference them.`;
 
         let userPrompt = '';
 
@@ -424,11 +430,22 @@ ${JSON.stringify(data, null, 2)}`;
             userPrompt += `\n\nAdditional context: ${additionalContext}`;
         }
 
+        // Enhance with context pipeline (light KB, calendar, cross-tool, voice, corrections)
+        const { system: enhancedSystem, contextSummary } = await buildEnhancedPrompt(
+            systemPrompt, additionalContext || reportType || 'data analysis', organizationId, {
+                kb_type: 'all',
+                userId: req.userId,
+                tool: 'insights_engine',
+                includeCitations: false,
+                _injectCalendar: true
+            }
+        );
+
         // Call Claude API
         const startTime = Date.now();
         const response = await claudeService.generateResponse({
             messages: [{ role: 'user', content: userPrompt }],
-            system: systemPrompt,
+            system: enhancedSystem,
             max_tokens: 2048
         });
         const responseTimeMs = Date.now() - startTime;
@@ -443,6 +460,23 @@ ${JSON.stringify(data, null, 2)}`;
             );
         }
 
+        // Save to response_history for cross-tool context
+        if (organizationId) {
+            pool.query(
+                `INSERT INTO response_history (id, organization_id, user_id, tool, inquiry, response, content_type, context_layers_used, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'insights_engine', $3, $4, $5, $6, NOW())`,
+                [
+                    organizationId, req.userId,
+                    (additionalContext || reportType || 'data analysis').substring(0, 500),
+                    (response.content?.[0]?.text || '').substring(0, 2000),
+                    reportType || 'data_analysis',
+                    JSON.stringify(contextSummary)
+                ]
+            ).catch(_e => console.warn('Insights history save failed:', _e.message));
+        }
+
+        // Include context summary in response
+        response.contextSummary = contextSummary;
         res.json(response);
 
     } catch (error) {
