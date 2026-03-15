@@ -90,6 +90,16 @@ async function buildCalendarContext(organizationId) {
 
         if (result.rows.length === 0) return '';
 
+        // Normalize event_date from pg Date objects to YYYY-MM-DD strings
+        for (const row of result.rows) {
+            if (row.event_date instanceof Date) {
+                row.event_date = row.event_date.toISOString().split('T')[0];
+            }
+            if (row.recurrence_end_date instanceof Date) {
+                row.recurrence_end_date = row.recurrence_end_date.toISOString().split('T')[0];
+            }
+        }
+
         // Expand recurring events
         const allEvents = [];
         for (const event of result.rows) {
@@ -103,7 +113,7 @@ async function buildCalendarContext(organizationId) {
 
         // Sort by date and time, cap at 20
         allEvents.sort((a, b) => {
-            const dateComp = a.event_date.localeCompare(b.event_date);
+            const dateComp = (a.event_date || '').localeCompare(b.event_date || '');
             if (dateComp !== 0) return dateComp;
             return (a.event_time || '').localeCompare(b.event_time || '');
         });
