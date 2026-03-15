@@ -3134,7 +3134,8 @@ function alsNeedsAgenticMode(message) {
         'check the calendar', 'check runway', 'on the runway', 'on runway',
         // KB save
         'remember that', 'remember this', 'save to kb', 'save to knowledge base',
-        'add to knowledge base', 'our policy is', 'store this',
+        'add to knowledge base', 'add to the knowledge base', 'our policy is', 'store this',
+        'knowledge base entry', 'kb entry', 'save this to', 'add this to kb',
         // Draft content
         'draft me', 'draft a', 'draft an', 'write me a', 'compose a', 'compose an',
         'write an email', 'write a response', 'write a post', 'draft email', 'draft response',
@@ -3147,14 +3148,19 @@ function alsNeedsAgenticMode(message) {
     ];
     if (patterns.some(p => lower.includes(p))) return true;
 
-    // Regex patterns for flexible phrasing (e.g., "add a draw to runway", "schedule draw on runway")
+    // Regex patterns for flexible phrasing (e.g., "add a draw to runway", "create a KB entry")
     const regexPatterns = [
+        // Calendar
         /add\b.*\b(?:to|on)\s+(?:the\s+)?runway/,
         /add\b.*\b(?:to|on)\s+(?:the\s+)?calendar/,
         /(?:schedule|create|put)\b.*\b(?:on|to|in)\s+(?:the\s+)?runway/,
         /(?:schedule|create|put)\b.*\b(?:on|to|in)\s+(?:the\s+)?calendar/,
         /(?:add|schedule|create)\b.*\bdraw\b/,
         /\bdraw\b.*\b(?:to|on)\s+(?:the\s+)?runway/,
+        // Knowledge Base
+        /(?:create|add|save|make|write)\b.*\b(?:knowledge\s*base|kb)\b/,
+        /(?:knowledge\s*base|kb)\b.*\b(?:entry|article|record|item)\b/,
+        /(?:save|store|add)\b.*\bfor\s+future\s+reference\b/,
     ];
     return regexPatterns.some(r => r.test(lower));
 }
