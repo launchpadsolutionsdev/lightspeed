@@ -16619,6 +16619,9 @@ async function hbLoadPosts() {
         console.error('Home Base load error:', err);
     }
 
+    // Record views for loaded posts (fire-and-forget)
+    hbRecordViews();
+
     // Update notification badge
     hbUpdateNotifBadge();
 
@@ -16695,6 +16698,12 @@ function hbRenderPost(post) {
     }
 
     let actionsHtml = '';
+    // Bookmark button
+    const isBookmarked = post.bookmarked;
+    const bmIcon = isBookmarked ? '&#128278;' : '&#128279;';
+    const bmTitle = isBookmarked ? 'Remove bookmark' : 'Save for later';
+    const bmClass = isBookmarked ? ' active' : '';
+    actionsHtml += `<button class="hb-bookmark-btn${bmClass}" title="${bmTitle}" onclick="hbToggleBookmark('${post.id}')">${bmIcon}</button>`;
     if (canEdit) {
         actionsHtml += `<button class="hb-action-btn" title="Edit" onclick="hbStartEdit('${post.id}')">&#9998;</button>`;
     }
@@ -16753,6 +16762,16 @@ function hbRenderPost(post) {
         }
     }
 
+    // Seen by
+    const viewCount = post.view_count || 0;
+    const seenByHtml = `<div class="hb-seen-by-wrap">
+        <div class="hb-seen-by" onclick="hbLoadSeenBy('${post.id}')">
+            <span class="hb-seen-by-icon">&#128065;</span>
+            <span id="hb-seen-count-${post.id}">${viewCount > 0 ? viewCount + ' seen' : ''}</span>
+        </div>
+        <div class="hb-seen-by-tooltip" id="hb-seen-tooltip-${post.id}">Loading...</div>
+    </div>`;
+
     return `<div class="hb-post" id="hb-post-${post.id}">
         <div class="hb-post-header">
             <div class="hb-post-author-row">
@@ -16773,6 +16792,7 @@ function hbRenderPost(post) {
         ${reactionsHtml}
         <div class="hb-post-footer" style="margin-top:0.5rem">
             <button class="hb-reply-toggle" onclick="hbToggleComments('${post.id}')">${replyLabel}</button>
+            ${seenByHtml}
         </div>
         <div class="hb-comments" id="hb-comments-${post.id}">
             <div class="hb-comments-list" id="hb-comments-list-${post.id}"></div>
@@ -17254,7 +17274,30 @@ function hbFilterPosts(filter) {
         p.classList.toggle('active', p.dataset.filter === filter);
     });
     hbClearSearch();
-    hbLoadPosts();
+
+    if (filter === 'bookmarks') {
+        hbLoadBookmarkedPosts();
+    } else {
+        hbLoadPosts();
+    }
+}
+
+async function hbLoadBookmarkedPosts() {
+    const feed = document.getElementById('hbFeed');
+    if (!feed) return;
+    feed.innerHTML = '<div class="hb-loading">Loading saved posts...</div>';
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/bookmarks`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load bookmarks');
+        const data = await resp.json();
+        hbPosts = data.posts || [];
+        hbIsSearching = false;
+        hbRenderFeed();
+    } catch (err) {
+        feed.innerHTML = '<div class="hb-empty">Failed to load saved posts.</div>';
+        console.error('Bookmarks load error:', err);
+    }
 }
 
 // ── Pin / Delete ──────────────────────────────────────────────────────
@@ -17632,6 +17675,96 @@ function hbStopNotifPolling() {
         hbNotifPollInterval = null;
     }
 }
+
+// ── Bookmarks ─────────────────────────────────────────────────────────
+
+async function hbToggleBookmark(postId) {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/bookmark`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to toggle bookmark');
+        const data = await resp.json();
+
+        // Update local state
+        const post = hbPosts.find(p => p.id === postId);
+        if (post) {
+            post.bookmarked = data.bookmarked;
+            hbRenderFeed();
+        }
+
+        // If viewing bookmarks and just unbookmarked, remove from list
+        if (hbCurrentFilter === 'bookmarks' && !data.bookmarked) {
+            hbPosts = hbPosts.filter(p => p.id !== postId);
+            hbRenderFeed();
+        }
+    } catch (err) {
+        console.error('Bookmark error:', err);
+    }
+}
+
+// ── Read Receipts / Seen By ───────────────────────────────────────────
+
+/** Record views for all visible posts (batch, fire-and-forget) */
+function hbRecordViews() {
+    if (!hbPosts || hbPosts.length === 0) return;
+    for (const post of hbPosts) {
+        fetch(`${API_BASE_URL}/api/home-base/posts/${post.id}/view`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        }).catch(() => {});
+    }
+}
+
+/** Load and display the "seen by" tooltip for a post */
+async function hbLoadSeenBy(postId) {
+    const tooltip = document.getElementById(`hb-seen-tooltip-${postId}`);
+    if (!tooltip) return;
+
+    // Toggle visibility on click
+    if (tooltip.style.display === 'block') {
+        tooltip.style.display = 'none';
+        return;
+    }
+
+    tooltip.style.display = 'block';
+    tooltip.textContent = 'Loading...';
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/views`, {
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed');
+        const data = await resp.json();
+        const views = data.views || [];
+
+        if (views.length === 0) {
+            tooltip.textContent = 'No views yet';
+        } else {
+            tooltip.innerHTML = views.map(v => {
+                const name = hbDisplayName(v.first_name, v.last_name);
+                const time = hbRelativeTime(v.viewed_at);
+                return `${hbEsc(name)} — ${time}`;
+            }).join('\n');
+        }
+
+        // Update count display
+        const countEl = document.getElementById(`hb-seen-count-${postId}`);
+        if (countEl) {
+            countEl.textContent = views.length > 0 ? views.length + ' seen' : '';
+        }
+    } catch (_e) {
+        tooltip.textContent = 'Failed to load';
+    }
+}
+
+// Close seen-by tooltips on outside click
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.hb-seen-by-wrap')) {
+        document.querySelectorAll('.hb-seen-by-tooltip').forEach(t => { t.style.display = 'none'; });
+    }
+});
 
 (function hookShopifySettingsCheck() {
     const settingsToggle = document.getElementById('settingsToggle');
