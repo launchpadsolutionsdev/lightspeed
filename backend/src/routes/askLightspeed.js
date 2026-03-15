@@ -674,6 +674,94 @@ Use markdown formatting for readability.`;
     }
 }
 
+// ─── Proactive Suggestions Engine ────────────────────────────────────
+
+function generateSuggestions(completedTool, toolInput, toolResult) {
+    const suggestions = [];
+
+    switch (completedTool) {
+        case 'draft_content':
+            if (toolInput.content_type === 'email')
+                suggestions.push({ label: 'Draft matching social posts', icon: '📱', prompt: `Draft social media posts about the same topic: ${toolInput.inquiry}` });
+            if (toolInput.content_type === 'social')
+                suggestions.push({ label: 'Draft matching email', icon: '✉️', prompt: `Draft an email newsletter about the same topic: ${toolInput.inquiry}` });
+            suggestions.push(
+                { label: 'Add dates to calendar', icon: '📅', prompt: 'Add any dates or deadlines from this content to the Runway calendar' },
+                { label: 'Save key info to KB', icon: '💾', prompt: 'Save the key facts from this draft to the Knowledge Base' }
+            );
+            if (toolInput.content_type === 'email')
+                suggestions.push({ label: 'Draft ad copy', icon: '📣', prompt: `Create Facebook ad variants promoting the same campaign: ${toolInput.inquiry}` });
+            break;
+
+        case 'create_runway_events':
+            suggestions.push(
+                { label: 'Draft announcement email', icon: '✉️', prompt: 'Draft an announcement email about the events we just added to the calendar' },
+                { label: 'Draft social posts', icon: '📱', prompt: 'Draft social media posts announcing the events we just scheduled' }
+            );
+            break;
+
+        case 'search_runway_events':
+            suggestions.push(
+                { label: 'Draft content for these', icon: '✏️', prompt: 'Draft promotional content for the upcoming events' },
+                { label: 'Add new events', icon: '➕', prompt: 'Add new events to the Runway calendar' }
+            );
+            break;
+
+        case 'search_knowledge_base':
+            if (toolResult && typeof toolResult === 'string' && toolResult.includes('No matching'))
+                suggestions.push({ label: 'Create KB entry for this', icon: '💾', prompt: 'Save an answer to this question in the Knowledge Base' });
+            suggestions.push(
+                { label: 'Draft a response using this', icon: '✉️', prompt: 'Draft a customer response using the information found' }
+            );
+            break;
+
+        case 'save_to_knowledge_base':
+            suggestions.push(
+                { label: 'Add more to KB', icon: '💾', prompt: 'Save another piece of information to the Knowledge Base' },
+                { label: 'Verify in KB', icon: '🔍', prompt: 'Search the Knowledge Base to verify the entry was saved correctly' }
+            );
+            break;
+
+        case 'run_insights_analysis':
+            suggestions.push(
+                { label: 'Draft board report', icon: '📊', prompt: 'Draft a board report summarizing these analysis findings' },
+                { label: 'Draft team update', icon: '📝', prompt: 'Write a team update post about these insights for Home Base' }
+            );
+            break;
+
+        case 'search_response_history':
+            suggestions.push(
+                { label: 'Draft updated version', icon: '✏️', prompt: 'Draft an updated version of the most relevant past response' }
+            );
+            break;
+
+        case 'search_home_base':
+            suggestions.push(
+                { label: 'Summarize key takeaways', icon: '📋', prompt: 'Summarize the key takeaways from these Home Base posts' }
+            );
+            break;
+    }
+
+    return suggestions.slice(0, 4);
+}
+
+function generateTextSuggestions(text) {
+    const suggestions = [];
+    const lower = text.toLowerCase();
+    if (lower.includes('draw') || lower.includes('jackpot') || lower.includes('prize'))
+        suggestions.push({ label: 'Draft draw announcement', icon: '✉️', prompt: 'Draft an announcement email about this draw' });
+    if (lower.includes('event') || lower.includes('schedule') || lower.includes('date'))
+        suggestions.push({ label: 'Check Runway calendar', icon: '📅', prompt: 'Search the Runway calendar for related events' });
+    if (lower.includes('policy') || lower.includes('procedure') || lower.includes('rule'))
+        suggestions.push({ label: 'Search KB for policy', icon: '🔍', prompt: 'Search the Knowledge Base for related policies' });
+    if (suggestions.length === 0)
+        suggestions.push(
+            { label: 'Search Knowledge Base', icon: '🔍', prompt: 'Search the Knowledge Base for more information about this' },
+            { label: 'Draft content about this', icon: '✏️', prompt: 'Help me draft content about this topic' }
+        );
+    return suggestions.slice(0, 3);
+}
+
 // ─── Duplicate Detection ─────────────────────────────────────────────
 
 async function findDuplicateEvents(events, organizationId) {
@@ -707,6 +795,7 @@ async function findDuplicateEvents(events, organizationId) {
  *   {type: 'status', message: '...'}           — tool activity indicator
  *   {type: 'text', content: '...'}             — AI text response
  *   {type: 'confirm', action: '...', data: {}} — confirmation prompt for write actions
+ *   {type: 'suggestions', items: [...]}          — proactive next-step suggestions
  *   {type: 'done', usage: {}}                  — stream complete
  *   {type: 'error', error: '...'}              — error
  */
@@ -796,8 +885,27 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
             model: selectedModel
         });
 
+        // Track last executed tool for proactive suggestions
+        let lastExecutedTool = null;
+        let lastToolInput = null;
+
         // Process the response — handle tool_use blocks
-        await processResponse(response, messages, enhancedSystem, organizationId, userId, selectedModel, sendEvent);
+        await processResponse(response, messages, enhancedSystem, organizationId, userId, selectedModel, sendEvent, (toolName, toolInput) => {
+            lastExecutedTool = toolName;
+            lastToolInput = toolInput;
+        });
+
+        // Emit proactive suggestions based on what just happened
+        if (lastExecutedTool) {
+            const suggestions = generateSuggestions(lastExecutedTool, lastToolInput || {}, '');
+            if (suggestions.length > 0) sendEvent({ type: 'suggestions', items: suggestions });
+        } else {
+            const textContent = response.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
+            if (textContent) {
+                const suggestions = generateTextSuggestions(textContent);
+                if (suggestions.length > 0) sendEvent({ type: 'suggestions', items: suggestions });
+            }
+        }
 
         // Log usage
         if (organizationId && response.usage) {
@@ -824,7 +932,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
  * For read-only tools (search), executes immediately and loops back.
  * For write tools (create_runway_events), sends a confirmation prompt.
  */
-async function processResponse(response, messages, system, organizationId, userId, model, sendEvent) {
+async function processResponse(response, messages, system, organizationId, userId, model, sendEvent, trackTool) {
     const content = response.content || [];
 
     // Collect text and tool_use blocks
@@ -849,6 +957,9 @@ async function processResponse(response, messages, system, organizationId, userI
 
     // Process each tool call
     for (const toolUse of toolUseBlocks) {
+        // Track which tool is being executed for proactive suggestions
+        if (trackTool) trackTool(toolUse.name, toolUse.input);
+
         if (toolUse.name === 'create_runway_events') {
             // Write action — send confirmation prompt, don't execute yet
             const events = toolUse.input.events || [];
@@ -895,7 +1006,7 @@ async function processResponse(response, messages, system, organizationId, userI
             });
 
             // Recursively process (Claude might call another tool)
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'search_knowledge_base') {
@@ -920,7 +1031,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'draft_content') {
@@ -952,7 +1063,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     model
                 });
 
-                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
             } else {
                 // Draft succeeded — send the full draft directly to the user
                 sendEvent({ type: 'text', content: result.draft });
@@ -973,7 +1084,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     model
                 });
 
-                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
             }
             return;
 
@@ -1018,7 +1129,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'search_home_base') {
@@ -1046,7 +1157,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'run_insights_analysis') {
@@ -1071,7 +1182,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
             return;
         }
     }
