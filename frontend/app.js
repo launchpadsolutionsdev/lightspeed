@@ -2908,6 +2908,7 @@ function copyAskMessage(btn) {
 
 function clearAskChat() {
     askConversation = [];
+    alsConversationUsedAgentic = false;
     saveAskConversation();
     document.getElementById('askMessages').innerHTML = '';
     document.getElementById('askChat').style.display = 'none';
@@ -3109,6 +3110,7 @@ function buildAlsUserContent(text, attachments) {
 // ===== AGENTIC ASK LIGHTSPEED HELPERS =====
 
 let alsPendingConfirmation = null; // Stores pending confirmation data {action, events, toolUseId, conversation, system, model}
+let alsConversationUsedAgentic = false; // Tracks if current conversation has used agentic mode
 
 /**
  * Check if the current attachments require server-side parsing (agentic endpoint)
@@ -3134,7 +3136,8 @@ function alsNeedsAgenticMode(message) {
         'check the calendar', 'check runway', 'on the runway', 'on runway',
         // KB save
         'remember that', 'remember this', 'save to kb', 'save to knowledge base',
-        'add to knowledge base', 'our policy is', 'store this',
+        'add to knowledge base', 'add to the knowledge base', 'our policy is', 'store this',
+        'knowledge base entry', 'kb entry', 'save this to', 'add this to kb',
         // Draft content
         'draft me', 'draft a', 'draft an', 'write me a', 'compose a', 'compose an',
         'write an email', 'write a response', 'write a post', 'draft email', 'draft response',
@@ -3147,14 +3150,19 @@ function alsNeedsAgenticMode(message) {
     ];
     if (patterns.some(p => lower.includes(p))) return true;
 
-    // Regex patterns for flexible phrasing (e.g., "add a draw to runway", "schedule draw on runway")
+    // Regex patterns for flexible phrasing (e.g., "add a draw to runway", "create a KB entry")
     const regexPatterns = [
+        // Calendar
         /add\b.*\b(?:to|on)\s+(?:the\s+)?runway/,
         /add\b.*\b(?:to|on)\s+(?:the\s+)?calendar/,
         /(?:schedule|create|put)\b.*\b(?:on|to|in)\s+(?:the\s+)?runway/,
         /(?:schedule|create|put)\b.*\b(?:on|to|in)\s+(?:the\s+)?calendar/,
         /(?:add|schedule|create)\b.*\bdraw\b/,
         /\bdraw\b.*\b(?:to|on)\s+(?:the\s+)?runway/,
+        // Knowledge Base
+        /(?:create|add|save|make|write)\b.*\b(?:knowledge\s*base|kb)\b/,
+        /(?:knowledge\s*base|kb)\b.*\b(?:entry|article|record|item)\b/,
+        /(?:save|store|add)\b.*\bfor\s+future\s+reference\b/,
     ];
     return regexPatterns.some(r => r.test(lower));
 }
@@ -3497,8 +3505,8 @@ CONTENT: draft_content (draft emails/posts using brand voice pipeline)
 ANALYSIS: run_insights_analysis (analyze data with Insights Engine), search_response_history (find past AI outputs)
 
 TOOL USAGE:
-- File uploads with schedules → parse, summarize, call create_runway_events
-- "Remember that..." / "Our policy is..." → confirm, then call save_to_knowledge_base
+- File uploads with schedules → parse the data, then call create_runway_events immediately with all events. The system shows a confirmation dialog — do NOT ask in text first.
+- "Remember that..." / "Our policy is..." → call save_to_knowledge_base directly. The system handles confirmation.
 - "Draft me an email/post about..." → call draft_content with format and tone
 - "What did I write about X?" → call search_response_history
 - Data analysis requests → call run_insights_analysis
@@ -3510,9 +3518,9 @@ For draw events, use category "Draw" and color "blue". Format titles clearly, e.
 CORE BEHAVIOR:
 Respond directly to the user's request. If the request is clear enough to produce useful output, do so immediately. Only ask clarifying questions when the request is genuinely ambiguous.
 
-TEACH MODE: If the user says "remember that...", confirm what you'll save, then call save_to_knowledge_base.
+TEACH MODE: If the user says "remember that...", call save_to_knowledge_base directly.
 
-Always confirm before taking any action that creates, modifies, or deletes data. Read-only tools execute immediately. Keep responses concise. Use markdown formatting when helpful.`;
+IMPORTANT: For write actions (create_runway_events, save_to_knowledge_base), call the tool directly. The system presents a confirmation dialog to the user before executing — you do NOT need to ask "shall I go ahead?" or confirm in text. Just call the tool. Read-only tools execute immediately. Keep responses concise. Use markdown formatting when helpful.`;
 }
 
 function initAskLightspeedPage() {
@@ -3768,6 +3776,7 @@ async function loadAlsConversation(convId) {
         alsCurrentConversationId = conv.id;
         askConversation = conv.messages || [];
         askTone = conv.tone || 'professional';
+        alsConversationUsedAgentic = false;
         saveAskConversation();
 
         // Restore tone pill
@@ -4054,11 +4063,12 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
         // Check if we should use the agentic endpoint (server-parsed files)
         // Use agentic endpoint when server-parsed files are attached or message likely needs tools
-        const useAgentic = alsHasServerParsedFiles(currentAttachments) || alsNeedsAgenticMode(message);
+        const useAgentic = alsHasServerParsedFiles(currentAttachments) || alsNeedsAgenticMode(message) || alsConversationUsedAgentic;
         let aiText = '';
 
         if (useAgentic) {
             // Route through agentic endpoint with file upload
+            alsConversationUsedAgentic = true;
             aiText = await sendAlsAgenticMessage(message, currentAttachments, messagesToSend);
             // The agentic handler already rendered the response into the DOM
             // Remove the msgDiv we created (agentic handler creates its own)
@@ -4602,6 +4612,7 @@ function clearAlsChat() {
     askConversation = [];
     alsCurrentConversationId = null;
     alsKbEntries = [];
+    alsConversationUsedAgentic = false;
     clearAlsAttachments();
     saveAskConversation();
     document.getElementById('alsMessages').innerHTML = '';

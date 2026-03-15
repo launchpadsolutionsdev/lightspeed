@@ -23,7 +23,8 @@ function alsNeedsAgenticMode(message) {
         'what\'s on runway', 'what\'s scheduled', 'upcoming draws', 'upcoming events',
         'check the calendar', 'check runway', 'on the runway', 'on runway',
         'remember that', 'remember this', 'save to kb', 'save to knowledge base',
-        'add to knowledge base', 'our policy is', 'store this',
+        'add to knowledge base', 'add to the knowledge base', 'our policy is', 'store this',
+        'knowledge base entry', 'kb entry', 'save this to', 'add this to kb',
         'draft me', 'draft a', 'draft an', 'write me a', 'compose a', 'compose an',
         'write an email', 'write a response', 'write a post', 'draft email', 'draft response',
         'what did i write', 'what did we write', 'find my past', 'search my history',
@@ -34,12 +35,17 @@ function alsNeedsAgenticMode(message) {
     if (patterns.some(p => lower.includes(p))) return true;
 
     const regexPatterns = [
+        // Calendar
         /add\b.*\b(?:to|on)\s+(?:the\s+)?runway/,
         /add\b.*\b(?:to|on)\s+(?:the\s+)?calendar/,
         /(?:schedule|create|put)\b.*\b(?:on|to|in)\s+(?:the\s+)?runway/,
         /(?:schedule|create|put)\b.*\b(?:on|to|in)\s+(?:the\s+)?calendar/,
         /(?:add|schedule|create)\b.*\bdraw\b/,
         /\bdraw\b.*\b(?:to|on)\s+(?:the\s+)?runway/,
+        // Knowledge Base
+        /(?:create|add|save|make|write)\b.*\b(?:knowledge\s*base|kb)\b/,
+        /(?:knowledge\s*base|kb)\b.*\b(?:entry|article|record|item)\b/,
+        /(?:save|store|add)\b.*\bfor\s+future\s+reference\b/,
     ];
     return regexPatterns.some(r => r.test(lower));
 }
@@ -158,8 +164,19 @@ describe('alsNeedsAgenticMode — Agentic Routing Detection', () => {
             'Save to KB: our refund policy is 14 days',
             'Save to Knowledge Base this new procedure',
             'Add to knowledge base our new FAQ',
+            'Add to the knowledge base our eligibility rules',
             'Our policy is to refund within 7 business days',
             'Store this information for future reference',
+            'Save this to the knowledge base',
+            'Add this to KB please',
+
+            // THE BUG THAT WAS REPORTED — "create a knowledge base entry"
+            'Can you create a knowledge base entry? Hospital board members are not eligible',
+            'Create a KB entry for our refund policy',
+            'Make a knowledge base entry about ticket eligibility',
+            'Write a KB entry about our office hours',
+            'Save this for future reference: board members cannot win',
+            'Add a knowledge base article about our lottery rules',
         ];
 
         kbSaveMessages.forEach(msg => {
@@ -574,9 +591,13 @@ describe('Agentic System Prompt', () => {
         expect(source).toContain('run_insights_analysis');
     });
 
-    it('instructs AI to confirm before write actions', () => {
-        expect(source).toContain('confirm');
-        expect(source).toContain('confirmation');
+    it('tells AI the system handles confirmation (not text-based)', () => {
+        expect(source).toContain('confirmation dialog');
+        expect(source).toContain('Do NOT ask for confirmation in text');
+    });
+
+    it('instructs AI to call write tools directly', () => {
+        expect(source).toContain('Call this tool directly');
     });
 
     it('sets Draw as default category for draw events', () => {
@@ -609,5 +630,52 @@ describe('Non-Agentic Fallback Prompt (frontend)', () => {
 
     it('lists Runway event creation as a capability', () => {
         expect(frontendSource).toContain('creates Runway calendar events');
+    });
+});
+
+
+// ─── 6. Agentic Prompt — No Text Confirmation ───────────────────────
+
+describe('Agentic prompts instruct direct tool calls (no text confirmation)', () => {
+    const fs = require('fs');
+    const frontendSource = fs.readFileSync(
+        require('path').join(__dirname, '../../../frontend/app.js'),
+        'utf-8'
+    );
+    const backendSource = fs.readFileSync(require.resolve('../../src/routes/askLightspeed'), 'utf-8');
+
+    it('frontend agentic prompt says system handles confirmation', () => {
+        expect(frontendSource).toContain('system shows a confirmation dialog');
+    });
+
+    it('frontend agentic prompt says do NOT ask in text', () => {
+        expect(frontendSource).toContain('do NOT ask in text first');
+    });
+
+    it('backend tool description for create_runway_events says call directly', () => {
+        expect(backendSource).toContain('Call this tool directly with the events');
+        expect(backendSource).toContain('Do NOT ask for confirmation in text first; just call the tool');
+    });
+
+    it('backend tool description for save_to_knowledge_base says call directly', () => {
+        expect(backendSource).toContain('Call this tool directly — the system will show the user a confirmation dialog before saving');
+    });
+
+    it('backend system prompt says call tool directly for write actions', () => {
+        expect(backendSource).toContain('call the tool directly');
+        expect(backendSource).toContain('Do NOT ask "shall I go ahead?"');
+    });
+
+    it('frontend tracks agentic conversation state', () => {
+        expect(frontendSource).toContain('alsConversationUsedAgentic');
+    });
+
+    it('frontend uses agentic state in routing decision', () => {
+        expect(frontendSource).toContain('|| alsConversationUsedAgentic');
+    });
+
+    it('frontend resets agentic state on new chat', () => {
+        // Should appear in clearAlsChat
+        expect(frontendSource).toContain('alsConversationUsedAgentic = false');
     });
 });
