@@ -1,80 +1,71 @@
-# Plan: Calendar-Aware AI Tools + "Draw" Category in Runway
+# Plan: Remove Draw Schedule System (Replace with Runway Calendar)
 
 ## Overview
 
-Make Ask Lightspeed, Draft Assistant, and Response Assistant aware of upcoming Runway calendar events so they can answer questions like "when is the next draw?" using real calendar data. Also add a "Draw" category to Runway's category system.
+Remove the entire draw schedule management system — the `draw_schedules` DB table, backend routes, Teams UI, Response Assistant display, frontend JS functions, and all AI prompt injections. Draws are now managed exclusively through Runway calendar events (with the new "Draw" category).
 
 ---
 
-## Part 1: Add "Draw" Category to Runway
+## What Gets Removed
 
-**Files:** `frontend/index.html`, `frontend/app.js`
+### Files to DELETE entirely
+1. **`backend/src/routes/drawSchedules.js`** — All CRUD + upload routes
+2. **`frontend/draw-schedule.js`** — Legacy hardcoded schedule object
 
-1. **HTML** — Add a `<button class="cal-category-chip" data-cat="Draw">Draw</button>` to the category filter bar (alongside Ad Launch, Social Post, etc.)
-2. **JS** — Add `'Draw'` to the two `presets` arrays in `app.js` (lines ~7479 and ~7757) so it appears in the category dropdown when creating/editing events
+### New migration
+3. **`backend/migrations/045_drop_draw_schedules.sql`** — `DROP TABLE IF EXISTS draw_schedules`
 
-That's it — the calendar already supports arbitrary category strings; we just need to register "Draw" as a preset.
+### Backend edits
 
----
+4. **`backend/src/index.js`**
+   - Remove `require('./routes/drawSchedules')` import
+   - Remove `app.use('/api/draw-schedules', ...)` route mount
 
-## Part 2: Inject Calendar Events into AI Context
+5. **`backend/src/services/systemPromptBuilder.js`**
+   - Delete `buildDrawScheduleContext()` function (~90 lines)
+   - Remove `drawScheduleContext` fetch + injection from `buildResponseAssistantPrompt()`
+   - Remove "DRAW DATE AWARENESS" instruction (now covered by "CALENDAR AWARENESS")
+   - Remove `buildDrawScheduleContext` from `module.exports`
 
-### Strategy
+6. **`backend/src/routes/admin.js`**
+   - Remove `draw_schedules` soft-reference nullification on user delete
+   - Remove draw schedule status fetch from org dashboard
 
-The draw schedule (`draw_schedules` table) already gets injected into all three AI tools. We'll add a **second context block** — "UPCOMING CALENDAR EVENTS" — that fetches the next 30 days of Runway events and formats them as a readable list. This gives the AI awareness of specific scheduled events (draws, ad launches, meetings, etc.) beyond just the static draw schedule.
+7. **`backend/src/routes/export.js`**
+   - Remove draw_schedules from the data export
 
-### Backend Changes
+### Frontend HTML edits
 
-**File: `backend/src/services/systemPromptBuilder.js`**
+8. **`frontend/index.html`**
+   - Remove `<script src="draw-schedule.js">` tag
+   - Remove draw schedule card from Response Assistant (`#drawScheduleContainer`)
+   - Remove draw schedule CSS (`.draw-schedule-card`, `.early-bird-*` rules)
+   - Remove entire Draw Schedule Management section from Teams page (`#drawScheduleSection`, edit form, upload inputs)
+   - Remove early bird edit CSS (`.early-bird-edit-row`)
 
-3. **New helper: `buildCalendarContext(organizationId)`**
-   - Query `calendar_events` where `event_date >= TODAY` and `event_date <= TODAY + 30 days`, ordered by date/time
-   - Expand recurring events using existing `expandRecurringEvent()` logic (extract to shared util)
-   - Format as a concise list:
-     ```
-     UPCOMING CALENDAR EVENTS (next 30 days):
-     - Wed Mar 18: $5,000 Early Bird [Draw]
-     - Fri Mar 21: Spring Campaign Launch [Ad Launch]
-     - Mon Mar 24: Team Sync [Meeting]
-     ```
-   - Cap at ~20 events to manage token budget
-   - Return empty string if no events found
+### Frontend JS edits
 
-4. **Inject into Response Assistant prompt** — In `buildResponseAssistantPrompt()`, call `buildCalendarContext(organizationId)` and append alongside the existing draw schedule block
+9. **`frontend/app.js`**
+   - Remove `orgDrawSchedule` global variable
+   - Delete functions: `getOrgDrawScheduleAIContext()`, `getDrawScheduleContext()`, `renderDrawSchedule()`, `loadDrawScheduleFromBackend()`, `displayActiveSchedule()`, `displayNoSchedule()`, `handleDrawScheduleUpload()`, `handleDrawSchedulePaste()`, `toggleEditSchedule()`, `toLocalDatetimeValue()`, `addEarlyBirdRow()`, `cancelEditSchedule()`, `saveDrawScheduleEdits()`, `deleteDrawSchedule()`
+   - Remove `loadDrawScheduleFromBackend()` call from init
+   - Remove `renderDrawSchedule()` call
+   - Remove `drawScheduleBlock` injection from Ask Lightspeed dynamic prompt
+   - Remove `drawCtx` injection from Draft Assistant dynamic prompt
+   - Update static prompt instructions to no longer reference "draw schedule data"
 
-**File: `backend/src/routes/tools.js`**
-
-5. **New API endpoint: `GET /api/calendar-context`**
-   - Authenticated, returns the formatted calendar context string
-   - Used by the frontend for Ask Lightspeed and Draft Assistant (which build prompts client-side)
-
-### Frontend Changes
-
-**File: `frontend/app.js`**
-
-6. **New helper: `getCalendarContext()`**
-   - Fetches `GET /api/calendar-context` with auth header
-   - Caches result for 5 minutes (avoids repeated calls during a session)
-   - Returns the formatted string or empty string on failure
-
-7. **Ask Lightspeed** (~line 2708) — Insert calendar context into `dynamicSystem` after the draw schedule block
-
-8. **Draft Assistant** (`buildDraftDynamicPrompt()`) — Same injection into the dynamic prompt layer
-
-### Prompt Guidance
-
-9. **Add instruction to static prompts** for all three tools:
-   > "CALENDAR AWARENESS: When the user asks about upcoming dates, events, draws, campaigns, or deadlines, use the UPCOMING CALENDAR EVENTS data to give specific, accurate answers. Prefer calendar data over guessing."
+10. **`frontend/admin-dashboard.js`**
+    - Remove draw schedule checklist item from org setup status
 
 ---
 
-## Summary of File Changes
+## What Stays
 
-| File | Changes |
-|------|---------|
-| `frontend/index.html` | Add "Draw" category chip button |
-| `frontend/app.js` | Add "Draw" to presets; add `getCalendarContext()` helper; inject calendar context into Ask Lightspeed + Draft Assistant dynamic prompts; add calendar awareness line to static prompts |
-| `backend/src/services/systemPromptBuilder.js` | Add `buildCalendarContext()` helper; inject into Response Assistant prompt; add calendar awareness instruction |
-| `backend/src/routes/tools.js` | Add `GET /api/calendar-context` endpoint |
+- **Calendar events (`calendar_events` table)** — untouched, this is the new source of truth
+- **`buildCalendarContext()`** — already built, already injected into all three AI tools
+- **"Draw" category in Runway** — already added as a preset
+- **CALENDAR AWARENESS prompt instructions** — already in all three tools
 
-**No new database tables or migrations needed** — we're reading from the existing `calendar_events` table.
+## Summary
+
+~15 functions deleted, ~200 lines of HTML removed, 2 files deleted, 1 new migration. The calendar context we just built fully replaces the draw schedule system for AI awareness.

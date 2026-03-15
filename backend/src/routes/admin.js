@@ -595,8 +595,6 @@ router.delete('/users/:userId', authenticate, requireSuperAdmin, async (req, res
 
         // Nullify soft references that don't have ON DELETE SET NULL
         await pool.query('UPDATE knowledge_base SET created_by = NULL WHERE created_by = $1', [userId]);
-        await pool.query('UPDATE draw_schedules SET created_by = NULL WHERE created_by = $1', [userId]);
-        await pool.query('UPDATE draw_schedules SET updated_by = NULL WHERE updated_by = $1', [userId]);
         await pool.query('UPDATE content_templates SET created_by = NULL WHERE created_by = $1', [userId]);
         await pool.query('UPDATE rules_of_play_drafts SET created_by = NULL WHERE created_by = $1', [userId]);
         await pool.query('UPDATE organization_invitations SET invited_by = NULL WHERE invited_by = $1', [userId]);
@@ -973,7 +971,7 @@ router.delete('/organizations/:orgId', authenticate, requireSuperAdmin, async (r
         );
 
         // Delete the organization (cascades: memberships, invitations, knowledge_base,
-        // response_templates, response_history, favorites, draw_schedules, content_templates,
+        // response_templates, response_history, favorites, content_templates,
         // jurisdiction_waitlist, rules_of_play_drafts, conversations, shared_prompts,
         // shopify_stores/products/orders/customers/sync_logs, response_rules)
         // SET NULL: usage_logs, feedback, audit_logs
@@ -1025,11 +1023,6 @@ router.get('/organizations/:orgId/setup', authenticate, requireSuperAdmin, async
             'SELECT COUNT(*) FROM content_templates WHERE organization_id = $1 AND is_active = TRUE', [orgId]
         );
 
-        // Get draw schedule status
-        const drawSchedule = await pool.query(
-            'SELECT id, draw_name, is_active FROM draw_schedules WHERE organization_id = $1 AND is_active = TRUE LIMIT 1', [orgId]
-        );
-
         // Get member count
         const memberCount = await pool.query(
             'SELECT COUNT(*) FROM organization_memberships WHERE organization_id = $1', [orgId]
@@ -1042,7 +1035,6 @@ router.get('/organizations/:orgId/setup', authenticate, requireSuperAdmin, async
             licenceSet: !!org.licence_number,
             kbPopulated: parseInt(kbCount.rows[0].count) > 0,
             templatesImported: parseInt(templateCount.rows[0].count) > 0,
-            drawScheduleUploaded: drawSchedule.rows.length > 0,
             brandTerminologySet: !!org.brand_terminology,
             emailAddonsSet: !!org.email_addons,
             missionSet: !!org.mission,
@@ -1055,7 +1047,6 @@ router.get('/organizations/:orgId/setup', authenticate, requireSuperAdmin, async
             organization: org,
             kbCount: parseInt(kbCount.rows[0].count),
             templateCount: parseInt(templateCount.rows[0].count),
-            drawSchedule: drawSchedule.rows[0] || null,
             memberCount: parseInt(memberCount.rows[0].count),
             checklist,
             setupProgress: { completed: completedCount, total: totalCount }

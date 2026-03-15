@@ -22,7 +22,6 @@ const feedbackRoutes = require('./routes/feedback');
 const adminRoutes = require('./routes/admin');
 const billingRoutes = require('./routes/billing');
 const contactRoutes = require('./routes/contact');
-const drawScheduleRoutes = require('./routes/drawSchedules');
 const contentTemplateRoutes = require('./routes/contentTemplates');
 const exportRoutes = require('./routes/export');
 const jurisdictionRoutes = require('./routes/jurisdictions');
@@ -173,7 +172,6 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/contact', contactRoutes);
-app.use('/api/draw-schedules', drawScheduleRoutes);
 app.use('/api/content-templates', contentTemplateRoutes);
 app.use('/api/organizations', exportRoutes); // /api/organizations/:orgId/export
 app.use('/api/jurisdictions', jurisdictionRoutes);
