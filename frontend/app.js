@@ -2340,6 +2340,11 @@ function showToolMenu() {
             .catch(() => {}); // Silently ignore — not critical
     }
 
+    // Update Home Base notification badge on login
+    if (typeof hbUpdateNotifBadge === 'function') {
+        setTimeout(hbUpdateNotifBadge, 1000);
+    }
+
 }
 
 function openTool(toolId) {
@@ -6953,6 +6958,7 @@ function switchPage(pageId) {
         calInit();
     } else if (pageId === "home-base") {
         hbLoadPosts();
+        hbStartNotifPolling();
     } else if (pageId === "admin") {
         // Load admin dashboard data
         if (typeof loadAdminDashboard === 'function') {
@@ -16467,8 +16473,13 @@ let hbPosts = [];
 let hbCurrentFilter = 'all';
 let hbSelectedCategory = 'general';
 let hbUserRole = null;
+let hbMembers = []; // for @mention autocomplete
+let hbSearchTimer = null;
+let hbIsSearching = false;
+let hbNotifOpen = false;
 
 const HB_AVATAR_COLORS = ['#E91E8C', '#635BFF', '#F47B3A', '#059669', '#7C3AED', '#DC2626', '#2563EB', '#D97706'];
+const HB_REACTIONS = ['👍', '✅', '👀', '🎉', '❤️', '😂'];
 
 function hbAvatarColor(name) {
     let hash = 0;
@@ -16509,6 +16520,18 @@ function hbCategoryLabel(cat) {
     return map[cat] || 'General';
 }
 
+function hbEsc(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+}
+
+/** Render post body with @mentions highlighted */
+function hbRenderBody(text) {
+    const escaped = hbEsc(text);
+    return escaped.replace(/@([\w]+(?:\s[\w]+)?)/g, '<strong style="color:var(--cta)">@$1</strong>');
+}
+
 // Compose category pills
 (function() {
     document.addEventListener('click', function(e) {
@@ -16517,15 +16540,47 @@ function hbCategoryLabel(cat) {
         document.querySelectorAll('#hbCategoryPills .hb-cat-pill').forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
         hbSelectedCategory = pill.dataset.cat;
+
+        // Close reaction pickers and notification dropdown on outside click
+        if (!e.target.closest('.hb-reaction-picker') && !e.target.closest('.hb-add-reaction')) {
+            document.querySelectorAll('.hb-reaction-picker.open').forEach(p => p.classList.remove('open'));
+        }
+        if (!e.target.closest('.hb-notif-dropdown') && !e.target.closest('.hb-notif-btn')) {
+            const dd = document.getElementById('hbNotifDropdown');
+            if (dd) dd.style.display = 'none';
+            hbNotifOpen = false;
+        }
+        if (!e.target.closest('.hb-mention-dropdown') && !e.target.closest('#hbComposeBody')) {
+            const md = document.getElementById('hbMentionDropdown');
+            if (md) md.style.display = 'none';
+        }
     });
 })();
+
+// Close dropdowns on outside click (separate listener for non-pill clicks)
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.hb-reaction-picker') && !e.target.closest('.hb-add-reaction')) {
+        document.querySelectorAll('.hb-reaction-picker.open').forEach(p => p.classList.remove('open'));
+    }
+    if (!e.target.closest('.hb-notif-dropdown') && !e.target.closest('.hb-notif-btn')) {
+        const dd = document.getElementById('hbNotifDropdown');
+        if (dd) dd.style.display = 'none';
+        hbNotifOpen = false;
+    }
+    if (!e.target.closest('.hb-mention-dropdown') && !e.target.closest('#hbComposeBody')) {
+        const md = document.getElementById('hbMentionDropdown');
+        if (md) md.style.display = 'none';
+    }
+});
+
+// ── Load Posts ────────────────────────────────────────────────────────
 
 async function hbLoadPosts() {
     const feed = document.getElementById('hbFeed');
     if (!feed) return;
     feed.innerHTML = '<div class="hb-loading">Loading posts...</div>';
 
-    // Also fetch user role
+    // Fetch user role + members in parallel
     try {
         if (!hbUserRole && currentUser) {
             const orgId = currentUser.organizationId || currentUser.organization_id;
@@ -16538,6 +16593,17 @@ async function hbLoadPosts() {
             }
         }
     } catch (_e) { /* continue without role */ }
+
+    // Load members for @mention if not loaded
+    if (hbMembers.length === 0) {
+        try {
+            const memResp = await fetch(`${API_BASE_URL}/api/home-base/members`, { headers: getAuthHeaders() });
+            if (memResp.ok) {
+                const memData = await memResp.json();
+                hbMembers = memData.members || [];
+            }
+        } catch (_e) { /* continue without members */ }
+    }
 
     try {
         const url = hbCurrentFilter === 'all'
@@ -16552,6 +16618,15 @@ async function hbLoadPosts() {
         feed.innerHTML = '<div class="hb-empty">Failed to load posts. Try again later.</div>';
         console.error('Home Base load error:', err);
     }
+
+    // Update notification badge
+    hbUpdateNotifBadge();
+
+    // Show archive toggle for admins
+    const archiveToggle = document.getElementById('hbArchiveToggle');
+    if (archiveToggle) {
+        archiveToggle.style.display = (hbUserRole === 'admin' || hbUserRole === 'owner') ? 'inline' : 'none';
+    }
 }
 
 function hbRenderFeed() {
@@ -16559,25 +16634,34 @@ function hbRenderFeed() {
     if (!feed) return;
 
     if (hbPosts.length === 0) {
-        feed.innerHTML = '<div class="hb-empty">No posts yet. Be the first to share an update!</div>';
+        const msg = hbIsSearching ? 'No posts match your search.' : 'No posts yet. Be the first to share an update!';
+        feed.innerHTML = `<div class="hb-empty">${msg}</div>`;
         return;
     }
 
-    const pinned = hbPosts.filter(p => p.pinned);
-    const unpinned = hbPosts.filter(p => !p.pinned);
     let html = '';
 
-    if (pinned.length > 0) {
-        html += '<div class="hb-pinned-label">Pinned</div>';
-        pinned.forEach(p => { html += hbRenderPost(p); });
-        if (unpinned.length > 0) {
-            html += '<hr class="hb-pinned-divider">';
+    if (hbIsSearching) {
+        html += `<div class="hb-search-results-label">${hbPosts.length} result${hbPosts.length !== 1 ? 's' : ''} found</div>`;
+        hbPosts.forEach(p => { html += hbRenderPost(p); });
+    } else {
+        const pinned = hbPosts.filter(p => p.pinned);
+        const unpinned = hbPosts.filter(p => !p.pinned);
+
+        if (pinned.length > 0) {
+            html += '<div class="hb-pinned-label">Pinned</div>';
+            pinned.forEach(p => { html += hbRenderPost(p); });
+            if (unpinned.length > 0) {
+                html += '<hr class="hb-pinned-divider">';
+            }
         }
+        unpinned.forEach(p => { html += hbRenderPost(p); });
     }
 
-    unpinned.forEach(p => { html += hbRenderPost(p); });
     feed.innerHTML = html;
 }
+
+// ── Render Post (with reactions) ──────────────────────────────────────
 
 function hbRenderPost(post) {
     const name = hbDisplayName(post.first_name, post.last_name);
@@ -16591,12 +16675,25 @@ function hbRenderPost(post) {
     const canDelete = isAuthor || canAdmin;
     const commentCount = post.comment_count || 0;
 
+    // Check if still within edit window (15 min)
+    const createdAt = new Date(post.created_at);
+    const canEdit = isAuthor && (Date.now() - createdAt.getTime() < 15 * 60 * 1000);
+
     let pinHtml = '';
     if (post.pinned) {
         pinHtml = '<span class="hb-pin-indicator" title="Pinned">&#128204;</span>';
     }
 
+    // Edited indicator
+    let editedHtml = '';
+    if (post.edited_at) {
+        editedHtml = `<span class="hb-edited" title="Edited ${hbRelativeTime(post.edited_at)}">(edited)</span>`;
+    }
+
     let actionsHtml = '';
+    if (canEdit) {
+        actionsHtml += `<button class="hb-action-btn" title="Edit" onclick="hbStartEdit('${post.id}')">&#9998;</button>`;
+    }
     if (canAdmin) {
         const pinIcon = post.pinned ? '&#128204;' : '&#128392;';
         const pinTitle = post.pinned ? 'Unpin' : 'Pin';
@@ -16608,11 +16705,56 @@ function hbRenderPost(post) {
 
     const replyLabel = commentCount > 0 ? `${commentCount} comment${commentCount !== 1 ? 's' : ''}` : 'Reply';
 
+    // Reactions
+    const reactions = post.reactions || [];
+    let reactionsHtml = '<div class="hb-reactions">';
+    reactions.forEach(r => {
+        const meClass = r.me ? ' me' : '';
+        reactionsHtml += `<button class="hb-reaction-chip${meClass}" onclick="hbToggleReaction('${post.id}','${r.emoji}')">${r.emoji} <span class="hb-reaction-count">${r.count}</span></button>`;
+    });
+    reactionsHtml += `<button class="hb-add-reaction" onclick="hbOpenReactionPicker(event, '${post.id}')" title="Add reaction">+`;
+    reactionsHtml += `<div class="hb-reaction-picker" id="hb-picker-${post.id}">`;
+    HB_REACTIONS.forEach(emoji => {
+        reactionsHtml += `<button onclick="event.stopPropagation();hbToggleReaction('${post.id}','${emoji}')">${emoji}</button>`;
+    });
+    reactionsHtml += '</div></button>';
+    reactionsHtml += '</div>';
+
+    // Attachments
+    const attachments = post.attachments || [];
+    let attachmentsHtml = '';
+    if (attachments.length > 0) {
+        attachmentsHtml = '<div class="hb-attachments">';
+        attachments.forEach(att => {
+            const icon = att.file_type.startsWith('image/') ? '&#128247;' : '&#128196;';
+            const size = hbFormatFileSize(att.file_size);
+            const deleteBtn = isAuthor
+                ? `<button class="hb-attachment-delete" onclick="event.preventDefault();event.stopPropagation();hbDeleteAttachment('${att.id}','${post.id}')" title="Remove">&times;</button>`
+                : '';
+            attachmentsHtml += `<a class="hb-attachment" href="${API_BASE_URL}/api/home-base/attachments/${att.id}" target="_blank" title="${hbEsc(att.file_name)}">
+                <span class="hb-attachment-icon">${icon}</span>
+                <span class="hb-attachment-name">${hbEsc(att.file_name)}</span>
+                <span class="hb-attachment-size">${size}</span>
+                ${deleteBtn}
+            </a>`;
+        });
+        attachmentsHtml += '</div>';
+
+        // Image previews
+        const images = attachments.filter(a => a.file_type.startsWith('image/'));
+        if (images.length > 0) {
+            attachmentsHtml += images.map(img =>
+                `<img class="hb-img-preview" src="${API_BASE_URL}/api/home-base/attachments/${img.id}" alt="${hbEsc(img.file_name)}" onclick="window.open(this.src,'_blank')">`
+            ).join('');
+        }
+    }
+
     return `<div class="hb-post" id="hb-post-${post.id}">
         <div class="hb-post-header">
             <div class="hb-post-author-row">
                 <div class="hb-avatar" style="background:${color}">${initial}</div>
                 <span class="hb-author-name">${hbEsc(name)}</span>
+                ${editedHtml}
                 <span class="hb-badge ${catClass} hb-badge">${catLabel}</span>
                 ${pinHtml}
             </div>
@@ -16621,24 +16763,91 @@ function hbRenderPost(post) {
                 <div class="hb-post-actions">${actionsHtml}</div>
             </div>
         </div>
-        <div class="hb-post-body">${hbEsc(post.body)}</div>
-        <div class="hb-post-footer">
+        <div class="hb-post-body" id="hb-body-${post.id}">${hbRenderBody(post.body)}</div>
+        ${attachmentsHtml}
+        ${reactionsHtml}
+        <div class="hb-post-footer" style="margin-top:0.5rem">
             <button class="hb-reply-toggle" onclick="hbToggleComments('${post.id}')">${replyLabel}</button>
         </div>
         <div class="hb-comments" id="hb-comments-${post.id}">
             <div class="hb-comments-list" id="hb-comments-list-${post.id}"></div>
             <div class="hb-comment-form">
-                <input class="hb-comment-input" id="hb-comment-input-${post.id}" placeholder="Write a reply..." onkeydown="if(event.key==='Enter')hbSubmitComment('${post.id}')">
+                <input class="hb-comment-input" id="hb-comment-input-${post.id}" placeholder="Write a reply... (use @name to mention)" onkeydown="if(event.key==='Enter')hbSubmitComment('${post.id}')">
                 <button class="hb-comment-submit" onclick="hbSubmitComment('${post.id}')">Reply</button>
             </div>
         </div>
     </div>`;
 }
 
-function hbEsc(str) {
-    const div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
+// ── Reactions ─────────────────────────────────────────────────────────
+
+function hbOpenReactionPicker(event, postId) {
+    event.stopPropagation();
+    // Close all other pickers
+    document.querySelectorAll('.hb-reaction-picker.open').forEach(p => p.classList.remove('open'));
+    const picker = document.getElementById(`hb-picker-${postId}`);
+    if (picker) picker.classList.toggle('open');
+}
+
+async function hbToggleReaction(postId, emoji) {
+    // Close picker
+    document.querySelectorAll('.hb-reaction-picker.open').forEach(p => p.classList.remove('open'));
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/reactions`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ emoji })
+        });
+        if (!resp.ok) throw new Error('Failed to toggle reaction');
+
+        // Reload just this post's reactions without reloading entire feed
+        const reactResp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/reactions`, { headers: getAuthHeaders() });
+        if (reactResp.ok) {
+            const data = await reactResp.json();
+            const post = hbPosts.find(p => p.id === postId);
+            if (post) {
+                post.reactions = data.reactions || [];
+                hbRenderFeed();
+            }
+        }
+    } catch (err) {
+        console.error('Reaction error:', err);
+    }
+}
+
+// ── Create Post ───────────────────────────────────────────────────────
+
+let hbPendingFiles = []; // files queued for upload after post creation
+
+function hbOnFilesSelected(input) {
+    const files = Array.from(input.files || []);
+    const maxFiles = 3 - hbPendingFiles.length;
+    const toAdd = files.slice(0, maxFiles);
+    hbPendingFiles.push(...toAdd);
+    input.value = '';
+    hbRenderPendingFiles();
+    if (files.length > maxFiles) alert('Maximum 3 attachments per post');
+}
+
+function hbRemovePendingFile(index) {
+    hbPendingFiles.splice(index, 1);
+    hbRenderPendingFiles();
+}
+
+function hbRenderPendingFiles() {
+    const container = document.getElementById('hbPendingFiles');
+    if (!container) return;
+    if (hbPendingFiles.length === 0) { container.innerHTML = ''; return; }
+    container.innerHTML = hbPendingFiles.map((f, i) =>
+        `<span class="hb-pending-file">${hbEsc(f.name)} (${hbFormatFileSize(f.size)}) <button class="hb-pending-file-remove" onclick="hbRemovePendingFile(${i})">&times;</button></span>`
+    ).join('');
+}
+
+function hbFormatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 async function hbCreatePost() {
@@ -16660,11 +16869,30 @@ async function hbCreatePost() {
             const errData = await resp.json().catch(() => ({}));
             throw new Error(errData.error || 'Failed to create post');
         }
+        const postData = await resp.json();
+        const postId = postData.post?.id;
+
+        // Upload pending files
+        if (postId && hbPendingFiles.length > 0) {
+            for (const file of hbPendingFiles) {
+                const formData = new FormData();
+                formData.append('file', file);
+                const token = localStorage.getItem('authToken');
+                await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/attachments`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                }).catch(err => console.error('Attachment upload failed:', err));
+            }
+            hbPendingFiles = [];
+            hbRenderPendingFiles();
+        }
+
         textarea.value = '';
-        // Reset category to general
         document.querySelectorAll('#hbCategoryPills .hb-cat-pill').forEach(p => p.classList.remove('active'));
         document.querySelector('#hbCategoryPills .hb-cat-pill[data-cat="general"]').classList.add('active');
         hbSelectedCategory = 'general';
+        hbClearSearch();
         hbLoadPosts();
     } catch (err) {
         alert(err.message);
@@ -16674,13 +16902,148 @@ async function hbCreatePost() {
     }
 }
 
+// ── Edit Post ─────────────────────────────────────────────────────────
+
+function hbStartEdit(postId) {
+    const post = hbPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    const bodyEl = document.getElementById(`hb-body-${postId}`);
+    if (!bodyEl) return;
+
+    // Calculate remaining edit time
+    const createdAt = new Date(post.created_at);
+    const remainingMs = Math.max(0, 15 * 60 * 1000 - (Date.now() - createdAt.getTime()));
+    const remainingMin = Math.ceil(remainingMs / 60000);
+
+    bodyEl.innerHTML = `
+        <textarea class="hb-edit-textarea" id="hb-edit-input-${postId}">${hbEsc(post.body)}</textarea>
+        <div class="hb-edit-actions">
+            <span class="hb-edit-timer">${remainingMin}m left to edit</span>
+            <button class="hb-edit-cancel" onclick="hbCancelEdit('${postId}')">Cancel</button>
+            <button class="hb-edit-save" onclick="hbSaveEdit('${postId}')">Save</button>
+        </div>`;
+
+    const input = document.getElementById(`hb-edit-input-${postId}`);
+    if (input) { input.focus(); input.selectionStart = input.value.length; }
+}
+
+function hbCancelEdit(postId) {
+    const post = hbPosts.find(p => p.id === postId);
+    if (!post) return;
+    const bodyEl = document.getElementById(`hb-body-${postId}`);
+    if (bodyEl) bodyEl.innerHTML = hbRenderBody(post.body);
+}
+
+async function hbSaveEdit(postId) {
+    const input = document.getElementById(`hb-edit-input-${postId}`);
+    if (!input) return;
+    const newBody = input.value.trim();
+    if (!newBody) return;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ body: newBody })
+        });
+        if (!resp.ok) {
+            const data = await resp.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to edit post');
+        }
+        hbLoadPosts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ── Attachment Management ─────────────────────────────────────────────
+
+async function hbDeleteAttachment(attachmentId, postId) {
+    if (!confirm('Remove this attachment?')) return;
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/attachments/${attachmentId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to delete attachment');
+        hbLoadPosts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ── Archive / Restore ─────────────────────────────────────────────────
+
+async function hbToggleArchivePanel() {
+    const panel = document.getElementById('hbArchivePanel');
+    if (!panel) return;
+    const isOpen = panel.classList.contains('open');
+    if (isOpen) {
+        panel.classList.remove('open');
+        return;
+    }
+    panel.classList.add('open');
+    await hbLoadArchivedPosts();
+}
+
+async function hbLoadArchivedPosts() {
+    const list = document.getElementById('hbArchiveList');
+    if (!list) return;
+    list.innerHTML = '<div class="hb-loading" style="padding:0.5rem">Loading...</div>';
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/archived`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load archived posts');
+        const data = await resp.json();
+        const posts = data.posts || [];
+
+        if (posts.length === 0) {
+            list.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);padding:0.5rem 0">No archived posts</div>';
+            return;
+        }
+
+        list.innerHTML = posts.map(p => {
+            const preview = (p.body || '').substring(0, 80) + ((p.body || '').length > 80 ? '...' : '');
+            const archivedBy = hbDisplayName(p.archived_by_first, p.archived_by_last);
+            const time = hbRelativeTime(p.archived_at);
+            return `<div class="hb-archived-post">
+                <div class="hb-archived-post-body" title="${hbEsc(p.body)}">${hbEsc(preview)}</div>
+                <span style="font-size:0.7rem;color:var(--text-muted);white-space:nowrap;margin-right:0.5rem">${time} by ${hbEsc(archivedBy)}</span>
+                <button class="hb-restore-btn" onclick="hbRestorePost('${p.id}')">Restore</button>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        list.innerHTML = '<div style="font-size:0.8rem;color:#DC2626">Failed to load archived posts</div>';
+    }
+}
+
+async function hbRestorePost(postId) {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/restore`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to restore post');
+        await hbLoadArchivedPosts();
+        hbLoadPosts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ── Filters ───────────────────────────────────────────────────────────
+
 function hbFilterPosts(filter) {
     hbCurrentFilter = filter;
     document.querySelectorAll('.hb-filter-pill').forEach(p => {
         p.classList.toggle('active', p.dataset.filter === filter);
     });
+    hbClearSearch();
     hbLoadPosts();
 }
+
+// ── Pin / Delete ──────────────────────────────────────────────────────
 
 async function hbTogglePin(postId) {
     try {
@@ -16711,6 +17074,8 @@ async function hbDeletePost(postId) {
         alert(err.message);
     }
 }
+
+// ── Comments ──────────────────────────────────────────────────────────
 
 async function hbToggleComments(postId) {
     const section = document.getElementById(`hb-comments-${postId}`);
@@ -16759,7 +17124,7 @@ function hbRenderComment(comment, postId) {
                 <span class="hb-comment-time">${time}</span>
                 ${deleteBtn}
             </div>
-            <div class="hb-comment-body">${hbEsc(comment.body)}</div>
+            <div class="hb-comment-body">${hbRenderBody(comment.body)}</div>
         </div>
     </div>`;
 }
@@ -16807,23 +17172,250 @@ async function hbDeleteComment(commentId, postId) {
         });
         if (!resp.ok) throw new Error('Failed to delete comment');
 
-        // Find the postId from the DOM if not passed
         if (!postId) {
             const commentEl = document.querySelector(`[onclick*="${commentId}"]`);
             const postEl = commentEl?.closest('.hb-post');
             postId = postEl?.id?.replace('hb-post-', '');
         }
         if (postId) {
-            // Reload comments for this post
             const section = document.getElementById(`hb-comments-${postId}`);
             if (section && section.classList.contains('open')) {
-                hbToggleComments(postId); // close
-                hbToggleComments(postId); // reopen to reload
+                hbToggleComments(postId);
+                hbToggleComments(postId);
             }
         }
         hbLoadPosts();
     } catch (err) {
         alert(err.message);
+    }
+}
+
+// ── Search ────────────────────────────────────────────────────────────
+
+function hbOnSearch(value) {
+    clearTimeout(hbSearchTimer);
+    const clearBtn = document.getElementById('hbSearchClear');
+    if (clearBtn) clearBtn.style.display = value ? 'block' : 'none';
+
+    if (!value.trim()) {
+        hbIsSearching = false;
+        hbLoadPosts();
+        return;
+    }
+
+    hbSearchTimer = setTimeout(async () => {
+        hbIsSearching = true;
+        const feed = document.getElementById('hbFeed');
+        if (feed) feed.innerHTML = '<div class="hb-loading">Searching...</div>';
+
+        try {
+            const resp = await fetch(`${API_BASE_URL}/api/home-base/search?q=${encodeURIComponent(value.trim())}`, {
+                headers: getAuthHeaders()
+            });
+            if (!resp.ok) throw new Error('Search failed');
+            const data = await resp.json();
+            hbPosts = data.posts || [];
+            hbRenderFeed();
+        } catch (err) {
+            if (feed) feed.innerHTML = '<div class="hb-empty">Search failed. Try again.</div>';
+        }
+    }, 300);
+}
+
+function hbClearSearch() {
+    const input = document.getElementById('hbSearchInput');
+    const clearBtn = document.getElementById('hbSearchClear');
+    if (input) input.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    hbIsSearching = false;
+}
+
+// ── @Mention Autocomplete ─────────────────────────────────────────────
+
+function hbOnMentionInput(textarea) {
+    const val = textarea.value;
+    const pos = textarea.selectionStart;
+    const dropdown = document.getElementById('hbMentionDropdown');
+    if (!dropdown) return;
+
+    // Find the @word being typed
+    const before = val.substring(0, pos);
+    const mentionMatch = before.match(/@([\w]*)$/);
+
+    if (!mentionMatch) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    const query = mentionMatch[1].toLowerCase();
+    const filtered = hbMembers.filter(m => {
+        const fullName = `${m.first_name || ''} ${m.last_name || ''}`.toLowerCase();
+        return fullName.includes(query) || (m.first_name || '').toLowerCase().startsWith(query);
+    }).slice(0, 6);
+
+    if (filtered.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    dropdown.style.display = 'block';
+    dropdown.innerHTML = filtered.map(m => {
+        const name = hbDisplayName(m.first_name, m.last_name);
+        const initial = hbInitial(m.first_name, m.last_name);
+        const color = hbAvatarColor(name);
+        return `<div class="hb-mention-item" onclick="hbInsertMention('${hbEsc(m.first_name || '')}','${hbEsc(m.last_name || '')}')">
+            <div class="hb-comment-avatar" style="background:${color};width:22px;height:22px;font-size:0.55rem">${initial}</div>
+            ${hbEsc(name)}
+        </div>`;
+    }).join('');
+}
+
+function hbInsertMention(firstName, lastName) {
+    const textarea = document.getElementById('hbComposeBody');
+    if (!textarea) return;
+
+    const val = textarea.value;
+    const pos = textarea.selectionStart;
+    const before = val.substring(0, pos);
+    const after = val.substring(pos);
+
+    // Replace @partial with @FirstName LastName
+    const mentionName = [firstName, lastName].filter(Boolean).join(' ');
+    const newBefore = before.replace(/@[\w]*$/, `@${mentionName} `);
+    textarea.value = newBefore + after;
+    textarea.selectionStart = textarea.selectionEnd = newBefore.length;
+    textarea.focus();
+
+    const dropdown = document.getElementById('hbMentionDropdown');
+    if (dropdown) dropdown.style.display = 'none';
+}
+
+// ── Notifications ─────────────────────────────────────────────────────
+
+async function hbUpdateNotifBadge() {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/notifications/unread-count`, { headers: getAuthHeaders() });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const count = data.count || 0;
+
+        // Page badge
+        const badge = document.getElementById('hbNotifBadge');
+        if (badge) {
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.style.display = count > 0 ? 'flex' : 'none';
+        }
+
+        // Sidebar badge
+        const sidebarBadge = document.getElementById('hbSidebarBadge');
+        if (sidebarBadge) {
+            sidebarBadge.textContent = count > 9 ? '9+' : count;
+            sidebarBadge.style.display = count > 0 ? 'inline-flex' : 'none';
+        }
+    } catch (_e) { /* ignore */ }
+}
+
+async function hbToggleNotifications() {
+    const dropdown = document.getElementById('hbNotifDropdown');
+    if (!dropdown) return;
+
+    hbNotifOpen = !hbNotifOpen;
+    dropdown.style.display = hbNotifOpen ? 'flex' : 'none';
+
+    if (hbNotifOpen) {
+        await hbLoadNotifications();
+    }
+}
+
+async function hbLoadNotifications() {
+    const list = document.getElementById('hbNotifList');
+    if (!list) return;
+    list.innerHTML = '<div class="hb-loading" style="padding:0.75rem">Loading...</div>';
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/notifications`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load notifications');
+        const data = await resp.json();
+        const notifs = data.notifications || [];
+
+        if (notifs.length === 0) {
+            list.innerHTML = '<div class="hb-notif-empty">No notifications yet</div>';
+            return;
+        }
+
+        list.innerHTML = notifs.map(n => {
+            const actorName = hbDisplayName(n.actor_first_name, n.actor_last_name);
+            const readClass = n.read ? 'read' : 'unread';
+            const preview = (n.post_body || '').substring(0, 60) + ((n.post_body || '').length > 60 ? '...' : '');
+            const typeLabel = n.type === 'mention' ? 'mentioned you in' : 'replied to your post';
+            const time = hbRelativeTime(n.created_at);
+
+            return `<div class="hb-notif-item ${readClass}" onclick="hbClickNotification('${n.id}','${n.post_id || ''}')">
+                <div class="hb-notif-dot"></div>
+                <div class="hb-notif-text">
+                    <strong>${hbEsc(actorName)}</strong> ${typeLabel}: "${hbEsc(preview)}"
+                    <div class="hb-notif-time">${time}</div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        list.innerHTML = '<div class="hb-notif-empty">Failed to load notifications</div>';
+    }
+}
+
+async function hbClickNotification(notifId, postId) {
+    // Mark as read
+    try {
+        await fetch(`${API_BASE_URL}/api/home-base/notifications/read`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ ids: [notifId] })
+        });
+    } catch (_e) { /* ignore */ }
+
+    // Close dropdown
+    const dropdown = document.getElementById('hbNotifDropdown');
+    if (dropdown) dropdown.style.display = 'none';
+    hbNotifOpen = false;
+
+    // Scroll to post if visible
+    if (postId) {
+        const postEl = document.getElementById(`hb-post-${postId}`);
+        if (postEl) {
+            postEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            postEl.style.boxShadow = '0 0 0 2px var(--cta)';
+            setTimeout(() => { postEl.style.boxShadow = ''; }, 2000);
+        }
+    }
+
+    hbUpdateNotifBadge();
+}
+
+async function hbMarkAllRead() {
+    try {
+        await fetch(`${API_BASE_URL}/api/home-base/notifications/read`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ all: true })
+        });
+        hbUpdateNotifBadge();
+        await hbLoadNotifications();
+    } catch (err) {
+        console.error('Failed to mark all read:', err);
+    }
+}
+
+// Poll notification badge every 60 seconds when on the page
+let hbNotifPollInterval = null;
+function hbStartNotifPolling() {
+    hbStopNotifPolling();
+    hbUpdateNotifBadge();
+    hbNotifPollInterval = setInterval(hbUpdateNotifBadge, 60000);
+}
+function hbStopNotifPolling() {
+    if (hbNotifPollInterval) {
+        clearInterval(hbNotifPollInterval);
+        hbNotifPollInterval = null;
     }
 }
 

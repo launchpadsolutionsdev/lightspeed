@@ -1,11 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+const multer = require('multer');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 
 const VALID_CATEGORIES = ['urgent', 'fyi', 'draw_update', 'campaign', 'general'];
+const VALID_REACTIONS = ['👍', '✅', '👀', '🎉', '❤️', '😂'];
 const MAX_PINNED = 3;
+const EDIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_ATTACHMENT_SIZE },
+    fileFilter: (_req, file, cb) => {
+        if (ALLOWED_FILE_TYPES.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('File type not allowed. Use JPEG, PNG, GIF, WebP, or PDF.'));
+        }
+    }
+});
 
 /**
  * Helper: check if the current user is admin/owner in their org.
@@ -43,9 +60,10 @@ router.get('/posts', authenticate, async (req, res) => {
 
         const result = await pool.query(
             `SELECT p.id, p.body, p.category, p.pinned, p.created_at, p.updated_at,
-                    p.author_id,
+                    p.author_id, p.edited_at,
                     u.first_name, u.last_name,
-                    COALESCE(c.comment_count, 0)::int AS comment_count
+                    COALESCE(c.comment_count, 0)::int AS comment_count,
+                    COALESCE(a.attachment_count, 0)::int AS attachment_count
              FROM home_base_posts p
              JOIN users u ON u.id = p.author_id
              LEFT JOIN (
@@ -53,12 +71,62 @@ router.get('/posts', authenticate, async (req, res) => {
                  FROM home_base_comments
                  GROUP BY post_id
              ) c ON c.post_id = p.id
-             WHERE p.organization_id = $1${categoryFilter}
+             LEFT JOIN (
+                 SELECT post_id, COUNT(*) AS attachment_count
+                 FROM home_base_attachments
+                 GROUP BY post_id
+             ) a ON a.post_id = p.id
+             WHERE p.organization_id = $1 AND COALESCE(p.archived, false) = false${categoryFilter}
              ORDER BY p.pinned DESC, p.created_at DESC`,
             params
         );
 
-        res.json({ posts: result.rows });
+        // Batch-load reactions for all posts
+        const postIds = result.rows.map(p => p.id);
+        let reactionsMap = {};
+        if (postIds.length > 0) {
+            try {
+                const reactResult = await pool.query(
+                    `SELECT post_id, emoji, COUNT(*)::int AS count,
+                            bool_or(user_id = $2) AS me
+                     FROM home_base_reactions
+                     WHERE post_id = ANY($1)
+                     GROUP BY post_id, emoji
+                     ORDER BY MIN(created_at)`,
+                    [postIds, req.userId]
+                );
+                for (const r of reactResult.rows) {
+                    if (!reactionsMap[r.post_id]) reactionsMap[r.post_id] = [];
+                    reactionsMap[r.post_id].push({ emoji: r.emoji, count: r.count, me: r.me });
+                }
+            } catch (_e) { /* reactions table may not exist yet */ }
+        }
+
+        // Batch-load attachment metadata (no file_data)
+        let attachmentsMap = {};
+        if (postIds.length > 0) {
+            try {
+                const attResult = await pool.query(
+                    `SELECT id, post_id, file_name, file_type, file_size
+                     FROM home_base_attachments
+                     WHERE post_id = ANY($1)
+                     ORDER BY created_at`,
+                    [postIds]
+                );
+                for (const a of attResult.rows) {
+                    if (!attachmentsMap[a.post_id]) attachmentsMap[a.post_id] = [];
+                    attachmentsMap[a.post_id].push({ id: a.id, file_name: a.file_name, file_type: a.file_type, file_size: a.file_size });
+                }
+            } catch (_e) { /* attachments table may not exist yet */ }
+        }
+
+        const posts = result.rows.map(p => ({
+            ...p,
+            reactions: reactionsMap[p.id] || [],
+            attachments: attachmentsMap[p.id] || []
+        }));
+
+        res.json({ posts });
     } catch (error) {
         console.error('Failed to get home base posts:', error.message);
         res.status(500).json({ error: 'Failed to get posts' });
@@ -102,6 +170,15 @@ router.post('/posts', authenticate, [
         post.first_name = userResult.rows[0]?.first_name;
         post.last_name = userResult.rows[0]?.last_name;
         post.comment_count = 0;
+        post.reactions = [];
+
+        // Process @mentions (fire-and-forget)
+        const mentions = extractMentions(postBody);
+        if (mentions.length > 0) {
+            resolveMentions(mentions, organizationId, req.userId).then(ids => {
+                if (ids.length > 0) createMentionNotifications(ids, req.userId, organizationId, post.id, null);
+            }).catch(() => {});
+        }
 
         res.status(201).json({ post });
     } catch (error) {
@@ -112,13 +189,13 @@ router.post('/posts', authenticate, [
 
 /**
  * DELETE /api/home-base/posts/:id
- * Delete a post. Only the original author OR an admin can delete.
+ * Archive (soft-delete) a post. Only the original author OR an admin can archive.
  */
 router.delete('/posts/:id', authenticate, async (req, res) => {
     try {
         const organizationId = req.organizationId;
         const postResult = await pool.query(
-            'SELECT author_id FROM home_base_posts WHERE id = $1 AND organization_id = $2',
+            'SELECT author_id FROM home_base_posts WHERE id = $1 AND organization_id = $2 AND COALESCE(archived, false) = false',
             [req.params.id, organizationId]
         );
 
@@ -134,8 +211,9 @@ router.delete('/posts/:id', authenticate, async (req, res) => {
         }
 
         await pool.query(
-            'DELETE FROM home_base_posts WHERE id = $1 AND organization_id = $2',
-            [req.params.id, organizationId]
+            `UPDATE home_base_posts SET archived = true, archived_at = NOW(), archived_by = $3
+             WHERE id = $1 AND organization_id = $2`,
+            [req.params.id, organizationId, req.userId]
         );
 
         res.json({ message: 'Post deleted' });
@@ -201,6 +279,224 @@ router.patch('/posts/:id/pin', authenticate, async (req, res) => {
     }
 });
 
+// ── Edit Post ─────────────────────────────────────────────────────────
+
+/**
+ * PATCH /api/home-base/posts/:id
+ * Edit a post body. Author only, within 15 minute window.
+ */
+router.patch('/posts/:id', authenticate, [
+    body('body').trim().notEmpty().withMessage('Post body is required')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const organizationId = req.organizationId;
+        const postResult = await pool.query(
+            'SELECT author_id, created_at FROM home_base_posts WHERE id = $1 AND organization_id = $2 AND COALESCE(archived, false) = false',
+            [req.params.id, organizationId]
+        );
+
+        if (postResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        if (postResult.rows[0].author_id !== req.userId) {
+            return res.status(403).json({ error: 'Only the author can edit this post' });
+        }
+
+        const createdAt = new Date(postResult.rows[0].created_at);
+        if (Date.now() - createdAt.getTime() > EDIT_WINDOW_MS) {
+            return res.status(400).json({ error: 'Edit window has expired (15 minutes)' });
+        }
+
+        const result = await pool.query(
+            `UPDATE home_base_posts SET body = $1, edited_at = NOW(), updated_at = NOW(),
+                    search_vector = to_tsvector('english', $1)
+             WHERE id = $2 AND organization_id = $3
+             RETURNING *`,
+            [req.body.body, req.params.id, organizationId]
+        );
+
+        res.json({ post: result.rows[0] });
+    } catch (error) {
+        console.error('Failed to edit post:', error.message);
+        res.status(500).json({ error: 'Failed to edit post' });
+    }
+});
+
+// ── Archive / Restore ─────────────────────────────────────────────────
+
+/**
+ * PATCH /api/home-base/posts/:id/restore
+ * Restore an archived post. Admin only.
+ */
+router.patch('/posts/:id/restore', authenticate, async (req, res) => {
+    try {
+        const organizationId = req.organizationId;
+        const admin = await isAdmin(req.userId, organizationId);
+        if (!admin) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const result = await pool.query(
+            `UPDATE home_base_posts SET archived = false, archived_at = NULL, archived_by = NULL
+             WHERE id = $1 AND organization_id = $2 AND archived = true
+             RETURNING id`,
+            [req.params.id, organizationId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Archived post not found' });
+        }
+
+        res.json({ message: 'Post restored' });
+    } catch (error) {
+        console.error('Failed to restore post:', error.message);
+        res.status(500).json({ error: 'Failed to restore post' });
+    }
+});
+
+/**
+ * GET /api/home-base/posts/archived
+ * List archived posts. Admin only.
+ */
+router.get('/posts/archived', authenticate, async (req, res) => {
+    try {
+        const organizationId = req.organizationId;
+        const admin = await isAdmin(req.userId, organizationId);
+        if (!admin) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const result = await pool.query(
+            `SELECT p.id, p.body, p.category, p.created_at, p.archived_at,
+                    u.first_name, u.last_name,
+                    ab.first_name AS archived_by_first, ab.last_name AS archived_by_last
+             FROM home_base_posts p
+             JOIN users u ON u.id = p.author_id
+             LEFT JOIN users ab ON ab.id = p.archived_by
+             WHERE p.organization_id = $1 AND p.archived = true
+             ORDER BY p.archived_at DESC`,
+            [organizationId]
+        );
+
+        res.json({ posts: result.rows });
+    } catch (error) {
+        console.error('Failed to get archived posts:', error.message);
+        res.status(500).json({ error: 'Failed to get archived posts' });
+    }
+});
+
+// ── Attachments ───────────────────────────────────────────────────────
+
+/**
+ * POST /api/home-base/posts/:id/attachments
+ * Upload a file attachment to a post. Author only. Max 3 attachments per post.
+ */
+router.post('/posts/:id/attachments', authenticate, upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const organizationId = req.organizationId;
+        const postResult = await pool.query(
+            'SELECT author_id FROM home_base_posts WHERE id = $1 AND organization_id = $2 AND COALESCE(archived, false) = false',
+            [req.params.id, organizationId]
+        );
+
+        if (postResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        if (postResult.rows[0].author_id !== req.userId) {
+            return res.status(403).json({ error: 'Only the author can add attachments' });
+        }
+
+        // Check max attachments
+        const countResult = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM home_base_attachments WHERE post_id = $1',
+            [req.params.id]
+        );
+        if (countResult.rows[0].count >= 3) {
+            return res.status(400).json({ error: 'Maximum 3 attachments per post' });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO home_base_attachments (post_id, file_name, file_type, file_size, file_data)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, file_name, file_type, file_size`,
+            [req.params.id, req.file.originalname, req.file.mimetype, req.file.size, req.file.buffer]
+        );
+
+        res.status(201).json({ attachment: result.rows[0] });
+    } catch (error) {
+        console.error('Failed to upload attachment:', error.message);
+        if (error.message && error.message.includes('File type not allowed')) {
+            return res.status(400).json({ error: error.message });
+        }
+        res.status(500).json({ error: 'Failed to upload attachment' });
+    }
+});
+
+/**
+ * GET /api/home-base/attachments/:id
+ * Download/view an attachment by ID.
+ */
+router.get('/attachments/:id', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT a.file_name, a.file_type, a.file_data, a.file_size
+             FROM home_base_attachments a
+             JOIN home_base_posts p ON p.id = a.post_id
+             WHERE a.id = $1 AND p.organization_id = $2`,
+            [req.params.id, req.organizationId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Attachment not found' });
+        }
+
+        const att = result.rows[0];
+        res.setHeader('Content-Type', att.file_type);
+        res.setHeader('Content-Disposition', `inline; filename="${att.file_name}"`);
+        res.setHeader('Content-Length', att.file_size);
+        res.send(att.file_data);
+    } catch (error) {
+        console.error('Failed to get attachment:', error.message);
+        res.status(500).json({ error: 'Failed to get attachment' });
+    }
+});
+
+/**
+ * DELETE /api/home-base/attachments/:id
+ * Delete an attachment. Author of the post only.
+ */
+router.delete('/attachments/:id', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `DELETE FROM home_base_attachments a
+             USING home_base_posts p
+             WHERE a.id = $1 AND a.post_id = p.id AND p.author_id = $2
+             RETURNING a.id`,
+            [req.params.id, req.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Attachment not found or not authorized' });
+        }
+
+        res.json({ message: 'Attachment deleted' });
+    } catch (error) {
+        console.error('Failed to delete attachment:', error.message);
+        res.status(500).json({ error: 'Failed to delete attachment' });
+    }
+});
+
 // ── Comments ──────────────────────────────────────────────────────────
 
 /**
@@ -241,7 +537,7 @@ router.post('/posts/:id/comments', authenticate, [
 
         // Verify post exists and belongs to user's org
         const postCheck = await pool.query(
-            'SELECT id FROM home_base_posts WHERE id = $1 AND organization_id = $2',
+            'SELECT id, author_id FROM home_base_posts WHERE id = $1 AND organization_id = $2',
             [req.params.id, req.organizationId]
         );
         if (postCheck.rows.length === 0) {
@@ -262,6 +558,18 @@ router.post('/posts/:id/comments', authenticate, [
         );
         comment.first_name = userResult.rows[0]?.first_name;
         comment.last_name = userResult.rows[0]?.last_name;
+
+        // Notify post author of reply (fire-and-forget)
+        const postAuthorId = postCheck.rows[0].author_id;
+        createReplyNotification(postAuthorId, req.userId, req.organizationId, req.params.id, comment.id);
+
+        // Process @mentions in comment (fire-and-forget)
+        const mentions = extractMentions(req.body.body);
+        if (mentions.length > 0) {
+            resolveMentions(mentions, req.organizationId, req.userId).then(ids => {
+                if (ids.length > 0) createMentionNotifications(ids, req.userId, req.organizationId, req.params.id, comment.id);
+            }).catch(() => {});
+        }
 
         res.status(201).json({ comment });
     } catch (error) {
@@ -289,6 +597,288 @@ router.delete('/comments/:id', authenticate, async (req, res) => {
     } catch (error) {
         console.error('Failed to delete comment:', error.message);
         res.status(500).json({ error: 'Failed to delete comment' });
+    }
+});
+
+// ── Reactions ─────────────────────────────────────────────────────────
+
+/**
+ * GET /api/home-base/posts/:id/reactions
+ * Returns reaction counts and which ones the current user has toggled.
+ */
+router.get('/posts/:id/reactions', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT emoji, COUNT(*)::int AS count,
+                    bool_or(user_id = $2) AS me
+             FROM home_base_reactions
+             WHERE post_id = $1
+             GROUP BY emoji
+             ORDER BY MIN(created_at)`,
+            [req.params.id, req.userId]
+        );
+        res.json({ reactions: result.rows });
+    } catch (error) {
+        console.error('Failed to get reactions:', error.message);
+        res.status(500).json({ error: 'Failed to get reactions' });
+    }
+});
+
+/**
+ * POST /api/home-base/posts/:id/reactions
+ * Toggle a reaction on a post. Body: { emoji }
+ */
+router.post('/posts/:id/reactions', authenticate, [
+    body('emoji').notEmpty().withMessage('Emoji is required')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { emoji } = req.body;
+        if (!VALID_REACTIONS.includes(emoji)) {
+            return res.status(400).json({ error: 'Invalid reaction emoji' });
+        }
+
+        // Check if already reacted — toggle off
+        const existing = await pool.query(
+            'DELETE FROM home_base_reactions WHERE post_id = $1 AND user_id = $2 AND emoji = $3 RETURNING id',
+            [req.params.id, req.userId, emoji]
+        );
+
+        if (existing.rows.length > 0) {
+            return res.json({ toggled: false, emoji });
+        }
+
+        // Add reaction
+        await pool.query(
+            'INSERT INTO home_base_reactions (post_id, user_id, emoji) VALUES ($1, $2, $3)',
+            [req.params.id, req.userId, emoji]
+        );
+
+        res.status(201).json({ toggled: true, emoji });
+    } catch (error) {
+        console.error('Failed to toggle reaction:', error.message);
+        res.status(500).json({ error: 'Failed to toggle reaction' });
+    }
+});
+
+// ── Mentions & Notifications ──────────────────────────────────────────
+
+/**
+ * Extract @mentions from text. Returns array of {first_name, last_name} pairs.
+ * Matches @FirstName LastName or @FirstName patterns.
+ */
+function extractMentions(text) {
+    if (!text) return [];
+    const matches = text.match(/@([\w]+(?:\s[\w]+)?)/g);
+    if (!matches) return [];
+    return matches.map(m => {
+        const parts = m.slice(1).split(/\s+/);
+        return { first: parts[0], last: parts[1] || null };
+    });
+}
+
+/**
+ * Resolve mention names to user IDs within an organization.
+ */
+async function resolveMentions(mentions, organizationId, excludeUserId) {
+    if (mentions.length === 0) return [];
+    const userIds = [];
+
+    for (const mention of mentions) {
+        let query, params;
+        if (mention.last) {
+            query = `SELECT u.id FROM users u
+                     JOIN organization_memberships om ON om.user_id = u.id
+                     WHERE om.organization_id = $1
+                       AND LOWER(u.first_name) = LOWER($2)
+                       AND LOWER(u.last_name) = LOWER($3)
+                       AND u.id != $4
+                     LIMIT 1`;
+            params = [organizationId, mention.first, mention.last, excludeUserId];
+        } else {
+            query = `SELECT u.id FROM users u
+                     JOIN organization_memberships om ON om.user_id = u.id
+                     WHERE om.organization_id = $1
+                       AND LOWER(u.first_name) = LOWER($2)
+                       AND u.id != $3
+                     LIMIT 1`;
+            params = [organizationId, mention.first, excludeUserId];
+        }
+        const result = await pool.query(query, params);
+        if (result.rows.length > 0) {
+            userIds.push(result.rows[0].id);
+        }
+    }
+
+    return [...new Set(userIds)]; // dedupe
+}
+
+/**
+ * Create notifications for mentioned users. Fire-and-forget.
+ */
+async function createMentionNotifications(recipientIds, actorId, organizationId, postId, commentId) {
+    for (const recipientId of recipientIds) {
+        pool.query(
+            `INSERT INTO home_base_notifications (recipient_id, actor_id, organization_id, type, post_id, comment_id)
+             VALUES ($1, $2, $3, 'mention', $4, $5)`,
+            [recipientId, actorId, organizationId, postId, commentId || null]
+        ).catch(err => console.error('Failed to create mention notification:', err.message));
+    }
+}
+
+/**
+ * Create a reply notification for the post author when someone comments.
+ */
+async function createReplyNotification(postAuthorId, commenterId, organizationId, postId, commentId) {
+    if (postAuthorId === commenterId) return; // don't notify yourself
+    pool.query(
+        `INSERT INTO home_base_notifications (recipient_id, actor_id, organization_id, type, post_id, comment_id)
+         VALUES ($1, $2, $3, 'reply', $4, $5)`,
+        [postAuthorId, commenterId, organizationId, postId, commentId]
+    ).catch(err => console.error('Failed to create reply notification:', err.message));
+}
+
+/**
+ * GET /api/home-base/notifications
+ * Returns notifications for the current user, newest first.
+ */
+router.get('/notifications', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT n.id, n.type, n.post_id, n.comment_id, n.read, n.created_at,
+                    a.first_name AS actor_first_name, a.last_name AS actor_last_name,
+                    p.body AS post_body
+             FROM home_base_notifications n
+             JOIN users a ON a.id = n.actor_id
+             LEFT JOIN home_base_posts p ON p.id = n.post_id
+             WHERE n.recipient_id = $1 AND n.organization_id = $2
+             ORDER BY n.created_at DESC
+             LIMIT 50`,
+            [req.userId, req.organizationId]
+        );
+
+        res.json({ notifications: result.rows });
+    } catch (error) {
+        console.error('Failed to get notifications:', error.message);
+        res.status(500).json({ error: 'Failed to get notifications' });
+    }
+});
+
+/**
+ * GET /api/home-base/notifications/unread-count
+ * Returns unread notification count for sidebar badge.
+ */
+router.get('/notifications/unread-count', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT COUNT(*)::int AS count
+             FROM home_base_notifications
+             WHERE recipient_id = $1 AND organization_id = $2 AND read = false`,
+            [req.userId, req.organizationId]
+        );
+        res.json({ count: result.rows[0].count });
+    } catch (error) {
+        console.error('Failed to get unread count:', error.message);
+        res.status(500).json({ error: 'Failed to get unread count' });
+    }
+});
+
+/**
+ * PATCH /api/home-base/notifications/read
+ * Mark notifications as read. Body: { ids: [...] } or { all: true }
+ */
+router.patch('/notifications/read', authenticate, async (req, res) => {
+    try {
+        if (req.body.all) {
+            await pool.query(
+                `UPDATE home_base_notifications SET read = true
+                 WHERE recipient_id = $1 AND organization_id = $2 AND read = false`,
+                [req.userId, req.organizationId]
+            );
+        } else if (req.body.ids && Array.isArray(req.body.ids)) {
+            await pool.query(
+                `UPDATE home_base_notifications SET read = true
+                 WHERE id = ANY($1) AND recipient_id = $2`,
+                [req.body.ids, req.userId]
+            );
+        }
+        res.json({ message: 'Notifications marked as read' });
+    } catch (error) {
+        console.error('Failed to mark notifications read:', error.message);
+        res.status(500).json({ error: 'Failed to update notifications' });
+    }
+});
+
+// ── Search ────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/home-base/search?q=term
+ * Full-text search across posts within the organization.
+ */
+router.get('/search', authenticate, async (req, res) => {
+    try {
+        const q = (req.query.q || '').trim();
+        if (!q) {
+            return res.json({ posts: [] });
+        }
+
+        const organizationId = req.organizationId;
+        if (!organizationId) {
+            return res.status(400).json({ error: 'Organization required' });
+        }
+
+        const result = await pool.query(
+            `SELECT p.id, p.body, p.category, p.pinned, p.created_at, p.updated_at,
+                    p.author_id, p.edited_at,
+                    u.first_name, u.last_name,
+                    COALESCE(c.comment_count, 0)::int AS comment_count,
+                    ts_rank(p.search_vector, plainto_tsquery('english', $2)) AS rank
+             FROM home_base_posts p
+             JOIN users u ON u.id = p.author_id
+             LEFT JOIN (
+                 SELECT post_id, COUNT(*) AS comment_count
+                 FROM home_base_comments
+                 GROUP BY post_id
+             ) c ON c.post_id = p.id
+             WHERE p.organization_id = $1
+               AND COALESCE(p.archived, false) = false
+               AND p.search_vector @@ plainto_tsquery('english', $2)
+             ORDER BY rank DESC, p.created_at DESC
+             LIMIT 50`,
+            [organizationId, q]
+        );
+
+        res.json({ posts: result.rows });
+    } catch (error) {
+        console.error('Failed to search posts:', error.message);
+        res.status(500).json({ error: 'Failed to search posts' });
+    }
+});
+
+// ── Team members (for @mention autocomplete) ─────────────────────────
+
+/**
+ * GET /api/home-base/members
+ * Returns team members for @mention autocomplete.
+ */
+router.get('/members', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT u.id, u.first_name, u.last_name
+             FROM users u
+             JOIN organization_memberships om ON om.user_id = u.id
+             WHERE om.organization_id = $1
+             ORDER BY u.first_name, u.last_name`,
+            [req.organizationId]
+        );
+        res.json({ members: result.rows });
+    } catch (error) {
+        console.error('Failed to get members:', error.message);
+        res.status(500).json({ error: 'Failed to get members' });
     }
 });
 
