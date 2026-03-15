@@ -9805,10 +9805,264 @@
         }
         .hb-comment-submit:hover { background: var(--cta-hover); }
 
+        /* Reactions */
+        .hb-reactions {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            flex-wrap: wrap;
+        }
+        .hb-reaction-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.75rem;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .hb-reaction-chip:hover { background: #edf2f7; }
+        .hb-reaction-chip.me {
+            border-color: var(--cta);
+            background: rgba(99, 91, 255, 0.08);
+        }
+        .hb-reaction-chip .hb-reaction-count {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .hb-add-reaction {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px dashed #cbd5e1;
+            background: none;
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            transition: all 0.15s;
+            position: relative;
+        }
+        .hb-add-reaction:hover { border-color: var(--cta); color: var(--cta); background: rgba(99,91,255,0.04); }
+        .hb-reaction-picker {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 0.375rem;
+            box-shadow: var(--shadow-md);
+            z-index: 20;
+            gap: 0.25rem;
+            flex-wrap: nowrap;
+        }
+        .hb-reaction-picker.open { display: flex; }
+        .hb-reaction-picker button {
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+            transition: background 0.1s;
+        }
+        .hb-reaction-picker button:hover { background: #f1f5f9; }
+
+        /* Search */
+        .hb-search-wrap {
+            position: relative;
+            margin-top: 0.75rem;
+        }
+        .hb-search-input {
+            width: 100%;
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            font-family: var(--font-family);
+            font-size: 0.8rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .hb-search-input:focus { outline: none; border-color: var(--cta); }
+        .hb-search-clear {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 1rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        .hb-search-results-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        /* Header row */
+        .hb-header-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+        .hb-header-actions { display: flex; gap: 0.5rem; position: relative; }
+
+        /* Notification button & badge */
+        .hb-notif-btn {
+            background: none;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 0.4rem 0.5rem;
+            font-size: 1.1rem;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.15s;
+        }
+        .hb-notif-btn:hover { background: #f1f5f9; }
+        .hb-notif-badge, .hb-sidebar-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #DC2626;
+            color: #fff;
+            font-size: 0.6rem;
+            font-weight: 700;
+            min-width: 16px;
+            height: 16px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+        .hb-sidebar-badge {
+            position: static;
+            margin-left: auto;
+        }
+
+        /* Notifications dropdown */
+        .hb-notif-dropdown {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 4px);
+            width: 340px;
+            max-height: 400px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .hb-notif-dropdown-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .hb-notif-mark-all {
+            background: none;
+            border: none;
+            font-size: 0.75rem;
+            color: var(--cta);
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .hb-notif-mark-all:hover { text-decoration: underline; }
+        .hb-notif-list {
+            overflow-y: auto;
+            max-height: 340px;
+        }
+        .hb-notif-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 0.625rem 1rem;
+            border-bottom: 1px solid #f8fafc;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .hb-notif-item:hover { background: #f8fafc; }
+        .hb-notif-item.unread { background: rgba(99, 91, 255, 0.04); }
+        .hb-notif-item .hb-notif-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--cta);
+            flex-shrink: 0;
+            margin-top: 6px;
+        }
+        .hb-notif-item.read .hb-notif-dot { background: transparent; }
+        .hb-notif-text {
+            flex: 1;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        .hb-notif-text strong { color: var(--text-primary); }
+        .hb-notif-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            margin-top: 2px;
+        }
+        .hb-notif-empty {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* Mention dropdown */
+        .hb-mention-dropdown {
+            position: absolute;
+            left: 1rem;
+            bottom: 100%;
+            width: 240px;
+            max-height: 180px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            z-index: 30;
+        }
+        .hb-mention-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            transition: background 0.1s;
+        }
+        .hb-mention-item:hover, .hb-mention-item.selected { background: #f1f5f9; }
+
         @media (max-width: 600px) {
             #page-home-base { padding: 1rem; }
             .hb-compose-footer { flex-direction: column; align-items: stretch; }
             .hb-post-btn { width: 100%; }
+            .hb-notif-dropdown { width: 280px; right: -1rem; }
         }
 
         /* ==================== TEAMS MANAGEMENT STYLES ==================== */
@@ -11609,9 +11863,10 @@
 
                 <div class="sidebar-group">
                     <div class="sidebar-group-label">Manage</div>
-                    <button class="sidebar-btn" data-page="home-base">
+                    <button class="sidebar-btn" data-page="home-base" id="homeBaseNavBtn">
                         <span class="sidebar-btn-icon">&#127968;</span>
                         <span class="sidebar-btn-label">Home Base</span>
+                        <span class="hb-sidebar-badge" id="hbSidebarBadge" style="display:none">0</span>
                     </button>
                     <button class="sidebar-btn" data-page="knowledge">
                         <span class="sidebar-btn-icon">&#128218;</span>
@@ -12590,13 +12845,39 @@
             <div class="page" id="page-home-base">
                 <div class="hb-container">
                     <div class="hb-header">
-                        <h1>Home Base</h1>
-                        <p>Team bulletin board — share updates, announcements, and discussions</p>
+                        <div class="hb-header-row">
+                            <div>
+                                <h1>Home Base</h1>
+                                <p>Team bulletin board — share updates, announcements, and discussions</p>
+                            </div>
+                            <div class="hb-header-actions">
+                                <button class="hb-notif-btn" id="hbNotifBtn" onclick="hbToggleNotifications()" title="Notifications">
+                                    &#128276;
+                                    <span class="hb-notif-badge" id="hbNotifBadge" style="display:none">0</span>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Search -->
+                        <div class="hb-search-wrap">
+                            <input type="text" class="hb-search-input" id="hbSearchInput" placeholder="Search posts..." oninput="hbOnSearch(this.value)">
+                            <button class="hb-search-clear" id="hbSearchClear" onclick="hbClearSearch()" style="display:none">&times;</button>
+                        </div>
+                        <!-- Notifications dropdown -->
+                        <div class="hb-notif-dropdown" id="hbNotifDropdown" style="display:none">
+                            <div class="hb-notif-dropdown-header">
+                                <span>Notifications</span>
+                                <button class="hb-notif-mark-all" onclick="hbMarkAllRead()">Mark all read</button>
+                            </div>
+                            <div class="hb-notif-list" id="hbNotifList">
+                                <div class="hb-loading" style="padding:0.75rem">Loading...</div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Compose Box -->
-                    <div class="hb-compose">
-                        <textarea id="hbComposeBody" class="hb-compose-textarea" placeholder="Share an update with your team..." rows="3"></textarea>
+                    <div class="hb-compose" style="position:relative">
+                        <textarea id="hbComposeBody" class="hb-compose-textarea" placeholder="Share an update with your team... (use @name to mention)" rows="3" oninput="hbOnMentionInput(this)"></textarea>
+                        <div class="hb-mention-dropdown" id="hbMentionDropdown" style="display:none"></div>
                         <div class="hb-compose-footer">
                             <div class="hb-category-pills" id="hbCategoryPills">
                                 <button class="hb-cat-pill active" data-cat="general">General</button>
