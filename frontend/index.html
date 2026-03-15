@@ -2409,8 +2409,14 @@
             }
         }
 
-        /* Header */
-        .header {
+        /* Header — hidden post-login (sidebar has all nav + user menu) */
+        .app-tools-area .header {
+            display: none;
+        }
+
+        /* Data Analysis header — kept visible (has nav tabs) */
+        #dataAnalysisApp > .header {
+            display: block;
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
