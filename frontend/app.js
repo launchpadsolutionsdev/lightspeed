@@ -4914,6 +4914,22 @@ function setupDataAnalysisListeners() {
     const reportTypeSelect = document.getElementById("dataReportTypeSelect");
     const reportTypeDescription = document.getElementById("dataReportTypeDescription");
 
+    // Helper to update step indicator dots
+    function updateDataStepIndicator(activeStep) {
+        for (let i = 1; i <= 3; i++) {
+            const dot = document.getElementById('dataStepDot' + i);
+            if (!dot) continue;
+            dot.classList.remove('active', 'completed');
+            if (i < activeStep) dot.classList.add('completed');
+            else if (i === activeStep) dot.classList.add('active');
+        }
+        for (let i = 1; i <= 2; i++) {
+            const line = document.getElementById('dataStepLine' + i);
+            if (!line) continue;
+            line.classList.toggle('completed', i < activeStep);
+        }
+    }
+
     if (reportTypeSelect) {
         reportTypeSelect.addEventListener("change", (e) => {
             const type = e.target.value;
@@ -4922,24 +4938,44 @@ function setupDataAnalysisListeners() {
                 reportTypeDescription.innerHTML = `<h4>${REPORT_TYPES[type].name}</h4><p>${REPORT_TYPES[type].description}</p>`;
                 reportTypeDescription.classList.add('visible');
 
+                // Update card selection state
+                document.querySelectorAll('.data-report-type-card').forEach(c => c.classList.remove('selected'));
+                const selectedCard = document.querySelector(`.data-report-type-card[data-report-type="${type}"]`);
+                if (selectedCard) selectedCard.classList.add('selected');
+
                 // Shopify: skip upload, go straight to data pull
                 if (REPORT_TYPES[type].noUpload) {
                     uploadStep.classList.remove('active');
+                    updateDataStepIndicator(3);
                     handleShopifyAnalytics();
                     return;
                 }
 
                 // Activate the upload step
                 uploadStep.classList.add('active');
+                updateDataStepIndicator(2);
                 document.getElementById("dataUploadTitle").textContent = REPORT_TYPES[currentReportType].uploadTitle;
                 document.getElementById("dataUploadSubtitle").textContent = REPORT_TYPES[currentReportType].uploadSubtitle;
             } else {
                 currentReportType = null;
                 reportTypeDescription.classList.remove('visible');
                 uploadStep.classList.remove('active');
+                document.querySelectorAll('.data-report-type-card').forEach(c => c.classList.remove('selected'));
+                updateDataStepIndicator(1);
             }
         });
     }
+
+    // Card-based report type selection — triggers the hidden <select>
+    document.querySelectorAll('.data-report-type-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const type = card.dataset.reportType;
+            if (type && reportTypeSelect) {
+                reportTypeSelect.value = type;
+                reportTypeSelect.dispatchEvent(new Event('change'));
+            }
+        });
+    });
 
     // Drag and drop handlers for the dropzone
     uploadDropzone.addEventListener("dragover", (e) => {
@@ -5672,10 +5708,20 @@ function resetDataAnalysis() {
     document.getElementById("dataFileInput").value = '';
     document.getElementById("dataReportNameInput").value = '';
 
-    // Reset report type selection and upload step
+    // Reset report type selection, upload step, cards, and step indicator
     document.getElementById("dataReportTypeSelect").value = '';
     document.getElementById("dataReportTypeDescription").classList.remove('visible');
     document.getElementById("dataUploadStep").classList.remove('active');
+    document.querySelectorAll('.data-report-type-card').forEach(c => c.classList.remove('selected'));
+    // Reset step indicator
+    for (let i = 1; i <= 3; i++) {
+        const dot = document.getElementById('dataStepDot' + i);
+        if (dot) { dot.classList.remove('active', 'completed'); if (i === 1) dot.classList.add('active'); }
+    }
+    for (let i = 1; i <= 2; i++) {
+        const line = document.getElementById('dataStepLine' + i);
+        if (line) line.classList.remove('completed');
+    }
 
     // Reset to overview page
     document.querySelectorAll('.data-nav-tab').forEach(t => t.classList.remove('active'));
