@@ -1055,11 +1055,19 @@ function setupAuthEventListeners() {
 
     // OAuth sign-in only - no email/password forms
 
-    // User menu (in main app)
+    // User menu (in main app header - kept for compatibility)
     document.getElementById("userMenuBtn").addEventListener("click", toggleUserDropdown);
     document.getElementById("logoutBtn").addEventListener("click", handleLogout);
     document.getElementById("accountBtn").addEventListener("click", () => {
         closeUserDropdown();
+        document.getElementById("settingsModal").classList.add("show");
+    });
+
+    // Sidebar user menu
+    document.getElementById("sidebarUserMenuBtn").addEventListener("click", toggleSidebarUserDropdown);
+    document.getElementById("sidebarLogoutBtn").addEventListener("click", handleLogout);
+    document.getElementById("sidebarAccountBtn").addEventListener("click", () => {
+        closeSidebarUserDropdown();
         document.getElementById("settingsModal").classList.add("show");
     });
 
@@ -1072,6 +1080,11 @@ function setupAuthEventListeners() {
         const dropdown = document.getElementById("userDropdown");
         if (!userMenu.contains(e.target) && !dropdown.contains(e.target)) {
             closeUserDropdown();
+        }
+        const sidebarUserMenu = document.getElementById("sidebarUserMenuBtn");
+        const sidebarDropdown = document.getElementById("sidebarUserDropdown");
+        if (sidebarUserMenu && sidebarDropdown && !sidebarUserMenu.contains(e.target) && !sidebarDropdown.contains(e.target)) {
+            closeSidebarUserDropdown();
         }
     });
 
@@ -4353,6 +4366,11 @@ function loginUser(user, showMessage = true) {
     const displayName = user.name || user.email || "User";
     document.getElementById("userAvatar").textContent = displayName.charAt(0).toUpperCase();
     document.getElementById("userName").textContent = displayName.split(" ")[0];
+    // Sync sidebar user menu
+    const sidebarAvatar = document.getElementById("sidebarUserAvatar");
+    const sidebarName = document.getElementById("sidebarUserName");
+    if (sidebarAvatar) sidebarAvatar.textContent = displayName.charAt(0).toUpperCase();
+    if (sidebarName) sidebarName.textContent = displayName.split(" ")[0];
 
     // Hide auth pages, show tool menu
     document.getElementById("landingPage").classList.add("hidden");
@@ -4935,6 +4953,15 @@ function toggleUserDropdown() {
 
 function closeUserDropdown() {
     document.getElementById("userDropdown").classList.remove("show");
+}
+
+function toggleSidebarUserDropdown() {
+    document.getElementById("sidebarUserDropdown").classList.toggle("show");
+}
+
+function closeSidebarUserDropdown() {
+    const el = document.getElementById("sidebarUserDropdown");
+    if (el) el.classList.remove("show");
 }
 
 function generateUserId() {
