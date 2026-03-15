@@ -2489,10 +2489,63 @@
             color: var(--text-primary);
         }
 
-        /* User Menu */
+        /* User Menu (header - hidden, moved to sidebar) */
         .user-menu {
             position: relative;
             margin-left: 8px;
+            display: none;
+        }
+
+        /* Sidebar User Menu */
+        .sidebar-user-menu {
+            position: relative;
+            margin-bottom: 4px;
+        }
+        .sidebar-user-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s;
+        }
+        .sidebar-user-btn:hover {
+            background: rgba(0, 0, 0, 0.06);
+        }
+        .sidebar-user-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sidebar-user-dropdown {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            margin-bottom: 4px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            min-width: 180px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.2s ease;
+            z-index: 200;
+        }
+        .sidebar-user-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
         }
 
         .user-btn {
@@ -6465,13 +6518,16 @@
         .cal-toolbar-right {
             display: flex;
             align-items: center;
-            gap: 0;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
         .cal-view-toggle {
             display: flex;
             border: 1px solid #dadce0;
             border-radius: 4px;
             overflow: hidden;
+            flex-shrink: 0;
         }
         .cal-view-btn {
             padding: 6px 14px;
@@ -6966,7 +7022,8 @@
             border-radius: 4px;
             font-family: inherit;
             font-size: 0.82rem;
-            width: 180px;
+            width: 150px;
+            min-width: 100px;
             color: #3c4043;
         }
         .cal-search-input:focus {
@@ -6981,6 +7038,7 @@
             display: flex;
             gap: 4px;
             align-items: center;
+            flex-shrink: 0;
         }
         .cal-color-filter {
             width: 18px;
@@ -7003,7 +7061,7 @@
             border: 1px solid #dadce0;
             border-radius: 4px;
             overflow: hidden;
-            margin-right: 8px;
+            flex-shrink: 0;
         }
         .cal-mode-btn {
             padding: 6px 14px;
@@ -10974,6 +11032,22 @@
             </nav>
 
             <div class="sidebar-footer">
+                <div class="sidebar-user-menu">
+                    <button class="sidebar-user-btn" id="sidebarUserMenuBtn">
+                        <div class="user-avatar" id="sidebarUserAvatar">U</div>
+                        <span class="sidebar-user-name" id="sidebarUserName">User</span>
+                        <span style="font-size: 0.7rem; color: rgba(0,0,0,0.35); margin-left: auto;">&#9660;</span>
+                    </button>
+                    <div class="sidebar-user-dropdown" id="sidebarUserDropdown">
+                        <button class="user-dropdown-item" id="sidebarAccountBtn">
+                            <span>&#128100;</span> My Account
+                        </button>
+                        <div class="user-dropdown-divider"></div>
+                        <button class="user-dropdown-item danger" id="sidebarLogoutBtn">
+                            <span>&#128682;</span> Sign Out
+                        </button>
+                    </div>
+                </div>
                 <button class="sidebar-btn sidebar-btn-settings" id="settingsToggle" title="Settings">
                     <span class="sidebar-btn-icon">&#9881;&#65039;</span>
                     <span class="sidebar-btn-label">Settings</span>
