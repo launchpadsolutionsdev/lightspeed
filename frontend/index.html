@@ -9714,10 +9714,12 @@
             background: rgba(99, 91, 255, 0.08);
             color: var(--cta);
         }
-        .hb-cat-urgent.active, .hb-cat-urgent.hb-badge { background: #DC2626; color: #fff; border-color: #DC2626; }
-        .hb-cat-fyi.active, .hb-cat-fyi.hb-badge { background: #2563EB; color: #fff; border-color: #2563EB; }
-        .hb-cat-draw.active, .hb-cat-draw.hb-badge { background: #059669; color: #fff; border-color: #059669; }
-        .hb-cat-campaign.active, .hb-cat-campaign.hb-badge { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+        /* Dynamic category colors via CSS custom property --cat-color */
+        .hb-cat-pill.active {
+            background: var(--cat-color, #6B7280);
+            color: #fff;
+            border-color: var(--cat-color, #6B7280);
+        }
 
         .hb-post-btn {
             white-space: nowrap;
@@ -10078,6 +10080,106 @@
             color: var(--text-muted); padding: 0; line-height: 1;
         }
         .hb-reply-preview-close:hover { color: #DC2626; }
+        /* Category management panel */
+        .hb-cat-manage-btn {
+            background: none;
+            border: 1px dashed var(--border, #e2e8f0);
+            border-radius: var(--radius-pill);
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .hb-cat-manage-btn:hover { border-color: var(--cta); color: var(--cta); }
+        .hb-cat-manage-panel {
+            display: none;
+            background: #fff;
+            border: 1px solid var(--border, #e2e8f0);
+            border-radius: var(--radius-lg);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .hb-cat-manage-panel.open { display: block; }
+        .hb-cat-manage-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: var(--bg-alt, #f6f9fc);
+            border-bottom: 1px solid var(--border, #e2e8f0);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .hb-cat-manage-header button {
+            background: none; border: none; cursor: pointer;
+            font-size: 1rem; color: var(--text-muted); line-height: 1;
+        }
+        .hb-cat-manage-list { padding: 0; }
+        .hb-cat-manage-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 18px;
+            border-bottom: 1px solid var(--border, #e2e8f0);
+            font-size: 0.8rem;
+        }
+        .hb-cat-manage-item:last-child { border-bottom: none; }
+        .hb-cat-swatch {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .hb-cat-manage-item .hb-cat-manage-label { flex: 1; font-weight: 500; }
+        .hb-cat-manage-item .hb-cat-manage-slug {
+            font-size: 0.7rem; color: var(--text-muted); font-family: monospace;
+        }
+        .hb-cat-manage-item .hb-cat-manage-actions { display: flex; gap: 6px; }
+        .hb-cat-manage-item .hb-cat-manage-actions button {
+            background: none; border: none; cursor: pointer;
+            font-size: 0.75rem; color: var(--text-muted); padding: 2px 6px;
+            border-radius: 4px; transition: all 0.15s;
+        }
+        .hb-cat-manage-item .hb-cat-manage-actions button:hover { background: var(--bg-alt, #f6f9fc); color: var(--text-primary); }
+        .hb-cat-manage-item .hb-cat-manage-actions .delete-btn:hover { color: #DC2626; }
+        .hb-cat-add-form {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 18px;
+            border-top: 1px solid var(--border, #e2e8f0);
+            background: var(--bg-alt, #f6f9fc);
+        }
+        .hb-cat-add-form input[type="text"] {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid var(--border, #e2e8f0);
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+            font-family: var(--font-family);
+        }
+        .hb-cat-add-form input[type="color"] {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--border, #e2e8f0);
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 1px;
+        }
+        .hb-cat-add-form button {
+            padding: 6px 14px;
+            border-radius: var(--radius-md);
+            border: none;
+            background: var(--cta);
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .hb-cat-add-form button:hover { opacity: 0.9; }
         .hb-comment-form {
             display: flex;
             gap: 0.5rem;
@@ -13891,6 +13993,20 @@
 
                     <!-- Scrollable feed area -->
                     <div class="hb-feed-area">
+                        <!-- Category Management Panel (admin only) -->
+                        <div class="hb-cat-manage-panel" id="hbCatManagePanel">
+                            <div class="hb-cat-manage-header">
+                                <span>Manage Categories</span>
+                                <button onclick="hbToggleCatManager()">&times;</button>
+                            </div>
+                            <div class="hb-cat-manage-list" id="hbCatManageList"></div>
+                            <div class="hb-cat-add-form">
+                                <input type="text" id="hbCatNewLabel" placeholder="Category name">
+                                <input type="color" id="hbCatNewColor" value="#6B7280">
+                                <button onclick="hbCreateCategory()">Add</button>
+                            </div>
+                        </div>
+
                         <!-- Activity Feed Panel (admin only) -->
                         <div class="hb-activity-panel" id="hbActivityPanel" style="display:none">
                             <div class="hb-activity-panel-header">

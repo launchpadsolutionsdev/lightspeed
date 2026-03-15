@@ -6957,7 +6957,7 @@ function switchPage(pageId) {
     } else if (pageId === "content-calendar") {
         calInit();
     } else if (pageId === "home-base") {
-        hbLoadPosts();
+        hbLoadCategories().then(() => hbLoadPosts());
         hbStartNotifPolling();
     } else if (pageId === "admin") {
         // Load admin dashboard data
@@ -16478,6 +16478,8 @@ let hbSearchTimer = null;
 let hbIsSearching = false;
 let hbNotifOpen = false;
 
+let hbCategories = []; // populated from API
+
 const HB_AVATAR_COLORS = ['#E91E8C', '#635BFF', '#F47B3A', '#059669', '#7C3AED', '#DC2626', '#2563EB', '#D97706'];
 const HB_REACTIONS = ['👍', '✅', '👀', '🎉', '❤️', '😂'];
 
@@ -16511,13 +16513,18 @@ function hbRelativeTime(dateStr) {
 }
 
 function hbCategoryBadgeClass(cat) {
-    const map = { urgent: 'hb-cat-urgent', fyi: 'hb-cat-fyi', draw_update: 'hb-cat-draw', campaign: 'hb-cat-campaign' };
-    return map[cat] || '';
+    // Dynamic: return inline style data attribute instead of static class
+    return 'hb-cat-dynamic';
+}
+
+function hbCategoryColor(cat) {
+    const c = hbCategories.find(c => c.slug === cat);
+    return c ? c.color : '#6B7280';
 }
 
 function hbCategoryLabel(cat) {
-    const map = { urgent: 'Urgent', fyi: 'FYI', draw_update: 'Draw Update', campaign: 'Campaign', general: 'General' };
-    return map[cat] || 'General';
+    const c = hbCategories.find(c => c.slug === cat);
+    return c ? c.label : (cat || 'General');
 }
 
 function hbEsc(str) {
@@ -16778,7 +16785,7 @@ function hbRenderPost(post) {
     const name = hbDisplayName(post.first_name, post.last_name);
     const initial = hbInitial(post.first_name, post.last_name);
     const color = hbAvatarColor(name);
-    const catClass = hbCategoryBadgeClass(post.category);
+    const catColor = hbCategoryColor(post.category);
     const catLabel = hbCategoryLabel(post.category);
     const time = hbRelativeTime(post.created_at);
     const isAuthor = currentUser && post.author_id === currentUser.id;
@@ -16882,7 +16889,7 @@ function hbRenderPost(post) {
                 <div class="hb-avatar" style="background:${color}">${initial}</div>
                 <span class="hb-author-name">${hbEsc(name)}</span>
                 ${editedHtml}
-                <span class="hb-badge ${catClass} hb-badge">${catLabel}</span>
+                <span class="hb-badge" style="background:${catColor};color:#fff;border-color:${catColor}">${catLabel}</span>
                 ${pinHtml}
             </div>
             <div class="hb-post-meta">
@@ -17578,6 +17585,176 @@ function hbResetCompose() {
     if (postBtn) postBtn.textContent = 'Post';
     const draftBtn = document.getElementById('hbDraftBtn');
     if (draftBtn) draftBtn.textContent = 'Save Draft';
+}
+
+// ── Dynamic Categories ────────────────────────────────────────────────
+
+async function hbLoadCategories() {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/categories`, { headers: getAuthHeaders() });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        hbCategories = data.categories || [];
+    } catch (_e) {
+        // Fallback to defaults if API fails
+        hbCategories = [
+            { slug: 'general', label: 'General', color: '#6B7280', is_default: true },
+            { slug: 'urgent', label: 'Urgent', color: '#DC2626' },
+            { slug: 'fyi', label: 'FYI', color: '#2563EB' },
+            { slug: 'draw_update', label: 'Draw Update', color: '#059669' },
+            { slug: 'campaign', label: 'Campaign', color: '#7C3AED' },
+        ];
+    }
+    hbRenderCategoryPills();
+    hbRenderFilterTabs();
+}
+
+/** Render compose category pills dynamically */
+function hbRenderCategoryPills() {
+    const container = document.getElementById('hbCategoryPills');
+    if (!container) return;
+
+    const canAdmin = hbUserRole === 'admin' || hbUserRole === 'owner';
+    let html = hbCategories.map(cat => {
+        const activeClass = cat.slug === hbSelectedCategory ? ' active' : '';
+        return `<button class="hb-cat-pill${activeClass}" data-cat="${cat.slug}" style="--cat-color:${cat.color}">${hbEsc(cat.label)}</button>`;
+    }).join('');
+
+    if (canAdmin) {
+        html += `<button class="hb-cat-manage-btn" onclick="hbToggleCatManager()" title="Manage categories">+ Manage</button>`;
+    }
+
+    container.innerHTML = html;
+}
+
+/** Render filter tabs dynamically */
+function hbRenderFilterTabs() {
+    const container = document.querySelector('.hb-filters .hb-filter-pill[data-filter="all"]')?.parentElement;
+    if (!container) return;
+
+    // Keep All, Saved, Drafts — insert category tabs between
+    let html = `<button class="hb-filter-pill${hbCurrentFilter === 'all' ? ' active' : ''}" data-filter="all" onclick="hbFilterPosts('all')">All</button>`;
+
+    hbCategories.filter(c => !c.is_default).forEach(cat => {
+        const active = hbCurrentFilter === cat.slug ? ' active' : '';
+        html += `<button class="hb-filter-pill${active}" data-filter="${cat.slug}" onclick="hbFilterPosts('${cat.slug}')">${hbEsc(cat.label)}</button>`;
+    });
+
+    // Add the General filter too
+    const generalCat = hbCategories.find(c => c.is_default);
+    if (generalCat) {
+        const active = hbCurrentFilter === 'general' ? ' active' : '';
+        html += `<button class="hb-filter-pill${active}" data-filter="general" onclick="hbFilterPosts('general')">${hbEsc(generalCat.label)}</button>`;
+    }
+
+    html += `<button class="hb-filter-pill hb-filter-bookmark${hbCurrentFilter === 'bookmarks' ? ' active' : ''}" data-filter="bookmarks" onclick="hbFilterPosts('bookmarks')">&#128278; Saved</button>`;
+    html += `<button class="hb-filter-pill${hbCurrentFilter === 'drafts' ? ' active' : ''}" data-filter="drafts" onclick="hbFilterPosts('drafts')">&#128221; Drafts<span class="hb-drafts-badge" id="hbDraftsBadge" style="display:none">0</span></button>`;
+
+    container.innerHTML = html;
+}
+
+// ── Category Management (Admin) ──────────────────────────────────────
+
+function hbToggleCatManager() {
+    const panel = document.getElementById('hbCatManagePanel');
+    if (!panel) return;
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) hbRenderCatManageList();
+}
+
+function hbRenderCatManageList() {
+    const list = document.getElementById('hbCatManageList');
+    if (!list) return;
+
+    list.innerHTML = hbCategories.map(cat => {
+        const deleteBtn = cat.is_default
+            ? ''
+            : `<button class="delete-btn" onclick="hbDeleteCategory('${cat.id}')">&#128465;</button>`;
+        return `<div class="hb-cat-manage-item">
+            <div class="hb-cat-swatch" style="background:${cat.color}"></div>
+            <span class="hb-cat-manage-label">${hbEsc(cat.label)}</span>
+            <span class="hb-cat-manage-slug">${cat.slug}</span>
+            <div class="hb-cat-manage-actions">
+                <button onclick="hbEditCategory('${cat.id}','${hbEsc(cat.label)}','${cat.color}')">&#9998;</button>
+                ${deleteBtn}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function hbCreateCategory() {
+    const labelInput = document.getElementById('hbCatNewLabel');
+    const colorInput = document.getElementById('hbCatNewColor');
+    const label = (labelInput.value || '').trim();
+    if (!label) { alert('Enter a category name.'); return; }
+
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    if (!slug) { alert('Invalid category name.'); return; }
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/categories`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ slug, label, color: colorInput.value })
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to create category');
+        }
+
+        labelInput.value = '';
+        colorInput.value = '#6B7280';
+        await hbLoadCategories();
+        hbRenderCatManageList();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+function hbEditCategory(catId, currentLabel, currentColor) {
+    const newLabel = prompt('Category label:', currentLabel);
+    if (!newLabel || newLabel === currentLabel) {
+        // Also offer color edit
+        const newColor = prompt('Category color (hex):', currentColor);
+        if (!newColor || newColor === currentColor) return;
+        hbUpdateCategory(catId, null, newColor);
+        return;
+    }
+    const newColor = prompt('Category color (hex):', currentColor);
+    hbUpdateCategory(catId, newLabel, newColor || currentColor);
+}
+
+async function hbUpdateCategory(catId, label, color) {
+    try {
+        const body = {};
+        if (label) body.label = label;
+        if (color) body.color = color;
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/categories/${catId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(body)
+        });
+        if (!resp.ok) throw new Error('Failed to update category');
+        await hbLoadCategories();
+        hbRenderCatManageList();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function hbDeleteCategory(catId) {
+    if (!confirm('Delete this category? Posts using it will be reassigned to General.')) return;
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/categories/${catId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to delete category');
+        await hbLoadCategories();
+        hbRenderCatManageList();
+    } catch (err) {
+        alert(err.message);
+    }
 }
 
 // ── Filters ───────────────────────────────────────────────────────────
