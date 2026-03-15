@@ -2318,6 +2318,7 @@
             font-family: inherit;
             transition: all 0.2s ease;
             text-align: left;
+            position: relative;
         }
 
         .sidebar-btn:hover {
@@ -7123,6 +7124,257 @@
             font-size: 1.1rem;
         }
 
+        /* Category badge on event bars */
+        .cal-ev-category-badge {
+            display: inline-block;
+            font-size: 0.58rem;
+            font-weight: 600;
+            padding: 0 4px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.3);
+            margin-right: 3px;
+            vertical-align: middle;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .cal-ev-timed .cal-ev-category-badge {
+            background: rgba(0,0,0,0.08);
+            color: var(--text-secondary);
+        }
+
+        /* Comments section in modal */
+        .cal-comments-section {
+            border-top: 1px solid var(--border);
+            padding-top: 14px;
+            margin-top: 10px;
+        }
+        .cal-comments-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 8px;
+        }
+        .cal-comment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--bg-alt);
+        }
+        .cal-comment-item:last-child { border-bottom: none; }
+        .cal-comment-meta {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+        .cal-comment-text {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+        .cal-comment-delete {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 2px 4px;
+            flex-shrink: 0;
+        }
+        .cal-comment-delete:hover { color: var(--danger); }
+        .cal-comment-input-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .cal-comments-empty {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 12px 0;
+        }
+
+        /* Duplicate button */
+        .cal-btn-duplicate {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: white;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: inherit;
+            transition: background 0.12s;
+        }
+        .cal-btn-duplicate:hover { background: var(--bg-alt); }
+
+        /* Toolbar action buttons */
+        .cal-toolbar-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .cal-toolbar-action-btn {
+            padding: 5px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: white;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-family: inherit;
+            color: var(--text-secondary);
+            transition: background 0.12s;
+            white-space: nowrap;
+        }
+        .cal-toolbar-action-btn:hover { background: var(--bg-alt); }
+
+        /* Category filter chips */
+        .cal-category-filters {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .cal-category-chip {
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.72rem;
+            font-family: inherit;
+            color: var(--text-secondary);
+            transition: all 0.12s;
+        }
+        .cal-category-chip:hover { background: var(--bg-alt); }
+        .cal-category-chip.active {
+            background: var(--cta);
+            color: white;
+            border-color: var(--cta);
+        }
+
+        /* Notification badge on sidebar */
+        .cal-notif-badge {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--danger, #ef4444);
+            color: white;
+            font-size: 0.62rem;
+            font-weight: 700;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            cursor: pointer;
+        }
+
+        /* Notification dropdown */
+        .cal-notif-dropdown {
+            position: absolute;
+            left: 100%;
+            top: 0;
+            margin-left: 4px;
+            width: 320px;
+            max-height: 400px;
+            background: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-xl);
+            z-index: 1100;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .cal-notif-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .cal-notif-header button {
+            background: none;
+            border: none;
+            color: var(--cta);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-family: inherit;
+        }
+        .cal-notif-list {
+            overflow-y: auto;
+            flex: 1;
+            max-height: 350px;
+        }
+        .cal-notif-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--bg-alt);
+            cursor: pointer;
+            transition: background 0.12s;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+        }
+        .cal-notif-item:hover { background: var(--bg-alt); }
+        .cal-notif-item.unread { background: rgba(99, 91, 255, 0.04); }
+        .cal-notif-item .cal-notif-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .cal-notif-empty {
+            padding: 24px;
+            text-align: center;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        /* Print stylesheet */
+        @media print {
+            body * { visibility: hidden; }
+            #page-content-calendar,
+            #page-content-calendar * {
+                visibility: visible;
+            }
+            #page-content-calendar {
+                position: absolute;
+                left: 0; top: 0;
+                width: 100%;
+            }
+            .cal-toolbar-actions,
+            .cal-category-filters,
+            .cal-search-input,
+            .cal-color-filters,
+            .cal-mode-toggle,
+            .cal-view-toggle,
+            .cal-notif-badge,
+            .cal-notif-dropdown,
+            .cal-modal-overlay,
+            .sidebar,
+            .app-header {
+                display: none !important;
+            }
+            .cal-wrapper {
+                overflow: visible !important;
+            }
+            .cal-grid-wrapper, .cal-days {
+                overflow: visible !important;
+                height: auto !important;
+            }
+            .cal-day-cell {
+                overflow: visible !important;
+                min-height: 80px !important;
+                page-break-inside: avoid;
+            }
+            @page {
+                size: landscape;
+                margin: 0.5in;
+            }
+        }
+
         /* Quote Section */
         .draft-quote-container {
             padding: 8px 0;
@@ -10997,7 +11249,18 @@
                     <button class="sidebar-btn" data-page="content-calendar">
                         <span class="sidebar-btn-icon">&#128197;</span>
                         <span class="sidebar-btn-label">Runway</span>
+                        <span class="cal-notif-badge" id="calNotifBadge" style="display:none;" onclick="event.stopPropagation(); calToggleNotifDropdown();">0</span>
                     </button>
+                    <!-- Notification dropdown -->
+                    <div class="cal-notif-dropdown" id="calNotifDropdown" style="display:none;">
+                        <div class="cal-notif-header">
+                            <span>Notifications</span>
+                            <button onclick="calMarkAllNotifsRead()">Mark all read</button>
+                        </div>
+                        <div class="cal-notif-list" id="calNotifList">
+                            <div class="cal-notif-empty">No notifications</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="sidebar-divider"></div>
@@ -11818,6 +12081,21 @@
                             <span class="cal-month-label" id="calMonthLabel">March 2026</span>
                         </div>
                         <div class="cal-toolbar-right">
+                            <div class="cal-toolbar-actions">
+                                <button class="cal-toolbar-action-btn" onclick="calExportICS()" title="Export .ics">&#128229; Export</button>
+                                <label class="cal-toolbar-action-btn" title="Import .ics">&#128228; Import
+                                    <input type="file" accept=".ics" onchange="calImportICS(event)" style="display:none;">
+                                </label>
+                                <button class="cal-toolbar-action-btn" onclick="calPrintCalendar()" title="Print calendar">&#128424; Print</button>
+                            </div>
+                            <div class="cal-category-filters" id="calCategoryFilters">
+                                <button class="cal-category-chip active" data-cat="" onclick="calToggleCategoryFilter('')">All</button>
+                                <button class="cal-category-chip" data-cat="Ad Launch" onclick="calToggleCategoryFilter('Ad Launch')">Ad Launch</button>
+                                <button class="cal-category-chip" data-cat="Social Post" onclick="calToggleCategoryFilter('Social Post')">Social Post</button>
+                                <button class="cal-category-chip" data-cat="Email Campaign" onclick="calToggleCategoryFilter('Email Campaign')">Email Campaign</button>
+                                <button class="cal-category-chip" data-cat="Deadline" onclick="calToggleCategoryFilter('Deadline')">Deadline</button>
+                                <button class="cal-category-chip" data-cat="Meeting" onclick="calToggleCategoryFilter('Meeting')">Meeting</button>
+                            </div>
                             <input type="text" class="cal-search-input" id="calSearchInput" placeholder="Search events..." oninput="calOnSearchInput()">
                             <div class="cal-color-filters" id="calColorFilters">
                                 <button type="button" class="cal-color-filter cal-sw-tomato active" data-filter-color="tomato" onclick="calToggleColorFilter('tomato')"></button>
@@ -11897,6 +12175,31 @@
                             <textarea id="calEvDesc" class="cal-form-textarea" placeholder="Add a description..."></textarea>
                         </div>
                         <div class="cal-form-group">
+                            <label class="cal-form-label">Category</label>
+                            <select id="calEvCategory" class="cal-form-input" onchange="calToggleCategoryOther()">
+                                <option value="">None</option>
+                                <option value="Ad Launch">Ad Launch</option>
+                                <option value="Social Post">Social Post</option>
+                                <option value="Email Campaign">Email Campaign</option>
+                                <option value="Deadline">Deadline</option>
+                                <option value="Meeting">Meeting</option>
+                                <option value="Other">Other (custom)</option>
+                            </select>
+                        </div>
+                        <div class="cal-form-group" id="calCategoryOtherGroup" style="display:none;">
+                            <input type="text" id="calEvCategoryOther" class="cal-form-input" placeholder="Enter custom category" maxlength="50">
+                        </div>
+                        <div class="cal-form-group">
+                            <label class="cal-form-label">Reminder</label>
+                            <select id="calEvReminder" class="cal-form-input">
+                                <option value="">None</option>
+                                <option value="15">15 minutes before</option>
+                                <option value="30">30 minutes before</option>
+                                <option value="60">1 hour before</option>
+                                <option value="1440">1 day before</option>
+                            </select>
+                        </div>
+                        <div class="cal-form-group">
                             <label class="cal-form-label">Repeat</label>
                             <select id="calEvRepeat" class="cal-form-input" onchange="calToggleRepeatEnd()">
                                 <option value="">Does not repeat</option>
@@ -11929,8 +12232,20 @@
                                 <button type="button" class="cal-vis-btn" data-vis="team" onclick="calPickVis('team')">Team</button>
                             </div>
                         </div>
+                        <!-- Comments section (visible only when editing existing event) -->
+                        <div class="cal-comments-section" id="calCommentsSection" style="display:none;">
+                            <div class="cal-form-label" style="margin-bottom:8px;">Comments</div>
+                            <div class="cal-comments-list" id="calCommentsList"></div>
+                            <div class="cal-comment-input-row">
+                                <input type="text" id="calCommentInput" class="cal-form-input" placeholder="Add a comment..." style="flex:1;">
+                                <button type="button" class="cal-btn-save" onclick="calPostComment()" style="padding:8px 14px;">Post</button>
+                            </div>
+                        </div>
+
                         <div class="cal-modal-actions">
                             <button class="cal-btn-delete" id="calDeleteBtn" onclick="calDeleteEvent()" style="display:none;">Delete</button>
+                            <button class="cal-btn-duplicate" id="calDuplicateBtn" onclick="calDuplicateEvent()" style="display:none;">Duplicate</button>
+                            <div style="flex:1;"></div>
                             <button class="cal-btn-cancel" onclick="calHideModal()">Cancel</button>
                             <button class="cal-btn-save" onclick="calSaveEvent()">Save</button>
                         </div>
