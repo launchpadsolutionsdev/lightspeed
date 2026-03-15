@@ -2982,6 +2982,7 @@ function getFileExtension(name) {
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const TEXT_EXTENSIONS = ['txt', 'csv', 'md', 'json', 'xml', 'html', 'css', 'js', 'ts', 'py', 'java', 'c', 'cpp', 'rb', 'go', 'rs', 'swift', 'log', 'yaml', 'yml', 'toml', 'ini', 'sh', 'bat', 'sql'];
+const SERVER_PARSED_EXTENSIONS = ['xlsx', 'xls', 'pdf', 'csv']; // Files that need server-side parsing via agentic endpoint
 
 async function addAlsAttachment(file) {
     if (alsAttachments.length >= 5) {
@@ -2989,20 +2990,26 @@ async function addAlsAttachment(file) {
         return;
     }
     const isImage = IMAGE_TYPES.includes(file.type);
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isServerParsed = SERVER_PARSED_EXTENSIONS.includes(ext);
+
     if (isImage && file.size > 5 * 1024 * 1024) {
         showToast('Images must be under 5 MB', 'error');
         return;
     }
-    if (!isImage && file.size > 1 * 1024 * 1024) {
+    if (isServerParsed && file.size > 10 * 1024 * 1024) {
+        showToast('Files must be under 10 MB', 'error');
+        return;
+    }
+    if (!isImage && !isServerParsed && file.size > 1 * 1024 * 1024) {
         showToast('Text files must be under 1 MB', 'error');
         return;
     }
 
-    const ext = file.name.split('.').pop().toLowerCase();
-    const isTextFile = TEXT_EXTENSIONS.includes(ext) || file.type === 'application/pdf';
+    const isTextFile = TEXT_EXTENSIONS.includes(ext);
 
-    if (!isImage && !isTextFile) {
-        showToast('Unsupported file type. Use images or text files.', 'error');
+    if (!isImage && !isTextFile && !isServerParsed) {
+        showToast('Unsupported file type. Use images, text, PDF, Excel, or CSV files.', 'error');
         return;
     }
 
@@ -3011,6 +3018,9 @@ async function addAlsAttachment(file) {
 
     if (isImage) {
         base64 = await fileToBase64(file);
+    } else if (isServerParsed) {
+        // These files will be uploaded to the server for parsing — keep raw file reference
+        textContent = null;
     } else {
         // Read text files as string
         textContent = await new Promise((resolve, reject) => {
@@ -3029,6 +3039,7 @@ async function addAlsAttachment(file) {
         name: file.name,
         size: file.size,
         isImage,
+        isServerParsed,
         previewUrl: isImage ? URL.createObjectURL(file) : null
     });
 
@@ -3093,6 +3104,344 @@ function buildAlsUserContent(text, attachments) {
 
     content.push({ type: 'text', text: text });
     return content;
+}
+
+// ===== AGENTIC ASK LIGHTSPEED HELPERS =====
+
+let alsPendingConfirmation = null; // Stores pending confirmation data {action, events, toolUseId, conversation, system, model}
+
+/**
+ * Check if the current attachments require server-side parsing (agentic endpoint)
+ */
+function alsHasServerParsedFiles(attachments) {
+    return attachments.some(att => att.isServerParsed);
+}
+
+/**
+ * Send message via the agentic endpoint with file upload support.
+ * Handles SSE events: status, text, confirm, events_created, done, error.
+ */
+async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
+    const formData = new FormData();
+    formData.append('message', message || 'Please analyze the uploaded file.');
+    formData.append('conversation', JSON.stringify(messagesToSend.slice(0, -1))); // exclude last user msg (it's in 'message')
+    formData.append('model', alsModel);
+
+    // Build system prompt for agentic mode
+    const toneDesc = askTone === 'professional' ? 'professional and helpful' :
+                     askTone === 'friendly' ? 'warm, friendly, and conversational' :
+                     'casual and relaxed';
+    const orgName = currentUser?.organization?.name || 'your organization';
+    const agenticSystem = buildAlsAgenticSystemPrompt(orgName, toneDesc);
+    formData.append('system', agenticSystem);
+
+    // Attach the server-parsed file (first one — API accepts one file)
+    const serverFile = attachments.find(att => att.isServerParsed);
+    if (serverFile) {
+        formData.append('file', serverFile.file);
+    }
+
+    const chatArea = document.getElementById('alsChatArea');
+    const messagesEl = document.getElementById('alsMessages');
+
+    // Create message div for streaming response
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'als-msg als-msg-ai als-streaming';
+    messagesEl.appendChild(msgDiv);
+
+    // Status indicator element
+    const statusDiv = document.createElement('div');
+    statusDiv.className = 'als-tool-status';
+    statusDiv.style.display = 'none';
+    msgDiv.appendChild(statusDiv);
+
+    // Text content element
+    const textDiv = document.createElement('div');
+    textDiv.className = 'als-agent-text';
+    msgDiv.appendChild(textDiv);
+
+    let fullText = '';
+    alsKbEntries = [];
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/ask-lightspeed/agent`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: formData,
+            signal: alsStreamController ? alsStreamController.signal : undefined
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(errText || `HTTP ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep incomplete line
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr || jsonStr === '[DONE]') continue;
+
+                let event;
+                try { event = JSON.parse(jsonStr); } catch (_e) { continue; }
+
+                switch (event.type) {
+                    case 'status':
+                        statusDiv.style.display = 'flex';
+                        statusDiv.innerHTML = '<div class="als-tool-spinner"></div><span>' + escapeHtml(event.message) + '</span>';
+                        chatArea.scrollTop = chatArea.scrollHeight;
+                        break;
+
+                    case 'text':
+                        statusDiv.style.display = 'none';
+                        fullText += (fullText && event.content ? '\n' : '') + (event.content || '');
+                        textDiv.innerHTML = renderAlsMarkdownWithCitations(fullText, alsKbEntries);
+                        chatArea.scrollTop = chatArea.scrollHeight;
+                        break;
+
+                    case 'confirm':
+                        statusDiv.style.display = 'none';
+                        // Store pending confirmation
+                        alsPendingConfirmation = {
+                            action: event.action,
+                            events: event.data.events,
+                            duplicates: event.data.duplicates || [],
+                            toolUseId: event.toolUseId,
+                            model: alsModel
+                        };
+                        // Render confirmation UI
+                        renderAlsConfirmation(msgDiv, event.data, fullText);
+                        chatArea.scrollTop = chatArea.scrollHeight;
+                        return fullText; // Stop — waiting for user action
+
+                    case 'events_created':
+                        // Events were successfully created
+                        break;
+
+                    case 'done':
+                        break;
+
+                    case 'error':
+                        throw new Error(event.error || 'Server error');
+                }
+            }
+        }
+
+        msgDiv.classList.remove('als-streaming');
+        return fullText;
+
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            msgDiv.classList.remove('als-streaming');
+            return fullText;
+        }
+        throw error;
+    }
+}
+
+/**
+ * Render confirmation UI for write actions (event creation)
+ */
+function renderAlsConfirmation(msgDiv, data, preText) {
+    const events = data.events || [];
+    const duplicates = data.duplicates || [];
+
+    let html = '';
+
+    // Show duplicate warning if any
+    if (duplicates.length > 0) {
+        html += '<div class="als-confirm-warning">';
+        html += '<strong>Possible duplicates found on these dates:</strong><ul>';
+        duplicates.forEach(d => {
+            const date = d.event_date instanceof Date ? d.event_date.toISOString().split('T')[0] : d.event_date;
+            html += '<li>' + escapeHtml(date) + ': ' + escapeHtml(d.title) + ' [' + escapeHtml(d.category || '') + ']</li>';
+        });
+        html += '</ul></div>';
+    }
+
+    // Events table
+    html += '<div class="als-confirm-table-wrap"><table class="als-confirm-table">';
+    html += '<thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Time</th><th>Color</th></tr></thead><tbody>';
+    events.forEach(e => {
+        html += '<tr>';
+        html += '<td>' + escapeHtml(e.event_date || '') + '</td>';
+        html += '<td>' + escapeHtml(e.title || '') + '</td>';
+        html += '<td>' + escapeHtml(e.category || 'Draw') + '</td>';
+        html += '<td>' + (e.all_day ? 'All day' : escapeHtml(e.event_time || 'All day')) + '</td>';
+        html += '<td><span class="als-color-dot" style="background:' + escapeHtml(e.color || 'blue') + '"></span>' + escapeHtml(e.color || 'blue') + '</td>';
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // Action buttons
+    html += '<div class="als-confirm-actions">';
+    html += '<button class="als-confirm-btn als-confirm-yes" onclick="alsConfirmAction()">Create ' + events.length + ' Event' + (events.length > 1 ? 's' : '') + '</button>';
+    html += '<button class="als-confirm-btn als-confirm-no" onclick="alsCancelAction()">Cancel</button>';
+    html += '</div>';
+
+    // Append to the message div
+    const confirmDiv = document.createElement('div');
+    confirmDiv.className = 'als-confirmation';
+    confirmDiv.id = 'alsConfirmation';
+    confirmDiv.innerHTML = html;
+    msgDiv.appendChild(confirmDiv);
+    msgDiv.classList.remove('als-streaming');
+}
+
+/**
+ * Handle user confirming event creation
+ */
+async function alsConfirmAction() {
+    if (!alsPendingConfirmation) return;
+
+    const confirmDiv = document.getElementById('alsConfirmation');
+    if (confirmDiv) {
+        const btns = confirmDiv.querySelectorAll('.als-confirm-btn');
+        btns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+    }
+
+    const chatArea = document.getElementById('alsChatArea');
+    const messagesEl = document.getElementById('alsMessages');
+
+    // Create a new message div for the creation result
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'als-msg als-msg-ai als-streaming';
+    resultDiv.innerHTML = '<div class="als-tool-status" style="display:flex"><div class="als-tool-spinner"></div><span>Creating events on Runway...</span></div><div class="als-agent-text"></div>';
+    messagesEl.appendChild(resultDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/ask-lightspeed/confirm-action`, {
+            method: 'POST',
+            headers: {
+                ...getAuthHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: alsPendingConfirmation.action,
+                events: alsPendingConfirmation.events,
+                model: alsPendingConfirmation.model
+            })
+        });
+
+        // Parse SSE response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let resultText = '';
+        const statusEl = resultDiv.querySelector('.als-tool-status');
+        const textEl = resultDiv.querySelector('.als-agent-text');
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                let event;
+                try { event = JSON.parse(line.slice(6).trim()); } catch (_e) { continue; }
+
+                if (event.type === 'status') {
+                    statusEl.style.display = 'flex';
+                    statusEl.innerHTML = '<div class="als-tool-spinner"></div><span>' + escapeHtml(event.message) + '</span>';
+                } else if (event.type === 'text') {
+                    statusEl.style.display = 'none';
+                    resultText += (resultText ? '\n' : '') + (event.content || '');
+                    textEl.innerHTML = renderAlsMarkdownWithCitations(resultText, []);
+                } else if (event.type === 'events_created') {
+                    // Could refresh calendar if on that page
+                } else if (event.type === 'error') {
+                    statusEl.style.display = 'none';
+                    textEl.innerHTML = '<span class="als-error-text">' + escapeHtml(event.error) + '</span>';
+                }
+            }
+        }
+
+        resultDiv.classList.remove('als-streaming');
+        askConversation.push({ role: 'assistant', content: resultText });
+        saveAskConversation();
+        await saveAlsConversationToServer();
+
+    } catch (error) {
+        console.error('Confirm action error:', error);
+        resultDiv.querySelector('.als-tool-status').style.display = 'none';
+        resultDiv.querySelector('.als-agent-text').innerHTML = '<span class="als-error-text">Failed to create events: ' + escapeHtml(error.message) + '</span>';
+        resultDiv.classList.remove('als-streaming');
+    }
+
+    alsPendingConfirmation = null;
+}
+
+/**
+ * Handle user cancelling event creation
+ */
+async function alsCancelAction() {
+    const confirmDiv = document.getElementById('alsConfirmation');
+    if (confirmDiv) {
+        confirmDiv.innerHTML = '<div class="als-confirm-cancelled">Event creation cancelled.</div>';
+    }
+
+    try {
+        await fetch(`${API_BASE_URL}/api/ask-lightspeed/cancel-action`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+    } catch (_e) { /* ignore */ }
+
+    askConversation.push({ role: 'assistant', content: 'Event creation cancelled. Let me know if you\'d like to make changes or try again.' });
+    saveAskConversation();
+    alsPendingConfirmation = null;
+}
+
+/**
+ * Build agentic system prompt (with tool awareness)
+ */
+function buildAlsAgenticSystemPrompt(orgName, toneDesc) {
+    return `You are Ask Lightspeed, a powerful AI assistant built by Launchpad Solutions into the Lightspeed platform. You work for ${orgName}.
+
+TONE: Respond in a ${toneDesc} tone.
+${getLanguageInstruction()}
+You have access to tools that let you interact with other parts of the platform:
+- You can search and create events on Runway (the content calendar) — use this for draw schedules, campaign deadlines, and team events
+- You can search the Knowledge Base for information about lottery operations and policies
+
+When a user uploads a file containing a draw schedule or event list:
+1. Parse the file carefully — extract all dates, event names, times, jackpot amounts, and any other relevant details
+2. Present a clear, formatted summary of the events you found and what you plan to create on Runway
+3. Call the create_runway_events tool with the parsed events — the system will ask the user to confirm before creating anything
+
+When answering questions:
+- Check Runway for upcoming draws and deadlines when relevant
+- Search the Knowledge Base for policy and procedure questions
+- Always be specific about dates and times — don't guess, use the data from your tools
+
+For draw events, use the category "Draw" and color "blue" by default. Format draw titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
+
+CORE BEHAVIOR:
+Respond directly to the user's request. If the request is clear enough to produce useful output, do so immediately. Only ask clarifying questions when the request is genuinely ambiguous.
+
+TEACH MODE: If the user says something like "remember that...", acknowledge what you've learned and confirm you'll remember it.
+
+You are a fully capable AI assistant. You can help with anything: drafting content, data analysis, coding, research, brainstorming, and more.
+
+Always confirm before taking any action that creates, modifies, or deletes data. Keep responses concise. Use markdown formatting when helpful.`;
 }
 
 function initAskLightspeedPage() {
@@ -3600,6 +3949,8 @@ You are a fully capable AI assistant. You can help with absolutely anything:
 - Research, brainstorming, planning, and general knowledge
 - Anything else the user asks — you are not limited in scope
 
+UPLOAD & TOOLS: Users can upload PDF, Excel, and CSV files. When files contain draw schedules or event lists, you can help add them to the Runway content calendar. You can also search Runway and the Knowledge Base.
+
 Keep responses concise but thorough. Use markdown formatting when helpful.`;
 
         const ratedExamples = await getRatedExamples('ask_lightspeed', null, message);
@@ -3621,27 +3972,42 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
         const alsRenderer = createSmoothedStreamRenderer(
             msgDiv, txt => renderAlsMarkdownWithCitations(txt, alsKbEntries), chatArea);
 
-        const { text: aiText, referencedKbEntries } = await fetchStream({
-            system: fullSystemPrompt,
-            inquiry: message,
-            kb_type: 'all',
-            includeCitations: true,
-            messages: messagesToSend,
-            max_tokens: 4096,
-            model: alsModel
-        }, {
-            onText: chunk => alsRenderer.onText(chunk),
-            onKb: (entries) => { alsKbEntries = entries; },
-            signal: alsStreamController ? alsStreamController.signal : undefined
-        });
+        // Check if we should use the agentic endpoint (server-parsed files)
+        const useAgentic = alsHasServerParsedFiles(currentAttachments);
+        let aiText = '';
 
-        alsRenderer.flush();
-        msgDiv.classList.remove('als-streaming');
-        askConversation.push({ role: 'assistant', content: aiText });
-        saveAskConversation();
+        if (useAgentic) {
+            // Route through agentic endpoint with file upload
+            aiText = await sendAlsAgenticMessage(message, currentAttachments, messagesToSend);
+            // The agentic handler already rendered the response into the DOM
+            // Remove the msgDiv we created (agentic handler creates its own)
+            msgDiv.remove();
+            askConversation.push({ role: 'assistant', content: aiText || '' });
+            saveAskConversation();
+        } else {
+            const { text: fetchedText, referencedKbEntries } = await fetchStream({
+                system: fullSystemPrompt,
+                inquiry: message,
+                kb_type: 'all',
+                includeCitations: true,
+                messages: messagesToSend,
+                max_tokens: 4096,
+                model: alsModel
+            }, {
+                onText: chunk => alsRenderer.onText(chunk),
+                onKb: (entries) => { alsKbEntries = entries; },
+                signal: alsStreamController ? alsStreamController.signal : undefined
+            });
+            aiText = fetchedText;
 
-        // Final render with citations
-        msgDiv.innerHTML = renderAlsMarkdownWithCitations(aiText, alsKbEntries);
+            alsRenderer.flush();
+            msgDiv.classList.remove('als-streaming');
+            askConversation.push({ role: 'assistant', content: aiText });
+            saveAskConversation();
+
+            // Final render with citations
+            msgDiv.innerHTML = renderAlsMarkdownWithCitations(aiText, alsKbEntries);
+        } // end non-agentic else block
 
         // Save to response history
         const lastUserMsg = askConversation.filter(m => m.role === 'user').slice(-1)[0];
@@ -3666,12 +4032,14 @@ Keep responses concise but thorough. Use markdown formatting when helpful.`;
             console.warn('Could not save ask history:', e);
         }
 
-        // Add action buttons + refinement buttons + citation sources
-        appendAlsEnhancedActions(msgDiv, askHistoryId, alsKbEntries);
+        // Add action buttons + refinement buttons + citation sources (non-agentic only)
+        if (!useAgentic) {
+            appendAlsEnhancedActions(msgDiv, askHistoryId, alsKbEntries);
 
-        // Check for teach mode
-        if (isTeachModeMessage(message)) {
-            appendAlsTeachConfirm(msgDiv, message, aiText);
+            // Check for teach mode
+            if (isTeachModeMessage(message)) {
+                appendAlsTeachConfirm(msgDiv, message, aiText);
+            }
         }
 
         // Save conversation to server

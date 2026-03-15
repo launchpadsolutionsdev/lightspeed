@@ -1628,6 +1628,135 @@
             }
         }
 
+        /* ==================== ALS AGENTIC TOOL UI ==================== */
+        .als-tool-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background: rgba(233, 30, 140, 0.06);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--gradient-start);
+            font-weight: 500;
+        }
+
+        .als-tool-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(233, 30, 140, 0.2);
+            border-top-color: var(--gradient-start);
+            border-radius: 50%;
+            animation: alsToolSpin 0.8s linear infinite;
+        }
+
+        @keyframes alsToolSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        .als-confirmation {
+            margin-top: 12px;
+        }
+
+        .als-confirm-warning {
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #92400e;
+        }
+
+        .als-confirm-warning ul {
+            margin: 6px 0 0 0;
+            padding-left: 18px;
+        }
+
+        .als-confirm-table-wrap {
+            overflow-x: auto;
+            margin-bottom: 12px;
+        }
+
+        .als-confirm-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .als-confirm-table th,
+        .als-confirm-table td {
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .als-confirm-table th {
+            background: rgba(0,0,0,0.02);
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .als-color-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        .als-confirm-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .als-confirm-btn {
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+
+        .als-confirm-yes {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: #fff;
+        }
+
+        .als-confirm-yes:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .als-confirm-no {
+            background: #f3f4f6;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .als-confirm-no:hover {
+            background: #fee2e2;
+            color: #dc2626;
+            border-color: #fecaca;
+        }
+
+        .als-confirm-cancelled {
+            padding: 8px 14px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
         /* ==================== ALS CONVERSATION SIDEBAR ==================== */
         .als-page-layout {
             display: flex;
@@ -16260,7 +16389,7 @@
                         <button class="als-stop-btn" id="alsStopBtn" title="Stop generating" onclick="stopAlsGeneration()" style="display:none;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
                         </button>
-                        <input type="file" id="alsFileInput" multiple accept="image/*,.pdf,.txt,.csv,.md,.json,.xml,.html,.css,.js,.ts,.py,.java,.c,.cpp,.rb,.go,.rs,.swift" style="display:none">
+                        <input type="file" id="alsFileInput" multiple accept="image/*,.pdf,.txt,.csv,.md,.json,.xml,.html,.css,.js,.ts,.py,.java,.c,.cpp,.rb,.go,.rs,.swift,.xlsx,.xls" style="display:none">
                     </div>
                     <div class="als-disclaimer">AI-generated responses. Always verify important information.</div>
 
