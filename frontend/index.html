@@ -9972,6 +9972,112 @@
             margin-left: 0.5rem;
         }
         .hb-comment-delete:hover { color: #DC2626; }
+        /* Comment reactions */
+        .hb-comment-reactions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .hb-comment-reaction-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            border: 1px solid var(--border, #e2e8f0);
+            background: #fff;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .hb-comment-reaction-chip:hover { background: var(--bg-alt, #f6f9fc); }
+        .hb-comment-reaction-chip.me { border-color: var(--cta); background: rgba(99, 91, 255, 0.06); }
+        .hb-comment-add-reaction {
+            position: relative;
+            background: none;
+            border: 1px dashed var(--border, #e2e8f0);
+            border-radius: 10px;
+            padding: 1px 6px;
+            font-size: 0.65rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.15s;
+        }
+        .hb-comment-add-reaction:hover { border-color: var(--cta); color: var(--cta); }
+        .hb-comment-reaction-picker {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: #fff;
+            border: 1px solid var(--border, #e2e8f0);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            padding: 4px;
+            gap: 2px;
+            z-index: 20;
+            white-space: nowrap;
+        }
+        .hb-comment-reaction-picker.open { display: flex; }
+        .hb-comment-reaction-picker button {
+            background: none;
+            border: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .hb-comment-reaction-picker button:hover { background: var(--bg-alt, #f6f9fc); }
+        /* Quote-reply block */
+        .hb-quote-reply {
+            border-left: 3px solid var(--cta);
+            background: var(--bg-alt, #f6f9fc);
+            padding: 4px 8px;
+            margin-bottom: 4px;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+        .hb-quote-reply-author { font-weight: 600; color: var(--text-secondary); }
+        .hb-quote-reply-body {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+        }
+        /* Reply button on comments */
+        .hb-comment-reply-btn {
+            background: none;
+            border: none;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0;
+            margin-left: 0.5rem;
+        }
+        .hb-comment-reply-btn:hover { color: var(--cta); }
+        /* Quote preview above comment input */
+        .hb-reply-preview {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 6px 10px;
+            background: var(--bg-alt, #f6f9fc);
+            border-left: 3px solid var(--cta);
+            border-radius: 0 4px 4px 0;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        .hb-reply-preview-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .hb-reply-preview-close {
+            background: none; border: none; cursor: pointer; font-size: 0.85rem;
+            color: var(--text-muted); padding: 0; line-height: 1;
+        }
+        .hb-reply-preview-close:hover { color: #DC2626; }
         .hb-comment-form {
             display: flex;
             gap: 0.5rem;

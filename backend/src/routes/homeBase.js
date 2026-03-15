@@ -595,16 +595,60 @@ router.delete('/attachments/:id', authenticate, async (req, res) => {
 router.get('/posts/:id/comments', authenticate, async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT c.id, c.body, c.created_at, c.author_id,
-                    u.first_name, u.last_name
+            `SELECT c.id, c.body, c.created_at, c.author_id, c.reply_to_id,
+                    u.first_name, u.last_name,
+                    rc.reply_first_name, rc.reply_last_name, rc.reply_body
              FROM home_base_comments c
              JOIN users u ON u.id = c.author_id
+             LEFT JOIN LATERAL (
+                 SELECT parent.body AS reply_body, pu.first_name AS reply_first_name, pu.last_name AS reply_last_name
+                 FROM home_base_comments parent
+                 JOIN users pu ON pu.id = parent.author_id
+                 WHERE parent.id = c.reply_to_id
+             ) rc ON true
              WHERE c.post_id = $1
              ORDER BY c.created_at ASC`,
             [req.params.id]
         );
 
-        res.json({ comments: result.rows });
+        // Batch-load comment reactions
+        const commentIds = result.rows.map(c => c.id);
+        let reactionsMap = {};
+        if (commentIds.length > 0) {
+            try {
+                const reactResult = await pool.query(
+                    `SELECT comment_id, emoji, COUNT(*)::int AS count,
+                            bool_or(user_id = $2) AS me
+                     FROM home_base_comment_reactions
+                     WHERE comment_id = ANY($1)
+                     GROUP BY comment_id, emoji
+                     ORDER BY MIN(created_at)`,
+                    [commentIds, req.userId]
+                );
+                for (const r of reactResult.rows) {
+                    if (!reactionsMap[r.comment_id]) reactionsMap[r.comment_id] = [];
+                    reactionsMap[r.comment_id].push({ emoji: r.emoji, count: r.count, me: r.me });
+                }
+            } catch (_e) { /* comment_reactions table may not exist yet */ }
+        }
+
+        const comments = result.rows.map(c => ({
+            ...c,
+            reactions: reactionsMap[c.id] || [],
+            reply_to: c.reply_to_id ? {
+                author_name: [c.reply_first_name, c.reply_last_name].filter(Boolean).join(' '),
+                body: c.reply_body
+            } : null
+        }));
+
+        // Clean up lateral join columns
+        comments.forEach(c => {
+            delete c.reply_first_name;
+            delete c.reply_last_name;
+            delete c.reply_body;
+        });
+
+        res.json({ comments });
     } catch (error) {
         console.error('Failed to get comments:', error.message);
         res.status(500).json({ error: 'Failed to get comments' });
@@ -633,11 +677,13 @@ router.post('/posts/:id/comments', authenticate, [
             return res.status(404).json({ error: 'Post not found' });
         }
 
+        const replyToId = req.body.reply_to_id || null;
+
         const result = await pool.query(
-            `INSERT INTO home_base_comments (post_id, author_id, body)
-             VALUES ($1, $2, $3)
+            `INSERT INTO home_base_comments (post_id, author_id, body, reply_to_id)
+             VALUES ($1, $2, $3, $4)
              RETURNING *`,
-            [req.params.id, req.userId, req.body.body]
+            [req.params.id, req.userId, req.body.body, replyToId]
         );
 
         const comment = result.rows[0];
@@ -756,6 +802,48 @@ router.post('/posts/:id/reactions', authenticate, [
     } catch (error) {
         console.error('Failed to toggle reaction:', error.message);
         res.status(500).json({ error: 'Failed to toggle reaction' });
+    }
+});
+
+// ── Comment Reactions ─────────────────────────────────────────────────
+
+/**
+ * POST /api/home-base/comments/:id/reactions
+ * Toggle a reaction on a comment. Body: { emoji }
+ */
+router.post('/comments/:id/reactions', authenticate, [
+    body('emoji').notEmpty().withMessage('Emoji is required')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { emoji } = req.body;
+        if (!VALID_REACTIONS.includes(emoji)) {
+            return res.status(400).json({ error: 'Invalid reaction emoji' });
+        }
+
+        // Toggle off if already reacted
+        const existing = await pool.query(
+            'DELETE FROM home_base_comment_reactions WHERE comment_id = $1 AND user_id = $2 AND emoji = $3 RETURNING id',
+            [req.params.id, req.userId, emoji]
+        );
+
+        if (existing.rows.length > 0) {
+            return res.json({ toggled: false, emoji });
+        }
+
+        await pool.query(
+            'INSERT INTO home_base_comment_reactions (comment_id, user_id, emoji) VALUES ($1, $2, $3)',
+            [req.params.id, req.userId, emoji]
+        );
+
+        res.status(201).json({ toggled: true, emoji });
+    } catch (error) {
+        console.error('Failed to toggle comment reaction:', error.message);
+        res.status(500).json({ error: 'Failed to toggle comment reaction' });
     }
 });
 
