@@ -6838,6 +6838,189 @@
         }
         .cal-btn-delete:hover { background: #fee2e2; }
 
+        /* Drag-and-drop feedback */
+        .cal-ev-bar[draggable="true"],
+        .cal-ev-timed[draggable="true"] { cursor: grab; }
+        .cal-ev-bar.cal-dragging,
+        .cal-ev-timed.cal-dragging { opacity: 0.4; }
+        .cal-day-cell.cal-drag-over {
+            background: #e8f0fe !important;
+            box-shadow: inset 0 0 0 2px #1a73e8;
+        }
+
+        /* Week view */
+        .cal-week-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .cal-week-allday-row {
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+            border-bottom: 2px solid #e0e0e0;
+            flex-shrink: 0;
+            min-height: 28px;
+        }
+        .cal-week-allday-label {
+            font-size: 0.68rem;
+            color: #70757a;
+            padding: 4px 4px;
+            text-align: right;
+            border-right: 1px solid #e0e0e0;
+        }
+        .cal-week-allday-cell {
+            border-right: 1px solid #e0e0e0;
+            padding: 2px;
+            min-height: 24px;
+        }
+        .cal-week-allday-cell:last-child { border-right: none; }
+        .cal-week-scroll {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        .cal-week-grid {
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+            position: relative;
+        }
+        .cal-week-time-label {
+            font-size: 0.68rem;
+            color: #70757a;
+            text-align: right;
+            padding: 0 4px;
+            height: 48px;
+            border-right: 1px solid #e0e0e0;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .cal-week-time-label span {
+            position: relative;
+            top: -7px;
+        }
+        .cal-week-cell {
+            border-right: 1px solid #e0e0e0;
+            border-bottom: 1px solid #f0f0f0;
+            height: 48px;
+            box-sizing: border-box;
+            cursor: pointer;
+            position: relative;
+        }
+        .cal-week-cell:last-child { border-right: none; }
+        .cal-week-cell:hover { background: #f8f9fa; }
+        .cal-week-cell.cal-drag-over {
+            background: #e8f0fe !important;
+            box-shadow: inset 0 0 0 2px #1a73e8;
+        }
+        .cal-week-event {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            border-radius: 4px;
+            padding: 2px 4px;
+            font-size: 0.7rem;
+            color: white;
+            overflow: hidden;
+            cursor: pointer;
+            z-index: 1;
+            line-height: 1.3;
+        }
+        .cal-week-event:hover { opacity: 0.88; }
+        .cal-week-dow-row {
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+            flex-shrink: 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .cal-week-dow-spacer {
+            border-right: 1px solid #e0e0e0;
+        }
+        .cal-week-dow {
+            text-align: center;
+            padding: 4px 0;
+            font-size: 0.68rem;
+            font-weight: 500;
+            color: #70757a;
+            text-transform: uppercase;
+            border-right: 1px solid #e0e0e0;
+        }
+        .cal-week-dow:last-child { border-right: none; }
+        .cal-week-dow-today {
+            color: #1a73e8;
+            font-weight: 700;
+        }
+
+        /* Recurring event icon */
+        .cal-recur-icon {
+            font-size: 0.65rem;
+            margin-left: 2px;
+            opacity: 0.7;
+        }
+
+        /* Search bar */
+        .cal-search-input {
+            padding: 5px 10px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.82rem;
+            width: 180px;
+            color: #3c4043;
+        }
+        .cal-search-input:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+        }
+        .cal-search-input::placeholder { color: #9aa0a6; }
+
+        /* Color filter chips */
+        .cal-color-filters {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .cal-color-filter {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            padding: 0;
+            transition: transform 0.1s;
+        }
+        .cal-color-filter:hover { transform: scale(1.2); }
+        .cal-color-filter.active {
+            box-shadow: 0 0 0 2px white, 0 0 0 3px #3c4043;
+        }
+        .cal-color-filter.inactive { opacity: 0.3; }
+
+        /* Month/Week mode toggle */
+        .cal-mode-toggle {
+            display: flex;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-right: 8px;
+        }
+        .cal-mode-btn {
+            padding: 6px 14px;
+            border: none;
+            border-right: 1px solid #dadce0;
+            background: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: inherit;
+            font-weight: 500;
+            color: #5f6368;
+            transition: background 0.12s ease;
+        }
+        .cal-mode-btn:last-child { border-right: none; }
+        .cal-mode-btn:hover { background: #f1f3f4; }
+        .cal-mode-btn.active { background: #e8f0fe; color: #1a73e8; }
+
         /* More events popover */
         .cal-more-popover {
             position: fixed;
@@ -11548,11 +11731,26 @@
                     <div class="cal-toolbar">
                         <div class="cal-toolbar-left">
                             <button class="cal-today-btn" onclick="calGoToToday()">Today</button>
-                            <button class="cal-nav-btn" id="calPrevBtn" onclick="calNavigateMonth(-1)" title="Previous month">&#9664;</button>
-                            <button class="cal-nav-btn" id="calNextBtn" onclick="calNavigateMonth(1)" title="Next month">&#9654;</button>
+                            <button class="cal-nav-btn" id="calPrevBtn" onclick="calNavigatePeriod(-1)" title="Previous">&#9664;</button>
+                            <button class="cal-nav-btn" id="calNextBtn" onclick="calNavigatePeriod(1)" title="Next">&#9654;</button>
                             <span class="cal-month-label" id="calMonthLabel">March 2026</span>
                         </div>
                         <div class="cal-toolbar-right">
+                            <input type="text" class="cal-search-input" id="calSearchInput" placeholder="Search events..." oninput="calOnSearchInput()">
+                            <div class="cal-color-filters" id="calColorFilters">
+                                <button type="button" class="cal-color-filter cal-sw-tomato active" data-filter-color="tomato" onclick="calToggleColorFilter('tomato')"></button>
+                                <button type="button" class="cal-color-filter cal-sw-blue active" data-filter-color="blue" onclick="calToggleColorFilter('blue')"></button>
+                                <button type="button" class="cal-color-filter cal-sw-green active" data-filter-color="green" onclick="calToggleColorFilter('green')"></button>
+                                <button type="button" class="cal-color-filter cal-sw-cyan active" data-filter-color="cyan" onclick="calToggleColorFilter('cyan')"></button>
+                                <button type="button" class="cal-color-filter cal-sw-purple active" data-filter-color="purple" onclick="calToggleColorFilter('purple')"></button>
+                                <button type="button" class="cal-color-filter cal-sw-gray active" data-filter-color="gray" onclick="calToggleColorFilter('gray')"></button>
+                                <button type="button" class="cal-color-filter cal-sw-orange active" data-filter-color="orange" onclick="calToggleColorFilter('orange')"></button>
+                                <button type="button" class="cal-color-filter cal-sw-pink active" data-filter-color="pink" onclick="calToggleColorFilter('pink')"></button>
+                            </div>
+                            <div class="cal-mode-toggle">
+                                <button class="cal-mode-btn active" data-cal-mode="month" onclick="calSwitchMode('month')">Month</button>
+                                <button class="cal-mode-btn" data-cal-mode="week" onclick="calSwitchMode('week')">Week</button>
+                            </div>
                             <div class="cal-view-toggle">
                                 <button class="cal-view-btn" data-cal-view="personal" onclick="calSwitchView('personal')">My Calendar</button>
                                 <button class="cal-view-btn" data-cal-view="team" onclick="calSwitchView('team')">Team</button>
@@ -11561,8 +11759,8 @@
                         </div>
                     </div>
 
-                    <!-- Grid -->
-                    <div class="cal-grid-wrapper">
+                    <!-- Month Grid -->
+                    <div class="cal-grid-wrapper" id="calMonthView">
                         <div class="cal-grid cal-dow-row">
                             <div class="cal-dow">SUN</div>
                             <div class="cal-dow">MON</div>
@@ -11573,6 +11771,15 @@
                             <div class="cal-dow">SAT</div>
                         </div>
                         <div class="cal-grid cal-days" id="calDays"></div>
+                    </div>
+
+                    <!-- Week Grid -->
+                    <div class="cal-week-wrapper" id="calWeekView" style="display:none;">
+                        <div class="cal-week-dow-row" id="calWeekDowRow"></div>
+                        <div class="cal-week-allday-row" id="calWeekAlldayRow"></div>
+                        <div class="cal-week-scroll">
+                            <div class="cal-week-grid" id="calWeekGrid"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -11606,6 +11813,19 @@
                         <div class="cal-form-group">
                             <label class="cal-form-label">Description (optional)</label>
                             <textarea id="calEvDesc" class="cal-form-textarea" placeholder="Add a description..."></textarea>
+                        </div>
+                        <div class="cal-form-group">
+                            <label class="cal-form-label">Repeat</label>
+                            <select id="calEvRepeat" class="cal-form-input" onchange="calToggleRepeatEnd()">
+                                <option value="">Does not repeat</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        <div class="cal-form-group" id="calRepeatEndGroup" style="display:none;">
+                            <label class="cal-form-label">Repeat until (optional)</label>
+                            <input type="date" id="calEvRepeatEnd" class="cal-form-input">
                         </div>
                         <div class="cal-form-group">
                             <label class="cal-form-label">Color</label>

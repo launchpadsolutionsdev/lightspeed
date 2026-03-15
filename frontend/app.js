@@ -6936,38 +6936,56 @@ function switchPage(pageId) {
 const CAL_MIN_DATE = new Date(2020, 0, 1);
 const CAL_MAX_DATE = new Date(2030, 2, 31); // March 2030
 const CAL_MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CAL_DAY_NAMES = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 const CAL_MAX_VISIBLE_EVENTS = 3; // show "+N more" after this many
 
 let calYear, calMonth; // 0-indexed month
+let calWeekStart = null; // Date object for week view start (Sunday)
 let calEvents = [];
+let calFilteredEvents = []; // after color filter applied
 let calEditId = null;
 let calSelectedColor = 'blue';
 let calSelectedVis = 'personal';
 let calCurrentView = 'all'; // personal | team | all
+let calMode = 'month'; // month | week
+let calSearchTerm = '';
+let calSearchTimer = null;
+let calColorFilters = { tomato: true, blue: true, green: true, cyan: true, purple: true, gray: true, orange: true, pink: true };
 
 function calInit() {
     const now = new Date();
     calYear = now.getFullYear();
     calMonth = now.getMonth();
-    calLoadMonth();
+    // Set week start to the Sunday of the current week
+    calWeekStart = new Date(now);
+    calWeekStart.setDate(calWeekStart.getDate() - calWeekStart.getDay());
+    calWeekStart.setHours(0, 0, 0, 0);
+    calLoadEvents();
 }
 
-async function calLoadMonth() {
+async function calLoadEvents() {
     const label = document.getElementById('calMonthLabel');
-    const grid = document.getElementById('calDays');
-    if (!label || !grid) return;
+    if (!label) return;
 
-    label.textContent = `${CAL_MONTH_NAMES[calMonth]} ${calYear}`;
+    if (calMode === 'month') {
+        label.textContent = `${CAL_MONTH_NAMES[calMonth]} ${calYear}`;
+    } else {
+        const wEnd = new Date(calWeekStart);
+        wEnd.setDate(wEnd.getDate() + 6);
+        const startMonth = CAL_MONTH_NAMES[calWeekStart.getMonth()].substring(0, 3);
+        const endMonth = CAL_MONTH_NAMES[wEnd.getMonth()].substring(0, 3);
+        if (calWeekStart.getMonth() === wEnd.getMonth()) {
+            label.textContent = `${startMonth} ${calWeekStart.getDate()} – ${wEnd.getDate()}, ${calWeekStart.getFullYear()}`;
+        } else {
+            label.textContent = `${startMonth} ${calWeekStart.getDate()} – ${endMonth} ${wEnd.getDate()}, ${wEnd.getFullYear()}`;
+        }
+    }
 
-    // Disable nav at bounds
-    const prevBtn = document.getElementById('calPrevBtn');
-    const nextBtn = document.getElementById('calNextBtn');
-    if (prevBtn) prevBtn.disabled = (calYear === CAL_MIN_DATE.getFullYear() && calMonth === CAL_MIN_DATE.getMonth());
-    if (nextBtn) nextBtn.disabled = (calYear === CAL_MAX_DATE.getFullYear() && calMonth === CAL_MAX_DATE.getMonth());
+    let searchParam = calSearchTerm ? `&search=${encodeURIComponent(calSearchTerm)}` : '';
 
     try {
         const resp = await fetch(
-            `${API_BASE_URL}/api/content-calendar?year=${calYear}&month=${calMonth + 1}&view=${calCurrentView}`,
+            `${API_BASE_URL}/api/content-calendar?year=${calYear}&month=${calMonth + 1}&view=${calCurrentView}${searchParam}`,
             { headers: getAuthHeaders() }
         );
         if (!resp.ok) {
@@ -6980,7 +6998,24 @@ async function calLoadMonth() {
         showToast('Failed to load calendar events: ' + e.message, 'error');
     }
 
-    calRenderGrid();
+    calApplyColorFilter();
+    calRender();
+}
+
+function calApplyColorFilter() {
+    calFilteredEvents = calEvents.filter(ev => calColorFilters[ev.color || 'blue'] !== false);
+}
+
+function calRender() {
+    if (calMode === 'month') {
+        document.getElementById('calMonthView').style.display = '';
+        document.getElementById('calWeekView').style.display = 'none';
+        calRenderGrid();
+    } else {
+        document.getElementById('calMonthView').style.display = 'none';
+        document.getElementById('calWeekView').style.display = '';
+        calRenderWeek();
+    }
 }
 
 function calRenderGrid() {
@@ -6996,7 +7031,7 @@ function calRenderGrid() {
 
     // Build event lookup by date
     const eventsByDate = {};
-    calEvents.forEach(ev => {
+    calFilteredEvents.forEach(ev => {
         const d = ev.event_date.substring(0, 10);
         if (!eventsByDate[d]) eventsByDate[d] = [];
         eventsByDate[d].push(ev);
@@ -7041,13 +7076,131 @@ function calRenderGrid() {
         const dayEvents = eventsByDate[dateStr] || [];
         const eventsHtml = calRenderDayEvents(dayEvents, dateStr);
 
-        html += `<div class="${classes.join(' ')}" onclick="calShowModal('${dateStr}')">
+        html += `<div class="${classes.join(' ')}" data-date="${dateStr}" onclick="calShowModal('${dateStr}')"
+                      ondragover="calDragOver(event)" ondragleave="calDragLeave(event)" ondrop="calDrop(event, '${dateStr}')">
             <div class="cal-day-num-row"><span class="cal-day-number">${dayLabel}</span></div>
             <div class="cal-day-events">${eventsHtml}</div>
         </div>`;
     }
 
     grid.innerHTML = html;
+}
+
+// --- Week View ---
+function calRenderWeek() {
+    const dowRow = document.getElementById('calWeekDowRow');
+    const alldayRow = document.getElementById('calWeekAlldayRow');
+    const weekGrid = document.getElementById('calWeekGrid');
+    if (!dowRow || !alldayRow || !weekGrid) return;
+
+    const today = new Date();
+    const todayStr = calDateStr(today.getFullYear(), today.getMonth() + 1, today.getDate());
+
+    // Build 7 days
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(calWeekStart);
+        d.setDate(d.getDate() + i);
+        days.push({
+            date: d,
+            dateStr: calDateStr(d.getFullYear(), d.getMonth() + 1, d.getDate()),
+            dayName: CAL_DAY_NAMES[d.getDay()],
+            dayNum: d.getDate(),
+            monthName: CAL_MONTH_NAMES[d.getMonth()].substring(0, 3),
+            isToday: calDateStr(d.getFullYear(), d.getMonth() + 1, d.getDate()) === todayStr
+        });
+    }
+
+    // Day-of-week header
+    let dowHtml = '<div class="cal-week-dow-spacer"></div>';
+    days.forEach(day => {
+        const cls = day.isToday ? 'cal-week-dow cal-week-dow-today' : 'cal-week-dow';
+        dowHtml += `<div class="${cls}">${day.dayName}<br>${day.monthName} ${day.dayNum}</div>`;
+    });
+    dowRow.innerHTML = dowHtml;
+
+    // Build event lookup
+    const eventsByDate = {};
+    calFilteredEvents.forEach(ev => {
+        const d = ev.event_date.substring(0, 10);
+        if (!eventsByDate[d]) eventsByDate[d] = [];
+        eventsByDate[d].push(ev);
+    });
+
+    // All-day row
+    let alldayHtml = '<div class="cal-week-allday-label">all-day</div>';
+    days.forEach(day => {
+        const dayEvts = (eventsByDate[day.dateStr] || []).filter(ev => ev.all_day);
+        let cellHtml = dayEvts.map(ev => {
+            const color = ev.color || 'blue';
+            const title = escapeHtml(ev.title);
+            const recurIcon = ev.recurrence_rule ? '<span class="cal-recur-icon">&#8635;</span>' : '';
+            const draggable = ev.is_recurring_instance ? '' : 'draggable="true"';
+            return `<div class="cal-ev-bar cal-bg-${color}" ${draggable}
+                ondragstart="calDragStart(event, '${ev.id}', '${day.dateStr}')"
+                ondragend="calDragEnd(event)"
+                onclick="calEditEvent('${ev.id}');event.stopPropagation();" title="${title}">${title}${recurIcon}</div>`;
+        }).join('');
+        alldayHtml += `<div class="cal-week-allday-cell" data-date="${day.dateStr}"
+            ondragover="calDragOver(event)" ondragleave="calDragLeave(event)" ondrop="calDrop(event, '${day.dateStr}')">${cellHtml}</div>`;
+    });
+    alldayRow.innerHTML = alldayHtml;
+
+    // Hour grid: 24 rows x 7 columns
+    let gridHtml = '';
+    for (let h = 0; h < 24; h++) {
+        const label = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+        gridHtml += `<div class="cal-week-time-label"><span>${label}</span></div>`;
+        days.forEach(day => {
+            const timeVal = `${String(h).padStart(2, '0')}:00`;
+            gridHtml += `<div class="cal-week-cell" data-date="${day.dateStr}" data-hour="${h}"
+                onclick="calShowModal('${day.dateStr}', null, '${timeVal}')"
+                ondragover="calDragOver(event)" ondragleave="calDragLeave(event)" ondrop="calDrop(event, '${day.dateStr}')"></div>`;
+        });
+    }
+    weekGrid.innerHTML = gridHtml;
+
+    // Place timed events
+    days.forEach(day => {
+        const dayEvts = (eventsByDate[day.dateStr] || []).filter(ev => !ev.all_day && ev.event_time);
+        dayEvts.forEach(ev => {
+            const [sh, sm] = (ev.event_time || '00:00').split(':').map(Number);
+            const startMin = sh * 60 + sm;
+            let endMin = startMin + 60; // default 1hr
+            if (ev.end_time) {
+                const [eh, em] = ev.end_time.split(':').map(Number);
+                endMin = eh * 60 + em;
+                if (endMin <= startMin) endMin = startMin + 60;
+            }
+            const topPx = (startMin / 60) * 48;
+            const heightPx = Math.max(((endMin - startMin) / 60) * 48, 20);
+            const color = ev.color || 'blue';
+            const title = escapeHtml(ev.title);
+            const timeStr = calFormatTime(ev.event_time);
+            const recurIcon = ev.recurrence_rule ? ' &#8635;' : '';
+            const draggable = ev.is_recurring_instance ? '' : 'draggable="true"';
+
+            // Find the matching column cell to get the column
+            const colIndex = days.indexOf(day);
+            // The grid has 8 columns (time label + 7 days), event goes in column colIndex+2 (1-indexed grid)
+            const evDiv = document.createElement('div');
+            evDiv.className = `cal-week-event cal-bg-${color}`;
+            evDiv.style.top = topPx + 'px';
+            evDiv.style.height = heightPx + 'px';
+            evDiv.style.gridColumn = String(colIndex + 2);
+            evDiv.style.gridRow = '1 / -1';
+            evDiv.innerHTML = `${timeStr} ${title}${recurIcon}`;
+            evDiv.title = title;
+            evDiv.onclick = function(e) { calEditEvent(ev.id); e.stopPropagation(); };
+            if (!ev.is_recurring_instance) {
+                evDiv.draggable = true;
+                evDiv.ondragstart = function(e) { calDragStart(e, ev.id, day.dateStr); };
+                evDiv.ondragend = function(e) { calDragEnd(e); };
+            }
+
+            weekGrid.appendChild(evDiv);
+        });
+    });
 }
 
 function calRenderDayEvents(events, dateStr) {
@@ -7063,7 +7216,7 @@ function calRenderDayEvents(events, dateStr) {
     const visible = sorted.slice(0, CAL_MAX_VISIBLE_EVENTS);
     const overflow = sorted.length - CAL_MAX_VISIBLE_EVENTS;
 
-    let html = visible.map(ev => calRenderEvent(ev)).join('');
+    let html = visible.map(ev => calRenderEvent(ev, dateStr)).join('');
 
     if (overflow > 0) {
         html += `<div class="cal-more-link" onclick="calShowMore(event, '${dateStr}')">${overflow} more</div>`;
@@ -7072,19 +7225,22 @@ function calRenderDayEvents(events, dateStr) {
     return html;
 }
 
-function calRenderEvent(ev) {
+function calRenderEvent(ev, dateStr) {
     const color = ev.color || 'blue';
     const title = escapeHtml(ev.title);
     const teamSuffix = (calCurrentView === 'all' || calCurrentView === 'team') && ev.visibility === 'team' && ev.created_by_name
         ? `<span class="cal-ev-team-name">- ${escapeHtml(ev.created_by_name)}</span>` : '';
+    const recurIcon = ev.recurrence_rule ? '<span class="cal-recur-icon">&#8635;</span>' : '';
+    const isDraggable = !ev.is_recurring_instance;
+    const dragAttr = isDraggable ? `draggable="true" ondragstart="calDragStart(event, '${ev.id}', '${dateStr || ev.event_date.substring(0,10)}')" ondragend="calDragEnd(event)"` : '';
 
     if (ev.all_day) {
-        return `<div class="cal-ev-bar cal-bg-${color}" onclick="calEditEvent('${ev.id}');event.stopPropagation();" title="${title}">${title}${teamSuffix}</div>`;
+        return `<div class="cal-ev-bar cal-bg-${color}" ${dragAttr} onclick="calEditEvent('${ev.id}');event.stopPropagation();" title="${title}">${title}${recurIcon}${teamSuffix}</div>`;
     } else {
         const timeStr = calFormatTime(ev.event_time);
-        return `<div class="cal-ev-timed" onclick="calEditEvent('${ev.id}');event.stopPropagation();">
+        return `<div class="cal-ev-timed" ${dragAttr} onclick="calEditEvent('${ev.id}');event.stopPropagation();">
             <span class="cal-ev-dot cal-dot-${color}"></span>
-            <span class="cal-ev-timed-text">${timeStr} ${title}${teamSuffix}</span>
+            <span class="cal-ev-timed-text">${timeStr} ${title}${recurIcon}${teamSuffix}</span>
         </div>`;
     }
 }
@@ -7102,6 +7258,19 @@ function calFormatTime(timeStr) {
     return `${h12}:${String(m).padStart(2, '0')}${ampm}`;
 }
 
+// --- Navigation ---
+function calNavigatePeriod(delta) {
+    if (calMode === 'month') {
+        calNavigateMonth(delta);
+    } else {
+        calWeekStart.setDate(calWeekStart.getDate() + delta * 7);
+        // Sync calYear/calMonth for data loading
+        calYear = calWeekStart.getFullYear();
+        calMonth = calWeekStart.getMonth();
+        calLoadEvents();
+    }
+}
+
 function calNavigateMonth(delta) {
     calMonth += delta;
     if (calMonth > 11) { calMonth = 0; calYear++; }
@@ -7114,14 +7283,17 @@ function calNavigateMonth(delta) {
         calYear = CAL_MAX_DATE.getFullYear(); calMonth = CAL_MAX_DATE.getMonth();
     }
 
-    calLoadMonth();
+    calLoadEvents();
 }
 
 function calGoToToday() {
     const now = new Date();
     calYear = now.getFullYear();
     calMonth = now.getMonth();
-    calLoadMonth();
+    calWeekStart = new Date(now);
+    calWeekStart.setDate(calWeekStart.getDate() - calWeekStart.getDay());
+    calWeekStart.setHours(0, 0, 0, 0);
+    calLoadEvents();
 }
 
 function calSwitchView(view) {
@@ -7129,12 +7301,107 @@ function calSwitchView(view) {
     document.querySelectorAll('.cal-view-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.calView === view);
     });
-    calLoadMonth();
+    calLoadEvents();
+}
+
+function calSwitchMode(mode) {
+    calMode = mode;
+    document.querySelectorAll('.cal-mode-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.calMode === mode);
+    });
+    if (mode === 'week' && !calWeekStart) {
+        const now = new Date();
+        calWeekStart = new Date(now);
+        calWeekStart.setDate(calWeekStart.getDate() - calWeekStart.getDay());
+        calWeekStart.setHours(0, 0, 0, 0);
+    }
+    calLoadEvents();
+}
+
+// --- Search ---
+function calOnSearchInput() {
+    clearTimeout(calSearchTimer);
+    calSearchTimer = setTimeout(() => {
+        calSearchTerm = document.getElementById('calSearchInput').value.trim();
+        calLoadEvents();
+    }, 300);
+}
+
+// --- Color Filter ---
+function calToggleColorFilter(color) {
+    calColorFilters[color] = !calColorFilters[color];
+    const btn = document.querySelector(`.cal-color-filter[data-filter-color="${color}"]`);
+    if (btn) {
+        btn.classList.toggle('active', calColorFilters[color]);
+        btn.classList.toggle('inactive', !calColorFilters[color]);
+    }
+    calApplyColorFilter();
+    calRender();
+}
+
+// --- Drag and Drop ---
+let calDragEventId = null;
+
+function calDragStart(e, eventId, sourceDate) {
+    calDragEventId = eventId;
+    e.dataTransfer.setData('text/plain', eventId);
+    e.dataTransfer.effectAllowed = 'move';
+    // Check if this is a recurring instance — don't allow drag
+    const ev = calEvents.find(ev => ev.id === eventId);
+    if (ev && ev.is_recurring_instance) {
+        e.preventDefault();
+        return;
+    }
+    setTimeout(() => {
+        if (e.target) e.target.classList.add('cal-dragging');
+    }, 0);
+}
+
+function calDragEnd(e) {
+    calDragEventId = null;
+    if (e.target) e.target.classList.remove('cal-dragging');
+    document.querySelectorAll('.cal-drag-over').forEach(el => el.classList.remove('cal-drag-over'));
+}
+
+function calDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const cell = e.currentTarget;
+    if (!cell.classList.contains('cal-drag-over')) {
+        cell.classList.add('cal-drag-over');
+    }
+}
+
+function calDragLeave(e) {
+    e.currentTarget.classList.remove('cal-drag-over');
+}
+
+async function calDrop(e, targetDate) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('cal-drag-over');
+    const eventId = e.dataTransfer.getData('text/plain');
+    if (!eventId || !targetDate) return;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar/${eventId}/move`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ event_date: targetDate })
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to move event');
+        }
+        showToast('Event moved!', 'success');
+        calLoadEvents();
+    } catch (e) {
+        showToast(e.message || 'Failed to move event', 'error');
+    }
 }
 
 // --- Modal ---
 
-function calShowModal(dateStr, eventData) {
+function calShowModal(dateStr, eventData, prefillTime) {
     calEditId = eventData ? eventData.id : null;
     document.getElementById('calModalTitle').textContent = eventData ? 'Edit Event' : 'Add Event';
     document.getElementById('calEvTitle').value = eventData ? eventData.title : '';
@@ -7144,10 +7411,21 @@ function calShowModal(dateStr, eventData) {
     document.getElementById('calEvAllDay').checked = isAllDay;
     calToggleAllDay();
 
-    document.getElementById('calEvStartTime').value = eventData && eventData.event_time ? eventData.event_time.substring(0, 5) : '';
+    document.getElementById('calEvStartTime').value = eventData && eventData.event_time ? eventData.event_time.substring(0, 5) : (prefillTime || '');
     document.getElementById('calEvEndTime').value = eventData && eventData.end_time ? eventData.end_time.substring(0, 5) : '';
     document.getElementById('calEvDesc').value = eventData && eventData.description ? eventData.description : '';
     document.getElementById('calDeleteBtn').style.display = eventData ? '' : 'none';
+
+    // Recurrence
+    const repeatEl = document.getElementById('calEvRepeat');
+    if (repeatEl) {
+        repeatEl.value = eventData && eventData.recurrence_rule ? eventData.recurrence_rule : '';
+        calToggleRepeatEnd();
+    }
+    const repeatEndEl = document.getElementById('calEvRepeatEnd');
+    if (repeatEndEl) {
+        repeatEndEl.value = eventData && eventData.recurrence_end_date ? eventData.recurrence_end_date.substring(0, 10) : '';
+    }
 
     calPickColor(eventData ? (eventData.color || 'blue') : 'blue');
     calPickVis(eventData ? (eventData.visibility || 'personal') : 'personal');
@@ -7164,6 +7442,12 @@ function calHideModal() {
 function calToggleAllDay() {
     const checked = document.getElementById('calEvAllDay').checked;
     document.getElementById('calTimeFields').classList.toggle('hidden', checked);
+}
+
+function calToggleRepeatEnd() {
+    const val = document.getElementById('calEvRepeat').value;
+    const group = document.getElementById('calRepeatEndGroup');
+    if (group) group.style.display = val ? '' : 'none';
 }
 
 function calPickColor(color) {
@@ -7196,6 +7480,8 @@ async function calSaveEvent() {
     const description = document.getElementById('calEvDesc').value.trim() || null;
     const color = calSelectedColor;
     const visibility = calSelectedVis;
+    const recurrence_rule = document.getElementById('calEvRepeat').value || null;
+    const recurrence_end_date = recurrence_rule ? (document.getElementById('calEvRepeatEnd').value || null) : null;
 
     if (!title || !event_date) {
         showToast('Please enter a title and date', 'error');
@@ -7211,7 +7497,7 @@ async function calSaveEvent() {
         const resp = await fetch(url, {
             method,
             headers: getAuthHeaders(),
-            body: JSON.stringify({ title, description, event_date, event_time, end_time, all_day, color, visibility })
+            body: JSON.stringify({ title, description, event_date, event_time, end_time, all_day, color, visibility, recurrence_rule, recurrence_end_date })
         });
 
         if (!resp.ok) {
@@ -7221,7 +7507,7 @@ async function calSaveEvent() {
 
         calHideModal();
         showToast(calEditId ? 'Event updated!' : 'Event added!', 'success');
-        calLoadMonth();
+        calLoadEvents();
     } catch (e) {
         showToast(e.message || 'Failed to save event', 'error');
     }
@@ -7241,7 +7527,7 @@ async function calDeleteEvent() {
         }
         calHideModal();
         showToast('Event deleted', 'success');
-        calLoadMonth();
+        calLoadEvents();
     } catch (e) {
         showToast(e.message || 'Failed to delete event', 'error');
     }
@@ -7251,14 +7537,14 @@ async function calDeleteEvent() {
 
 function calShowMore(e, dateStr) {
     e.stopPropagation();
-    const dayEvents = calEvents.filter(ev => ev.event_date.substring(0, 10) === dateStr);
+    const dayEvents = calFilteredEvents.filter(ev => ev.event_date.substring(0, 10) === dateStr);
     const popover = document.getElementById('calMorePopover');
     const list = document.getElementById('calMoreList');
     const title = document.getElementById('calMoreTitle');
 
     const d = new Date(dateStr + 'T12:00:00');
     title.textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    list.innerHTML = dayEvents.map(ev => calRenderEvent(ev)).join('');
+    list.innerHTML = dayEvents.map(ev => calRenderEvent(ev, dateStr)).join('');
 
     // Position near click
     const rect = e.target.getBoundingClientRect();
