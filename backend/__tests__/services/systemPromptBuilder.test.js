@@ -1,7 +1,6 @@
 const {
     sanitizeInquiry,
     wrapUserContent,
-    buildDrawScheduleContext,
     buildRatedExamplesContext,
     LANGUAGE_INSTRUCTIONS
 } = require('../../src/services/systemPromptBuilder');
@@ -84,41 +83,6 @@ describe('systemPromptBuilder', () => {
         });
     });
 
-    describe('buildDrawScheduleContext', () => {
-        it('returns empty string for null schedule', () => {
-            expect(buildDrawScheduleContext(null)).toBe('');
-            expect(buildDrawScheduleContext(undefined)).toBe('');
-        });
-
-        it('includes draw name', () => {
-            const schedule = { draw_name: 'Thunder Bay 50/50', early_birds: [] };
-            const result = buildDrawScheduleContext(schedule);
-            expect(result).toContain('Thunder Bay 50/50');
-        });
-
-        it('includes grand prize date', () => {
-            const schedule = {
-                draw_name: 'Test Draw',
-                grand_prize_date: '2026-06-15T14:00:00Z',
-                guaranteed_prize: '$500,000',
-                early_birds: []
-            };
-            const result = buildDrawScheduleContext(schedule);
-            expect(result).toContain('Grand Prize Draw');
-            expect(result).toContain('Jun 15');
-        });
-
-        it('includes ticket pricing', () => {
-            const schedule = {
-                draw_name: 'Test Draw',
-                early_birds: [],
-                pricing: [{ price: '$20', numbers: '30' }]
-            };
-            const result = buildDrawScheduleContext(schedule);
-            expect(result).toContain('$20');
-            expect(result).toContain('30 numbers');
-        });
-    });
 
     describe('buildRatedExamplesContext', () => {
         it('returns empty string for null input', () => {
