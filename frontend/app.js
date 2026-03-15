@@ -3209,7 +3209,7 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
         const response = await fetch(`${API_BASE_URL}/api/ask-lightspeed/agent`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
             },
             body: formData,
             signal: alsStreamController ? alsStreamController.signal : undefined
