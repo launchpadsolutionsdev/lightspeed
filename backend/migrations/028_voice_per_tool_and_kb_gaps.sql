@@ -10,7 +10,12 @@ ALTER TABLE voice_profiles ADD COLUMN IF NOT EXISTS tool VARCHAR(50) DEFAULT 'ge
 
 -- Drop the old unique constraint and add a new one including tool
 ALTER TABLE voice_profiles DROP CONSTRAINT IF EXISTS voice_profiles_organization_id_key;
-ALTER TABLE voice_profiles ADD CONSTRAINT voice_profiles_org_tool_unique UNIQUE (organization_id, tool);
+DO $$
+BEGIN
+    ALTER TABLE voice_profiles ADD CONSTRAINT voice_profiles_org_tool_unique UNIQUE (organization_id, tool);
+EXCEPTION WHEN duplicate_table THEN
+    NULL; -- constraint already exists
+END $$;
 
 -- 2. KB gap tracking
 CREATE TABLE IF NOT EXISTS kb_gaps (
