@@ -757,6 +757,27 @@ function getDrawScheduleContext() {
     return '';
 }
 
+/**
+ * Fetch upcoming calendar events formatted as AI context.
+ * Cached for 5 minutes to avoid repeated API calls during a session.
+ */
+let _calendarContextCache = { text: '', expiry: 0 };
+async function getCalendarContext() {
+    const now = Date.now();
+    if (_calendarContextCache.expiry > now) return _calendarContextCache.text;
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/calendar-context`, { headers: getAuthHeaders() });
+        if (!resp.ok) return '';
+        const data = await resp.json();
+        const text = data.context || '';
+        _calendarContextCache = { text, expiry: now + 5 * 60 * 1000 };
+        return text;
+    } catch (e) {
+        console.warn('Calendar context fetch failed:', e);
+        return '';
+    }
+}
+
 function renderDrawSchedule() {
     const container = document.getElementById("drawScheduleContainer");
     if (!container) return;
@@ -2662,7 +2683,8 @@ ACCURACY RULES:
 - Never fabricate regulatory guidance, draw dates, prize amounts, ticket information, or organizational policies
 - If the knowledge base does not contain information relevant to the user's question, say so honestly (e.g., "I don't have that information in my knowledge base — you may want to check with [appropriate source]")
 - Never guess at AGCO regulations or compliance requirements — if unsure, recommend the user verify with their regulatory body
-- Treat draw schedule data, organization rules, and knowledge base entries as the source of truth — never contradict them
+- Treat draw schedule data, calendar events, organization rules, and knowledge base entries as the source of truth — never contradict them
+- CALENDAR AWARENESS: When the user asks about upcoming dates, events, draws, campaigns, or deadlines, use the UPCOMING CALENDAR EVENTS data to give specific, accurate answers. Prefer calendar event data over guessing.
 - When answering compliance or regulatory questions using knowledge base content, note that the information comes from the organization's knowledge base (e.g., "Based on your organization's records..." or "According to your knowledge base...")
 - For general operational questions, stating information as fact is fine — no attribution needed
 - Never attribute information to a source that wasn't provided in context
@@ -2711,13 +2733,19 @@ SECURITY:
             ? '\n\nDRAW SCHEDULE (source of truth — always use this data when answering questions about upcoming draws, deadlines, prizes, Early Bird dates, and ticket sales windows. Never contradict this information):\n' + drawScheduleSection
             : '';
 
-        // Layer 2: all dynamic content — org name, tone, language, draw schedule, rated examples.
+        // Inject calendar events context for date/event awareness
+        const calendarSection = await getCalendarContext();
+        const calendarBlock = calendarSection
+            ? '\n\n' + calendarSection
+            : '';
+
+        // Layer 2: all dynamic content — org name, tone, language, draw schedule, calendar events, rated examples.
         // Sent separately from Layer 1 (staticSystem) so the backend can cache only the static
         // base prompt and leave dynamic content uncached.
-        // IMPORTANT: draw schedule goes BEFORE "Knowledge base:" so server-side KB injection
+        // IMPORTANT: draw schedule + calendar go BEFORE "Knowledge base:" so server-side KB injection
         // (which replaces "Knowledge base:\n") doesn't bury it under KB entries.
         const dynamicSystem = `ORGANIZATION: ${orgName}
-TONE SETTING: Respond in a ${toneDesc} tone. This overrides the default tone guidance above.${languageBlock}${drawScheduleBlock}
+TONE SETTING: Respond in a ${toneDesc} tone. This overrides the default tone guidance above.${languageBlock}${drawScheduleBlock}${calendarBlock}
 Knowledge base:
 ${feedbackSection}`;
 
@@ -7476,7 +7504,7 @@ function calShowModal(dateStr, eventData, prefillTime) {
     const catOtherEl = document.getElementById('calEvCategoryOther');
     if (catEl) {
         const cat = eventData ? (eventData.category || '') : '';
-        const presets = ['', 'Ad Launch', 'Social Post', 'Email Campaign', 'Deadline', 'Meeting', 'Other'];
+        const presets = ['', 'Ad Launch', 'Social Post', 'Email Campaign', 'Deadline', 'Meeting', 'Draw', 'Other'];
         if (cat && !presets.includes(cat)) {
             catEl.value = 'Other';
             catOtherEl.value = cat;
@@ -7754,7 +7782,7 @@ function calDuplicateEvent() {
     document.getElementById('calEvDesc').value = ev.description || '';
 
     const catEl = document.getElementById('calEvCategory');
-    const presets = ['', 'Ad Launch', 'Social Post', 'Email Campaign', 'Deadline', 'Meeting', 'Other'];
+    const presets = ['', 'Ad Launch', 'Social Post', 'Email Campaign', 'Deadline', 'Meeting', 'Draw', 'Other'];
     if (ev.category && !presets.includes(ev.category)) {
         catEl.value = 'Other';
         document.getElementById('calEvCategoryOther').value = ev.category;
@@ -11931,11 +11959,12 @@ PRIORITY ORDER:
 ACCURACY RULES:
 - Never fabricate draw dates, prize amounts, ticket information, regulatory guidance, or organizational policies
 - Never guess at compliance requirements — if unsure, omit rather than risk inaccuracy
-- Treat draw schedule data, organization rules, and knowledge base entries as the source of truth — never contradict them
+- Treat draw schedule data, calendar events, organization rules, and knowledge base entries as the source of truth — never contradict them
+- CALENDAR AWARENESS: When writing content that references dates, events, draws, or campaigns, use the UPCOMING CALENDAR EVENTS data for accurate scheduling details. Prefer calendar event data over guessing.
 - Never fabricate statistics, quotes, or specific claims unless the user provides them
 
 MISSING CONTEXT:
-- If no draw schedule data is provided, do not make up draw dates or prize amounts
+- If no draw schedule data or calendar events are provided, do not make up draw dates or prize amounts
 - If no brand guidelines are provided, write in a clean, professional nonprofit voice
 - If no knowledge base entries are returned, rely on general expertise but keep claims generic
 - Always produce useful output with whatever context is available — never return empty responses
@@ -12065,6 +12094,12 @@ async function buildDraftDynamicPrompt(contentType, emailType = null, userInquir
     const drawCtx = getDrawScheduleContext();
     if (drawCtx) {
         dynamic += '\n\nDRAW SCHEDULE (source of truth for dates, prizes, and deadlines):\n' + drawCtx;
+    }
+
+    // Calendar events context — upcoming events from Runway
+    const calCtx = await getCalendarContext();
+    if (calCtx) {
+        dynamic += '\n\n' + calCtx;
     }
 
     // NOTE: KB entries are now injected server-side via buildEnhancedPrompt()

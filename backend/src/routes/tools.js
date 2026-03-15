@@ -11,7 +11,7 @@ const { authenticate, checkUsageLimit, checkAIRateLimit } = require('../middlewa
 const claudeService = require('../services/claude');
 const shopifyService = require('../services/shopify');
 const { buildEnhancedPrompt } = require('../services/promptBuilder');
-const { buildResponseAssistantPrompt } = require('../services/systemPromptBuilder');
+const { buildResponseAssistantPrompt, buildCalendarContext } = require('../services/systemPromptBuilder');
 const { validateOutput, validateFormatCompliance } = require('../services/outputValidator');
 
 /**
@@ -608,6 +608,21 @@ router.get('/shopify-analytics', authenticate, async (req, res) => {
     } catch (error) {
         console.error('Shopify analytics fetch error:', error);
         res.status(500).json({ error: 'Failed to fetch Shopify analytics' });
+    }
+});
+
+/**
+ * GET /api/calendar-context
+ * Returns formatted upcoming calendar events as a text block for AI prompt injection.
+ * Used by frontend tools (Ask Lightspeed, Draft Assistant) that build prompts client-side.
+ */
+router.get('/calendar-context', authenticate, async (req, res) => {
+    try {
+        const context = await buildCalendarContext(req.user.organization_id);
+        res.json({ context });
+    } catch (error) {
+        console.error('Calendar context error:', error);
+        res.json({ context: '' });
     }
 });
 

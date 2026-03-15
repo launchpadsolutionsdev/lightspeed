@@ -157,6 +157,119 @@ function buildDrawScheduleContext(schedule) {
     return context;
 }
 
+// ─── Calendar events context builder ─────────────────────────────────
+
+/**
+ * Fetch upcoming calendar events (next 30 days) for an organization
+ * and format them as a concise context block for AI tools.
+ */
+async function buildCalendarContext(organizationId) {
+    try {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const future = new Date(today);
+        future.setDate(future.getDate() + 30);
+        const futureStr = future.toISOString().split('T')[0];
+
+        const result = await pool.query(
+            `SELECT id, title, description, event_date, event_time, end_time,
+                    all_day, category, recurrence_rule, recurrence_end_date
+             FROM calendar_events
+             WHERE organization_id = $1
+               AND event_date <= $3
+               AND (recurrence_rule IS NOT NULL OR event_date >= $2)
+             ORDER BY event_date ASC, event_time ASC NULLS FIRST`,
+            [organizationId, todayStr, futureStr]
+        );
+
+        if (result.rows.length === 0) return '';
+
+        // Expand recurring events
+        const allEvents = [];
+        for (const event of result.rows) {
+            if (event.recurrence_rule) {
+                const instances = expandRecurringForRange(event, todayStr, futureStr);
+                allEvents.push(...instances);
+            } else {
+                allEvents.push(event);
+            }
+        }
+
+        // Sort by date and time, cap at 20
+        allEvents.sort((a, b) => {
+            const dateComp = a.event_date.localeCompare(b.event_date);
+            if (dateComp !== 0) return dateComp;
+            return (a.event_time || '').localeCompare(b.event_time || '');
+        });
+        const capped = allEvents.slice(0, 20);
+
+        if (capped.length === 0) return '';
+
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        let context = 'UPCOMING CALENDAR EVENTS (next 30 days):\n';
+        for (const ev of capped) {
+            const d = new Date(ev.event_date + 'T00:00:00');
+            const dayName = dayNames[d.getDay()];
+            const monthName = monthNames[d.getMonth()];
+            const dayNum = d.getDate();
+
+            let line = `- ${dayName} ${monthName} ${dayNum}: ${ev.title}`;
+            if (ev.category) line += ` [${ev.category}]`;
+            if (ev.event_time) {
+                const [h, m] = ev.event_time.split(':');
+                const hour = parseInt(h);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                line += ` at ${h12}:${m} ${ampm}`;
+            }
+            context += line + '\n';
+        }
+
+        return context;
+    } catch (err) {
+        console.warn('Calendar context fetch failed:', err.message);
+        return '';
+    }
+}
+
+/**
+ * Simple recurring event expander for calendar context.
+ * Mirrors expandRecurringEvent() from contentCalendar.js but standalone.
+ */
+function expandRecurringForRange(event, rangeStart, rangeEnd) {
+    if (!event.recurrence_rule) return [event];
+
+    const instances = [];
+    const start = new Date(event.event_date + 'T00:00:00');
+    const end = event.recurrence_end_date
+        ? new Date(event.recurrence_end_date + 'T00:00:00')
+        : new Date(rangeEnd + 'T00:00:00');
+    const rangeStartDate = new Date(rangeStart + 'T00:00:00');
+    const rangeEndDate = new Date(rangeEnd + 'T00:00:00');
+
+    let current = new Date(start);
+    let safety = 0;
+
+    while (current <= end && current <= rangeEndDate && safety < 400) {
+        safety++;
+        if (current >= rangeStartDate) {
+            instances.push({
+                ...event,
+                event_date: current.toISOString().split('T')[0]
+            });
+        }
+        const next = new Date(current);
+        if (event.recurrence_rule === 'daily') next.setDate(next.getDate() + 1);
+        else if (event.recurrence_rule === 'weekly') next.setDate(next.getDate() + 7);
+        else if (event.recurrence_rule === 'monthly') next.setMonth(next.getMonth() + 1);
+        current = next;
+    }
+
+    return instances;
+}
+
 // ─── Rated examples context builder ──────────────────────────────────
 
 function buildRatedExamplesContext(ratedExamples) {
@@ -461,6 +574,14 @@ async function buildResponseAssistantPrompt(params) {
         console.warn('Draw schedule fetch failed:', err.message);
     }
 
+    // Fetch calendar events context
+    let calendarContext = '';
+    try {
+        calendarContext = await buildCalendarContext(organizationId);
+    } catch (err) {
+        console.warn('Calendar context fetch failed:', err.message);
+    }
+
     // Fetch rated examples + dedicated corrections (in parallel)
     let ratedExamplesContext = '';
     let correctionsContext = '';
@@ -535,12 +656,14 @@ ${languageInstruction}${formatInstructions}
 ${orgInfoSection}
 
 ${drawScheduleContext}
-
+${calendarContext}
 GENERAL LOTTERY KNOWLEDGE (use only when relevant and not contradicted by the organization's knowledge base):
 - Winners are typically contacted directly by phone
 - Tax receipts generally cannot be issued for lottery tickets (they are not charitable donations under CRA rules)
 
-DRAW DATE AWARENESS: If the customer asks about draw dates, Early Birds, or when the next draw is, use the draw schedule information above to give them accurate, specific dates. If no draw schedule is available, let the customer know they can check the organization's website for the latest schedule. If there's an Early Bird draw happening today or tomorrow and it's relevant to mention, include that information naturally.
+DRAW DATE AWARENESS: If the customer asks about draw dates, Early Birds, or when the next draw is, use the draw schedule information above and the calendar events to give them accurate, specific dates. If no draw schedule is available, let the customer know they can check the organization's website for the latest schedule. If there's an Early Bird draw happening today or tomorrow and it's relevant to mention, include that information naturally.
+
+CALENDAR AWARENESS: When the user asks about upcoming dates, events, draws, campaigns, or deadlines, use the UPCOMING CALENDAR EVENTS data to give specific, accurate answers. Prefer calendar event data over guessing.
 
 ESCALATION: If the inquiry is unclear, bizarre, nonsensical, confrontational, threatening, or simply cannot be answered with the knowledge available, write a polite response explaining that you will pass the email along to your manager who can look into it further. Do not attempt to answer questions you don't have information for.
 
@@ -585,6 +708,7 @@ Sign as: ${staffName}`;
 
 module.exports = {
     buildResponseAssistantPrompt,
+    buildCalendarContext,
     buildDrawScheduleContext,
     buildRatedExamplesContext,
     buildCorrectionsContext,

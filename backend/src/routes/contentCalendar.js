@@ -11,7 +11,7 @@ const { authenticate } = require('../middleware/auth');
 
 const VALID_COLORS = ['tomato', 'blue', 'green', 'cyan', 'purple', 'gray', 'orange', 'pink'];
 const VALID_RECURRENCE = ['daily', 'weekly', 'monthly'];
-const PRESET_CATEGORIES = ['Ad Launch', 'Social Post', 'Email Campaign', 'Deadline', 'Meeting', 'Other'];
+const PRESET_CATEGORIES = ['Ad Launch', 'Social Post', 'Email Campaign', 'Deadline', 'Meeting', 'Draw', 'Other'];
 const VALID_REMINDER_MINUTES = [15, 30, 60, 1440];
 
 /**
