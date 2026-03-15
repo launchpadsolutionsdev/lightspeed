@@ -955,8 +955,20 @@ async function processResponse(response, messages, system, organizationId, userI
     // If no tool calls, we're done
     if (toolUseBlocks.length === 0) return;
 
-    // Process each tool call
-    for (const toolUse of toolUseBlocks) {
+    // Helper: build tool_result array for all tool_use blocks in this response.
+    // The active tool gets the real result; others get a skip message.
+    // This prevents the Claude API error about missing tool_result blocks.
+    function buildToolResults(activeToolId, activeResult) {
+        return toolUseBlocks.map(t => ({
+            type: 'tool_result',
+            tool_use_id: t.id,
+            content: t.id === activeToolId ? activeResult : 'Skipped — only one tool is processed per turn.'
+        }));
+    }
+
+    // Process the first tool call (Claude may return multiple, but we handle one at a time)
+    const toolUse = toolUseBlocks[0];
+    {
         // Track which tool is being executed for proactive suggestions
         if (trackTool) trackTool(toolUse.name, toolUse.input);
 
@@ -994,7 +1006,7 @@ async function processResponse(response, messages, system, organizationId, userI
             const followUpMessages = [
                 ...messages,
                 { role: 'assistant', content: response.content },
-                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
             const followUp = await claudeService.generateResponse({
@@ -1020,7 +1032,7 @@ async function processResponse(response, messages, system, organizationId, userI
             const followUpMessages = [
                 ...messages,
                 { role: 'assistant', content: response.content },
-                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
             const followUp = await claudeService.generateResponse({
@@ -1052,7 +1064,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 const followUpMessages = [
                     ...messages,
                     { role: 'assistant', content: response.content },
-                    { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+                    { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
                 ];
 
                 const followUp = await claudeService.generateResponse({
@@ -1073,7 +1085,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 const followUpMessages = [
                     ...messages,
                     { role: 'assistant', content: response.content },
-                    { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+                    { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
                 ];
 
                 const followUp = await claudeService.generateResponse({
@@ -1118,7 +1130,7 @@ async function processResponse(response, messages, system, organizationId, userI
             const followUpMessages = [
                 ...messages,
                 { role: 'assistant', content: response.content },
-                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
             const followUp = await claudeService.generateResponse({
@@ -1146,7 +1158,7 @@ async function processResponse(response, messages, system, organizationId, userI
             const followUpMessages = [
                 ...messages,
                 { role: 'assistant', content: response.content },
-                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
             const followUp = await claudeService.generateResponse({
@@ -1171,7 +1183,7 @@ async function processResponse(response, messages, system, organizationId, userI
             const followUpMessages = [
                 ...messages,
                 { role: 'assistant', content: response.content },
-                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: toolResult }] }
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
             const followUp = await claudeService.generateResponse({
