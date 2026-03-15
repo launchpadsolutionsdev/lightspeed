@@ -187,16 +187,16 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
     },
     {
         name: 'search_home_base',
-        description: 'Search the team\'s Home Base bulletin board for internal posts, announcements, updates, and team communications. Use this to find information shared by team members — urgent notices, draw updates, campaign plans, FYI posts, and other internal knowledge that may not be in the Knowledge Base.',
+        description: 'Search or browse the team\'s Home Base bulletin board for internal posts, announcements, updates, and team communications. Use this to find information shared by team members — urgent notices, draw updates, campaign plans, FYI posts, and other internal knowledge that may not be in the Knowledge Base. You can search by keyword OR browse recent posts by omitting the query.',
         input_schema: {
             type: 'object',
             properties: {
-                query: { type: 'string', description: 'Search term to find in Home Base posts' },
+                query: { type: 'string', description: 'Optional: search term to find in Home Base posts. If omitted, returns the most recent posts.' },
                 category: { type: 'string', enum: ['general', 'urgent', 'fyi', 'draw_update', 'campaign'], description: 'Optional: filter by post category' },
                 pinned_only: { type: 'boolean', description: 'If true, only return pinned (important) posts' },
                 limit: { type: 'number', description: 'Max results to return (default 10, max 20)' }
             },
-            required: ['query']
+            required: []
         }
     },
     {
@@ -351,8 +351,6 @@ async function executeSearchKnowledgeBase(input, organizationId) {
 
 async function executeSearchHomeBase(input, organizationId) {
     const query = input.query;
-    if (!query) return [];
-
     const conditions = ['p.organization_id = $1', 'COALESCE(p.archived, false) = false', 'COALESCE(p.is_draft, false) = false'];
     const params = [organizationId];
     let paramIdx = 2;
@@ -367,6 +365,39 @@ async function executeSearchHomeBase(input, organizationId) {
     }
 
     const limit = Math.min(input.limit || 10, 20);
+
+    // If no query provided, return recent posts (browse mode)
+    if (!query) {
+        try {
+            const result = await pool.query(
+                `SELECT p.id, p.body, p.category, p.pinned, p.created_at,
+                        u.first_name, u.last_name,
+                        COALESCE(c.comment_count, 0)::int AS comment_count
+                 FROM home_base_posts p
+                 JOIN users u ON u.id = p.author_id
+                 LEFT JOIN (
+                     SELECT post_id, COUNT(*) AS comment_count
+                     FROM home_base_comments
+                     GROUP BY post_id
+                 ) c ON c.post_id = p.id
+                 WHERE ${conditions.join(' AND ')}
+                 ORDER BY p.pinned DESC, p.created_at DESC
+                 LIMIT $${paramIdx}`,
+                [...params, limit]
+            );
+
+            return result.rows.map(r => ({
+                author: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+                category: r.category,
+                pinned: r.pinned,
+                body: r.body.substring(0, 600),
+                comment_count: r.comment_count,
+                created_at: r.created_at
+            }));
+        } catch (_e) {
+            return [];
+        }
+    }
 
     // Try FTS first
     try {
@@ -1231,7 +1262,7 @@ KNOWLEDGE & CONTENT TOOLS:
   - Set tone_name to match the user's requested tone (default "balanced")
 
 TEAM & INTERNAL TOOLS:
-- search_home_base: Search the team's Home Base bulletin board for internal posts, announcements, urgent notices, draw updates, campaign plans, and other team communications. Posts may contain important operational details, decisions, or context shared by team members.
+- search_home_base: Search or browse the team's Home Base bulletin board for internal posts, announcements, urgent notices, draw updates, campaign plans, and other team communications. Posts may contain important operational details, decisions, or context shared by team members. You can search by keyword (query parameter) OR browse recent posts by omitting the query parameter. Use browse mode (no query) when the user asks for "latest posts", "recent updates", "what's new", or wants a summary of recent activity.
 
 ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
@@ -1249,7 +1280,8 @@ TOOL USAGE GUIDELINES:
 - For "what did I write about X?": Call search_response_history
 - For data analysis requests: Call run_insights_analysis with the data
 - For policy/procedure questions: Call search_knowledge_base
-- For team announcements, internal updates, or "what did the team post about X?": Call search_home_base
+- For team announcements, internal updates, or "what did the team post about X?": Call search_home_base with a query
+- For "latest post", "recent posts", "what's new in home base", or "summarize home base": Call search_home_base WITHOUT a query to browse recent posts
 - For calendar questions: Call search_runway_events
 
 For draw events, use category "Draw" and color "blue" by default. Format titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
