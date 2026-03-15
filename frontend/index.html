@@ -272,13 +272,13 @@
         }
 
         .google-signin-btn:hover {
-            background: #f8f9fa;
-            border-color: #dadce0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background: var(--bg-alt);
+            border-color: var(--border);
+            box-shadow: var(--shadow-sm);
         }
 
         .google-signin-btn:active {
-            background: #f1f3f4;
+            background: var(--bg-alt);
         }
 
         .google-icon {
@@ -306,13 +306,13 @@
         }
 
         .microsoft-signin-btn:hover {
-            background: #f8f9fa;
-            border-color: #dadce0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background: var(--bg-alt);
+            border-color: var(--border);
+            box-shadow: var(--shadow-sm);
         }
 
         .microsoft-signin-btn:active {
-            background: #f1f3f4;
+            background: var(--bg-alt);
         }
 
         .microsoft-icon {
@@ -994,7 +994,7 @@
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
-            background: #f9fafb;
+            background: var(--bg-alt);
         }
 
         /* Scrollable message area — fills all space above the input */
@@ -1072,8 +1072,8 @@
 
         .als-prompt-chip {
             padding: 10px 18px;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
             background: #fff;
             color: var(--text-secondary);
             font-size: 0.82rem;
@@ -1100,7 +1100,7 @@
 
         .als-cap-card {
             background: #fff;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             border-radius: 14px;
             padding: 20px;
             text-align: left;
@@ -1167,7 +1167,7 @@
 
         .als-msg-ai {
             background: #fff;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             color: var(--text-secondary);
             align-self: flex-start;
             border-bottom-left-radius: 4px;
@@ -1191,8 +1191,8 @@
         .als-msg-actions button {
             padding: 4px 12px;
             border-radius: 6px;
-            border: 1px solid #e5e7eb;
-            background: #f9fafb;
+            border: 1px solid var(--border);
+            background: var(--bg-alt);
             font-size: 0.75rem;
             font-weight: 500;
             color: var(--text-muted);
@@ -1233,8 +1233,8 @@
         /* Fixed bottom input area */
         .als-input-area {
             flex-shrink: 0;
-            background: #f9fafb;
-            border-top: 1px solid #e5e7eb;
+            background: var(--bg-alt);
+            border-top: 1px solid var(--border);
             padding: 12px 24px 16px;
         }
 
@@ -1260,7 +1260,7 @@
         .als-tone {
             padding: 4px 12px;
             border-radius: 100px;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             background: transparent;
             color: var(--text-muted);
             font-size: 0.72rem;
@@ -1289,8 +1289,8 @@
 
         .als-model {
             padding: 4px 12px;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
             background: transparent;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -1467,7 +1467,7 @@
             gap: 8px;
             padding: 6px 10px;
             background: #fff;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             border-radius: 10px;
             font-size: 0.78rem;
             color: var(--text-secondary);
@@ -1479,14 +1479,14 @@
             height: 36px;
             border-radius: 6px;
             object-fit: cover;
-            background: #f3f4f6;
+            background: var(--bg-alt);
         }
 
         .als-attachment-icon {
             width: 36px;
             height: 36px;
             border-radius: 6px;
-            background: #f3f4f6;
+            background: var(--bg-alt);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1521,9 +1521,9 @@
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             background: #fff;
-            color: #6b7280;
+            color: var(--text-muted);
             font-size: 11px;
             cursor: pointer;
             display: flex;
@@ -3056,7 +3056,7 @@
         }
         .feedback-modal-overlay.visible { opacity: 1; }
         .feedback-modal {
-            background: white; border-radius: 12px; width: 520px; max-width: 95vw;
+            background: white; border-radius: var(--radius-lg); width: 520px; max-width: 95vw;
             max-height: 85vh; overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             transform: translateY(10px); transition: transform 0.2s ease;
@@ -3064,7 +3064,7 @@
         .feedback-modal-overlay.visible .feedback-modal { transform: translateY(0); }
         .feedback-modal-header {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
         }
         .feedback-modal-header h3 { margin: 0; font-size: 1.05rem; }
         .feedback-modal-close {
@@ -3075,13 +3075,13 @@
         .feedback-modal-body { padding: 1.25rem; }
         .feedback-modal-footer {
             display: flex; justify-content: flex-end; gap: 0.5rem;
-            padding: 1rem 1.25rem; border-top: 1px solid #e5e7eb;
+            padding: 1rem 1.25rem; border-top: 1px solid var(--border);
         }
         .feedback-type-buttons { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
         .feedback-type-btn {
             flex: 1; display: flex; flex-direction: column; align-items: center;
             gap: 0.25rem; padding: 0.75rem 0.5rem;
-            border: 2px solid #e5e7eb; border-radius: 10px;
+            border: 2px solid var(--border); border-radius: 10px;
             background: white; cursor: pointer; transition: all 0.15s ease;
             text-align: center;
         }
@@ -3106,7 +3106,7 @@
             padding: 0.5rem 0.75rem; font-size: 0.85rem; background: white;
         }
         .feedback-context {
-            background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+            background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius-md);
             padding: 0.6rem 0.75rem;
         }
         .feedback-context-label {
@@ -3118,7 +3118,7 @@
             padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 8px;
             background: white; cursor: pointer; font-size: 0.85rem; color: #6b7280;
         }
-        .feedback-btn-cancel:hover { background: #f9fafb; }
+        .feedback-btn-cancel:hover { background: var(--bg-alt); }
         .feedback-btn-submit {
             padding: 0.5rem 1.25rem; border: none; border-radius: 8px;
             background: #3B82F6; color: white; cursor: pointer;
@@ -3131,8 +3131,8 @@
         .feedback-kb-section { margin-top: 0.75rem; }
         .feedback-kb-list { display: flex; flex-direction: column; gap: 0.5rem; }
         .feedback-kb-entry {
-            border: 1px solid #e5e7eb; border-radius: 8px;
-            padding: 0.6rem 0.75rem; background: #f9fafb;
+            border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 0.6rem 0.75rem; background: var(--bg-alt);
             transition: border-color 0.15s ease;
         }
         .feedback-kb-entry:hover { border-color: #93c5fd; }
@@ -3141,7 +3141,7 @@
         }
         .feedback-kb-entry-category {
             font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
-            color: #6b7280; background: #e5e7eb; border-radius: 4px;
+            color: var(--text-muted); background: var(--border); border-radius: var(--radius-sm);
             padding: 0.1rem 0.4rem; flex-shrink: 0;
         }
         .feedback-kb-entry-title {
@@ -3185,8 +3185,8 @@
 
         /* Response Sources */
         .response-sources {
-            margin-top: 12px; border: 1px solid #e5e7eb; border-radius: 10px;
-            background: #fafbfc; overflow: hidden;
+            margin-top: 12px; border: 1px solid var(--border); border-radius: 10px;
+            background: var(--bg-alt); overflow: hidden;
         }
         .response-sources-header {
             display: flex; align-items: center; gap: 0.5rem;
@@ -3196,13 +3196,13 @@
         .response-sources-header:hover { background: #f3f4f6; }
         .response-sources-icon { font-size: 0.85rem; }
         .response-sources-title {
-            font-size: 0.78rem; font-weight: 600; color: #6b7280; flex: 1;
+            font-size: 0.78rem; font-weight: 600; color: var(--text-muted); flex: 1;
         }
         .response-sources-toggle {
             font-size: 0.7rem; color: #9ca3af; transition: transform 0.15s ease;
         }
         .response-sources-list {
-            border-top: 1px solid #e5e7eb; padding: 0.4rem 0.75rem;
+            border-top: 1px solid var(--border); padding: 0.4rem 0.75rem;
         }
         .response-source-item {
             display: flex; align-items: center; gap: 0.5rem;
@@ -3210,7 +3210,7 @@
         }
         .response-source-category {
             font-size: 0.6rem; font-weight: 600; text-transform: uppercase;
-            color: #6b7280; background: #e5e7eb; border-radius: 3px;
+            color: var(--text-muted); background: var(--border); border-radius: 3px;
             padding: 0.1rem 0.35rem; flex-shrink: 0;
         }
         .response-source-title { color: #374151; }
@@ -4060,7 +4060,7 @@
         .analytics-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 28px;
+            gap: 24px;
         }
 
         .analytics-grid .bento-full {
@@ -8957,9 +8957,9 @@
         }
         .admin-stat-card {
             background: white;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             padding: 1.25rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-sm);
             display: flex;
             align-items: flex-start;
             gap: 1rem;
@@ -8986,8 +8986,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #f3f4f6;
-            border-radius: 8px;
+            background: var(--bg-alt);
+            border-radius: var(--radius-md);
         }
         .admin-stat-card.highlight .admin-stat-icon {
             background: rgba(255,255,255,0.2);
@@ -9000,13 +9000,13 @@
         }
         .admin-stat-label {
             font-size: 0.85rem;
-            color: #6b7280;
+            color: var(--text-muted);
             margin-top: 0.25rem;
         }
         .admin-stat-change {
             font-size: 0.75rem;
             margin-top: 0.5rem;
-            color: #6b7280;
+            color: var(--text-muted);
         }
         .admin-stat-change.positive { color: #10b981; }
         .admin-charts-grid {
@@ -9017,9 +9017,9 @@
         }
         .admin-card {
             background: white;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-sm);
         }
         .admin-card-header {
             display: flex;
@@ -9049,7 +9049,7 @@
             font-size: 1.1rem;
             font-weight: 600;
             margin-bottom: 1rem;
-            color: #1f2937;
+            color: var(--text-primary);
         }
         .admin-engagement-grid {
             display: grid;
@@ -9058,9 +9058,9 @@
         }
         .admin-engagement-card {
             background: white;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-sm);
         }
         .engagement-metric {
             display: flex;
@@ -9075,7 +9075,7 @@
         }
         .engagement-label {
             font-size: 0.9rem;
-            color: #6b7280;
+            color: var(--text-muted);
         }
         .engagement-detail {
             text-align: center;
@@ -9106,8 +9106,8 @@
         .feature-bar-container {
             flex: 1;
             height: 8px;
-            background: #e5e7eb;
-            border-radius: 4px;
+            background: var(--border);
+            border-radius: var(--radius-sm);
             overflow: hidden;
         }
         .feature-bar {
@@ -9138,12 +9138,12 @@
         .admin-table td {
             padding: 0.75rem;
             text-align: left;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border);
         }
         .admin-table th {
             font-size: 0.75rem;
             font-weight: 600;
-            color: #6b7280;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
@@ -9204,7 +9204,7 @@
         .admin-loading .loading-spinner {
             width: 40px;
             height: 40px;
-            border: 3px solid #e5e7eb;
+            border: 3px solid var(--border);
             border-top-color: #0A2540;
             border-radius: 50%;
             animation: adminSpin 1s linear infinite;
@@ -9258,19 +9258,19 @@
         }
         .teams-card {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
             overflow: hidden;
         }
         .teams-card-header {
             padding: 1rem 1.25rem;
-            background: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
+            background: var(--bg-alt);
+            border-bottom: 1px solid var(--border);
         }
         .teams-card-header h3 {
             font-size: 1rem;
             font-weight: 600;
-            color: #1f2937;
+            color: var(--text-primary);
             margin: 0;
         }
         .teams-card-body {
@@ -9433,8 +9433,8 @@
             align-items: center;
             justify-content: space-between;
             padding: 1rem;
-            background: #f9fafb;
-            border-radius: 8px;
+            background: var(--bg-alt);
+            border-radius: var(--radius-md);
             transition: background 0.2s;
         }
         .member-item:hover {
@@ -9491,8 +9491,8 @@
             color: #1e40af;
         }
         .member-role.member {
-            background: #e5e7eb;
-            color: #425466;
+            background: var(--border);
+            color: var(--text-secondary);
         }
         .member-role-select {
             font-size: 0.8rem;
@@ -9587,7 +9587,7 @@
             border: 1px solid #d1d5db;
             border-radius: 8px;
             font-size: 0.85rem;
-            background: #f9fafb;
+            background: var(--bg-alt);
             color: var(--text-primary);
         }
         .copy-link-btn {
@@ -12038,8 +12038,8 @@
                                     </div>
                                 </div>
 
-                                <div style="border-top: 1px solid #e5e7eb; margin: 1.25rem 0; padding-top: 1.25rem;">
-                                    <h4 style="font-size: 0.95rem; font-weight: 600; color: #374151; margin: 0 0 0.75rem 0;">Draw & Content Settings</h4>
+                                <div style="border-top: 1px solid var(--border); margin: 1.25rem 0; padding-top: 1.25rem;">
+                                    <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.75rem 0;">Draw & Content Settings</h4>
                                 </div>
                                 <div class="org-profile-row">
                                     <div class="form-group">
@@ -12081,8 +12081,8 @@
                                     </div>
                                 </div>
 
-                                <div style="border-top: 1px solid #e5e7eb; margin: 1.25rem 0; padding-top: 1.25rem;">
-                                    <h4 style="font-size: 0.95rem; font-weight: 600; color: #374151; margin: 0 0 0.25rem 0;">Email Add-Ons</h4>
+                                <div style="border-top: 1px solid var(--border); margin: 1.25rem 0; padding-top: 1.25rem;">
+                                    <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.25rem 0;">Email Add-Ons</h4>
                                     <p class="org-profile-note" style="margin-bottom: 0.75rem;">These snippets are appended to generated emails when their corresponding checkbox is selected. Use [Organization Website], [Catch The Ace Website], etc. as placeholders.</p>
                                 </div>
                                 <div class="org-profile-row">
