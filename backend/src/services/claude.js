@@ -13,11 +13,28 @@ const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
  * @param {Array} options.messages - Conversation messages
  * @param {string} options.system - System prompt
  * @param {number} options.max_tokens - Maximum tokens to generate
+ * @param {Array} options.tools - Optional tool definitions for function calling
+ * @param {string} options.model - Optional model override
  * @returns {Promise<Object>} API response
  */
-async function generateResponse({ messages, system, max_tokens = 1024 }) {
+async function generateResponse({ messages, system, max_tokens = 1024, tools, model }) {
     if (!ANTHROPIC_API_KEY) {
         throw new Error('ANTHROPIC_API_KEY not configured');
+    }
+
+    const body = {
+        model: model || ANTHROPIC_MODEL,
+        max_tokens,
+        system: system ? [{
+            type: 'text',
+            text: system,
+            cache_control: { type: 'ephemeral' }
+        }] : '',
+        messages
+    };
+
+    if (tools && tools.length > 0) {
+        body.tools = tools;
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -27,16 +44,7 @@ async function generateResponse({ messages, system, max_tokens = 1024 }) {
             'x-api-key': ANTHROPIC_API_KEY,
             'anthropic-version': '2023-06-01'
         },
-        body: JSON.stringify({
-            model: ANTHROPIC_MODEL,
-            max_tokens,
-            system: system ? [{
-                type: 'text',
-                text: system,
-                cache_control: { type: 'ephemeral' }
-            }] : '',
-            messages
-        })
+        body: JSON.stringify(body)
     });
 
     if (!response.ok) {
