@@ -6970,11 +6970,14 @@ async function calLoadMonth() {
             `${API_BASE_URL}/api/content-calendar?year=${calYear}&month=${calMonth + 1}&view=${calCurrentView}`,
             { headers: getAuthHeaders() }
         );
-        if (!resp.ok) throw new Error('Failed to load');
+        if (!resp.ok) {
+            const errBody = await resp.json().catch(() => ({}));
+            throw new Error(errBody.detail || 'Failed to load');
+        }
         calEvents = await resp.json();
     } catch (e) {
         calEvents = [];
-        showToast('Failed to load calendar events', 'error');
+        showToast('Failed to load calendar events: ' + e.message, 'error');
     }
 
     calRenderGrid();

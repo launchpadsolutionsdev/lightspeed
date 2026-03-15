@@ -66,7 +66,7 @@ router.get('/', authenticate, async (req, res) => {
         res.json(result.rows);
     } catch (error) {
         console.error('Calendar events list error:', error);
-        res.status(500).json({ error: 'Failed to load calendar events' });
+        res.status(500).json({ error: 'Failed to load calendar events', detail: error.message });
     }
 });
 
@@ -111,7 +111,7 @@ router.post('/', authenticate, async (req, res) => {
         res.json(full.rows[0]);
     } catch (error) {
         console.error('Calendar event create error:', error);
-        res.status(500).json({ error: 'Failed to create calendar event' });
+        res.status(500).json({ error: 'Failed to create calendar event', detail: error.message });
     }
 });
 
