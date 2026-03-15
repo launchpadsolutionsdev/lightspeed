@@ -16777,6 +16777,9 @@ function hbRenderFeed() {
     }
 
     feed.innerHTML = html;
+
+    // Load link previews for posts containing URLs
+    hbPosts.forEach(p => hbLoadLinkPreviews(p.id, p.body));
 }
 
 // ── Render Post (with reactions) ──────────────────────────────────────
@@ -16898,6 +16901,7 @@ function hbRenderPost(post) {
             </div>
         </div>
         <div class="hb-post-body" id="hb-body-${post.id}">${hbRenderBody(post.body)}</div>
+        <div class="hb-link-previews" id="hb-links-${post.id}"></div>
         ${attachmentsHtml}
         ${hbRenderAckBar(post)}
         ${reactionsHtml}
@@ -17585,6 +17589,69 @@ function hbResetCompose() {
     if (postBtn) postBtn.textContent = 'Post';
     const draftBtn = document.getElementById('hbDraftBtn');
     if (draftBtn) draftBtn.textContent = 'Save Draft';
+}
+
+// ── Link Previews ────────────────────────────────────────────────────
+
+const hbLinkPreviewCache = {}; // url -> preview data
+
+function hbExtractUrls(text) {
+    if (!text) return [];
+    const regex = /https?:\/\/[^\s<]+/g;
+    const matches = text.match(regex) || [];
+    // Deduplicate and limit to 3
+    return [...new Set(matches)].slice(0, 3);
+}
+
+async function hbLoadLinkPreviews(postId, body) {
+    const urls = hbExtractUrls(body);
+    if (urls.length === 0) return;
+
+    const container = document.getElementById(`hb-links-${postId}`);
+    if (!container) return;
+
+    let html = '';
+    for (const url of urls) {
+        let preview = hbLinkPreviewCache[url];
+
+        if (preview === undefined) {
+            try {
+                const resp = await fetch(`${API_BASE_URL}/api/home-base/link-preview`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ url })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    preview = data.preview;
+                } else {
+                    preview = null;
+                }
+            } catch (_e) {
+                preview = null;
+            }
+            hbLinkPreviewCache[url] = preview;
+        }
+
+        if (preview && preview.title) {
+            const imgHtml = preview.image
+                ? `<img class="hb-link-preview-img" src="${hbEsc(preview.image)}" alt="" onerror="this.style.display='none'">`
+                : '';
+            const descHtml = preview.description
+                ? `<div class="hb-link-preview-desc">${hbEsc(preview.description)}</div>`
+                : '';
+            html += `<a class="hb-link-preview" href="${hbEsc(url)}" target="_blank" rel="noopener">
+                ${imgHtml}
+                <div class="hb-link-preview-text">
+                    <div class="hb-link-preview-title">${hbEsc(preview.title)}</div>
+                    ${descHtml}
+                    <div class="hb-link-preview-site">${hbEsc(preview.site_name || '')}</div>
+                </div>
+            </a>`;
+        }
+    }
+
+    if (html) container.innerHTML = html;
 }
 
 // ── Dynamic Categories ────────────────────────────────────────────────

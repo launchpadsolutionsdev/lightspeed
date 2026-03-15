@@ -199,6 +199,118 @@ router.delete('/categories/:id', authenticate, async (req, res) => {
     }
 });
 
+// ── Link Previews ─────────────────────────────────────────────────────
+
+/**
+ * POST /api/home-base/link-preview
+ * Fetch Open Graph metadata for a URL. Uses cache to avoid re-fetching.
+ * Body: { url }
+ */
+router.post('/link-preview', authenticate, async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url || typeof url !== 'string') {
+            return res.status(400).json({ error: 'URL is required' });
+        }
+
+        // Validate URL format
+        let parsed;
+        try { parsed = new URL(url); } catch (_e) {
+            return res.status(400).json({ error: 'Invalid URL' });
+        }
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            return res.status(400).json({ error: 'Only HTTP/HTTPS URLs are supported' });
+        }
+
+        // Check cache first (valid for 24 hours)
+        try {
+            const cached = await pool.query(
+                "SELECT title, description, image, site_name FROM home_base_link_previews WHERE url = $1 AND fetched_at > NOW() - INTERVAL '24 hours'",
+                [url]
+            );
+            if (cached.rows.length > 0) {
+                return res.json({ preview: cached.rows[0] });
+            }
+        } catch (_e) { /* cache table may not exist yet */ }
+
+        // Fetch the URL with timeout
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; LightspeedBot/1.0)',
+                'Accept': 'text/html'
+            },
+            signal: controller.signal,
+            redirect: 'follow'
+        });
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+            return res.json({ preview: null });
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('text/html')) {
+            return res.json({ preview: null });
+        }
+
+        const html = await response.text();
+
+        // Parse Open Graph and meta tags
+        const getMetaContent = (property) => {
+            const patterns = [
+                new RegExp(`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i'),
+                new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${property}["']`, 'i'),
+                new RegExp(`<meta[^>]+name=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i'),
+                new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${property}["']`, 'i'),
+            ];
+            for (const pattern of patterns) {
+                const match = html.match(pattern);
+                if (match) return match[1];
+            }
+            return null;
+        };
+
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+
+        const preview = {
+            title: getMetaContent('og:title') || getMetaContent('twitter:title') || (titleMatch ? titleMatch[1].trim() : null),
+            description: getMetaContent('og:description') || getMetaContent('twitter:description') || getMetaContent('description'),
+            image: getMetaContent('og:image') || getMetaContent('twitter:image'),
+            site_name: getMetaContent('og:site_name') || parsed.hostname
+        };
+
+        // Resolve relative image URLs
+        if (preview.image && !preview.image.startsWith('http')) {
+            preview.image = new URL(preview.image, url).href;
+        }
+
+        // Truncate long descriptions
+        if (preview.description && preview.description.length > 200) {
+            preview.description = preview.description.substring(0, 200) + '...';
+        }
+
+        // Cache the result (upsert)
+        try {
+            await pool.query(
+                `INSERT INTO home_base_link_previews (url, title, description, image, site_name)
+                 VALUES ($1, $2, $3, $4, $5)
+                 ON CONFLICT (url) DO UPDATE SET title = $2, description = $3, image = $4, site_name = $5, fetched_at = NOW()`,
+                [url, preview.title, preview.description, preview.image, preview.site_name]
+            );
+        } catch (_e) { /* cache write failure is non-critical */ }
+
+        res.json({ preview });
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return res.json({ preview: null });
+        }
+        console.error('Link preview error:', error.message);
+        res.json({ preview: null });
+    }
+});
+
 // ── Posts ──────────────────────────────────────────────────────────────
 
 /**
