@@ -9539,6 +9539,151 @@
             border-color: var(--cta);
             box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
         }
+        /* Markdown formatting toolbar */
+        .hb-format-toolbar {
+            display: flex;
+            gap: 2px;
+            padding: 4px 6px;
+            border: 2px solid var(--border, #e2e8f0);
+            border-bottom: none;
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            background: var(--bg-alt, #f6f9fc);
+            margin-bottom: -2px;
+            position: relative;
+            z-index: 1;
+        }
+        .hb-format-toolbar + .hb-compose-textarea {
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+        }
+        .hb-fmt-btn {
+            padding: 4px 8px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary, #475569);
+            line-height: 1;
+            min-width: 28px;
+            text-align: center;
+            transition: all 0.15s;
+        }
+        .hb-fmt-btn:hover { background: #e2e8f0; color: var(--text-primary); }
+        .hb-fmt-btn:active { background: #cbd5e1; }
+        .hb-fmt-sep { width: 1px; background: var(--border, #e2e8f0); margin: 2px 4px; }
+        /* Draft button */
+        .hb-draft-btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.8rem;
+            border: 1px solid var(--border, #e2e8f0);
+            background: #fff;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .hb-draft-btn:hover { border-color: var(--cta); color: var(--cta); }
+        /* Draft indicator in filter bar */
+        .hb-drafts-badge {
+            background: var(--cta);
+            color: #fff;
+            font-size: 0.6rem;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
+            font-weight: 600;
+        }
+        /* Draft list panel */
+        .hb-drafts-panel {
+            background: #fff;
+            border: 1px solid var(--border, #e2e8f0);
+            border-radius: var(--radius-lg);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .hb-drafts-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg-alt, #f6f9fc);
+            border-bottom: 1px solid var(--border, #e2e8f0);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .hb-draft-item {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border, #e2e8f0);
+            transition: background 0.15s;
+        }
+        .hb-draft-item:last-child { border-bottom: none; }
+        .hb-draft-item:hover { background: var(--bg-alt, #f6f9fc); }
+        .hb-draft-preview {
+            flex: 1;
+            min-width: 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .hb-draft-preview .hb-draft-category {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+        .hb-draft-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .hb-draft-actions button {
+            padding: 4px 10px;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid var(--border, #e2e8f0);
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .hb-draft-actions .hb-draft-resume { color: var(--cta); border-color: var(--cta); }
+        .hb-draft-actions .hb-draft-resume:hover { background: var(--cta); color: #fff; }
+        .hb-draft-actions .hb-draft-delete { color: #DC2626; }
+        .hb-draft-actions .hb-draft-delete:hover { background: #DC2626; color: #fff; border-color: #DC2626; }
+        /* Markdown rendered content styles */
+        .hb-post-body strong, .hb-comment-body strong { font-weight: 600; }
+        .hb-post-body em, .hb-comment-body em { font-style: italic; }
+        .hb-post-body code, .hb-comment-body code {
+            background: var(--bg-alt, #f6f9fc);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85em;
+        }
+        .hb-post-body ul, .hb-post-body ol,
+        .hb-comment-body ul, .hb-comment-body ol {
+            margin: 4px 0;
+            padding-left: 20px;
+        }
+        .hb-post-body li, .hb-comment-body li {
+            margin: 2px 0;
+        }
+        .hb-post-body a, .hb-comment-body a {
+            color: var(--cta);
+            text-decoration: none;
+        }
+        .hb-post-body a:hover, .hb-comment-body a:hover {
+            text-decoration: underline;
+        }
         .hb-compose-footer {
             display: flex;
             align-items: center;
@@ -13572,7 +13717,18 @@
 
                     <!-- Compose Box -->
                     <div class="hb-compose" style="position:relative">
-                        <textarea id="hbComposeBody" class="hb-compose-textarea" placeholder="Share an update with your team... (use @name to mention)" rows="3" oninput="hbOnMentionInput(this)"></textarea>
+                        <div class="hb-format-toolbar">
+                            <button class="hb-fmt-btn" title="Bold (Ctrl+B)" onclick="hbFmt('bold')"><b>B</b></button>
+                            <button class="hb-fmt-btn" title="Italic (Ctrl+I)" onclick="hbFmt('italic')"><i>I</i></button>
+                            <button class="hb-fmt-btn" title="Strikethrough" onclick="hbFmt('strike')"><s>S</s></button>
+                            <div class="hb-fmt-sep"></div>
+                            <button class="hb-fmt-btn" title="Bullet list" onclick="hbFmt('ul')">&#8226; List</button>
+                            <button class="hb-fmt-btn" title="Numbered list" onclick="hbFmt('ol')">1. List</button>
+                            <div class="hb-fmt-sep"></div>
+                            <button class="hb-fmt-btn" title="Inline code" onclick="hbFmt('code')"><code>&lt;/&gt;</code></button>
+                            <button class="hb-fmt-btn" title="Link" onclick="hbFmt('link')">&#128279;</button>
+                        </div>
+                        <textarea id="hbComposeBody" class="hb-compose-textarea" placeholder="Share an update with your team... (use @name to mention, **bold**, _italic_, - lists)" rows="3" oninput="hbOnMentionInput(this)"></textarea>
                         <div class="hb-mention-dropdown" id="hbMentionDropdown" style="display:none"></div>
                         <div class="hb-compose-footer">
                             <div class="hb-category-pills" id="hbCategoryPills">
@@ -13595,6 +13751,7 @@
                                 </div>
                                 <button class="hb-attach-btn" onclick="document.getElementById('hbFileInput').click()" title="Attach file">&#128206; Attach</button>
                                 <input type="file" id="hbFileInput" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" multiple style="display:none" onchange="hbOnFilesSelected(this)">
+                                <button class="hb-draft-btn" id="hbDraftBtn" onclick="hbSaveDraft()">Save Draft</button>
                                 <button class="hb-post-btn" id="hbPostBtn" onclick="hbCreatePost()">Post</button>
                             </div>
                         </div>
@@ -13620,6 +13777,7 @@
                                 <button class="hb-filter-pill" data-filter="campaign" onclick="hbFilterPosts('campaign')">Campaign</button>
                                 <button class="hb-filter-pill" data-filter="general" onclick="hbFilterPosts('general')">General</button>
                                 <button class="hb-filter-pill hb-filter-bookmark" data-filter="bookmarks" onclick="hbFilterPosts('bookmarks')">&#128278; Saved</button>
+                                <button class="hb-filter-pill" data-filter="drafts" onclick="hbFilterPosts('drafts')">&#128221; Drafts<span class="hb-drafts-badge" id="hbDraftsBadge" style="display:none">0</span></button>
                             </div>
                             <button class="hb-archive-toggle" id="hbArchiveToggle" style="display:none" onclick="hbToggleArchivePanel()">&#128451; Archived</button>
                         </div>
