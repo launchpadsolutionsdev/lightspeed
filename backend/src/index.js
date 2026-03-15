@@ -191,6 +191,12 @@ if (contentCalendarRoutes.checkReminders) {
     console.log('Calendar reminder checker started (60s interval)');
 }
 
+// Start Home Base scheduled post publisher (runs every 60 seconds)
+if (homeBaseRoutes.publishScheduledPosts) {
+    setInterval(homeBaseRoutes.publishScheduledPosts, 60000);
+    console.log('Home Base scheduled post publisher started (60s interval)');
+}
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Not found' });

@@ -16622,11 +16622,15 @@ async function hbLoadPosts() {
     // Update notification badge
     hbUpdateNotifBadge();
 
-    // Show archive toggle for admins
+    // Show archive toggle and ack option for admins
+    const isAdminUser = hbUserRole === 'admin' || hbUserRole === 'owner';
     const archiveToggle = document.getElementById('hbArchiveToggle');
-    if (archiveToggle) {
-        archiveToggle.style.display = (hbUserRole === 'admin' || hbUserRole === 'owner') ? 'inline' : 'none';
-    }
+    if (archiveToggle) archiveToggle.style.display = isAdminUser ? 'inline' : 'none';
+    const ackLabel = document.getElementById('hbAckLabel');
+    if (ackLabel) ackLabel.style.display = isAdminUser ? 'inline-flex' : 'none';
+
+    // Load scheduled posts
+    hbLoadScheduledPosts();
 }
 
 function hbRenderFeed() {
@@ -16765,6 +16769,7 @@ function hbRenderPost(post) {
         </div>
         <div class="hb-post-body" id="hb-body-${post.id}">${hbRenderBody(post.body)}</div>
         ${attachmentsHtml}
+        ${hbRenderAckBar(post)}
         ${reactionsHtml}
         <div class="hb-post-footer" style="margin-top:0.5rem">
             <button class="hb-reply-toggle" onclick="hbToggleComments('${post.id}')">${replyLabel}</button>
@@ -16863,7 +16868,12 @@ async function hbCreatePost() {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ body, category: hbSelectedCategory })
+            body: JSON.stringify({
+                body,
+                category: hbSelectedCategory,
+                requires_ack: document.getElementById('hbRequiresAck')?.checked || false,
+                scheduled_for: document.getElementById('hbScheduleFor')?.value || null
+            })
         });
         if (!resp.ok) {
             const errData = await resp.json().catch(() => ({}));
@@ -16871,8 +16881,9 @@ async function hbCreatePost() {
         }
         const postData = await resp.json();
         const postId = postData.post?.id;
+        const isDraft = postData.post?.is_draft;
 
-        // Upload pending files
+        // Upload pending files (only for non-draft posts, or allow on drafts too)
         if (postId && hbPendingFiles.length > 0) {
             for (const file of hbPendingFiles) {
                 const formData = new FormData();
@@ -16892,7 +16903,15 @@ async function hbCreatePost() {
         document.querySelectorAll('#hbCategoryPills .hb-cat-pill').forEach(p => p.classList.remove('active'));
         document.querySelector('#hbCategoryPills .hb-cat-pill[data-cat="general"]').classList.add('active');
         hbSelectedCategory = 'general';
+
+        // Reset ack and schedule inputs
+        const ackCb = document.getElementById('hbRequiresAck');
+        if (ackCb) ackCb.checked = false;
+        const schedInput = document.getElementById('hbScheduleFor');
+        if (schedInput) schedInput.value = '';
+
         hbClearSearch();
+        if (isDraft) hbLoadScheduledPosts();
         hbLoadPosts();
     } catch (err) {
         alert(err.message);
@@ -17027,6 +17046,201 @@ async function hbRestorePost(postId) {
         if (!resp.ok) throw new Error('Failed to restore post');
         await hbLoadArchivedPosts();
         hbLoadPosts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ── Acknowledgments ───────────────────────────────────────────────────
+
+function hbRenderAckBar(post) {
+    if (!post.requires_ack) return '';
+
+    const acks = post.acks || [];
+    const total = post.ack_total || 1;
+    const userAcked = post.user_acked;
+    const pct = Math.round((acks.length / total) * 100);
+    const btnClass = userAcked ? 'acked' : 'not-acked';
+    const btnText = userAcked ? '&#10003; Acknowledged' : 'Acknowledge';
+    const names = acks.map(a => hbDisplayName(a.first_name, a.last_name)).join(', ');
+    const namesPreview = names.length > 60 ? names.substring(0, 60) + '...' : names;
+
+    return `<div class="hb-ack-bar">
+        <button class="hb-ack-btn ${btnClass}" onclick="hbToggleAck('${post.id}')">${btnText}</button>
+        <div class="hb-ack-progress">
+            ${acks.length}/${total} acknowledged
+            <div class="hb-ack-progress-bar"><div class="hb-ack-progress-fill" style="width:${pct}%"></div></div>
+        </div>
+        ${acks.length > 0 ? `<span class="hb-ack-names" title="${hbEsc(names)}">${hbEsc(namesPreview)}</span>` : ''}
+    </div>`;
+}
+
+async function hbToggleAck(postId) {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/ack`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to toggle acknowledgment');
+        hbLoadPosts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ── Templates ─────────────────────────────────────────────────────────
+
+let hbTemplates = [];
+
+async function hbToggleTemplateDropdown() {
+    const dd = document.getElementById('hbTemplateDropdown');
+    if (!dd) return;
+    const isOpen = dd.classList.contains('open');
+    dd.classList.toggle('open');
+    if (!isOpen) await hbLoadTemplates();
+}
+
+async function hbLoadTemplates() {
+    const list = document.getElementById('hbTemplateList');
+    if (!list) return;
+    list.innerHTML = '<div style="padding:0.75rem;font-size:0.8rem;color:var(--text-muted)">Loading...</div>';
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/templates`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load templates');
+        const data = await resp.json();
+        hbTemplates = data.templates || [];
+
+        if (hbTemplates.length === 0) {
+            list.innerHTML = '<div style="padding:0.75rem;font-size:0.8rem;color:var(--text-muted)">No templates yet. Write a post and click "Save current" to create one.</div>';
+            return;
+        }
+
+        list.innerHTML = hbTemplates.map(t => {
+            const preview = (t.body || '').substring(0, 60) + ((t.body || '').length > 60 ? '...' : '');
+            return `<div class="hb-template-item" onclick="hbUseTemplate('${t.id}')">
+                <div class="hb-template-item-name">${hbEsc(t.name)}</div>
+                <div class="hb-template-item-preview">${hbEsc(preview)}</div>
+                <div class="hb-template-item-actions">
+                    <button class="hb-template-delete" onclick="event.stopPropagation();hbDeleteTemplate('${t.id}')">delete</button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        list.innerHTML = '<div style="padding:0.75rem;font-size:0.8rem;color:#DC2626">Failed to load templates</div>';
+    }
+}
+
+function hbUseTemplate(templateId) {
+    const t = hbTemplates.find(x => x.id === templateId);
+    if (!t) return;
+
+    const textarea = document.getElementById('hbComposeBody');
+    if (textarea) textarea.value = t.body;
+
+    // Set category
+    if (t.category) {
+        document.querySelectorAll('#hbCategoryPills .hb-cat-pill').forEach(p => p.classList.remove('active'));
+        const pill = document.querySelector(`#hbCategoryPills .hb-cat-pill[data-cat="${t.category}"]`);
+        if (pill) pill.classList.add('active');
+        hbSelectedCategory = t.category;
+    }
+
+    // Close dropdown
+    const dd = document.getElementById('hbTemplateDropdown');
+    if (dd) dd.classList.remove('open');
+}
+
+async function hbSaveAsTemplate() {
+    const textarea = document.getElementById('hbComposeBody');
+    const body = (textarea?.value || '').trim();
+    if (!body) {
+        alert('Write a post first, then save it as a template.');
+        return;
+    }
+
+    const name = prompt('Template name:');
+    if (!name || !name.trim()) return;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/templates`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ name: name.trim(), body, category: hbSelectedCategory })
+        });
+        if (!resp.ok) throw new Error('Failed to save template');
+        await hbLoadTemplates();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function hbDeleteTemplate(templateId) {
+    if (!confirm('Delete this template?')) return;
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/templates/${templateId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to delete template');
+        await hbLoadTemplates();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// Close template dropdown on outside click
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.hb-template-dropdown') && !e.target.closest('.hb-templates-btn')) {
+        const dd = document.getElementById('hbTemplateDropdown');
+        if (dd) dd.classList.remove('open');
+    }
+});
+
+// ── Scheduled Posts ───────────────────────────────────────────────────
+
+async function hbLoadScheduledPosts() {
+    const container = document.getElementById('hbScheduledList');
+    if (!container) return;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/scheduled`, { headers: getAuthHeaders() });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const posts = data.posts || [];
+
+        if (posts.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+        container.innerHTML = '<div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-bottom:0.375rem;text-transform:uppercase;letter-spacing:0.05em">Scheduled Posts</div>' +
+            posts.map(p => {
+                const preview = (p.body || '').substring(0, 60) + ((p.body || '').length > 60 ? '...' : '');
+                const time = new Date(p.scheduled_for).toLocaleString('en-US', {
+                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+                });
+                return `<div class="hb-scheduled-item">
+                    <span class="hb-scheduled-item-body">${hbEsc(preview)}</span>
+                    <span class="hb-scheduled-item-time">&#128337; ${time}</span>
+                    <button class="hb-scheduled-cancel" onclick="hbCancelScheduled('${p.id}')">Cancel</button>
+                </div>`;
+            }).join('');
+    } catch (_e) {
+        container.style.display = 'none';
+    }
+}
+
+async function hbCancelScheduled(postId) {
+    if (!confirm('Cancel this scheduled post?')) return;
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/schedule`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error('Failed to cancel scheduled post');
+        hbLoadScheduledPosts();
     } catch (err) {
         alert(err.message);
     }

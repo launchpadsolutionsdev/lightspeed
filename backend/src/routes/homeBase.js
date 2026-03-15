@@ -60,7 +60,7 @@ router.get('/posts', authenticate, async (req, res) => {
 
         const result = await pool.query(
             `SELECT p.id, p.body, p.category, p.pinned, p.created_at, p.updated_at,
-                    p.author_id, p.edited_at,
+                    p.author_id, p.edited_at, p.requires_ack,
                     u.first_name, u.last_name,
                     COALESCE(c.comment_count, 0)::int AS comment_count,
                     COALESCE(a.attachment_count, 0)::int AS attachment_count
@@ -76,7 +76,9 @@ router.get('/posts', authenticate, async (req, res) => {
                  FROM home_base_attachments
                  GROUP BY post_id
              ) a ON a.post_id = p.id
-             WHERE p.organization_id = $1 AND COALESCE(p.archived, false) = false${categoryFilter}
+             WHERE p.organization_id = $1
+               AND COALESCE(p.archived, false) = false
+               AND COALESCE(p.is_draft, false) = false${categoryFilter}
              ORDER BY p.pinned DESC, p.created_at DESC`,
             params
         );
@@ -120,10 +122,45 @@ router.get('/posts', authenticate, async (req, res) => {
             } catch (_e) { /* attachments table may not exist yet */ }
         }
 
+        // Batch-load acknowledgments for posts that require them
+        let ackMap = {};
+        const ackPostIds = result.rows.filter(p => p.requires_ack).map(p => p.id);
+        if (ackPostIds.length > 0) {
+            try {
+                const ackResult = await pool.query(
+                    `SELECT ak.post_id, ak.user_id, u.first_name, u.last_name
+                     FROM home_base_acknowledgments ak
+                     JOIN users u ON u.id = ak.user_id
+                     WHERE ak.post_id = ANY($1)
+                     ORDER BY ak.created_at`,
+                    [ackPostIds]
+                );
+                for (const a of ackResult.rows) {
+                    if (!ackMap[a.post_id]) ackMap[a.post_id] = [];
+                    ackMap[a.post_id].push({ user_id: a.user_id, first_name: a.first_name, last_name: a.last_name });
+                }
+            } catch (_e) { /* ack table may not exist yet */ }
+        }
+
+        // Get org member count for ack progress
+        let orgMemberCount = 0;
+        if (ackPostIds.length > 0) {
+            try {
+                const memCount = await pool.query(
+                    'SELECT COUNT(*)::int AS count FROM organization_memberships WHERE organization_id = $1',
+                    [organizationId]
+                );
+                orgMemberCount = memCount.rows[0].count;
+            } catch (_e) {}
+        }
+
         const posts = result.rows.map(p => ({
             ...p,
             reactions: reactionsMap[p.id] || [],
-            attachments: attachmentsMap[p.id] || []
+            attachments: attachmentsMap[p.id] || [],
+            acks: p.requires_ack ? (ackMap[p.id] || []) : undefined,
+            ack_total: p.requires_ack ? orgMemberCount : undefined,
+            user_acked: p.requires_ack ? (ackMap[p.id] || []).some(a => a.user_id === req.userId) : undefined
         }));
 
         res.json({ posts });
@@ -135,7 +172,7 @@ router.get('/posts', authenticate, async (req, res) => {
 
 /**
  * POST /api/home-base/posts
- * Create a new post. Body: { body, category }
+ * Create a new post. Body: { body, category, requires_ack?, scheduled_for? }
  */
 router.post('/posts', authenticate, [
     body('body').trim().notEmpty().withMessage('Post body is required'),
@@ -152,13 +189,29 @@ router.post('/posts', authenticate, [
             return res.status(400).json({ error: 'Organization required' });
         }
 
-        const { body: postBody, category } = req.body;
+        const { body: postBody, category, requires_ack, scheduled_for } = req.body;
+
+        // Scheduled post = saved as draft until publish time
+        const isDraft = !!scheduled_for;
+        const scheduledTime = scheduled_for ? new Date(scheduled_for) : null;
+
+        if (scheduledTime && scheduledTime <= new Date()) {
+            return res.status(400).json({ error: 'Scheduled time must be in the future' });
+        }
+
+        // Only admins can require acknowledgment
+        if (requires_ack) {
+            const admin = await isAdmin(req.userId, organizationId);
+            if (!admin) {
+                return res.status(403).json({ error: 'Only admins can require acknowledgment' });
+            }
+        }
 
         const result = await pool.query(
-            `INSERT INTO home_base_posts (organization_id, author_id, body, category)
-             VALUES ($1, $2, $3, $4)
+            `INSERT INTO home_base_posts (organization_id, author_id, body, category, requires_ack, scheduled_for, is_draft)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING *`,
-            [organizationId, req.userId, postBody, category || 'general']
+            [organizationId, req.userId, postBody, category || 'general', !!requires_ack, scheduledTime, isDraft]
         );
 
         // Fetch author info for the response
@@ -881,5 +934,258 @@ router.get('/members', authenticate, async (req, res) => {
         res.status(500).json({ error: 'Failed to get members' });
     }
 });
+
+// ── Acknowledgments ───────────────────────────────────────────────────
+
+/**
+ * POST /api/home-base/posts/:id/ack
+ * Toggle acknowledgment on a post. Any authenticated user.
+ */
+router.post('/posts/:id/ack', authenticate, async (req, res) => {
+    try {
+        // Verify post requires ack and belongs to user's org
+        const postCheck = await pool.query(
+            'SELECT id, requires_ack FROM home_base_posts WHERE id = $1 AND organization_id = $2',
+            [req.params.id, req.organizationId]
+        );
+        if (postCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        if (!postCheck.rows[0].requires_ack) {
+            return res.status(400).json({ error: 'This post does not require acknowledgment' });
+        }
+
+        // Toggle: if already acked, remove; otherwise add
+        const existing = await pool.query(
+            'DELETE FROM home_base_acknowledgments WHERE post_id = $1 AND user_id = $2 RETURNING id',
+            [req.params.id, req.userId]
+        );
+
+        if (existing.rows.length > 0) {
+            return res.json({ acked: false });
+        }
+
+        await pool.query(
+            'INSERT INTO home_base_acknowledgments (post_id, user_id) VALUES ($1, $2)',
+            [req.params.id, req.userId]
+        );
+
+        res.status(201).json({ acked: true });
+    } catch (error) {
+        console.error('Failed to toggle ack:', error.message);
+        res.status(500).json({ error: 'Failed to acknowledge post' });
+    }
+});
+
+/**
+ * GET /api/home-base/posts/:id/acks
+ * Get list of users who acknowledged a post. Admin only.
+ */
+router.get('/posts/:id/acks', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT ak.user_id, u.first_name, u.last_name, ak.created_at
+             FROM home_base_acknowledgments ak
+             JOIN users u ON u.id = ak.user_id
+             WHERE ak.post_id = $1
+             ORDER BY ak.created_at`,
+            [req.params.id]
+        );
+
+        // Get total org members for progress
+        const memCount = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM organization_memberships WHERE organization_id = $1',
+            [req.organizationId]
+        );
+
+        res.json({
+            acks: result.rows,
+            total_members: memCount.rows[0].count
+        });
+    } catch (error) {
+        console.error('Failed to get acks:', error.message);
+        res.status(500).json({ error: 'Failed to get acknowledgments' });
+    }
+});
+
+// ── Post Templates ────────────────────────────────────────────────────
+
+/**
+ * GET /api/home-base/templates
+ * List all templates for the org.
+ */
+router.get('/templates', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT t.id, t.name, t.body, t.category, t.created_at,
+                    u.first_name, u.last_name
+             FROM home_base_templates t
+             LEFT JOIN users u ON u.id = t.created_by
+             WHERE t.organization_id = $1
+             ORDER BY t.name`,
+            [req.organizationId]
+        );
+        res.json({ templates: result.rows });
+    } catch (error) {
+        console.error('Failed to get templates:', error.message);
+        res.status(500).json({ error: 'Failed to get templates' });
+    }
+});
+
+/**
+ * POST /api/home-base/templates
+ * Create a new template. Body: { name, body, category }
+ */
+router.post('/templates', authenticate, [
+    body('name').trim().notEmpty().withMessage('Template name is required'),
+    body('body').trim().notEmpty().withMessage('Template body is required'),
+    body('category').optional().isIn(VALID_CATEGORIES).withMessage('Invalid category')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO home_base_templates (organization_id, name, body, category, created_by)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+            [req.organizationId, req.body.name, req.body.body, req.body.category || 'general', req.userId]
+        );
+
+        res.status(201).json({ template: result.rows[0] });
+    } catch (error) {
+        console.error('Failed to create template:', error.message);
+        res.status(500).json({ error: 'Failed to create template' });
+    }
+});
+
+/**
+ * PUT /api/home-base/templates/:id
+ * Update a template.
+ */
+router.put('/templates/:id', authenticate, [
+    body('name').trim().notEmpty().withMessage('Template name is required'),
+    body('body').trim().notEmpty().withMessage('Template body is required'),
+    body('category').optional().isIn(VALID_CATEGORIES).withMessage('Invalid category')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const result = await pool.query(
+            `UPDATE home_base_templates SET name = $1, body = $2, category = $3, updated_at = NOW()
+             WHERE id = $4 AND organization_id = $5
+             RETURNING *`,
+            [req.body.name, req.body.body, req.body.category || 'general', req.params.id, req.organizationId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+
+        res.json({ template: result.rows[0] });
+    } catch (error) {
+        console.error('Failed to update template:', error.message);
+        res.status(500).json({ error: 'Failed to update template' });
+    }
+});
+
+/**
+ * DELETE /api/home-base/templates/:id
+ * Delete a template.
+ */
+router.delete('/templates/:id', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'DELETE FROM home_base_templates WHERE id = $1 AND organization_id = $2 RETURNING id',
+            [req.params.id, req.organizationId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+
+        res.json({ message: 'Template deleted' });
+    } catch (error) {
+        console.error('Failed to delete template:', error.message);
+        res.status(500).json({ error: 'Failed to delete template' });
+    }
+});
+
+// ── Scheduled Posts ───────────────────────────────────────────────────
+
+/**
+ * GET /api/home-base/posts/scheduled
+ * List scheduled (draft) posts for the current user.
+ */
+router.get('/posts/scheduled', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT p.id, p.body, p.category, p.requires_ack, p.scheduled_for, p.created_at,
+                    u.first_name, u.last_name
+             FROM home_base_posts p
+             JOIN users u ON u.id = p.author_id
+             WHERE p.organization_id = $1 AND p.is_draft = true AND p.author_id = $2
+               AND COALESCE(p.archived, false) = false
+             ORDER BY p.scheduled_for ASC`,
+            [req.organizationId, req.userId]
+        );
+        res.json({ posts: result.rows });
+    } catch (error) {
+        console.error('Failed to get scheduled posts:', error.message);
+        res.status(500).json({ error: 'Failed to get scheduled posts' });
+    }
+});
+
+/**
+ * DELETE /api/home-base/posts/:id/schedule
+ * Cancel a scheduled post (delete the draft).
+ */
+router.delete('/posts/:id/schedule', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'DELETE FROM home_base_posts WHERE id = $1 AND author_id = $2 AND is_draft = true RETURNING id',
+            [req.params.id, req.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Scheduled post not found' });
+        }
+
+        res.json({ message: 'Scheduled post cancelled' });
+    } catch (error) {
+        console.error('Failed to cancel scheduled post:', error.message);
+        res.status(500).json({ error: 'Failed to cancel scheduled post' });
+    }
+});
+
+/**
+ * Publish scheduled posts that are past their scheduled time.
+ * Called on an interval from index.js (every 60 seconds).
+ */
+async function publishScheduledPosts() {
+    try {
+        const result = await pool.query(
+            `UPDATE home_base_posts
+             SET is_draft = false, created_at = NOW()
+             WHERE is_draft = true AND scheduled_for IS NOT NULL AND scheduled_for <= NOW()
+               AND COALESCE(archived, false) = false
+             RETURNING id, organization_id, author_id, body`
+        );
+
+        if (result.rows.length > 0) {
+            console.log(`[HOME BASE] Published ${result.rows.length} scheduled post(s)`);
+        }
+    } catch (error) {
+        console.error('[HOME BASE] Failed to publish scheduled posts:', error.message);
+    }
+}
+
+// Expose for interval setup in index.js
+router.publishScheduledPosts = publishScheduledPosts;
 
 module.exports = router;

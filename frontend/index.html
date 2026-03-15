@@ -10262,6 +10262,200 @@
         }
         .hb-restore-btn:hover { background: rgba(99,91,255,0.08); }
 
+        /* Acknowledgment */
+        .hb-ack-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            padding: 0.5rem 0.625rem;
+            background: #FEF3C7;
+            border: 1px solid #FDE68A;
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+        }
+        .hb-ack-btn {
+            padding: 0.25rem 0.625rem;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .hb-ack-btn.not-acked {
+            background: #F59E0B;
+            color: #fff;
+        }
+        .hb-ack-btn.not-acked:hover { background: #D97706; }
+        .hb-ack-btn.acked {
+            background: #D1FAE5;
+            color: #059669;
+            border: 1px solid #A7F3D0;
+        }
+        .hb-ack-progress {
+            flex: 1;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+        .hb-ack-progress-bar {
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            margin-top: 0.2rem;
+            overflow: hidden;
+        }
+        .hb-ack-progress-fill {
+            height: 100%;
+            background: #059669;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+        .hb-ack-names {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        .hb-ack-names:hover { text-decoration: underline; }
+
+        /* Templates */
+        .hb-templates-btn {
+            background: none;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .hb-templates-btn:hover { border-color: var(--cta); color: var(--cta); }
+        .hb-template-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 280px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 30;
+        }
+        .hb-template-dropdown.open { display: block; }
+        .hb-template-dropdown-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .hb-template-item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f8fafc;
+            transition: background 0.1s;
+        }
+        .hb-template-item:hover { background: #f1f5f9; }
+        .hb-template-item-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .hb-template-item-preview {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hb-template-item-actions {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 0.25rem;
+        }
+        .hb-template-delete {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .hb-template-delete:hover { color: #DC2626; }
+        .hb-save-template-btn {
+            font-size: 0.65rem;
+            color: var(--cta);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .hb-save-template-btn:hover { text-decoration: underline; }
+
+        /* Schedule */
+        .hb-schedule-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.375rem;
+            flex-wrap: wrap;
+        }
+        .hb-schedule-input {
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 0.3rem 0.5rem;
+            font-family: var(--font-family);
+            font-size: 0.75rem;
+        }
+        .hb-schedule-input:focus { outline: none; border-color: var(--cta); }
+        .hb-schedule-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .hb-scheduled-list {
+            margin-bottom: 1rem;
+        }
+        .hb-scheduled-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: var(--radius-md);
+            margin-bottom: 0.375rem;
+            font-size: 0.8rem;
+        }
+        .hb-scheduled-item-body {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-secondary);
+            margin-right: 0.5rem;
+        }
+        .hb-scheduled-item-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            margin-right: 0.5rem;
+        }
+        .hb-scheduled-cancel {
+            font-size: 0.7rem;
+            color: #DC2626;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .hb-scheduled-cancel:hover { text-decoration: underline; }
+
         @media (max-width: 600px) {
             #page-home-base { padding: 1rem; }
             .hb-compose-footer { flex-direction: column; align-items: stretch; }
@@ -13091,13 +13285,34 @@
                                 <button class="hb-cat-pill hb-cat-campaign" data-cat="campaign">Campaign</button>
                             </div>
                             <div style="display:flex;gap:0.5rem;align-items:center">
+                                <div style="position:relative">
+                                    <button class="hb-templates-btn" onclick="hbToggleTemplateDropdown()" title="Use template">&#128221; Template</button>
+                                    <div class="hb-template-dropdown" id="hbTemplateDropdown">
+                                        <div class="hb-template-dropdown-header">
+                                            <span>Templates</span>
+                                            <button class="hb-save-template-btn" onclick="hbSaveAsTemplate()">+ Save current</button>
+                                        </div>
+                                        <div id="hbTemplateList"><div style="padding:0.75rem;font-size:0.8rem;color:var(--text-muted)">Loading...</div></div>
+                                    </div>
+                                </div>
                                 <button class="hb-attach-btn" onclick="document.getElementById('hbFileInput').click()" title="Attach file">&#128206; Attach</button>
                                 <input type="file" id="hbFileInput" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" multiple style="display:none" onchange="hbOnFilesSelected(this)">
                                 <button class="ls-btn ls-btn-primary hb-post-btn" id="hbPostBtn" onclick="hbCreatePost()">Post</button>
                             </div>
                         </div>
+                        <div class="hb-schedule-row">
+                            <label class="hb-schedule-label" id="hbAckLabel" style="display:none">
+                                <input type="checkbox" id="hbRequiresAck"> Require acknowledgment
+                            </label>
+                            <label class="hb-schedule-label">
+                                <input type="datetime-local" class="hb-schedule-input" id="hbScheduleFor"> Schedule
+                            </label>
+                        </div>
                         <div class="hb-pending-files" id="hbPendingFiles"></div>
                     </div>
+
+                    <!-- Scheduled Posts -->
+                    <div class="hb-scheduled-list" id="hbScheduledList" style="display:none"></div>
 
                     <!-- Filter row with archive toggle -->
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.25rem">
