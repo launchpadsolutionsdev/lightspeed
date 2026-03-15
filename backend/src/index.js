@@ -205,12 +205,16 @@ async function runMigrations() {
             .sort();
 
         for (const file of files) {
-            const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-            await pool.query(sql);
-            log.info('Migration applied', { file });
+            try {
+                const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+                await pool.query(sql);
+                log.info('Migration applied', { file });
+            } catch (fileError) {
+                log.error('Migration error', { file, error: fileError.message });
+            }
         }
     } catch (error) {
-        log.error('Migration error', { error });
+        log.error('Migration setup error', { error });
     }
 }
 
