@@ -183,6 +183,12 @@ app.use('/api/shopify', shopifyRoutes);
 app.use('/api/response-rules', responseRulesRoutes);
 app.use('/api/content-calendar', contentCalendarRoutes);
 
+// Start reminder checker (runs every 60 seconds)
+if (contentCalendarRoutes.checkReminders) {
+    setInterval(contentCalendarRoutes.checkReminders, 60000);
+    console.log('Calendar reminder checker started (60s interval)');
+}
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Not found' });

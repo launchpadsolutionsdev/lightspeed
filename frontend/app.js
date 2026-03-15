@@ -6975,6 +6975,8 @@ let calSelectedColor = 'blue';
 let calSelectedVis = 'personal';
 let calCurrentView = 'all'; // personal | team | all
 let calMode = 'month'; // month | week
+let calActiveCategoryFilter = ''; // '' means all
+let calNotifInterval = null;
 let calSearchTerm = '';
 let calSearchTimer = null;
 let calColorFilters = { tomato: true, blue: true, green: true, cyan: true, purple: true, gray: true, orange: true, pink: true };
@@ -6988,6 +6990,7 @@ function calInit() {
     calWeekStart.setDate(calWeekStart.getDate() - calWeekStart.getDay());
     calWeekStart.setHours(0, 0, 0, 0);
     calLoadEvents();
+    calStartNotifPolling();
 }
 
 async function calLoadEvents() {
@@ -7030,7 +7033,11 @@ async function calLoadEvents() {
 }
 
 function calApplyColorFilter() {
-    calFilteredEvents = calEvents.filter(ev => calColorFilters[ev.color || 'blue'] !== false);
+    calFilteredEvents = calEvents.filter(ev => {
+        if (calColorFilters[ev.color || 'blue'] === false) return false;
+        if (calActiveCategoryFilter && (ev.category || '') !== calActiveCategoryFilter) return false;
+        return true;
+    });
 }
 
 function calRender() {
@@ -7258,16 +7265,17 @@ function calRenderEvent(ev, dateStr) {
     const teamSuffix = (calCurrentView === 'all' || calCurrentView === 'team') && ev.visibility === 'team' && ev.created_by_name
         ? `<span class="cal-ev-team-name">- ${escapeHtml(ev.created_by_name)}</span>` : '';
     const recurIcon = ev.recurrence_rule ? '<span class="cal-recur-icon">&#8635;</span>' : '';
+    const catBadge = ev.category ? `<span class="cal-ev-category-badge">${escapeHtml(ev.category)}</span>` : '';
     const isDraggable = !ev.is_recurring_instance;
     const dragAttr = isDraggable ? `draggable="true" ondragstart="calDragStart(event, '${ev.id}', '${dateStr || ev.event_date.substring(0,10)}')" ondragend="calDragEnd(event)"` : '';
 
     if (ev.all_day) {
-        return `<div class="cal-ev-bar cal-bg-${color}" ${dragAttr} onclick="calEditEvent('${ev.id}');event.stopPropagation();" title="${title}">${title}${recurIcon}${teamSuffix}</div>`;
+        return `<div class="cal-ev-bar cal-bg-${color}" ${dragAttr} onclick="calEditEvent('${ev.id}');event.stopPropagation();" title="${title}">${catBadge}${title}${recurIcon}${teamSuffix}</div>`;
     } else {
         const timeStr = calFormatTime(ev.event_time);
         return `<div class="cal-ev-timed" ${dragAttr} onclick="calEditEvent('${ev.id}');event.stopPropagation();">
             <span class="cal-ev-dot cal-dot-${color}"></span>
-            <span class="cal-ev-timed-text">${timeStr} ${title}${recurIcon}${teamSuffix}</span>
+            <span class="cal-ev-timed-text">${catBadge}${timeStr} ${title}${recurIcon}${teamSuffix}</span>
         </div>`;
     }
 }
@@ -7454,6 +7462,41 @@ function calShowModal(dateStr, eventData, prefillTime) {
         repeatEndEl.value = eventData && eventData.recurrence_end_date ? eventData.recurrence_end_date.substring(0, 10) : '';
     }
 
+    // Category
+    const catEl = document.getElementById('calEvCategory');
+    const catOtherEl = document.getElementById('calEvCategoryOther');
+    if (catEl) {
+        const cat = eventData ? (eventData.category || '') : '';
+        const presets = ['', 'Ad Launch', 'Social Post', 'Email Campaign', 'Deadline', 'Meeting', 'Other'];
+        if (cat && !presets.includes(cat)) {
+            catEl.value = 'Other';
+            catOtherEl.value = cat;
+        } else {
+            catEl.value = cat;
+            catOtherEl.value = '';
+        }
+        calToggleCategoryOther();
+    }
+
+    // Reminder
+    const remEl = document.getElementById('calEvReminder');
+    if (remEl) {
+        remEl.value = eventData && eventData.reminder_minutes ? String(eventData.reminder_minutes) : '';
+    }
+
+    // Duplicate button
+    document.getElementById('calDuplicateBtn').style.display = eventData ? '' : 'none';
+
+    // Comments section
+    const commentsSection = document.getElementById('calCommentsSection');
+    if (eventData) {
+        commentsSection.style.display = '';
+        calLoadComments(eventData.id);
+    } else {
+        commentsSection.style.display = 'none';
+    }
+    document.getElementById('calCommentInput').value = '';
+
     calPickColor(eventData ? (eventData.color || 'blue') : 'blue');
     calPickVis(eventData ? (eventData.visibility || 'personal') : 'personal');
 
@@ -7510,6 +7553,19 @@ async function calSaveEvent() {
     const recurrence_rule = document.getElementById('calEvRepeat').value || null;
     const recurrence_end_date = recurrence_rule ? (document.getElementById('calEvRepeatEnd').value || null) : null;
 
+    // Category
+    let category = null;
+    const catVal = document.getElementById('calEvCategory').value;
+    if (catVal === 'Other') {
+        category = document.getElementById('calEvCategoryOther').value.trim() || null;
+    } else if (catVal) {
+        category = catVal;
+    }
+
+    // Reminder
+    const reminderVal = document.getElementById('calEvReminder').value;
+    const reminder_minutes = reminderVal ? parseInt(reminderVal, 10) : null;
+
     if (!title || !event_date) {
         showToast('Please enter a title and date', 'error');
         return;
@@ -7524,7 +7580,7 @@ async function calSaveEvent() {
         const resp = await fetch(url, {
             method,
             headers: getAuthHeaders(),
-            body: JSON.stringify({ title, description, event_date, event_time, end_time, all_day, color, visibility, recurrence_rule, recurrence_end_date })
+            body: JSON.stringify({ title, description, event_date, event_time, end_time, all_day, color, visibility, recurrence_rule, recurrence_end_date, category, reminder_minutes })
         });
 
         if (!resp.ok) {
@@ -7589,6 +7645,275 @@ document.addEventListener('click', function(e) {
     const pop = document.getElementById('calMorePopover');
     if (pop && pop.style.display === 'block' && !pop.contains(e.target) && !e.target.classList.contains('cal-more-link')) {
         pop.style.display = 'none';
+    }
+});
+
+// --- Category toggle ---
+function calToggleCategoryOther() {
+    const val = document.getElementById('calEvCategory').value;
+    document.getElementById('calCategoryOtherGroup').style.display = val === 'Other' ? '' : 'none';
+}
+
+// --- Category filter ---
+function calToggleCategoryFilter(cat) {
+    calActiveCategoryFilter = cat;
+    document.querySelectorAll('.cal-category-chip').forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.cat || '') === cat);
+    });
+    calApplyColorFilter();
+    calRender();
+}
+
+// --- Comments ---
+async function calLoadComments(eventId) {
+    const list = document.getElementById('calCommentsList');
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar/${eventId}/comments`, {
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error();
+        const comments = await resp.json();
+        if (comments.length === 0) {
+            list.innerHTML = '<div class="cal-comments-empty">No comments yet</div>';
+            return;
+        }
+        list.innerHTML = comments.map(c => {
+            const date = new Date(c.created_at).toLocaleString();
+            const name = escapeHtml(c.user_name || 'User');
+            const text = escapeHtml(c.content);
+            const deleteBtn = c.is_mine ? `<button class="cal-comment-delete" onclick="calDeleteComment('${c.id}')" title="Delete">&times;</button>` : '';
+            return `<div class="cal-comment-item">
+                <div><div class="cal-comment-meta">${name} &middot; ${date}</div><div class="cal-comment-text">${text}</div></div>
+                ${deleteBtn}
+            </div>`;
+        }).join('');
+    } catch {
+        list.innerHTML = '<div class="cal-comments-empty">Failed to load comments</div>';
+    }
+}
+
+async function calPostComment() {
+    if (!calEditId) return;
+    const input = document.getElementById('calCommentInput');
+    const content = input.value.trim();
+    if (!content) return;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar/${calEditId}/comments`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ content })
+        });
+        if (!resp.ok) throw new Error();
+        input.value = '';
+        calLoadComments(calEditId);
+    } catch {
+        showToast('Failed to post comment', 'error');
+    }
+}
+
+async function calDeleteComment(commentId) {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar/comments/${commentId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error();
+        if (calEditId) calLoadComments(calEditId);
+    } catch {
+        showToast('Failed to delete comment', 'error');
+    }
+}
+
+// --- Duplicate event ---
+function calDuplicateEvent() {
+    if (!calEditId) return;
+    const ev = calEvents.find(e => e.id === calEditId);
+    if (!ev) return;
+    // Close current modal and open a new one with prefilled data but no ID
+    calHideModal();
+    const clone = { ...ev, id: null };
+    // Re-open modal with cloned data but clear the date so user picks a new one
+    calEditId = null;
+    document.getElementById('calModalTitle').textContent = 'Duplicate Event';
+    document.getElementById('calEvTitle').value = ev.title || '';
+    document.getElementById('calEvDate').value = ''; // User picks new date
+    document.getElementById('calEvAllDay').checked = ev.all_day || false;
+    calToggleAllDay();
+    document.getElementById('calEvStartTime').value = ev.event_time ? ev.event_time.substring(0, 5) : '';
+    document.getElementById('calEvEndTime').value = ev.end_time ? ev.end_time.substring(0, 5) : '';
+    document.getElementById('calEvDesc').value = ev.description || '';
+
+    const catEl = document.getElementById('calEvCategory');
+    const presets = ['', 'Ad Launch', 'Social Post', 'Email Campaign', 'Deadline', 'Meeting', 'Other'];
+    if (ev.category && !presets.includes(ev.category)) {
+        catEl.value = 'Other';
+        document.getElementById('calEvCategoryOther').value = ev.category;
+    } else {
+        catEl.value = ev.category || '';
+        document.getElementById('calEvCategoryOther').value = '';
+    }
+    calToggleCategoryOther();
+
+    document.getElementById('calEvReminder').value = ev.reminder_minutes ? String(ev.reminder_minutes) : '';
+
+    const repeatEl = document.getElementById('calEvRepeat');
+    if (repeatEl) { repeatEl.value = ev.recurrence_rule || ''; calToggleRepeatEnd(); }
+    const repeatEndEl = document.getElementById('calEvRepeatEnd');
+    if (repeatEndEl) { repeatEndEl.value = ev.recurrence_end_date ? ev.recurrence_end_date.substring(0, 10) : ''; }
+
+    calPickColor(ev.color || 'blue');
+    calPickVis(ev.visibility || 'personal');
+
+    document.getElementById('calDeleteBtn').style.display = 'none';
+    document.getElementById('calDuplicateBtn').style.display = 'none';
+    document.getElementById('calCommentsSection').style.display = 'none';
+
+    document.getElementById('calEventModal').classList.add('active');
+    setTimeout(() => document.getElementById('calEvDate').focus(), 100);
+}
+
+// --- Export ICS ---
+async function calExportICS() {
+    try {
+        const resp = await fetch(
+            `${API_BASE_URL}/api/content-calendar/export/ics?scope=month&year=${calYear}&month=${calMonth + 1}`,
+            { headers: getAuthHeaders() }
+        );
+        if (!resp.ok) throw new Error('Export failed');
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `calendar-${calYear}-${String(calMonth + 1).padStart(2, '0')}.ics`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Calendar exported!', 'success');
+    } catch (e) {
+        showToast(e.message || 'Failed to export', 'error');
+    }
+}
+
+// --- Import ICS ---
+async function calImportICS(fileEvent) {
+    const file = fileEvent.target.files[0];
+    if (!file) return;
+
+    try {
+        const text = await file.text();
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar/import/ics`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ icsContent: text })
+        });
+        if (!resp.ok) throw new Error('Import failed');
+        const result = await resp.json();
+        showToast(`Imported ${result.imported} event(s)!`, 'success');
+        calLoadEvents();
+    } catch (e) {
+        showToast(e.message || 'Failed to import', 'error');
+    }
+    // Reset file input so same file can be re-selected
+    fileEvent.target.value = '';
+}
+
+// --- Print calendar ---
+function calPrintCalendar() {
+    window.print();
+}
+
+// --- Notifications ---
+async function calLoadNotifCount() {
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar/notifications/unread-count`, {
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const badge = document.getElementById('calNotifBadge');
+        if (badge) {
+            if (data.count > 0) {
+                badge.style.display = '';
+                badge.textContent = data.count > 99 ? '99+' : data.count;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    } catch { /* silent */ }
+}
+
+async function calToggleNotifDropdown() {
+    const dd = document.getElementById('calNotifDropdown');
+    if (dd.style.display === 'none') {
+        dd.style.display = '';
+        await calLoadNotifications();
+    } else {
+        dd.style.display = 'none';
+    }
+}
+
+async function calLoadNotifications() {
+    const list = document.getElementById('calNotifList');
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/content-calendar/notifications/list`, {
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error();
+        const notifs = await resp.json();
+        if (notifs.length === 0) {
+            list.innerHTML = '<div class="cal-notif-empty">No notifications</div>';
+            return;
+        }
+        list.innerHTML = notifs.map(n => {
+            const time = new Date(n.created_at).toLocaleString();
+            const unreadClass = n.read ? '' : ' unread';
+            return `<div class="cal-notif-item${unreadClass}" onclick="calMarkNotifRead('${n.id}')">
+                <div>${escapeHtml(n.message)}</div>
+                <div class="cal-notif-time">${time}</div>
+            </div>`;
+        }).join('');
+    } catch {
+        list.innerHTML = '<div class="cal-notif-empty">Failed to load notifications</div>';
+    }
+}
+
+async function calMarkNotifRead(id) {
+    try {
+        await fetch(`${API_BASE_URL}/api/content-calendar/notifications/${id}/read`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        calLoadNotifCount();
+        calLoadNotifications();
+    } catch { /* silent */ }
+}
+
+async function calMarkAllNotifsRead() {
+    try {
+        await fetch(`${API_BASE_URL}/api/content-calendar/notifications/mark-all-read`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        calLoadNotifCount();
+        calLoadNotifications();
+    } catch { /* silent */ }
+}
+
+// Start notification polling when calendar loads
+function calStartNotifPolling() {
+    calLoadNotifCount();
+    if (calNotifInterval) clearInterval(calNotifInterval);
+    calNotifInterval = setInterval(calLoadNotifCount, 60000);
+}
+
+// Close notification dropdown on outside click
+document.addEventListener('click', function(e) {
+    const dd = document.getElementById('calNotifDropdown');
+    const badge = document.getElementById('calNotifBadge');
+    if (dd && dd.style.display !== 'none' && !dd.contains(e.target) && e.target !== badge) {
+        dd.style.display = 'none';
     }
 });
 
