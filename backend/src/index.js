@@ -32,6 +32,7 @@ const sharedPromptRoutes = require('./routes/sharedPrompts');
 const shopifyRoutes = require('./routes/shopify');
 const responseRulesRoutes = require('./routes/responseRules');
 const contentCalendarRoutes = require('./routes/contentCalendar');
+const homeBaseRoutes = require('./routes/homeBase');
 const pool = require('../config/database');
 
 // Validate required environment variables
@@ -182,6 +183,7 @@ app.use('/api/shared-prompts', sharedPromptRoutes);
 app.use('/api/shopify', shopifyRoutes);
 app.use('/api/response-rules', responseRulesRoutes);
 app.use('/api/content-calendar', contentCalendarRoutes);
+app.use('/api/home-base', homeBaseRoutes);
 
 // Start reminder checker (runs every 60 seconds)
 if (contentCalendarRoutes.checkReminders) {
