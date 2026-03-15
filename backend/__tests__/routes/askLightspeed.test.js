@@ -591,9 +591,13 @@ describe('Agentic System Prompt', () => {
         expect(source).toContain('run_insights_analysis');
     });
 
-    it('instructs AI to confirm before write actions', () => {
-        expect(source).toContain('confirm');
-        expect(source).toContain('confirmation');
+    it('tells AI the system handles confirmation (not text-based)', () => {
+        expect(source).toContain('confirmation dialog');
+        expect(source).toContain('Do NOT ask for confirmation in text');
+    });
+
+    it('instructs AI to call write tools directly', () => {
+        expect(source).toContain('Call this tool directly');
     });
 
     it('sets Draw as default category for draw events', () => {
@@ -626,5 +630,52 @@ describe('Non-Agentic Fallback Prompt (frontend)', () => {
 
     it('lists Runway event creation as a capability', () => {
         expect(frontendSource).toContain('creates Runway calendar events');
+    });
+});
+
+
+// ─── 6. Agentic Prompt — No Text Confirmation ───────────────────────
+
+describe('Agentic prompts instruct direct tool calls (no text confirmation)', () => {
+    const fs = require('fs');
+    const frontendSource = fs.readFileSync(
+        require('path').join(__dirname, '../../../frontend/app.js'),
+        'utf-8'
+    );
+    const backendSource = fs.readFileSync(require.resolve('../../src/routes/askLightspeed'), 'utf-8');
+
+    it('frontend agentic prompt says system handles confirmation', () => {
+        expect(frontendSource).toContain('system shows a confirmation dialog');
+    });
+
+    it('frontend agentic prompt says do NOT ask in text', () => {
+        expect(frontendSource).toContain('do NOT ask in text first');
+    });
+
+    it('backend tool description for create_runway_events says call directly', () => {
+        expect(backendSource).toContain('Call this tool directly with the events');
+        expect(backendSource).toContain('Do NOT ask for confirmation in text first; just call the tool');
+    });
+
+    it('backend tool description for save_to_knowledge_base says call directly', () => {
+        expect(backendSource).toContain('Call this tool directly — the system will show the user a confirmation dialog before saving');
+    });
+
+    it('backend system prompt says call tool directly for write actions', () => {
+        expect(backendSource).toContain('call the tool directly');
+        expect(backendSource).toContain('Do NOT ask "shall I go ahead?"');
+    });
+
+    it('frontend tracks agentic conversation state', () => {
+        expect(frontendSource).toContain('alsConversationUsedAgentic');
+    });
+
+    it('frontend uses agentic state in routing decision', () => {
+        expect(frontendSource).toContain('|| alsConversationUsedAgentic');
+    });
+
+    it('frontend resets agentic state on new chat', () => {
+        // Should appear in clearAlsChat
+        expect(frontendSource).toContain('alsConversationUsedAgentic = false');
     });
 });

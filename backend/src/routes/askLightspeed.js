@@ -44,7 +44,7 @@ const upload = multer({
 const TOOLS = [
     {
         name: 'create_runway_events',
-        description: 'Create one or more events on the Runway content calendar. Use this when the user asks you to add events, draws, deadlines, or scheduled items to the calendar. Always confirm with the user before calling this tool — present the list of events you plan to create and wait for their approval.',
+        description: 'Create one or more events on the Runway content calendar. Use this when the user asks you to add events, draws, deadlines, or scheduled items to the calendar. Call this tool directly with the events — the system will show the user a confirmation dialog before anything is created. Do NOT ask for confirmation in text first; just call the tool.',
         input_schema: {
             type: 'object',
             properties: {
@@ -111,7 +111,7 @@ const TOOLS = [
     },
     {
         name: 'save_to_knowledge_base',
-        description: 'Save information to the organization\'s Knowledge Base. Use this when the user says "remember that...", "our policy is...", "save this to the KB", or explicitly asks to store information for future reference. This is a WRITE action — always confirm with the user what you plan to save before calling this tool.',
+        description: 'Save information to the organization\'s Knowledge Base. Use this when the user says "remember that...", "our policy is...", "save this to the KB", or explicitly asks to store information for future reference. Call this tool directly — the system will show the user a confirmation dialog before saving. Do NOT ask for confirmation in text first; just call the tool.',
         input_schema: {
             type: 'object',
             properties: {
@@ -937,8 +937,8 @@ ANALYSIS & HISTORY TOOLS:
 - run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
 
 TOOL USAGE GUIDELINES:
-- For file uploads with draw schedules: Parse carefully, present summary, then call create_runway_events
-- For "remember that..." or "our policy is...": Confirm what to save, then call save_to_knowledge_base
+- For file uploads with draw schedules: Parse carefully, then call create_runway_events with all events immediately. The system will show the user a confirmation dialog — you do NOT need to ask for confirmation in text.
+- For "remember that..." or "our policy is...": Call save_to_knowledge_base directly. The system handles confirmation.
 - For "draft me an email/post about...": Call draft_content with appropriate format and tone
 - For "what did I write about X?": Call search_response_history
 - For data analysis requests: Call run_insights_analysis with the data
@@ -947,7 +947,7 @@ TOOL USAGE GUIDELINES:
 
 For draw events, use category "Draw" and color "blue" by default. Format titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
 
-Always confirm before taking any action that creates, modifies, or deletes data. Read-only actions (search, draft, analyze) execute immediately.
+IMPORTANT: For write actions (create_runway_events, save_to_knowledge_base), call the tool directly. The system will present a confirmation dialog to the user before executing. Do NOT ask "shall I go ahead?" or "would you like me to create these?" in text — just call the tool and the confirmation UI will handle it. Read-only actions (search, draft, analyze) execute immediately.
 
 Keep responses concise. Use markdown formatting when helpful.`;
 }
