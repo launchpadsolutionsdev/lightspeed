@@ -16615,7 +16615,7 @@ async function hbLoadPosts() {
         hbPosts = data.posts || [];
         hbRenderFeed();
     } catch (err) {
-        feed.innerHTML = '<div class="hb-empty">Failed to load posts. Try again later.</div>';
+        feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">⚠️</div>Failed to load posts. Try again later.</div>';
         console.error('Home Base load error:', err);
     }
 
@@ -16643,8 +16643,9 @@ function hbRenderFeed() {
     if (!feed) return;
 
     if (hbPosts.length === 0) {
+        const icon = hbIsSearching ? '🔍' : '🏠';
         const msg = hbIsSearching ? 'No posts match your search.' : 'No posts yet. Be the first to share an update!';
-        feed.innerHTML = `<div class="hb-empty">${msg}</div>`;
+        feed.innerHTML = `<div class="hb-empty"><div class="hb-empty-icon">${icon}</div>${msg}</div>`;
         return;
     }
 
@@ -17297,7 +17298,7 @@ async function hbLoadBookmarkedPosts() {
         hbIsSearching = false;
         hbRenderFeed();
     } catch (err) {
-        feed.innerHTML = '<div class="hb-empty">Failed to load saved posts.</div>';
+        feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">🔖</div>Failed to load saved posts.</div>';
         console.error('Bookmarks load error:', err);
     }
 }
@@ -17476,7 +17477,7 @@ function hbOnSearch(value) {
             hbPosts = data.posts || [];
             hbRenderFeed();
         } catch (err) {
-            if (feed) feed.innerHTML = '<div class="hb-empty">Search failed. Try again.</div>';
+            if (feed) feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">⚠️</div>Search failed. Try again.</div>';
         }
     }, 300);
 }

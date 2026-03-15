@@ -9491,58 +9491,74 @@
 
         /* ==================== HOME BASE STYLES ==================== */
         #page-home-base {
-            padding: 2rem;
-            max-width: 800px;
-            margin: 0 auto;
+            padding: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
-        .hb-header { margin-bottom: 1.5rem; }
-        .hb-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.25rem; }
-        .hb-header p { font-size: 0.875rem; color: var(--text-muted); margin: 0; }
+        .hb-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Top bar */
+        .hb-header {
+            padding: 20px 28px 0;
+            border-bottom: 1px solid var(--border, #e2e8f0);
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .hb-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+        .hb-header p { font-size: 0.85rem; color: var(--text-muted); margin: 2px 0 0; }
 
         /* Compose */
         .hb-compose {
             background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: var(--radius-lg);
-            padding: 1rem;
-            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border, #e2e8f0);
+            border-radius: 0;
+            padding: 16px 28px;
+            flex-shrink: 0;
         }
         .hb-compose-textarea {
             width: 100%;
-            border: 1px solid #e2e8f0;
+            border: 2px solid var(--border, #e2e8f0);
             border-radius: var(--radius-md);
-            padding: 0.75rem;
+            padding: 12px 14px;
             font-family: var(--font-family);
-            font-size: 0.875rem;
+            font-size: 0.9rem;
             resize: vertical;
-            min-height: 70px;
+            min-height: 72px;
             box-sizing: border-box;
             transition: border-color 0.2s;
         }
         .hb-compose-textarea:focus {
             outline: none;
             border-color: var(--cta);
+            box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
         }
         .hb-compose-footer {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-top: 0.5rem;
-            gap: 0.5rem;
+            margin-top: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }
         .hb-category-pills {
             display: flex;
-            gap: 0.375rem;
+            gap: 6px;
             flex-wrap: wrap;
         }
         .hb-cat-pill {
-            padding: 0.25rem 0.625rem;
+            padding: 5px 12px;
             border-radius: var(--radius-pill);
             font-size: 0.75rem;
             font-weight: 500;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
+            border: 1px solid var(--border, #e2e8f0);
+            background: var(--bg-alt, #f6f9fc);
             color: var(--text-secondary);
             cursor: pointer;
             transition: all 0.15s;
@@ -9553,115 +9569,149 @@
             background: rgba(99, 91, 255, 0.08);
             color: var(--cta);
         }
-        .hb-cat-urgent.active, .hb-cat-urgent.hb-badge { background: #FEE2E2; color: #DC2626; border-color: #FECACA; }
-        .hb-cat-fyi.active, .hb-cat-fyi.hb-badge { background: #DBEAFE; color: #2563EB; border-color: #BFDBFE; }
-        .hb-cat-draw.active, .hb-cat-draw.hb-badge { background: #D1FAE5; color: #059669; border-color: #A7F3D0; }
-        .hb-cat-campaign.active, .hb-cat-campaign.hb-badge { background: #EDE9FE; color: #7C3AED; border-color: #DDD6FE; }
+        .hb-cat-urgent.active, .hb-cat-urgent.hb-badge { background: #DC2626; color: #fff; border-color: #DC2626; }
+        .hb-cat-fyi.active, .hb-cat-fyi.hb-badge { background: #2563EB; color: #fff; border-color: #2563EB; }
+        .hb-cat-draw.active, .hb-cat-draw.hb-badge { background: #059669; color: #fff; border-color: #059669; }
+        .hb-cat-campaign.active, .hb-cat-campaign.hb-badge { background: #7C3AED; color: #fff; border-color: #7C3AED; }
 
-        .hb-post-btn { white-space: nowrap; }
+        .hb-post-btn {
+            white-space: nowrap;
+            padding: 8px 20px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.85rem;
+            border: none;
+            background: var(--cta);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .hb-post-btn:hover { background: var(--cta-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
 
-        /* Filters */
+        /* Filters — tab bar style */
+        .hb-filters-bar {
+            padding: 0 28px;
+            background: #fff;
+            border-bottom: 1px solid var(--border, #e2e8f0);
+            flex-shrink: 0;
+        }
         .hb-filters {
             display: flex;
-            gap: 0.375rem;
-            margin-bottom: 1rem;
+            gap: 0;
+            margin-bottom: 0;
             flex-wrap: wrap;
         }
         .hb-filter-pill {
-            padding: 0.3rem 0.75rem;
-            border-radius: var(--radius-pill);
-            font-size: 0.75rem;
+            padding: 10px 16px;
+            border-radius: 0;
+            font-size: 0.8rem;
             font-weight: 500;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            color: var(--text-secondary);
+            border: none;
+            border-bottom: 2px solid transparent;
+            background: transparent;
+            color: var(--text-muted);
             cursor: pointer;
             transition: all 0.15s;
         }
-        .hb-filter-pill:hover { background: #edf2f7; }
+        .hb-filter-pill:hover { color: var(--text-primary); background: var(--bg-alt, #f6f9fc); }
         .hb-filter-pill.active {
-            border-color: var(--cta);
-            background: rgba(99, 91, 255, 0.08);
             color: var(--cta);
+            border-bottom-color: var(--cta);
+            font-weight: 600;
         }
 
         /* Feed */
-        .hb-feed { display: flex; flex-direction: column; gap: 0.75rem; }
-        .hb-loading, .hb-empty {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-muted);
-            font-size: 0.875rem;
+        .hb-feed-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 28px 28px;
+            background: var(--bg-alt, #f6f9fc);
         }
+        .hb-feed { display: flex; flex-direction: column; gap: 16px; }
+        .hb-loading, .hb-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 24px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .hb-empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
 
         /* Pinned section */
         .hb-pinned-label {
             font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
             color: var(--text-muted);
-            margin-bottom: 0.5rem;
-            padding-left: 0.25rem;
+            margin-bottom: 8px;
+            padding-left: 2px;
         }
         .hb-pinned-divider {
             border: none;
             border-top: 1px solid #e2e8f0;
-            margin: 0.75rem 0;
+            margin: 12px 0;
         }
 
         /* Post card */
         .hb-post {
             background: #fff;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--border, #e2e8f0);
             border-radius: var(--radius-lg);
-            padding: 1rem;
-            transition: box-shadow 0.15s;
+            padding: 20px 24px;
+            transition: box-shadow 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
         }
-        .hb-post:hover { box-shadow: var(--shadow-sm); }
+        .hb-post:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
         .hb-post-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 0.5rem;
+            margin-bottom: 10px;
         }
         .hb-post-author-row {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 10px;
         }
         .hb-avatar {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: #fff;
             flex-shrink: 0;
         }
         .hb-author-name {
-            font-size: 0.875rem;
+            font-size: 0.9rem;
             font-weight: 600;
             color: var(--text-primary);
         }
         .hb-badge {
-            padding: 0.125rem 0.5rem;
+            padding: 3px 10px;
             border-radius: var(--radius-pill);
-            font-size: 0.675rem;
+            font-size: 0.65rem;
             font-weight: 600;
-            border: 1px solid #e2e8f0;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            border: none;
+            background: var(--bg-alt, #f6f9fc);
+            color: var(--text-muted);
         }
         .hb-pin-indicator {
-            font-size: 0.75rem;
-            margin-left: 0.25rem;
+            font-size: 0.8rem;
+            margin-left: 2px;
         }
         .hb-post-meta {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 8px;
         }
         .hb-timestamp {
             font-size: 0.75rem;
@@ -9670,42 +9720,45 @@
         }
         .hb-post-actions {
             display: flex;
-            gap: 0.25rem;
+            gap: 2px;
         }
         .hb-action-btn {
             background: none;
             border: none;
-            padding: 0.25rem;
+            padding: 4px 6px;
             cursor: pointer;
-            font-size: 0.875rem;
+            font-size: 0.9rem;
             color: var(--text-muted);
             border-radius: var(--radius-sm);
             transition: all 0.15s;
         }
-        .hb-action-btn:hover { background: #f1f5f9; color: var(--text-primary); }
+        .hb-action-btn:hover { background: var(--bg-alt, #f6f9fc); color: var(--text-primary); }
         .hb-post-body {
-            font-size: 0.875rem;
+            font-size: 0.9rem;
             color: var(--text-primary);
-            line-height: 1.5;
+            line-height: 1.65;
             white-space: pre-wrap;
             word-wrap: break-word;
-            margin-bottom: 0.75rem;
+            margin-bottom: 12px;
         }
         .hb-post-footer {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #f1f5f9;
         }
         .hb-reply-toggle {
             background: none;
             border: none;
             font-size: 0.8rem;
-            color: var(--cta);
+            color: var(--text-muted);
             cursor: pointer;
-            padding: 0;
+            padding: 4px 0;
             font-weight: 500;
+            transition: color 0.15s;
         }
-        .hb-reply-toggle:hover { text-decoration: underline; }
+        .hb-reply-toggle:hover { color: var(--cta); }
         .hb-delete-post {
             background: none;
             border: none;
@@ -9876,25 +9929,41 @@
         }
         .hb-reaction-picker button:hover { background: #f1f5f9; }
 
-        /* Search */
+        .hb-search-results-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        /* Header row */
+        .hb-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 12px;
+        }
+        .hb-header-actions { display: flex; gap: 6px; position: relative; align-items: center; }
+
+        /* Search in header */
         .hb-search-wrap {
             position: relative;
-            margin-top: 0.75rem;
+            margin: 0;
         }
         .hb-search-input {
-            width: 100%;
-            padding: 0.5rem 2rem 0.5rem 0.75rem;
-            border: 1px solid #e2e8f0;
+            width: 220px;
+            padding: 7px 32px 7px 12px;
+            border: 2px solid var(--border, #e2e8f0);
             border-radius: var(--radius-md);
             font-family: var(--font-family);
             font-size: 0.8rem;
             box-sizing: border-box;
-            transition: border-color 0.2s;
+            transition: all 0.2s;
         }
-        .hb-search-input:focus { outline: none; border-color: var(--cta); }
+        .hb-search-input:focus { outline: none; border-color: var(--cta); width: 300px; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
         .hb-search-clear {
             position: absolute;
-            right: 0.5rem;
+            right: 8px;
             top: 50%;
             transform: translateY(-50%);
             background: none;
@@ -9905,33 +9974,19 @@
             padding: 0;
             line-height: 1;
         }
-        .hb-search-results-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-
-        /* Header row */
-        .hb-header-row {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-        }
-        .hb-header-actions { display: flex; gap: 0.5rem; position: relative; }
 
         /* Notification button & badge */
         .hb-notif-btn {
             background: none;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--border, #e2e8f0);
             border-radius: var(--radius-md);
-            padding: 0.4rem 0.5rem;
-            font-size: 1.1rem;
+            padding: 6px 8px;
+            font-size: 1.05rem;
             cursor: pointer;
             position: relative;
             transition: all 0.15s;
         }
-        .hb-notif-btn:hover { background: #f1f5f9; }
+        .hb-notif-btn:hover { background: var(--bg-alt, #f6f9fc); }
         .hb-notif-badge, .hb-sidebar-badge {
             position: absolute;
             top: -4px;
@@ -10194,23 +10249,26 @@
             cursor: pointer;
         }
 
-        /* Archive panel */
+        /* Archive toggle */
         .hb-archive-toggle {
             font-size: 0.75rem;
             color: var(--text-muted);
             background: none;
-            border: none;
+            border: 1px solid var(--border, #e2e8f0);
+            border-radius: var(--radius-md);
             cursor: pointer;
-            padding: 0;
+            padding: 4px 10px;
+            transition: all 0.15s;
         }
-        .hb-archive-toggle:hover { color: var(--cta); text-decoration: underline; }
+        .hb-archive-toggle:hover { color: var(--cta); border-color: var(--cta); }
         .hb-archive-panel {
             display: none;
-            background: #fefce8;
-            border: 1px solid #fde68a;
+            background: #fff;
+            border: 1px solid var(--border, #e2e8f0);
             border-radius: var(--radius-lg);
-            padding: 1rem;
-            margin-bottom: 1rem;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
         }
         .hb-archive-panel.open { display: block; }
         .hb-archive-panel-header {
@@ -10511,14 +10569,14 @@
         /* Activity button */
         .hb-activity-btn, .hb-digest-btn {
             background: none;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--border, #e2e8f0);
             border-radius: var(--radius-md);
-            padding: 0.4rem 0.5rem;
-            font-size: 1.1rem;
+            padding: 6px 8px;
+            font-size: 1.05rem;
             cursor: pointer;
             transition: all 0.15s;
         }
-        .hb-activity-btn:hover, .hb-digest-btn:hover { background: #f1f5f9; }
+        .hb-activity-btn:hover, .hb-digest-btn:hover { background: var(--bg-alt, #f6f9fc); }
 
         /* Activity panel */
         .hb-activity-panel {
@@ -10678,10 +10736,16 @@
         }
 
         @media (max-width: 600px) {
-            #page-home-base { padding: 1rem; }
+            .hb-header { padding: 16px 16px 0; }
+            .hb-compose { padding: 12px 16px; }
+            .hb-feed-area { padding: 16px; }
+            .hb-filters-bar { padding: 0 16px; }
             .hb-compose-footer { flex-direction: column; align-items: stretch; }
             .hb-post-btn { width: 100%; }
             .hb-notif-dropdown { width: 280px; right: -1rem; }
+            .hb-search-input { width: 160px; }
+            .hb-search-input:focus { width: 200px; }
+            .hb-post { padding: 16px; }
         }
 
         /* ==================== TEAMS MANAGEMENT STYLES ==================== */
@@ -13463,6 +13527,7 @@
             <!-- ==================== HOME BASE ==================== -->
             <div class="page" id="page-home-base">
                 <div class="hb-container">
+                    <!-- Top bar -->
                     <div class="hb-header">
                         <div class="hb-header-row">
                             <div>
@@ -13470,63 +13535,38 @@
                                 <p>Team bulletin board — share updates, announcements, and discussions</p>
                             </div>
                             <div class="hb-header-actions">
-                                <button class="hb-digest-btn" id="hbDigestBtn" onclick="hbToggleDigestPanel()" title="Email digest settings">&#9993;</button>
-                                <button class="hb-activity-btn" id="hbActivityBtn" onclick="hbToggleActivityPanel()" title="Activity & engagement" style="display:none">&#128200;</button>
+                                <div class="hb-search-wrap">
+                                    <input type="text" class="hb-search-input" id="hbSearchInput" placeholder="Search posts..." oninput="hbOnSearch(this.value)">
+                                    <button class="hb-search-clear" id="hbSearchClear" onclick="hbClearSearch()" style="display:none">&times;</button>
+                                </div>
+                                <button class="hb-digest-btn" id="hbDigestBtn" onclick="hbToggleDigestPanel()" title="Email digest">&#9993;</button>
+                                <button class="hb-activity-btn" id="hbActivityBtn" onclick="hbToggleActivityPanel()" title="Analytics" style="display:none">&#128200;</button>
                                 <button class="hb-notif-btn" id="hbNotifBtn" onclick="hbToggleNotifications()" title="Notifications">
                                     &#128276;
                                     <span class="hb-notif-badge" id="hbNotifBadge" style="display:none">0</span>
                                 </button>
+                                <!-- Notifications dropdown -->
+                                <div class="hb-notif-dropdown" id="hbNotifDropdown" style="display:none">
+                                    <div class="hb-notif-dropdown-header">
+                                        <span>Notifications</span>
+                                        <button class="hb-notif-mark-all" onclick="hbMarkAllRead()">Mark all read</button>
+                                    </div>
+                                    <div class="hb-notif-list" id="hbNotifList">
+                                        <div class="hb-loading" style="padding:0.75rem">Loading...</div>
+                                    </div>
+                                </div>
+                                <!-- Digest preferences dropdown -->
+                                <div class="hb-digest-dropdown" id="hbDigestDropdown" style="display:none">
+                                    <div class="hb-digest-dropdown-header">Email Digest</div>
+                                    <p class="hb-digest-desc">Get a summary of Home Base activity delivered to your inbox.</p>
+                                    <div class="hb-digest-options">
+                                        <label class="hb-digest-option"><input type="radio" name="hbDigest" value="off" onchange="hbSetDigest('off')"> Off</label>
+                                        <label class="hb-digest-option"><input type="radio" name="hbDigest" value="daily" onchange="hbSetDigest('daily')"> Daily</label>
+                                        <label class="hb-digest-option"><input type="radio" name="hbDigest" value="weekly" onchange="hbSetDigest('weekly')"> Weekly (Mondays)</label>
+                                    </div>
+                                    <div class="hb-digest-status" id="hbDigestStatus"></div>
+                                </div>
                             </div>
-                        </div>
-                        <!-- Search -->
-                        <div class="hb-search-wrap">
-                            <input type="text" class="hb-search-input" id="hbSearchInput" placeholder="Search posts..." oninput="hbOnSearch(this.value)">
-                            <button class="hb-search-clear" id="hbSearchClear" onclick="hbClearSearch()" style="display:none">&times;</button>
-                        </div>
-                        <!-- Notifications dropdown -->
-                        <div class="hb-notif-dropdown" id="hbNotifDropdown" style="display:none">
-                            <div class="hb-notif-dropdown-header">
-                                <span>Notifications</span>
-                                <button class="hb-notif-mark-all" onclick="hbMarkAllRead()">Mark all read</button>
-                            </div>
-                            <div class="hb-notif-list" id="hbNotifList">
-                                <div class="hb-loading" style="padding:0.75rem">Loading...</div>
-                            </div>
-                        </div>
-                        <!-- Digest preferences dropdown -->
-                        <div class="hb-digest-dropdown" id="hbDigestDropdown" style="display:none">
-                            <div class="hb-digest-dropdown-header">Email Digest</div>
-                            <p class="hb-digest-desc">Get a summary of Home Base activity delivered to your inbox.</p>
-                            <div class="hb-digest-options">
-                                <label class="hb-digest-option">
-                                    <input type="radio" name="hbDigest" value="off" onchange="hbSetDigest('off')"> Off
-                                </label>
-                                <label class="hb-digest-option">
-                                    <input type="radio" name="hbDigest" value="daily" onchange="hbSetDigest('daily')"> Daily
-                                </label>
-                                <label class="hb-digest-option">
-                                    <input type="radio" name="hbDigest" value="weekly" onchange="hbSetDigest('weekly')"> Weekly (Mondays)
-                                </label>
-                            </div>
-                            <div class="hb-digest-status" id="hbDigestStatus"></div>
-                        </div>
-                    </div>
-
-                    <!-- Activity Feed Panel (admin only) -->
-                    <div class="hb-activity-panel" id="hbActivityPanel" style="display:none">
-                        <div class="hb-activity-panel-header">
-                            <span class="hb-activity-panel-title">&#128200; Engagement Analytics</span>
-                            <div style="display:flex;align-items:center;gap:0.5rem">
-                                <select class="hb-activity-period" id="hbActivityPeriod" onchange="hbLoadActivity()">
-                                    <option value="7">Last 7 days</option>
-                                    <option value="14">Last 14 days</option>
-                                    <option value="30">Last 30 days</option>
-                                </select>
-                                <button class="hb-archive-close" onclick="hbToggleActivityPanel()">&times;</button>
-                            </div>
-                        </div>
-                        <div id="hbActivityContent">
-                            <div class="hb-loading" style="padding:1rem">Loading...</div>
                         </div>
                     </div>
 
@@ -13542,7 +13582,7 @@
                                 <button class="hb-cat-pill hb-cat-draw" data-cat="draw_update">Draw Update</button>
                                 <button class="hb-cat-pill hb-cat-campaign" data-cat="campaign">Campaign</button>
                             </div>
-                            <div style="display:flex;gap:0.5rem;align-items:center">
+                            <div style="display:flex;gap:6px;align-items:center">
                                 <div style="position:relative">
                                     <button class="hb-templates-btn" onclick="hbToggleTemplateDropdown()" title="Use template">&#128221; Template</button>
                                     <div class="hb-template-dropdown" id="hbTemplateDropdown">
@@ -13555,7 +13595,7 @@
                                 </div>
                                 <button class="hb-attach-btn" onclick="document.getElementById('hbFileInput').click()" title="Attach file">&#128206; Attach</button>
                                 <input type="file" id="hbFileInput" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" multiple style="display:none" onchange="hbOnFilesSelected(this)">
-                                <button class="ls-btn ls-btn-primary hb-post-btn" id="hbPostBtn" onclick="hbCreatePost()">Post</button>
+                                <button class="hb-post-btn" id="hbPostBtn" onclick="hbCreatePost()">Post</button>
                             </div>
                         </div>
                         <div class="hb-schedule-row">
@@ -13569,37 +13609,60 @@
                         <div class="hb-pending-files" id="hbPendingFiles"></div>
                     </div>
 
-                    <!-- Scheduled Posts -->
-                    <div class="hb-scheduled-list" id="hbScheduledList" style="display:none"></div>
-
-                    <!-- Filter row with bookmark and archive toggle -->
-                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.25rem">
-                        <div class="hb-filters" style="margin-bottom:0">
-                        <button class="hb-filter-pill active" data-filter="all" onclick="hbFilterPosts('all')">All</button>
-                        <button class="hb-filter-pill hb-cat-urgent" data-filter="urgent" onclick="hbFilterPosts('urgent')">Urgent</button>
-                        <button class="hb-filter-pill hb-cat-fyi" data-filter="fyi" onclick="hbFilterPosts('fyi')">FYI</button>
-                        <button class="hb-filter-pill hb-cat-draw" data-filter="draw_update" onclick="hbFilterPosts('draw_update')">Draw Update</button>
-                        <button class="hb-filter-pill hb-cat-campaign" data-filter="campaign" onclick="hbFilterPosts('campaign')">Campaign</button>
-                        <button class="hb-filter-pill" data-filter="general" onclick="hbFilterPosts('general')">General</button>
-                        <button class="hb-filter-pill hb-filter-bookmark" data-filter="bookmarks" onclick="hbFilterPosts('bookmarks')">&#128278; Saved</button>
-                        </div>
-                        <button class="hb-archive-toggle" id="hbArchiveToggle" style="display:none" onclick="hbToggleArchivePanel()">&#128451; Archived</button>
-                    </div>
-
-                    <!-- Archive Panel (admin only) -->
-                    <div class="hb-archive-panel" id="hbArchivePanel">
-                        <div class="hb-archive-panel-header">
-                            <span class="hb-archive-panel-title">Archived Posts</span>
-                            <button class="hb-archive-close" onclick="hbToggleArchivePanel()">&times;</button>
-                        </div>
-                        <div id="hbArchiveList">
-                            <div class="hb-loading" style="padding:0.5rem">Loading...</div>
+                    <!-- Filter tabs -->
+                    <div class="hb-filters-bar">
+                        <div style="display:flex;align-items:center;justify-content:space-between">
+                            <div class="hb-filters">
+                                <button class="hb-filter-pill active" data-filter="all" onclick="hbFilterPosts('all')">All</button>
+                                <button class="hb-filter-pill" data-filter="urgent" onclick="hbFilterPosts('urgent')">Urgent</button>
+                                <button class="hb-filter-pill" data-filter="fyi" onclick="hbFilterPosts('fyi')">FYI</button>
+                                <button class="hb-filter-pill" data-filter="draw_update" onclick="hbFilterPosts('draw_update')">Draw Update</button>
+                                <button class="hb-filter-pill" data-filter="campaign" onclick="hbFilterPosts('campaign')">Campaign</button>
+                                <button class="hb-filter-pill" data-filter="general" onclick="hbFilterPosts('general')">General</button>
+                                <button class="hb-filter-pill hb-filter-bookmark" data-filter="bookmarks" onclick="hbFilterPosts('bookmarks')">&#128278; Saved</button>
+                            </div>
+                            <button class="hb-archive-toggle" id="hbArchiveToggle" style="display:none" onclick="hbToggleArchivePanel()">&#128451; Archived</button>
                         </div>
                     </div>
 
-                    <!-- Feed -->
-                    <div id="hbFeed" class="hb-feed">
-                        <div class="hb-loading">Loading posts...</div>
+                    <!-- Scrollable feed area -->
+                    <div class="hb-feed-area">
+                        <!-- Activity Feed Panel (admin only) -->
+                        <div class="hb-activity-panel" id="hbActivityPanel" style="display:none">
+                            <div class="hb-activity-panel-header">
+                                <span class="hb-activity-panel-title">&#128200; Engagement Analytics</span>
+                                <div style="display:flex;align-items:center;gap:0.5rem">
+                                    <select class="hb-activity-period" id="hbActivityPeriod" onchange="hbLoadActivity()">
+                                        <option value="7">Last 7 days</option>
+                                        <option value="14">Last 14 days</option>
+                                        <option value="30">Last 30 days</option>
+                                    </select>
+                                    <button class="hb-archive-close" onclick="hbToggleActivityPanel()">&times;</button>
+                                </div>
+                            </div>
+                            <div id="hbActivityContent">
+                                <div class="hb-loading" style="padding:1rem">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Scheduled Posts -->
+                        <div class="hb-scheduled-list" id="hbScheduledList" style="display:none"></div>
+
+                        <!-- Archive Panel (admin only) -->
+                        <div class="hb-archive-panel" id="hbArchivePanel">
+                            <div class="hb-archive-panel-header">
+                                <span class="hb-archive-panel-title">Archived Posts</span>
+                                <button class="hb-archive-close" onclick="hbToggleArchivePanel()">&times;</button>
+                            </div>
+                            <div id="hbArchiveList">
+                                <div class="hb-loading" style="padding:0.5rem">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Feed -->
+                        <div id="hbFeed" class="hb-feed">
+                            <div class="hb-loading">Loading posts...</div>
+                        </div>
                     </div>
                 </div>
             </div>
