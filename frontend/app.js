@@ -960,6 +960,8 @@ function setupAuthEventListeners() {
     document.getElementById("toolListNormalizer").addEventListener("click", () => openTool('list-normalizer'));
     document.getElementById("toolAskLightspeed").addEventListener("click", () => openTool('ask-lightspeed'));
     document.getElementById("toolRulesOfPlay").addEventListener("click", () => openTool('rules-of-play'));
+    var toolComplianceEl = document.getElementById("toolCompliance");
+    if (toolComplianceEl) toolComplianceEl.addEventListener("click", () => openTool('compliance'));
 
     // Back to menu button (in sidebar)
     document.getElementById("backToMenuBtn").addEventListener("click", goBackToMenu);
@@ -2223,6 +2225,7 @@ function openTool(toolId) {
     document.getElementById("listNormalizerApp").classList.remove("visible");
     document.getElementById("askLightspeedApp").classList.remove("visible");
     document.getElementById("rulesOfPlayApp").classList.remove("visible");
+    document.getElementById("complianceApp").classList.remove("visible");
 
     if (toolId === 'customer-response') {
         document.getElementById("mainApp").classList.add("visible");
@@ -2242,6 +2245,9 @@ function openTool(toolId) {
     } else if (toolId === 'rules-of-play') {
         document.getElementById("rulesOfPlayApp").classList.add("visible");
         initRulesOfPlay();
+    } else if (toolId === 'compliance') {
+        document.getElementById("complianceApp").classList.add("visible");
+        if (window.initComplianceTool) window.initComplianceTool();
     }
 
     // Update sidebar active states
@@ -2293,6 +2299,7 @@ function goBackToMenu() {
     document.getElementById("listNormalizerApp").classList.remove("visible");
     document.getElementById("askLightspeedApp").classList.remove("visible");
     document.getElementById("rulesOfPlayApp").classList.remove("visible");
+    document.getElementById("complianceApp").classList.remove("visible");
     showToolMenu();
 }
 
@@ -4821,6 +4828,9 @@ function loginUser(user, showMessage = true) {
         initAdminDashboard();
     }
 
+    // Show compliance nav button (checks org compliance_enabled + super admin)
+    initComplianceNav();
+
     if (showMessage) {
         showToast(`Welcome back, ${user.name.split(" ")[0]}!`, "success");
     }
@@ -7137,6 +7147,10 @@ function switchPage(pageId) {
         // Load admin dashboard data
         if (typeof loadAdminDashboard === 'function') {
             loadAdminDashboard();
+        }
+    } else if (pageId === "compliance-admin") {
+        if (typeof initComplianceAdmin === 'function') {
+            initComplianceAdmin();
         }
     }
 }
@@ -15898,6 +15912,8 @@ const ROUTES = {
     '/list-normalizer/email-cleaner': { view: 'tool', tool: 'list-normalizer', subTool: 'email-cleaner' },
     '/ask-lightspeed':               { view: 'tool', tool: 'ask-lightspeed' },
     '/rules-of-play':                { view: 'tool', tool: 'rules-of-play' },
+    '/compliance':                   { view: 'tool', tool: 'compliance' },
+    '/compliance-admin':             { view: 'tool', tool: 'customer-response', page: 'compliance-admin' },
     '/home-base':                    { view: 'tool', tool: 'customer-response', page: 'home-base' },
 };
 
@@ -15909,6 +15925,7 @@ const TOOL_ROUTES = {
     'list-normalizer':   '/list-normalizer',
     'ask-lightspeed':    '/ask-lightspeed',
     'rules-of-play':     '/rules-of-play',
+    'compliance':        '/compliance',
 };
 
 const PAGE_ROUTES = {
@@ -15918,6 +15935,7 @@ const PAGE_ROUTES = {
     'knowledge': '/knowledge',
     'teams':     '/response-assistant/teams',
     'home-base': '/home-base',
+    'compliance-admin': '/compliance-admin',
     'admin':     '/response-assistant/admin',
     'feedback':  '/response-assistant/feedback',
     'bulk':      '/response-assistant/bulk',
@@ -16578,6 +16596,7 @@ function skeletonRows(count) {
         { id: 'normalizer', label: 'List Normalizer', desc: 'Clean and format lists', icon: '📋', group: 'Tools', action: function() { openTool('list-normalizer'); } },
         { id: 'ask', label: 'Ask Lightspeed', desc: 'Chat with your AI assistant', icon: '💬', group: 'Tools', action: function() { openTool('ask-lightspeed'); } },
         { id: 'rop', label: 'Rules of Play', desc: 'Generate rules of play documents', icon: '📜', group: 'Tools', action: function() { openTool('rules-of-play'); } },
+        { id: 'compliance', label: 'Compliance', desc: 'Get compliance guidance for lottery regulations', icon: '🛡️', group: 'Tools', action: function() { openTool('compliance'); } },
         { id: 'kb-support', label: 'Support Knowledge Base', desc: 'Manage customer support KB entries', icon: '📚', group: 'Navigate', action: function() { switchPage('knowledge'); switchKbTab('support'); } },
         { id: 'kb-internal', label: 'Internal Knowledge Base', desc: 'Manage internal/operations KB entries', icon: '📖', group: 'Navigate', action: function() { switchPage('knowledge'); switchKbTab('internal'); } },
         { id: 'favorites', label: 'Favorites', desc: 'View saved responses', icon: '⭐', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('favorites'); } },
@@ -18966,6 +18985,57 @@ document.addEventListener('click', function(e) {
         hbDigestOpen = false;
     }
 });
+
+// ==================== COMPLIANCE NAV INIT ====================
+async function initComplianceNav() {
+    try {
+        // Check if org has compliance enabled
+        const orgResp = await fetch(`${API_BASE_URL}/api/organizations/my`, {
+            headers: getAuthHeaders()
+        });
+        if (!orgResp.ok) return;
+
+        const orgData = await orgResp.json();
+        const org = orgData.organizations?.[0] || orgData.organization || null;
+
+        const complianceNavBtn = document.getElementById('complianceNavBtn');
+        if (!complianceNavBtn) return;
+
+        // Show compliance nav for orgs with compliance enabled OR super admins
+        const isSuperAdmin = await checkSuperAdmin().catch(() => false);
+        if (org?.compliance_enabled || isSuperAdmin) {
+            complianceNavBtn.style.display = 'flex';
+
+            complianceNavBtn.addEventListener('click', () => {
+                openTool('compliance');
+            });
+
+            // Show bento card on tool menu
+            const bentoCard = document.getElementById('toolCompliance');
+            if (bentoCard) bentoCard.style.display = '';
+        }
+
+        // Show compliance admin nav for super admins
+        if (isSuperAdmin) {
+            // Add compliance admin to sidebar under admin
+            const adminNavBtn = document.getElementById('adminNavBtn');
+            if (adminNavBtn && !document.getElementById('complianceAdminNavBtn')) {
+                const compAdminBtn = document.createElement('button');
+                compAdminBtn.className = 'sidebar-btn';
+                compAdminBtn.id = 'complianceAdminNavBtn';
+                compAdminBtn.dataset.page = 'compliance-admin';
+                compAdminBtn.innerHTML = '<span class="sidebar-btn-icon">&#128737;&#65039;</span><span class="sidebar-btn-label">Compliance KB</span>';
+                compAdminBtn.addEventListener('click', () => {
+                    switchPage('compliance-admin');
+                    if (window.initComplianceAdmin) window.initComplianceAdmin();
+                });
+                adminNavBtn.parentNode.insertBefore(compAdminBtn, adminNavBtn.nextSibling);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to init compliance nav:', err);
+    }
+}
 
 (function hookShopifySettingsCheck() {
     const settingsToggle = document.getElementById('settingsToggle');
