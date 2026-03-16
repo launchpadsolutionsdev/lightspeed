@@ -723,6 +723,23 @@
     margin-top: 8px;
 }
 
+.compliance-new-chat-btn {
+    display: block;
+    margin: 16px auto;
+    padding: 10px 24px;
+    background: #635BFF;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.compliance-new-chat-btn:hover {
+    background: #4B45D1;
+}
+
 /* ============================================================
    SUPER ADMIN — Compliance KB Management
    ============================================================ */

@@ -320,6 +320,19 @@
                 replaceCitationMarkers(assistantEl, metadata.citations || []);
             }
 
+            // Add "New Chat" button after the response
+            var messagesEl = document.getElementById('complianceChatMessages');
+            if (messagesEl) {
+                var newChatBtn = document.createElement('button');
+                newChatBtn.className = 'compliance-new-chat-btn';
+                newChatBtn.textContent = '+ New Chat';
+                newChatBtn.addEventListener('click', function() {
+                    startNewConversation();
+                });
+                messagesEl.appendChild(newChatBtn);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+
         } catch (err) {
             console.error('Compliance chat error:', err);
             if (typingEl && typingEl.parentNode) typingEl.remove();
