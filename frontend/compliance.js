@@ -26,6 +26,7 @@
         if (complianceState.initialized) {
             return;
         }
+        complianceState.initialized = true;
 
         try {
             // Load jurisdictions
@@ -37,6 +38,7 @@
                 if (messagesEl) {
                     messagesEl.innerHTML = '<div style="padding:20px;color:#c62828;text-align:center;">Failed to load Compliance Assistant (HTTP ' + resp.status + '). Please try refreshing the page.</div>';
                 }
+                complianceState.initialized = false;
                 return;
             }
             const data = await resp.json();
@@ -50,10 +52,9 @@
 
             // Load welcome message
             await loadWelcomeMessage();
-
-            complianceState.initialized = true;
         } catch (err) {
             console.error('Failed to initialize compliance tool:', err);
+            complianceState.initialized = false; // allow retry
             const messagesEl = document.getElementById('complianceChatMessages');
             if (messagesEl) {
                 messagesEl.innerHTML = '<div style="padding:20px;color:#c62828;text-align:center;">Failed to load Compliance Assistant. Please try refreshing the page.</div>';
