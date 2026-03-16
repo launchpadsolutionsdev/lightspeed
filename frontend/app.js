@@ -7396,15 +7396,16 @@ function calRenderWeek() {
             const recurIcon = ev.recurrence_rule ? ' &#8635;' : '';
             const draggable = ev.is_recurring_instance ? '' : 'draggable="true"';
 
-            // Find the matching column cell to get the column
+            // Position event in the correct day column using calc() on left/width
+            // Grid has 8 columns: 60px time label + 7 equal day columns
             const colIndex = days.indexOf(day);
-            // The grid has 8 columns (time label + 7 days), event goes in column colIndex+2 (1-indexed grid)
             const evDiv = document.createElement('div');
             evDiv.className = `cal-week-event cal-bg-${color}`;
             evDiv.style.top = topPx + 'px';
             evDiv.style.height = heightPx + 'px';
-            evDiv.style.gridColumn = String(colIndex + 2);
-            evDiv.style.gridRow = '1 / -1';
+            evDiv.style.left = `calc(60px + ${colIndex} * ((100% - 60px) / 7) + 2px)`;
+            evDiv.style.width = `calc((100% - 60px) / 7 - 4px)`;
+            evDiv.style.right = 'auto';
             evDiv.innerHTML = `${timeStr} ${title}${recurIcon}`;
             evDiv.title = title;
             evDiv.onclick = function(e) { calEditEvent(ev.id); e.stopPropagation(); };
