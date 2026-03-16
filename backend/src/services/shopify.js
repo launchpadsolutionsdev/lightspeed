@@ -52,33 +52,51 @@ async function shopifyFetch(shopDomain, accessToken, endpoint, options = {}) {
 async function shopifyFetchAll(shopDomain, accessToken, endpoint, resourceKey) {
     const allRecords = [];
     let url = `https://${shopDomain}/admin/api/${SHOPIFY_API_VERSION}${endpoint}`;
+    let page = 0;
 
     while (url) {
-        const response = await fetch(url, {
-            headers: {
-                'X-Shopify-Access-Token': accessToken,
-                'Content-Type': 'application/json'
+        page++;
+        // 30-second timeout per request to prevent hanging forever
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000);
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'X-Shopify-Access-Token': accessToken,
+                    'Content-Type': 'application/json'
+                },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                throw new Error(`Shopify API error ${response.status}: ${errorText}`);
             }
-        });
 
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => '');
-            throw new Error(`Shopify API error ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        if (data[resourceKey]) {
-            allRecords.push(...data[resourceKey]);
-        }
-
-        // Parse Link header for next page
-        const linkHeader = response.headers.get('link');
-        url = null;
-        if (linkHeader) {
-            const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-            if (nextMatch) {
-                url = nextMatch[1];
+            const data = await response.json();
+            if (data[resourceKey]) {
+                allRecords.push(...data[resourceKey]);
             }
+
+            console.log(`Shopify fetch page ${page}: ${data[resourceKey]?.length || 0} ${resourceKey} (total: ${allRecords.length})`);
+
+            // Parse Link header for next page
+            const linkHeader = response.headers.get('link');
+            url = null;
+            if (linkHeader) {
+                const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+                if (nextMatch) {
+                    url = nextMatch[1];
+                }
+            }
+        } catch (err) {
+            clearTimeout(timeout);
+            if (err.name === 'AbortError') {
+                throw new Error(`Shopify API timeout on page ${page} of ${resourceKey} (had ${allRecords.length} records so far)`);
+            }
+            throw err;
         }
     }
 

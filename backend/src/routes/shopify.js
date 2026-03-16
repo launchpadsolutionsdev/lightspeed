@@ -467,7 +467,15 @@ router.post('/sync', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'No Shopify store connected' });
         }
 
-        // Check if a sync is already running
+        // Clean up stale "running" logs (stuck for more than 5 minutes)
+        await pool.query(
+            `UPDATE shopify_sync_logs
+             SET status = 'error', error_message = 'Sync timed out', completed_at = NOW()
+             WHERE organization_id = $1 AND status = 'running' AND started_at < NOW() - INTERVAL '5 minutes'`,
+            [organizationId]
+        );
+
+        // Check if a sync is genuinely still running
         const running = await pool.query(
             `SELECT id FROM shopify_sync_logs WHERE organization_id = $1 AND status = 'running' LIMIT 1`,
             [organizationId]
@@ -481,21 +489,22 @@ router.post('/sync', authenticate, async (req, res) => {
         // Respond immediately
         res.status(202).json({ success: true, message: 'Sync started', status: 'running' });
 
-        // Run sync in background
+        // Run sync in background — each type independently so one failure doesn't block others
         (async () => {
-            try {
-                if (types.includes('products')) {
-                    await shopifyService.syncProducts(organizationId);
+            for (const type of types) {
+                try {
+                    if (type === 'products') {
+                        await shopifyService.syncProducts(organizationId);
+                    } else if (type === 'orders') {
+                        await shopifyService.syncOrders(organizationId);
+                    } else if (type === 'customers') {
+                        await shopifyService.syncCustomers(organizationId);
+                    }
+                    console.log(`Shopify ${type} sync complete for org ${organizationId}`);
+                } catch (err) {
+                    console.error(`Shopify ${type} sync error for org ${organizationId}:`, err.message);
+                    // Error is already logged to shopify_sync_logs by the service function
                 }
-                if (types.includes('orders')) {
-                    await shopifyService.syncOrders(organizationId);
-                }
-                if (types.includes('customers')) {
-                    await shopifyService.syncCustomers(organizationId);
-                }
-                console.log(`Shopify sync complete for org ${organizationId}`);
-            } catch (err) {
-                console.error(`Shopify background sync error for org ${organizationId}:`, err.message);
             }
         })();
 
