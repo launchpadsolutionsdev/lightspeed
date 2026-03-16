@@ -157,6 +157,14 @@ router.get('/callback', async (req, res) => {
             scope: tokenData.scope
         });
 
+        // Register webhooks for real-time sync
+        try {
+            await shopifyService.registerWebhooks(organizationId, BACKEND_URL);
+            console.log('Shopify webhooks registered after OAuth for org:', organizationId);
+        } catch (webhookError) {
+            console.error('Failed to register webhooks after OAuth (non-fatal):', webhookError.message);
+        }
+
         // Redirect to the frontend settings page with success
         const frontendUrl = process.env.FRONTEND_URL || 'https://www.lightspeedutility.ca';
         res.redirect(`${frontendUrl}/#shopify-connected`);
@@ -164,6 +172,104 @@ router.get('/callback', async (req, res) => {
     } catch (error) {
         console.error('Shopify callback error:', error);
         res.status(500).send('Failed to complete Shopify installation');
+    }
+});
+
+// ─── Webhooks ────────────────────────────────────────────────────────
+
+/**
+ * POST /api/shopify/webhook
+ * Receives real-time webhook events from Shopify.
+ * Raw body is used for HMAC verification (configured in index.js).
+ * No authentication middleware — verified via Shopify HMAC signature.
+ */
+router.post('/webhook', async (req, res) => {
+    try {
+        const hmac = req.headers['x-shopify-hmac-sha256'];
+        const topic = req.headers['x-shopify-topic'];
+        const shopDomain = req.headers['x-shopify-shop-domain'];
+
+        if (!hmac || !topic || !shopDomain) {
+            return res.status(400).send('Missing required Shopify headers');
+        }
+
+        if (!SHOPIFY_API_SECRET) {
+            return res.status(503).send('Shopify integration not configured');
+        }
+
+        // Verify HMAC signature using raw body
+        const rawBody = req.body;
+        const generatedHmac = crypto
+            .createHmac('sha256', SHOPIFY_API_SECRET)
+            .update(rawBody)
+            .digest('base64');
+
+        if (generatedHmac !== hmac) {
+            console.error('Shopify webhook HMAC verification failed', { topic, shopDomain });
+            return res.status(401).send('HMAC verification failed');
+        }
+
+        // Parse the payload after verification
+        const payload = JSON.parse(rawBody.toString('utf8'));
+
+        // Respond immediately with 200 — Shopify retries on non-2xx
+        res.status(200).send('OK');
+
+        // Process asynchronously to avoid blocking the response
+        shopifyService.handleWebhookEvent(shopDomain, topic, payload)
+            .then(result => {
+                if (result.handled) {
+                    console.log(`Shopify webhook processed: ${topic} for ${shopDomain}`, { shopifyId: result.shopifyId });
+                } else {
+                    console.warn(`Shopify webhook not handled: ${result.reason}`, { topic, shopDomain });
+                }
+            })
+            .catch(error => {
+                console.error('Shopify webhook processing error:', error.message, { topic, shopDomain });
+            });
+
+    } catch (error) {
+        console.error('Shopify webhook error:', error);
+        if (!res.headersSent) {
+            res.status(500).send('Webhook processing error');
+        }
+    }
+});
+
+/**
+ * POST /api/shopify/webhooks/register
+ * Manually trigger webhook registration with Shopify.
+ * Requires admin role.
+ */
+router.post('/webhooks/register', authenticate, async (req, res) => {
+    try {
+        const organizationId = await getOrgId(req.userId);
+        if (!organizationId) {
+            return res.status(403).json({ error: 'No organization found' });
+        }
+
+        const isAdmin = await requireOrgAdmin(req.userId, organizationId);
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Only admins and owners can manage webhooks' });
+        }
+
+        const store = await shopifyService.getStoreConnection(organizationId);
+        if (!store) {
+            return res.status(404).json({ error: 'No Shopify store connected' });
+        }
+
+        const webhookBaseUrl = BACKEND_URL;
+        const result = await shopifyService.registerWebhooks(organizationId, webhookBaseUrl);
+
+        res.json({
+            success: true,
+            message: `Registered ${result.registered} webhooks`,
+            ...result
+        });
+
+    } catch (error) {
+        console.error('Shopify webhook registration error:', error);
+        res.status(500).json({ error: 'Failed to register webhooks' });
     }
 });
 
@@ -203,6 +309,8 @@ router.get('/status', authenticate, async (req, res) => {
             configured: true,
             shopDomain: store.shop_domain,
             syncSettings: store.sync_settings,
+            webhooksRegistered: store.webhooks_registered || false,
+            webhookUrl: store.webhook_url || null,
             lastSync: {
                 products: store.last_products_sync_at,
                 orders: store.last_orders_sync_at,
@@ -235,6 +343,13 @@ router.post('/disconnect', authenticate, async (req, res) => {
         const isAdmin = await requireOrgAdmin(req.userId, organizationId);
         if (!isAdmin) {
             return res.status(403).json({ error: 'Only admins and owners can disconnect Shopify' });
+        }
+
+        // Unregister webhooks before disconnecting
+        try {
+            await shopifyService.unregisterWebhooks(organizationId);
+        } catch (webhookError) {
+            console.error('Failed to unregister webhooks (non-fatal):', webhookError.message);
         }
 
         await shopifyService.disconnectStore(organizationId);
@@ -298,10 +413,21 @@ router.post('/connect', authenticate, async (req, res) => {
             scope: 'read_products,read_orders,read_customers'
         });
 
+        // Register webhooks for real-time sync
+        let webhooksRegistered = false;
+        try {
+            await shopifyService.registerWebhooks(organizationId, BACKEND_URL);
+            webhooksRegistered = true;
+            console.log('Shopify webhooks registered after manual connect for org:', organizationId);
+        } catch (webhookError) {
+            console.error('Failed to register webhooks after manual connect (non-fatal):', webhookError.message);
+        }
+
         res.json({
             success: true,
             shopDomain: normalizedDomain,
             shopName: shopData.shop?.name || normalizedDomain,
+            webhooksRegistered,
             message: 'Shopify store connected successfully'
         });
 

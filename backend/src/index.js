@@ -83,6 +83,9 @@ app.use(cors({
 // Stripe webhook needs raw body for signature verification — must come BEFORE express.json()
 app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
 
+// Shopify webhook needs raw body for HMAC signature verification
+app.use('/api/shopify/webhook', express.raw({ type: 'application/json' }));
+
 // Parse JSON bodies
 app.use(express.json({ limit: '10mb' }));
 

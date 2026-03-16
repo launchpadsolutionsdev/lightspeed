@@ -691,6 +691,309 @@ function formatCustomerContext(customer) {
   Orders: ${customer.orders_count} | Total Spent: $${parseFloat(customer.total_spent).toFixed(2)}`;
 }
 
+// ─── Webhook Registration ────────────────────────────────────────────
+
+const WEBHOOK_TOPICS = [
+    'orders/create',
+    'orders/updated',
+    'products/create',
+    'products/update',
+    'products/delete',
+    'customers/create',
+    'customers/update'
+];
+
+/**
+ * Register all webhook subscriptions with a Shopify store.
+ * Called after OAuth completes or when manually re-registering.
+ *
+ * @param {string} organizationId
+ * @param {string} webhookBaseUrl - e.g. "https://api.lightspeedutility.ca"
+ * @returns {Promise<Object>} { registered: number, failed: string[] }
+ */
+async function registerWebhooks(organizationId, webhookBaseUrl) {
+    const store = await getStoreConnection(organizationId);
+    if (!store) throw new Error('No Shopify store connected');
+
+    const callbackUrl = `${webhookBaseUrl}/api/shopify/webhook`;
+    const registered = [];
+    const failed = [];
+
+    // First, get existing webhooks to avoid duplicates
+    let existingWebhooks = [];
+    try {
+        const data = await shopifyFetch(store.shop_domain, store.access_token, '/webhooks.json');
+        existingWebhooks = data.webhooks || [];
+    } catch {
+        // If we can't list, proceed with registration anyway
+    }
+
+    const existingTopics = new Set(existingWebhooks.map(w => w.topic));
+
+    for (const topic of WEBHOOK_TOPICS) {
+        if (existingTopics.has(topic)) {
+            registered.push(topic);
+            continue;
+        }
+
+        try {
+            await shopifyFetch(store.shop_domain, store.access_token, '/webhooks.json', {
+                method: 'POST',
+                body: {
+                    webhook: {
+                        topic,
+                        address: callbackUrl,
+                        format: 'json'
+                    }
+                }
+            });
+            registered.push(topic);
+        } catch (error) {
+            console.error(`Failed to register webhook ${topic}:`, error.message);
+            failed.push(topic);
+        }
+    }
+
+    // Track registration status in DB
+    await pool.query(
+        `UPDATE shopify_stores
+         SET webhooks_registered = TRUE, webhook_url = $2, updated_at = NOW()
+         WHERE organization_id = $1`,
+        [organizationId, callbackUrl]
+    );
+
+    return { registered: registered.length, failed };
+}
+
+/**
+ * Unregister all webhooks for a store (called on disconnect).
+ */
+async function unregisterWebhooks(organizationId) {
+    const store = await getStoreConnection(organizationId);
+    if (!store) return;
+
+    try {
+        const data = await shopifyFetch(store.shop_domain, store.access_token, '/webhooks.json');
+        const webhooks = data.webhooks || [];
+
+        for (const webhook of webhooks) {
+            try {
+                await shopifyFetch(store.shop_domain, store.access_token, `/webhooks/${webhook.id}.json`, {
+                    method: 'DELETE'
+                });
+            } catch {
+                // Best-effort cleanup
+            }
+        }
+    } catch {
+        // Store may already be inaccessible
+    }
+
+    await pool.query(
+        `UPDATE shopify_stores
+         SET webhooks_registered = FALSE, webhook_url = NULL, updated_at = NOW()
+         WHERE organization_id = $1`,
+        [organizationId]
+    );
+}
+
+// ─── Webhook Handlers (Incremental Upserts) ─────────────────────────
+
+/**
+ * Look up the organization_id for a given shop domain.
+ */
+async function getOrgByShopDomain(shopDomain) {
+    const result = await pool.query(
+        'SELECT organization_id FROM shopify_stores WHERE shop_domain = $1 AND is_active = TRUE',
+        [shopDomain]
+    );
+    return result.rows[0]?.organization_id || null;
+}
+
+/**
+ * Handle a single product create/update webhook payload.
+ */
+async function handleProductUpsert(organizationId, product) {
+    const tags = product.tags ? product.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const variants = product.variants || [];
+    const images = product.images || [];
+    const featuredImage = product.image?.src || images[0]?.src || null;
+
+    await pool.query(
+        `INSERT INTO shopify_products
+            (id, organization_id, shopify_product_id, title, body_html, vendor, product_type, handle, status, tags, variants, images, featured_image_url, created_at_shopify, updated_at_shopify, synced_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+         ON CONFLICT (organization_id, shopify_product_id) DO UPDATE SET
+            title = EXCLUDED.title,
+            body_html = EXCLUDED.body_html,
+            vendor = EXCLUDED.vendor,
+            product_type = EXCLUDED.product_type,
+            handle = EXCLUDED.handle,
+            status = EXCLUDED.status,
+            tags = EXCLUDED.tags,
+            variants = EXCLUDED.variants,
+            images = EXCLUDED.images,
+            featured_image_url = EXCLUDED.featured_image_url,
+            updated_at_shopify = EXCLUDED.updated_at_shopify,
+            synced_at = NOW()`,
+        [
+            organizationId,
+            product.id,
+            product.title,
+            product.body_html,
+            product.vendor,
+            product.product_type,
+            product.handle,
+            product.status || 'active',
+            tags,
+            JSON.stringify(variants),
+            JSON.stringify(images),
+            featuredImage,
+            product.created_at,
+            product.updated_at
+        ]
+    );
+}
+
+/**
+ * Handle a product delete webhook payload.
+ */
+async function handleProductDelete(organizationId, payload) {
+    await pool.query(
+        'DELETE FROM shopify_products WHERE organization_id = $1 AND shopify_product_id = $2',
+        [organizationId, payload.id]
+    );
+}
+
+/**
+ * Handle a single order create/update webhook payload.
+ */
+async function handleOrderUpsert(organizationId, order) {
+    const tags = order.tags ? order.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const customerName = order.customer
+        ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim()
+        : '';
+
+    await pool.query(
+        `INSERT INTO shopify_orders
+            (id, organization_id, shopify_order_id, order_number, email, financial_status, fulfillment_status, total_price, subtotal_price, currency, customer_name, customer_email, line_items, shipping_address, note, tags, created_at_shopify, updated_at_shopify, synced_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
+         ON CONFLICT (organization_id, shopify_order_id) DO UPDATE SET
+            financial_status = EXCLUDED.financial_status,
+            fulfillment_status = EXCLUDED.fulfillment_status,
+            total_price = EXCLUDED.total_price,
+            customer_name = EXCLUDED.customer_name,
+            customer_email = EXCLUDED.customer_email,
+            line_items = EXCLUDED.line_items,
+            shipping_address = EXCLUDED.shipping_address,
+            note = EXCLUDED.note,
+            tags = EXCLUDED.tags,
+            updated_at_shopify = EXCLUDED.updated_at_shopify,
+            synced_at = NOW()`,
+        [
+            organizationId,
+            order.id,
+            order.name || `#${order.order_number}`,
+            order.email,
+            order.financial_status,
+            order.fulfillment_status,
+            parseFloat(order.total_price) || 0,
+            parseFloat(order.subtotal_price) || 0,
+            order.currency || 'CAD',
+            customerName,
+            order.customer?.email || order.email,
+            JSON.stringify(order.line_items || []),
+            order.shipping_address ? JSON.stringify(order.shipping_address) : null,
+            order.note,
+            tags,
+            order.created_at,
+            order.updated_at
+        ]
+    );
+}
+
+/**
+ * Handle a single customer create/update webhook payload.
+ */
+async function handleCustomerUpsert(organizationId, customer) {
+    const tags = customer.tags ? customer.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const defaultAddress = customer.default_address || {};
+
+    await pool.query(
+        `INSERT INTO shopify_customers
+            (id, organization_id, shopify_customer_id, email, first_name, last_name, phone, orders_count, total_spent, tags, city, province, country, zip, created_at_shopify, updated_at_shopify, synced_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+         ON CONFLICT (organization_id, shopify_customer_id) DO UPDATE SET
+            email = EXCLUDED.email,
+            first_name = EXCLUDED.first_name,
+            last_name = EXCLUDED.last_name,
+            phone = EXCLUDED.phone,
+            orders_count = EXCLUDED.orders_count,
+            total_spent = EXCLUDED.total_spent,
+            tags = EXCLUDED.tags,
+            city = EXCLUDED.city,
+            province = EXCLUDED.province,
+            country = EXCLUDED.country,
+            zip = EXCLUDED.zip,
+            updated_at_shopify = EXCLUDED.updated_at_shopify,
+            synced_at = NOW()`,
+        [
+            organizationId,
+            customer.id,
+            customer.email,
+            customer.first_name,
+            customer.last_name,
+            customer.phone,
+            customer.orders_count || 0,
+            parseFloat(customer.total_spent) || 0,
+            tags,
+            defaultAddress.city,
+            defaultAddress.province,
+            defaultAddress.country_code,
+            defaultAddress.zip
+        ]
+    );
+}
+
+/**
+ * Main webhook dispatcher. Routes a webhook event to the correct handler.
+ *
+ * @param {string} shopDomain - From X-Shopify-Shop-Domain header
+ * @param {string} topic - From X-Shopify-Topic header (e.g. "orders/create")
+ * @param {Object} payload - Parsed webhook body
+ * @returns {Promise<Object>} { handled: boolean, topic, action }
+ */
+async function handleWebhookEvent(shopDomain, topic, payload) {
+    const organizationId = await getOrgByShopDomain(shopDomain);
+    if (!organizationId) {
+        return { handled: false, reason: 'unknown_shop', shopDomain };
+    }
+
+    switch (topic) {
+        case 'products/create':
+        case 'products/update':
+            await handleProductUpsert(organizationId, payload);
+            return { handled: true, topic, shopifyId: payload.id };
+
+        case 'products/delete':
+            await handleProductDelete(organizationId, payload);
+            return { handled: true, topic, shopifyId: payload.id };
+
+        case 'orders/create':
+        case 'orders/updated':
+            await handleOrderUpsert(organizationId, payload);
+            return { handled: true, topic, shopifyId: payload.id };
+
+        case 'customers/create':
+        case 'customers/update':
+            await handleCustomerUpsert(organizationId, payload);
+            return { handled: true, topic, shopifyId: payload.id };
+
+        default:
+            return { handled: false, reason: 'unhandled_topic', topic };
+    }
+}
+
 // ─── Sync Log Helpers ────────────────────────────────────────────────
 
 async function createSyncLog(organizationId, syncType) {
@@ -737,5 +1040,11 @@ module.exports = {
     // AI Context
     buildContextForInquiry,
     buildProductContext,
-    buildAnalyticsSummary
+    buildAnalyticsSummary,
+
+    // Webhooks
+    registerWebhooks,
+    unregisterWebhooks,
+    handleWebhookEvent,
+    getOrgByShopDomain
 };
