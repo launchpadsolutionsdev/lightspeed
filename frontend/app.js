@@ -881,8 +881,7 @@ function setupAuthEventListeners() {
             e.preventDefault();
             const submitBtn = document.getElementById('contactSubmitBtn');
             const status = document.getElementById('contactFormStatus');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = 'Sending... <span>→</span>';
+            const restoreContactBtn = lsMicro.btnLoading(submitBtn, 'Sending...');
             status.textContent = '';
             status.className = 'contact-form-status';
 
@@ -915,8 +914,7 @@ function setupAuthEventListeners() {
                 status.className = 'contact-form-status error';
             }
 
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Send Message <span>→</span>';
+            restoreContactBtn();
         });
     }
 
@@ -1613,8 +1611,7 @@ function _bindWizardStep1() {
         if (!orgName) { showToast('Please enter your organization name', 'error'); return; }
 
         const btn = document.getElementById('wizBtn1');
-        btn.disabled = true;
-        btn.innerHTML = 'Creating...';
+        const restoreBtn = lsMicro.btnLoading(btn, 'Creating...');
 
         try {
             const token = localStorage.getItem('authToken');
@@ -1654,8 +1651,7 @@ function _bindWizardStep1() {
             console.error('Wizard step 1 error:', error);
             showToast('Connection error. Please try again.', 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = 'Create Organization <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+            restoreBtn();
         }
     });
 }
@@ -1664,8 +1660,7 @@ function _bindWizardStep2() {
     document.getElementById('wizardForm2').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('wizBtn2');
-        btn.disabled = true;
-        btn.innerHTML = 'Saving...';
+        const restoreBtn = lsMicro.btnLoading(btn, 'Saving...');
 
         try {
             await _wizardPatchOrg({
@@ -1682,7 +1677,7 @@ function _bindWizardStep2() {
             showToast('Failed to save profile. You can update this later.', 'error');
             _wizardGoTo(3);
         } finally {
-            btn.disabled = false;
+            restoreBtn();
         }
     });
 }
@@ -1691,8 +1686,7 @@ function _bindWizardStep3() {
     document.getElementById('wizardForm3').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('wizBtn3');
-        btn.disabled = true;
-        btn.innerHTML = 'Saving...';
+        const restoreBtn = lsMicro.btnLoading(btn, 'Saving...');
 
         try {
             const brandTermsRaw = document.getElementById('wizBrandTerms').value.trim();
@@ -1712,7 +1706,7 @@ function _bindWizardStep3() {
             showToast('Failed to save configuration. You can update this later.', 'error');
             _wizardGoTo(4);
         } finally {
-            btn.disabled = false;
+            restoreBtn();
         }
     });
 }
@@ -1724,8 +1718,7 @@ async function _wizardSendInvite() {
     if (!email) { showToast('Please enter an email address', 'error'); return; }
 
     const btn = document.getElementById('wizSendInviteBtn');
-    btn.disabled = true;
-    btn.textContent = 'Sending...';
+    const restoreBtn = lsMicro.btnLoading(btn, 'Sending...');
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/organizations/${_wizardOrgId}/invite`, {
@@ -1758,8 +1751,7 @@ async function _wizardSendInvite() {
         console.error('Invite error:', error);
         showToast('Connection error. Please try again.', 'error');
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Send Invite';
+        restoreBtn();
     }
 }
 
@@ -3394,7 +3386,7 @@ async function alsConfirmAction() {
     const confirmDiv = document.getElementById('alsConfirmation');
     if (confirmDiv) {
         const btns = confirmDiv.querySelectorAll('.als-confirm-btn');
-        btns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+        btns.forEach(b => { b.disabled = true; });
     }
 
     const chatArea = document.getElementById('alsChatArea');
@@ -4391,8 +4383,7 @@ function appendAlsTeachConfirm(msgDiv, userMessage, aiResponse) {
 async function saveAlsTeachToKB(btn) {
     const confirmDiv = btn.closest('.als-teach-confirm');
     const userMessage = confirmDiv.dataset.teachMsg;
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
+    lsMicro.btnLoading(btn, 'Saving...');
 
     try {
         const title = userMessage.length > 80 ? userMessage.substring(0, 80) + '...' : userMessage;
@@ -8211,8 +8202,7 @@ async function saveOrgProfile() {
     if (!currentOrgId) return;
 
     const btn = document.getElementById('saveOrgProfileBtn');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
+    const restoreBtn = lsMicro.btnLoading(btn, 'Saving...');
 
     try {
         // Build brand terminology JSON from textarea (one rule per line)
@@ -8258,8 +8248,7 @@ async function saveOrgProfile() {
 
         if (response.status === 409) {
             showToast('Settings were modified by someone else. Please refresh and try again.', 'error');
-            btn.disabled = false;
-            btn.textContent = 'Save Profile';
+            restoreBtn();
             return;
         }
 
@@ -8283,8 +8272,7 @@ async function saveOrgProfile() {
         console.error('Save org profile error:', error);
         showToast('Failed to save profile: ' + error.message, 'error');
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Save Profile';
+        restoreBtn();
     }
 }
 
@@ -8393,7 +8381,7 @@ async function showTemplateLibrary() {
     modal.style.display = 'block';
 
     const listEl = document.getElementById('templateLibraryList');
-    listEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #9ca3af;">Loading library...</div>';
+    listEl.innerHTML = lsMicro.skeleton('list', 4);
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/content-templates/library`, {
@@ -9870,8 +9858,7 @@ async function submitRatingFeedback() {
     const kbEntries = JSON.parse(modal?.dataset.kbEntries || '[]');
 
     const submitBtn = document.getElementById('feedbackSubmitBtn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Saving...';
+    const restoreSubmitBtn = lsMicro.btnLoading(submitBtn, 'Saving...');
 
     try {
         let feedback = '';
@@ -10004,8 +9991,7 @@ async function submitRatingFeedback() {
     } catch (error) {
         console.warn('Failed to save feedback:', error);
         showToast("Failed to save feedback. Please try again.", "error");
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit Feedback';
+        restoreSubmitBtn();
     }
 }
 
@@ -11141,8 +11127,7 @@ async function saveKbEntry() {
     }
 
     var saveBtn = document.getElementById('kbFormSaveBtn');
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
+    var restoreSaveBtn = lsMicro.btnLoading(saveBtn, 'Saving...');
 
     try {
         if (id) {
@@ -11235,8 +11220,7 @@ async function saveKbEntry() {
         console.error('KB save error:', error);
         showToast('Failed to save entry. Please try again.', 'error');
     } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = id ? 'Update Entry' : 'Save Entry';
+        restoreSaveBtn();
     }
 }
 
@@ -16942,7 +16926,7 @@ document.addEventListener('click', function(e) {
 async function hbLoadPosts() {
     const feed = document.getElementById('hbFeed');
     if (!feed) return;
-    feed.innerHTML = '<div class="hb-loading">Loading posts...</div>';
+    feed.innerHTML = lsMicro.skeleton('posts', 3);
 
     // Fetch user role + members in parallel
     try {
@@ -17435,7 +17419,7 @@ async function hbToggleArchivePanel() {
 async function hbLoadArchivedPosts() {
     const list = document.getElementById('hbArchiveList');
     if (!list) return;
-    list.innerHTML = '<div class="hb-loading" style="padding:0.5rem">Loading...</div>';
+    list.innerHTML = lsMicro.skeleton('list', 3);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/archived`, { headers: getAuthHeaders() });
@@ -17531,7 +17515,7 @@ async function hbToggleTemplateDropdown() {
 async function hbLoadTemplates() {
     const list = document.getElementById('hbTemplateList');
     if (!list) return;
-    list.innerHTML = '<div style="padding:0.75rem;font-size:0.8rem;color:var(--text-muted)">Loading...</div>';
+    list.innerHTML = lsMicro.skeleton('list', 3);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/templates`, { headers: getAuthHeaders() });
@@ -17698,8 +17682,7 @@ async function hbSaveDraft() {
     if (!body) { lsModal.alert({ title: 'Nothing to save', message: 'Write something before saving a draft.', variant: 'info' }); return; }
 
     const btn = document.getElementById('hbDraftBtn');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
+    const restoreBtn = lsMicro.btnLoading(btn, 'Saving...');
 
     try {
         if (hbEditingDraftId) {
@@ -17734,8 +17717,7 @@ async function hbSaveDraft() {
         console.error(err);
         lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Save Draft';
+        restoreBtn();
     }
 }
 
@@ -17815,7 +17797,7 @@ async function hbPublishDraft(postId) {
 async function hbLoadDrafts() {
     const feed = document.getElementById('hbFeed');
     if (!feed) return;
-    feed.innerHTML = '<div class="hb-loading">Loading drafts...</div>';
+    feed.innerHTML = lsMicro.skeleton('posts', 2);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/scheduled`, { headers: getAuthHeaders() });
@@ -18208,7 +18190,7 @@ function hbFilterPosts(filter) {
 async function hbLoadBookmarkedPosts() {
     const feed = document.getElementById('hbFeed');
     if (!feed) return;
-    feed.innerHTML = '<div class="hb-loading">Loading saved posts...</div>';
+    feed.innerHTML = lsMicro.skeleton('posts', 2);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/bookmarks`, { headers: getAuthHeaders() });
@@ -18270,7 +18252,7 @@ async function hbToggleComments(postId) {
 
     section.classList.add('open');
     const list = document.getElementById(`hb-comments-list-${postId}`);
-    list.innerHTML = '<div class="hb-loading" style="padding:0.5rem">Loading...</div>';
+    list.innerHTML = lsMicro.skeleton('list', 3);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/comments`, { headers: getAuthHeaders() });
@@ -18629,7 +18611,7 @@ async function hbToggleNotifications() {
 async function hbLoadNotifications() {
     const list = document.getElementById('hbNotifList');
     if (!list) return;
-    list.innerHTML = '<div class="hb-loading" style="padding:0.75rem">Loading...</div>';
+    list.innerHTML = lsMicro.skeleton('list', 4);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/notifications`, { headers: getAuthHeaders() });
@@ -18823,7 +18805,7 @@ function hbToggleActivityPanel() {
 async function hbLoadActivity() {
     const content = document.getElementById('hbActivityContent');
     if (!content) return;
-    content.innerHTML = '<div class="hb-loading" style="padding:1rem">Loading analytics...</div>';
+    content.innerHTML = lsMicro.skeleton('cards', 2);
 
     const days = document.getElementById('hbActivityPeriod')?.value || 7;
 

@@ -1,0 +1,243 @@
+/* ============================================================
+   LIGHTSPEED MICRO-INTERACTIONS & FEEDBACK
+   Phase 2 polish: hover states, click feedback, transitions,
+   skeleton loaders, button loading states
+   ============================================================ */
+
+/* ── 2.1 Global Button Hover & Active ─────────────────────── */
+
+/* Generic button press feedback — applies to all buttons unless overridden */
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+[role="button"]:active:not(:disabled) {
+    transform: scale(0.97) !important;
+    transition-duration: 0.05s !important;
+}
+
+/* Sidebar nav buttons */
+.sidebar-btn {
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.sidebar-btn:hover {
+    background: var(--bg-alt);
+}
+
+/* Table rows — hover highlight */
+.data-table tbody tr,
+.usage-table tbody tr,
+table tbody tr {
+    transition: background 0.15s ease;
+}
+.data-table tbody tr:hover,
+.usage-table tbody tr:hover {
+    background: var(--bg-alt);
+}
+
+/* Card hover elevation (elements not already covered by .ls-card) */
+.hb-post,
+.als-conversation-item,
+.template-card,
+.rule-item {
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.hb-post:hover,
+.template-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border);
+}
+
+/* Settings card sections */
+.settings-section,
+.manage-card {
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.settings-section:hover,
+.manage-card:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+/* Toast notification icons — use proper SVG size */
+.toast-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── 2.2 View / Tab Transitions ───────────────────────────── */
+
+/* Smooth page transitions (pages use .active class) */
+.page {
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.page.active {
+    opacity: 1;
+}
+
+/* Tool app transitions */
+.app-container {
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.app-container.visible {
+    opacity: 1;
+}
+
+/* Tab panel content fade */
+.data-page {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.data-page.active {
+    opacity: 1;
+}
+
+/* Compare tabs */
+.compare-result-panel {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.compare-result-panel.active {
+    opacity: 1;
+}
+
+/* Landing demo panels */
+.tool-description-panel {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.tool-description-panel.active {
+    opacity: 1;
+}
+
+/* ── 2.3 Skeleton Loading ─────────────────────────────────── */
+
+/* Shimmer variant — more premium than pulse */
+@keyframes skeleton-shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+.skeleton-shimmer {
+    background: linear-gradient(90deg, var(--border) 25%, #f0f4f8 37%, var(--border) 63%);
+    background-size: 800px 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+
+/* Skeleton group container */
+.skeleton-group {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Skeleton post (Home Base style) */
+.skeleton-post {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.skeleton-post-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.skeleton-post-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+.skeleton-post-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.skeleton-post-name {
+    height: 12px;
+    width: 120px;
+}
+.skeleton-post-date {
+    height: 10px;
+    width: 80px;
+}
+.skeleton-post-body {
+    height: 14px;
+    width: 100%;
+}
+.skeleton-post-body-short {
+    height: 14px;
+    width: 65%;
+}
+
+/* Skeleton list item */
+.skeleton-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+.skeleton-list-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-sm);
+}
+.skeleton-list-text {
+    height: 13px;
+    flex: 1;
+}
+
+/* ── 2.4 Button Loading States ────────────────────────────── */
+
+/* Loading spinner for buttons */
+@keyframes ls-btn-spin {
+    to { transform: rotate(360deg); }
+}
+
+.ls-btn-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: ls-btn-spin 0.6s linear infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+/* Dark spinner for secondary/light buttons */
+.ls-btn-spinner-dark {
+    border-color: rgba(0, 0, 0, 0.15);
+    border-top-color: var(--text-secondary);
+}
+
+/* Button loading state */
+.ls-btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+/* Proper disabled button styling */
+button:disabled,
+.btn:disabled,
+[role="button"][aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Transition for button state changes */
+button,
+.btn,
+[role="button"] {
+    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
