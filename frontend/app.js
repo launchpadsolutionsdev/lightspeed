@@ -4406,14 +4406,14 @@ async function saveAlsTeachToKB(btn) {
         });
 
         if (response.ok) {
-            confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: #059669; font-weight: 600; padding: 4px 0;">Saved to knowledge base! Lightspeed will remember this.</div>';
+            confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: var(--success); font-weight: 600; padding: 4px 0;">Saved to knowledge base! Lightspeed will remember this.</div>';
             setTimeout(() => confirmDiv.remove(), 3000);
         } else {
             throw new Error('Failed to save');
         }
     } catch (e) {
         console.warn('Failed to save to KB:', e);
-        confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: #dc2626; padding: 4px 0;">Failed to save. Please try again or add manually in Knowledge Base.</div>';
+        confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: var(--danger); padding: 4px 0;">Failed to save. Please try again or add manually in Knowledge Base.</div>';
     }
 }
 
@@ -8380,7 +8380,7 @@ function renderOrgTemplates() {
                 </div>
                 <div style="font-size: 0.8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml((t.content || '').substring(0, 100))}${t.content.length > 100 ? '...' : ''}</div>
             </div>
-            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; color: #dc2626; border-color: #fecaca; flex-shrink: 0; margin-left: 0.5rem;" onclick="deleteTemplate('${t.id}')">Remove</button>
+            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; color: var(--danger); border-color: #fecaca; flex-shrink: 0; margin-left: 0.5rem;" onclick="deleteTemplate('${t.id}')">Remove</button>
         </div>
     `).join('');
 }
@@ -9068,7 +9068,7 @@ async function handleThreadGenerate() {
 
     if (!threadEmail) {
         document.getElementById("threadResponseArea").innerHTML = `
-            <div class="response-placeholder" style="color: #dc2626;">
+            <div class="response-placeholder" style="color: var(--danger);">
                 <div class="placeholder-icon">⚠️</div>
                 <div class="placeholder-text">Please paste an email thread first.</div>
             </div>
@@ -9195,7 +9195,7 @@ async function handleThreadGenerate() {
             ? error.message
             : "Something went wrong. Please try again.";
         document.getElementById("threadResponseArea").innerHTML = `
-            <div class="response-placeholder" style="color: #dc2626;">
+            <div class="response-placeholder" style="color: var(--danger);">
                 <div class="placeholder-icon">⚠️</div>
                 <div class="placeholder-text">${msg}</div>
             </div>
@@ -9218,7 +9218,7 @@ function detectCategory(text) {
 
 function showError(message) {
     document.getElementById("responseArea").innerHTML = `
-        <div class="response-placeholder" style="color: #dc2626;">
+        <div class="response-placeholder" style="color: var(--danger);">
             <div class="placeholder-icon">⚠️</div>
             <div class="placeholder-text">${message}</div>
         </div>
@@ -16322,19 +16322,19 @@ function renderShopifyDashboard(data) {
         <div class="data-metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin-top: 16px;">
             <div class="data-metric-card">
                 <div class="data-metric-label">Fulfilled</div>
-                <div class="data-metric-value" style="color: #10b981;">${fulfilledOrders}</div>
+                <div class="data-metric-value" style="color: var(--success);">${fulfilledOrders}</div>
             </div>
             <div class="data-metric-card">
                 <div class="data-metric-label">Unfulfilled</div>
-                <div class="data-metric-value" style="color: #f59e0b;">${unfulfilledOrders}</div>
+                <div class="data-metric-value" style="color: var(--warning, #f59e0b);">${unfulfilledOrders}</div>
             </div>
             <div class="data-metric-card">
                 <div class="data-metric-label">Refunded</div>
-                <div class="data-metric-value" style="color: #ef4444;">${refundedOrders}</div>
+                <div class="data-metric-value" style="color: var(--danger);">${refundedOrders}</div>
             </div>
             <div class="data-metric-card">
                 <div class="data-metric-label">Refund Total</div>
-                <div class="data-metric-value" style="color: #ef4444;">$${refundTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                <div class="data-metric-value" style="color: var(--danger);">$${refundTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
             </div>
         </div>
 

@@ -242,7 +242,7 @@
         .auth-message.error {
             display: block;
             background: #fef2f2;
-            color: #dc2626;
+            color: var(--danger);
             border: 1px solid #fecaca;
         }
 
@@ -1401,14 +1401,14 @@
             border: 1px solid #fecaca;
             border-radius: 10px;
             font-size: 0.88rem;
-            color: #dc2626;
+            color: var(--danger);
         }
 
         .als-retry-btn {
             padding: 4px 12px;
             border: 1px solid #dc2626;
             background: transparent;
-            color: #dc2626;
+            color: var(--danger);
             border-radius: 6px;
             font-size: 0.82rem;
             cursor: pointer;
@@ -1537,7 +1537,7 @@
         .als-attachment-remove:hover {
             background: #fee2e2;
             border-color: #fecaca;
-            color: #dc2626;
+            color: var(--danger);
         }
 
         /* Drag-drop overlay */
@@ -1745,7 +1745,7 @@
 
         .als-confirm-no:hover {
             background: #fee2e2;
-            color: #dc2626;
+            color: var(--danger);
             border-color: #fecaca;
         }
 
@@ -1955,7 +1955,7 @@
 
         .als-sidebar-item-delete:hover {
             background: rgba(220, 38, 38, 0.1);
-            color: #dc2626;
+            color: var(--danger);
         }
 
         /* Team activity items */
@@ -4708,7 +4708,7 @@
 
         .sentiment-badge.sentiment-angry {
             background: #fef2f2;
-            color: #dc2626;
+            color: var(--danger);
             border: 1px solid #fecaca;
         }
 
@@ -5960,7 +5960,7 @@
         }
 
         .normalizer-stat.removed .normalizer-stat-value {
-            color: #ef4444;
+            color: var(--danger);
         }
 
         .normalizer-stat-arrow {
@@ -6103,7 +6103,7 @@
         }
 
         .normalizer-history-clear-btn:hover {
-            color: #ef4444;
+            color: var(--danger);
             background: rgba(239, 68, 68, 0.08);
         }
 
@@ -11663,7 +11663,7 @@
         .member-remove-btn {
             background: none;
             border: none;
-            color: #ef4444;
+            color: var(--danger);
             cursor: pointer;
             padding: 0.5rem;
             border-radius: 6px;
@@ -16895,7 +16895,7 @@
                     <button class="btn-primary" id="shopifyConnectBtn" style="margin-top: 8px;" onclick="connectShopify()">
                         Connect Shopify Store
                     </button>
-                    <div id="shopifyConnectError" style="color: #ef4444; font-size: 0.8rem; margin-top: 8px; display: none;"></div>
+                    <div id="shopifyConnectError" style="color: var(--danger); font-size: 0.8rem; margin-top: 8px; display: none;"></div>
                 </div>
 
                 <!-- Connected State -->
@@ -16918,7 +16918,7 @@
                         <button class="btn-primary" style="flex: 1; font-size: 0.85rem;" onclick="syncShopifyData()">
                             Sync Now
                         </button>
-                        <button class="btn-secondary" style="flex: 1; font-size: 0.85rem; color: #ef4444;" onclick="disconnectShopify()">
+                        <button class="btn-secondary" style="flex: 1; font-size: 0.85rem; color: var(--danger);" onclick="disconnectShopify()">
                             Disconnect
                         </button>
                     </div>
