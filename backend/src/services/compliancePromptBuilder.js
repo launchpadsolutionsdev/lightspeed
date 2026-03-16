@@ -24,7 +24,15 @@ function buildComplianceSystemPrompt({ jurisdictionName, regulatoryBody, regulat
         if (entry.source_section) block += `Section: ${entry.source_section}\n`;
         if (entry.source_url) block += `URL: ${entry.source_url}\n`;
         if (entry.last_verified_date) block += `Last Verified: ${entry.last_verified_date}\n`;
-        block += `\n${entry.content}\n`;
+        // Use original_text + plain_summary when available for richer context
+        if (entry.original_text) {
+            block += `\nRegulatory Text:\n${entry.original_text}\n`;
+            if (entry.plain_summary) {
+                block += `\nPlain Language Summary:\n${entry.plain_summary}\n`;
+            }
+        } else {
+            block += `\n${entry.content}\n`;
+        }
         return block;
     }).join('\n');
 
