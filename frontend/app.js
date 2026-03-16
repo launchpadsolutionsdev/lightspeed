@@ -16502,18 +16502,21 @@ async function triggerDashboardSync() {
 }
 
 /**
- * Open settings modal with Shopify tab focused.
+ * Open settings modal and scroll to the Shopify section.
  */
 function openSettingsShopify() {
-    // Open settings modal - find and click the settings button
-    const settingsBtn = document.querySelector('[data-tool="settings"]') || document.getElementById('settingsBtn');
-    if (settingsBtn) settingsBtn.click();
+    const modal = document.getElementById('settingsModal');
+    if (modal) {
+        modal.classList.add('show');
 
-    // After a brief delay, try to switch to the Shopify/integrations tab
-    setTimeout(() => {
-        const shopifyTab = document.querySelector('[data-settings-tab="integrations"]') || document.querySelector('[data-settings-tab="shopify"]');
-        if (shopifyTab) shopifyTab.click();
-    }, 200);
+        // Scroll to the Shopify connection section after modal opens
+        setTimeout(() => {
+            const shopifySection = document.getElementById('shopifyNotConnected') || document.getElementById('shopifyConnected');
+            if (shopifySection) {
+                shopifySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 200);
+    }
 }
 
 /**
