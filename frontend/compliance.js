@@ -1064,7 +1064,10 @@
     // UTILITIES
     // ============================================================
     function getApiBase() {
-        return window.API_BASE || '';
+        if (window.API_BASE) return window.API_BASE;
+        var h = window.location.hostname;
+        if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:3001';
+        return 'https://lightspeed-backend.onrender.com';
     }
 
     function getToken() {
