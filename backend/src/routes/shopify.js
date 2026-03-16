@@ -304,6 +304,15 @@ router.get('/status', authenticate, async (req, res) => {
             [organizationId]
         );
 
+        // Get recent sync errors
+        const syncErrors = await pool.query(
+            `SELECT sync_type, error_message, completed_at
+             FROM shopify_sync_logs
+             WHERE organization_id = $1 AND status = 'error'
+             ORDER BY completed_at DESC LIMIT 5`,
+            [organizationId]
+        );
+
         res.json({
             connected: true,
             configured: true,
@@ -320,7 +329,8 @@ router.get('/status', authenticate, async (req, res) => {
                 products: productCount,
                 orders: parseInt(orderCount.rows[0].count),
                 customers: customerCount
-            }
+            },
+            syncErrors: syncErrors.rows
         });
 
     } catch (error) {
