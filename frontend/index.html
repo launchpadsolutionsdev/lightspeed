@@ -25,6 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="admin-dashboard.css?v=20260301">
     <link rel="stylesheet" href="design-system.css?v=20260301">
+    <link rel="stylesheet" href="ls-micro.css?v=20260301">
     <link rel="stylesheet" href="landing.css?v=20260301">
     <link rel="stylesheet" href="rules-of-play.css?v=20260301">
     <!-- SheetJS for Excel parsing (Data Analysis Tool) -->
@@ -241,7 +242,7 @@
         .auth-message.error {
             display: block;
             background: #fef2f2;
-            color: #dc2626;
+            color: var(--danger);
             border: 1px solid #fecaca;
         }
 
@@ -1400,14 +1401,14 @@
             border: 1px solid #fecaca;
             border-radius: 10px;
             font-size: 0.88rem;
-            color: #dc2626;
+            color: var(--danger);
         }
 
         .als-retry-btn {
             padding: 4px 12px;
             border: 1px solid #dc2626;
             background: transparent;
-            color: #dc2626;
+            color: var(--danger);
             border-radius: 6px;
             font-size: 0.82rem;
             cursor: pointer;
@@ -1536,7 +1537,7 @@
         .als-attachment-remove:hover {
             background: #fee2e2;
             border-color: #fecaca;
-            color: #dc2626;
+            color: var(--danger);
         }
 
         /* Drag-drop overlay */
@@ -1744,7 +1745,7 @@
 
         .als-confirm-no:hover {
             background: #fee2e2;
-            color: #dc2626;
+            color: var(--danger);
             border-color: #fecaca;
         }
 
@@ -1954,7 +1955,7 @@
 
         .als-sidebar-item-delete:hover {
             background: rgba(220, 38, 38, 0.1);
-            color: #dc2626;
+            color: var(--danger);
         }
 
         /* Team activity items */
@@ -2972,9 +2973,9 @@
 
         textarea:focus, input:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: var(--cta);
             background: var(--bg-card);
-            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.12);
         }
 
         select {
@@ -4028,9 +4029,46 @@
             color: var(--danger);
         }
 
+        .toast.info {
+            border-left: 4px solid var(--cta);
+        }
+
+        .toast.info .toast-icon {
+            background: rgba(99, 91, 255, 0.1);
+            color: var(--cta);
+        }
+
         .toast-message {
             font-size: 0.9rem;
             color: var(--text-primary);
+        }
+
+        /* Success icon pop animation */
+        @keyframes ls-toast-pop {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .toast.show .toast-icon {
+            animation: ls-toast-pop 0.3s ease-out;
+        }
+
+        /* Progress bar auto-dismiss indicator */
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            background: var(--success);
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            animation: ls-toast-progress 3s linear forwards;
+        }
+        .toast.error .toast-progress { background: var(--danger); }
+        .toast.info .toast-progress { background: var(--cta); }
+
+        @keyframes ls-toast-progress {
+            from { width: 100%; }
+            to { width: 0%; }
         }
 
         /* ==================== STATS ==================== */
@@ -4707,7 +4745,7 @@
 
         .sentiment-badge.sentiment-angry {
             background: #fef2f2;
-            color: #dc2626;
+            color: var(--danger);
             border: 1px solid #fecaca;
         }
 
@@ -5959,7 +5997,7 @@
         }
 
         .normalizer-stat.removed .normalizer-stat-value {
-            color: #ef4444;
+            color: var(--danger);
         }
 
         .normalizer-stat-arrow {
@@ -6102,7 +6140,7 @@
         }
 
         .normalizer-history-clear-btn:hover {
-            color: #ef4444;
+            color: var(--danger);
             background: rgba(239, 68, 68, 0.08);
         }
 
@@ -11662,7 +11700,7 @@
         .member-remove-btn {
             background: none;
             border: none;
-            color: #ef4444;
+            color: var(--danger);
             cursor: pointer;
             padding: 0.5rem;
             border-radius: 6px;
@@ -16894,7 +16932,7 @@
                     <button class="btn-primary" id="shopifyConnectBtn" style="margin-top: 8px;" onclick="connectShopify()">
                         Connect Shopify Store
                     </button>
-                    <div id="shopifyConnectError" style="color: #ef4444; font-size: 0.8rem; margin-top: 8px; display: none;"></div>
+                    <div id="shopifyConnectError" style="color: var(--danger); font-size: 0.8rem; margin-top: 8px; display: none;"></div>
                 </div>
 
                 <!-- Connected State -->
@@ -16917,7 +16955,7 @@
                         <button class="btn-primary" style="flex: 1; font-size: 0.85rem;" onclick="syncShopifyData()">
                             Sync Now
                         </button>
-                        <button class="btn-secondary" style="flex: 1; font-size: 0.85rem; color: #ef4444;" onclick="disconnectShopify()">
+                        <button class="btn-secondary" style="flex: 1; font-size: 0.85rem; color: var(--danger);" onclick="disconnectShopify()">
                             Disconnect
                         </button>
                     </div>
@@ -17154,6 +17192,7 @@ Answer to question 2..."></textarea>
 
     <!-- JavaScript -->
     <script src="ls-modal.js?v=20260301"></script>
+    <script src="ls-micro.js?v=20260301"></script>
     <script src="knowledge-base.js?v=20260301"></script>
     <script src="draft-knowledge-base.js?v=20260301"></script>
     <script src="admin-dashboard.js?v=20260301"></script>

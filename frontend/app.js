@@ -881,8 +881,7 @@ function setupAuthEventListeners() {
             e.preventDefault();
             const submitBtn = document.getElementById('contactSubmitBtn');
             const status = document.getElementById('contactFormStatus');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = 'Sending... <span>→</span>';
+            const restoreContactBtn = lsMicro.btnLoading(submitBtn, 'Sending...');
             status.textContent = '';
             status.className = 'contact-form-status';
 
@@ -915,8 +914,7 @@ function setupAuthEventListeners() {
                 status.className = 'contact-form-status error';
             }
 
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Send Message <span>→</span>';
+            restoreContactBtn();
         });
     }
 
@@ -1613,8 +1611,7 @@ function _bindWizardStep1() {
         if (!orgName) { showToast('Please enter your organization name', 'error'); return; }
 
         const btn = document.getElementById('wizBtn1');
-        btn.disabled = true;
-        btn.innerHTML = 'Creating...';
+        const restoreBtn = lsMicro.btnLoading(btn, 'Creating...');
 
         try {
             const token = localStorage.getItem('authToken');
@@ -1654,8 +1651,7 @@ function _bindWizardStep1() {
             console.error('Wizard step 1 error:', error);
             showToast('Connection error. Please try again.', 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = 'Create Organization <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+            restoreBtn();
         }
     });
 }
@@ -1664,8 +1660,7 @@ function _bindWizardStep2() {
     document.getElementById('wizardForm2').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('wizBtn2');
-        btn.disabled = true;
-        btn.innerHTML = 'Saving...';
+        const restoreBtn = lsMicro.btnLoading(btn, 'Saving...');
 
         try {
             await _wizardPatchOrg({
@@ -1682,7 +1677,7 @@ function _bindWizardStep2() {
             showToast('Failed to save profile. You can update this later.', 'error');
             _wizardGoTo(3);
         } finally {
-            btn.disabled = false;
+            restoreBtn();
         }
     });
 }
@@ -1691,8 +1686,7 @@ function _bindWizardStep3() {
     document.getElementById('wizardForm3').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('wizBtn3');
-        btn.disabled = true;
-        btn.innerHTML = 'Saving...';
+        const restoreBtn = lsMicro.btnLoading(btn, 'Saving...');
 
         try {
             const brandTermsRaw = document.getElementById('wizBrandTerms').value.trim();
@@ -1712,7 +1706,7 @@ function _bindWizardStep3() {
             showToast('Failed to save configuration. You can update this later.', 'error');
             _wizardGoTo(4);
         } finally {
-            btn.disabled = false;
+            restoreBtn();
         }
     });
 }
@@ -1724,8 +1718,7 @@ async function _wizardSendInvite() {
     if (!email) { showToast('Please enter an email address', 'error'); return; }
 
     const btn = document.getElementById('wizSendInviteBtn');
-    btn.disabled = true;
-    btn.textContent = 'Sending...';
+    const restoreBtn = lsMicro.btnLoading(btn, 'Sending...');
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/organizations/${_wizardOrgId}/invite`, {
@@ -1758,8 +1751,7 @@ async function _wizardSendInvite() {
         console.error('Invite error:', error);
         showToast('Connection error. Please try again.', 'error');
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Send Invite';
+        restoreBtn();
     }
 }
 
@@ -2767,12 +2759,12 @@ function renderSimpleMarkdown(text) {
             }
             if (tableLines.length >= 2 && /^\|[-|: ]+\|/.test(tableLines[1])) {
                 const parseCells = row => row.split('|').slice(1, -1).map(c => c.trim());
-                const headers = parseCells(tableLines[0]).map(h => `<th style="padding:6px 12px;text-align:left;border-bottom:2px solid rgba(0,0,0,0.15);white-space:nowrap;">${inlineMarkdown(h)}</th>`).join('');
+                const headers = parseCells(tableLines[0]).map(h => `<th>${inlineMarkdown(h)}</th>`).join('');
                 const rows = tableLines.slice(2).map(row => {
-                    const cells = parseCells(row).map(c => `<td style="padding:6px 12px;border-bottom:1px solid rgba(0,0,0,0.07);">${inlineMarkdown(c)}</td>`).join('');
+                    const cells = parseCells(row).map(c => `<td>${inlineMarkdown(c)}</td>`).join('');
                     return `<tr>${cells}</tr>`;
                 }).join('');
-                parts.push(`<div style="overflow-x:auto;margin:0.5em 0;"><table style="border-collapse:collapse;width:100%;font-size:0.88em;"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`);
+                parts.push(`<div class="ls-table-wrap"><table class="ls-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`);
             } else {
                 tableLines.forEach(l => parts.push(inlineMarkdown(l) + '<br>'));
             }
@@ -3394,7 +3386,7 @@ async function alsConfirmAction() {
     const confirmDiv = document.getElementById('alsConfirmation');
     if (confirmDiv) {
         const btns = confirmDiv.querySelectorAll('.als-confirm-btn');
-        btns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+        btns.forEach(b => { b.disabled = true; });
     }
 
     const chatArea = document.getElementById('alsChatArea');
@@ -3704,7 +3696,7 @@ async function loadAlsConversationsList(container, search, teamView) {
 
         const response = await fetch(url, { headers: getAuthHeaders() });
         if (!response.ok) {
-            container.innerHTML = '<div class="als-sidebar-empty">Could not load conversations.</div>';
+            container.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'Could not load conversations', compact: true });
             return;
         }
 
@@ -3712,9 +3704,12 @@ async function loadAlsConversationsList(container, search, teamView) {
         const conversations = data.conversations || [];
 
         if (conversations.length === 0) {
-            container.innerHTML = `<div class="als-sidebar-empty">
-                ${search ? 'No matching conversations.' : 'No saved conversations yet.<br>Start chatting and your conversations will be saved automatically.'}
-            </div>`;
+            container.innerHTML = lsMicro.emptyState({
+                icon: 'chat',
+                title: search ? 'No matching conversations' : 'No saved conversations yet',
+                message: search ? '' : 'Start chatting and your conversations will be saved automatically.',
+                compact: true
+            });
             return;
         }
 
@@ -3736,7 +3731,7 @@ async function loadAlsConversationsList(container, search, teamView) {
         }).join('');
     } catch (e) {
         console.warn('Failed to load conversations:', e);
-        container.innerHTML = '<div class="als-sidebar-empty">Failed to load.</div>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'Failed to load', compact: true });
     }
 }
 
@@ -3744,7 +3739,7 @@ async function loadAlsSharedPrompts(container, search) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/shared-prompts?sort=popular`, { headers: getAuthHeaders() });
         if (!response.ok) {
-            container.innerHTML = '<div class="als-sidebar-empty">Could not load prompts.</div>';
+            container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'Could not load prompts', compact: true });
             return;
         }
 
@@ -3757,9 +3752,12 @@ async function loadAlsSharedPrompts(container, search) {
         }
 
         if (prompts.length === 0) {
-            container.innerHTML = `<div class="als-sidebar-empty">
-                ${search ? 'No matching prompts.' : 'No shared prompts yet.<br>Save useful prompts to share with your team.'}
-            </div>`;
+            container.innerHTML = lsMicro.emptyState({
+                icon: 'file',
+                title: search ? 'No matching prompts' : 'No shared prompts yet',
+                message: search ? '' : 'Save useful prompts to share with your team.',
+                compact: true
+            });
             return;
         }
 
@@ -3772,7 +3770,7 @@ async function loadAlsSharedPrompts(container, search) {
         }).join('');
     } catch (e) {
         console.warn('Failed to load shared prompts:', e);
-        container.innerHTML = '<div class="als-sidebar-empty">Failed to load.</div>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'Failed to load', compact: true });
     }
 }
 
@@ -4391,8 +4389,7 @@ function appendAlsTeachConfirm(msgDiv, userMessage, aiResponse) {
 async function saveAlsTeachToKB(btn) {
     const confirmDiv = btn.closest('.als-teach-confirm');
     const userMessage = confirmDiv.dataset.teachMsg;
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
+    lsMicro.btnLoading(btn, 'Saving...');
 
     try {
         const title = userMessage.length > 80 ? userMessage.substring(0, 80) + '...' : userMessage;
@@ -4409,14 +4406,14 @@ async function saveAlsTeachToKB(btn) {
         });
 
         if (response.ok) {
-            confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: #059669; font-weight: 600; padding: 4px 0;">Saved to knowledge base! Lightspeed will remember this.</div>';
+            confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: var(--success); font-weight: 600; padding: 4px 0;">Saved to knowledge base! Lightspeed will remember this.</div>';
             setTimeout(() => confirmDiv.remove(), 3000);
         } else {
             throw new Error('Failed to save');
         }
     } catch (e) {
         console.warn('Failed to save to KB:', e);
-        confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: #dc2626; padding: 4px 0;">Failed to save. Please try again or add manually in Knowledge Base.</div>';
+        confirmDiv.innerHTML = '<div style="font-size: 0.8rem; color: var(--danger); padding: 4px 0;">Failed to save. Please try again or add manually in Knowledge Base.</div>';
     }
 }
 
@@ -7098,6 +7095,11 @@ function switchPage(pageId) {
         page.classList.toggle("active", page.id === `page-${pageId}`);
     });
 
+    // Scroll to top on page switch
+    var mainContainer = document.querySelector('.container');
+    if (mainContainer) mainContainer.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+
     // Calendar zero-padding: toggle on .container only (full-height handled globally)
     const calPage = document.getElementById('page-content-calendar');
     if (calPage) {
@@ -7854,7 +7856,7 @@ async function calLoadComments(eventId) {
         if (!resp.ok) throw new Error();
         const comments = await resp.json();
         if (comments.length === 0) {
-            list.innerHTML = '<div class="cal-comments-empty">No comments yet</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'No comments yet', compact: true });
             return;
         }
         list.innerHTML = comments.map(c => {
@@ -7868,7 +7870,7 @@ async function calLoadComments(eventId) {
             </div>`;
         }).join('');
     } catch {
-        list.innerHTML = '<div class="cal-comments-empty">Failed to load comments</div>';
+        list.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'Failed to load comments', compact: true });
     }
 }
 
@@ -8043,7 +8045,7 @@ async function calLoadNotifications() {
         if (!resp.ok) throw new Error();
         const notifs = await resp.json();
         if (notifs.length === 0) {
-            list.innerHTML = '<div class="cal-notif-empty">No notifications</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'bell', title: 'No notifications', compact: true });
             return;
         }
         list.innerHTML = notifs.map(n => {
@@ -8055,7 +8057,7 @@ async function calLoadNotifications() {
             </div>`;
         }).join('');
     } catch {
-        list.innerHTML = '<div class="cal-notif-empty">Failed to load notifications</div>';
+        list.innerHTML = lsMicro.emptyState({ icon: 'bell', title: 'Failed to load notifications', compact: true });
     }
 }
 
@@ -8211,8 +8213,7 @@ async function saveOrgProfile() {
     if (!currentOrgId) return;
 
     const btn = document.getElementById('saveOrgProfileBtn');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
+    const restoreBtn = lsMicro.btnLoading(btn, 'Saving...');
 
     try {
         // Build brand terminology JSON from textarea (one rule per line)
@@ -8258,8 +8259,7 @@ async function saveOrgProfile() {
 
         if (response.status === 409) {
             showToast('Settings were modified by someone else. Please refresh and try again.', 'error');
-            btn.disabled = false;
-            btn.textContent = 'Save Profile';
+            restoreBtn();
             return;
         }
 
@@ -8283,8 +8283,7 @@ async function saveOrgProfile() {
         console.error('Save org profile error:', error);
         showToast('Failed to save profile: ' + error.message, 'error');
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Save Profile';
+        restoreBtn();
     }
 }
 
@@ -8368,9 +8367,7 @@ function renderOrgTemplates() {
     }
 
     if (templates.length === 0) {
-        container.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: #9ca3af; font-size: 0.9rem;">
-            No templates yet. Import from the library or create your own.
-        </div>`;
+        container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'No templates yet', message: 'Import from the library or create your own.' });
         return;
     }
 
@@ -8383,7 +8380,7 @@ function renderOrgTemplates() {
                 </div>
                 <div style="font-size: 0.8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml((t.content || '').substring(0, 100))}${t.content.length > 100 ? '...' : ''}</div>
             </div>
-            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; color: #dc2626; border-color: #fecaca; flex-shrink: 0; margin-left: 0.5rem;" onclick="deleteTemplate('${t.id}')">Remove</button>
+            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; color: var(--danger); border-color: #fecaca; flex-shrink: 0; margin-left: 0.5rem;" onclick="deleteTemplate('${t.id}')">Remove</button>
         </div>
     `).join('');
 }
@@ -8393,7 +8390,7 @@ async function showTemplateLibrary() {
     modal.style.display = 'block';
 
     const listEl = document.getElementById('templateLibraryList');
-    listEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #9ca3af;">Loading library...</div>';
+    listEl.innerHTML = lsMicro.skeleton('list', 4);
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/content-templates/library`, {
@@ -8406,7 +8403,7 @@ async function showTemplateLibrary() {
         const library = data.templates || [];
 
         if (library.length === 0) {
-            listEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #9ca3af;">No system templates available.</div>';
+            listEl.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'No system templates available', compact: true });
             return;
         }
 
@@ -8424,7 +8421,7 @@ async function showTemplateLibrary() {
         `).join('');
     } catch (error) {
         console.error('Load template library error:', error);
-        listEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #ef4444;">Failed to load template library</div>';
+        listEl.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'Failed to load template library', compact: true });
     }
 }
 
@@ -8564,7 +8561,7 @@ async function loadMembers() {
 
     } catch (error) {
         console.error('Error loading members:', error);
-        document.getElementById('membersList').innerHTML = '<p class="no-invitations">Failed to load members</p>';
+        document.getElementById('membersList').innerHTML = lsMicro.emptyState({ icon: 'users', title: 'Failed to load members', compact: true });
     }
 }
 
@@ -8572,7 +8569,7 @@ function renderMembersList(members) {
     const container = document.getElementById('membersList');
 
     if (!members || members.length === 0) {
-        container.innerHTML = '<p class="no-invitations">No team members yet</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'users', title: 'No team members yet', compact: true });
         return;
     }
 
@@ -8618,7 +8615,7 @@ function renderPendingInvitations(invitations) {
     const card = document.getElementById('pendingInvitationsCard');
 
     if (!invitations || invitations.length === 0) {
-        container.innerHTML = '<p class="no-invitations">No pending invitations</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'No pending invitations', compact: true });
         card.style.display = ['owner', 'admin'].includes(currentUserRole) ? 'block' : 'none';
         return;
     }
@@ -9071,7 +9068,7 @@ async function handleThreadGenerate() {
 
     if (!threadEmail) {
         document.getElementById("threadResponseArea").innerHTML = `
-            <div class="response-placeholder" style="color: #dc2626;">
+            <div class="response-placeholder" style="color: var(--danger);">
                 <div class="placeholder-icon">⚠️</div>
                 <div class="placeholder-text">Please paste an email thread first.</div>
             </div>
@@ -9198,7 +9195,7 @@ async function handleThreadGenerate() {
             ? error.message
             : "Something went wrong. Please try again.";
         document.getElementById("threadResponseArea").innerHTML = `
-            <div class="response-placeholder" style="color: #dc2626;">
+            <div class="response-placeholder" style="color: var(--danger);">
                 <div class="placeholder-icon">⚠️</div>
                 <div class="placeholder-text">${msg}</div>
             </div>
@@ -9221,7 +9218,7 @@ function detectCategory(text) {
 
 function showError(message) {
     document.getElementById("responseArea").innerHTML = `
-        <div class="response-placeholder" style="color: #dc2626;">
+        <div class="response-placeholder" style="color: var(--danger);">
             <div class="placeholder-icon">⚠️</div>
             <div class="placeholder-text">${message}</div>
         </div>
@@ -9870,8 +9867,7 @@ async function submitRatingFeedback() {
     const kbEntries = JSON.parse(modal?.dataset.kbEntries || '[]');
 
     const submitBtn = document.getElementById('feedbackSubmitBtn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Saving...';
+    const restoreSubmitBtn = lsMicro.btnLoading(submitBtn, 'Saving...');
 
     try {
         let feedback = '';
@@ -10004,8 +10000,7 @@ async function submitRatingFeedback() {
     } catch (error) {
         console.warn('Failed to save feedback:', error);
         showToast("Failed to save feedback. Please try again.", "error");
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit Feedback';
+        restoreSubmitBtn();
     }
 }
 
@@ -10623,7 +10618,7 @@ async function loadFeedbackIntelligence() {
                 </div>`;
             }).join('');
         } else if (gapsListEl) {
-            gapsListEl.innerHTML = '<p style="color:#9ca3af;">No KB gaps detected yet. This is good!</p>';
+            gapsListEl.innerHTML = lsMicro.emptyState({ icon: 'search', title: 'No KB gaps detected yet', message: 'This is good!', compact: true });
         }
 
         // Render negative feedback
@@ -10638,7 +10633,7 @@ async function loadFeedbackIntelligence() {
                 </div>`;
             }).join('');
         } else if (negEl) {
-            negEl.innerHTML = '<p style="color:#9ca3af;">No negative feedback yet.</p>';
+            negEl.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'No negative feedback yet', compact: true });
         }
     } catch (e) {
         console.warn('Feedback intelligence load failed:', e);
@@ -10663,9 +10658,9 @@ function updateAnalyticsFromLocalStorage() {
     const times = allHistory.filter(h => h.responseTime).map(h => h.responseTime);
     document.getElementById("analyticsAvgTime").textContent = `${times.length > 0 ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0}s`;
 
-    document.getElementById("categoryChart").innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Connect to see team data</div>';
-    document.getElementById("monthlyBreakdown").innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Connect to see team data</div>';
-    document.getElementById("historyList").innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Connect to see team data</div>';
+    document.getElementById("categoryChart").innerHTML = lsMicro.emptyState({ icon: 'users', title: 'Connect to see team data', compact: true });
+    document.getElementById("monthlyBreakdown").innerHTML = lsMicro.emptyState({ icon: 'users', title: 'Connect to see team data', compact: true });
+    document.getElementById("historyList").innerHTML = lsMicro.emptyState({ icon: 'users', title: 'Connect to see team data' });
 
     renderLeaderboard();
 }
@@ -10819,9 +10814,13 @@ function renderKbEntries() {
             : (activeKbTab === 'support'
                 ? 'No customer support entries yet. Add FAQs, policies, and common responses to power the Response Assistant.'
                 : 'No internal entries yet. Add brand guidelines, procedures, and reference material to power Draft Assistant and Ask Lightspeed.');
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#128218;</div><p class="empty-state-title">' +
-            (search ? 'No results' : 'No entries yet') + '</p><p class="empty-state-text">' + msg + '</p>' +
-            (!search ? '<button class="empty-state-btn" onclick="openKbAddForm()">+ Add Entry</button>' : '') + '</div>';
+        container.innerHTML = lsMicro.emptyState({
+            icon: search ? 'search' : 'file',
+            title: search ? 'No results' : 'No entries yet',
+            message: msg,
+            btnLabel: !search ? '+ Add Entry' : '',
+            btnAction: !search ? 'openKbAddForm()' : ''
+        });
         return;
     }
 
@@ -10895,10 +10894,11 @@ function renderResponseRules() {
     if (!container) return;
 
     if (responseRules.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="padding:2rem"><div class="empty-state-icon">&#9881;</div>' +
-            '<p class="empty-state-title">No response rules yet</p>' +
-            '<p class="empty-state-text">Add rules above to control how the Response Assistant writes every reply. ' +
-            'For example: "Never tell the customer to contact us" or "Always start with Hi there."</p></div>';
+        container.innerHTML = lsMicro.emptyState({
+            icon: 'edit',
+            title: 'No response rules yet',
+            message: 'Add rules above to control how the Response Assistant writes every reply. For example: "Never tell the customer to contact us" or "Always start with Hi there."'
+        });
         return;
     }
 
@@ -11141,8 +11141,7 @@ async function saveKbEntry() {
     }
 
     var saveBtn = document.getElementById('kbFormSaveBtn');
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
+    var restoreSaveBtn = lsMicro.btnLoading(saveBtn, 'Saving...');
 
     try {
         if (id) {
@@ -11235,8 +11234,7 @@ async function saveKbEntry() {
         console.error('KB save error:', error);
         showToast('Failed to save entry. Please try again.', 'error');
     } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = id ? 'Update Entry' : 'Save Entry';
+        restoreSaveBtn();
     }
 }
 
@@ -11831,12 +11829,27 @@ function showToast(message, type = "") {
     const iconEl = toast.querySelector(".toast-icon");
 
     messageEl.textContent = message;
-    iconEl.textContent = type === "success" ? "✓" : type === "error" ? "✕" : "ℹ";
+
+    var icons = {
+        success: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        error: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        info: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+    iconEl.innerHTML = icons[type] || icons.info;
 
     toast.className = "toast " + type;
+
+    // Remove old progress bar, add fresh one
+    var oldProgress = toast.querySelector('.toast-progress');
+    if (oldProgress) oldProgress.remove();
+    var progress = document.createElement('div');
+    progress.className = 'toast-progress';
+    toast.appendChild(progress);
+
     toast.classList.add("show");
 
-    setTimeout(() => {
+    clearTimeout(toast._toastTimer);
+    toast._toastTimer = setTimeout(() => {
         toast.classList.remove("show");
     }, 3000);
 }
@@ -14386,7 +14399,7 @@ function runDuplicateFinder() {
 function showDupFinderPreview(dupeGroups) {
     const container = document.getElementById("dupFinderPreviewTable");
     if (dupeGroups.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No duplicates found! Your list is clean.</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'search', title: 'No duplicates found!', message: 'Your list is clean.' });
         return;
     }
     const columns = Object.keys(dupFinderData[0]);
@@ -14585,7 +14598,7 @@ function showComparePreview() {
     const data = compareResultData[compareActiveTab];
     const container = document.getElementById("comparePreviewTable");
     if (!data || data.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No records in this category.</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'No records in this category' });
         return;
     }
     const columns = Object.keys(data[0]);
@@ -14810,7 +14823,7 @@ function showEmailCleanerPreview() {
     const container = document.getElementById("emailCleanerPreviewTable");
 
     if (!data || data.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No records in this category.</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'No records in this category' });
         return;
     }
 
@@ -16324,19 +16337,19 @@ function renderShopifyDashboard(data) {
         <div class="data-metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin-top: 16px;">
             <div class="data-metric-card">
                 <div class="data-metric-label">Fulfilled</div>
-                <div class="data-metric-value" style="color: #10b981;">${fulfilledOrders}</div>
+                <div class="data-metric-value" style="color: var(--success);">${fulfilledOrders}</div>
             </div>
             <div class="data-metric-card">
                 <div class="data-metric-label">Unfulfilled</div>
-                <div class="data-metric-value" style="color: #f59e0b;">${unfulfilledOrders}</div>
+                <div class="data-metric-value" style="color: var(--warning, #f59e0b);">${unfulfilledOrders}</div>
             </div>
             <div class="data-metric-card">
                 <div class="data-metric-label">Refunded</div>
-                <div class="data-metric-value" style="color: #ef4444;">${refundedOrders}</div>
+                <div class="data-metric-value" style="color: var(--danger);">${refundedOrders}</div>
             </div>
             <div class="data-metric-card">
                 <div class="data-metric-label">Refund Total</div>
-                <div class="data-metric-value" style="color: #ef4444;">$${refundTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                <div class="data-metric-value" style="color: var(--danger);">$${refundTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
             </div>
         </div>
 
@@ -16642,7 +16655,7 @@ function skeletonRows(count) {
         if (!container) return;
 
         if (filteredCommands.length === 0) {
-            container.innerHTML = '<div class="cmdk-empty">No results found</div>';
+            container.innerHTML = lsMicro.emptyState({ icon: 'search', title: 'No results found', compact: true });
             return;
         }
 
@@ -16942,7 +16955,7 @@ document.addEventListener('click', function(e) {
 async function hbLoadPosts() {
     const feed = document.getElementById('hbFeed');
     if (!feed) return;
-    feed.innerHTML = '<div class="hb-loading">Loading posts...</div>';
+    feed.innerHTML = lsMicro.skeleton('posts', 3);
 
     // Fetch user role + members in parallel
     try {
@@ -16979,7 +16992,7 @@ async function hbLoadPosts() {
         hbPosts = data.posts || [];
         hbRenderFeed();
     } catch (err) {
-        feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">⚠️</div>Failed to load posts. Try again later.</div>';
+        feed.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'Failed to load posts', message: 'Try again later.' });
         console.error('Home Base load error:', err);
     }
 
@@ -17007,9 +17020,11 @@ function hbRenderFeed() {
     if (!feed) return;
 
     if (hbPosts.length === 0) {
-        const icon = hbIsSearching ? '🔍' : '🏠';
-        const msg = hbIsSearching ? 'No posts match your search.' : 'No posts yet. Be the first to share an update!';
-        feed.innerHTML = `<div class="hb-empty"><div class="hb-empty-icon">${icon}</div>${msg}</div>`;
+        feed.innerHTML = lsMicro.emptyState({
+            icon: hbIsSearching ? 'search' : 'chat',
+            title: hbIsSearching ? 'No posts match your search' : 'No posts yet',
+            message: hbIsSearching ? '' : 'Be the first to share an update!'
+        });
         return;
     }
 
@@ -17435,7 +17450,7 @@ async function hbToggleArchivePanel() {
 async function hbLoadArchivedPosts() {
     const list = document.getElementById('hbArchiveList');
     if (!list) return;
-    list.innerHTML = '<div class="hb-loading" style="padding:0.5rem">Loading...</div>';
+    list.innerHTML = lsMicro.skeleton('list', 3);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/archived`, { headers: getAuthHeaders() });
@@ -17444,7 +17459,7 @@ async function hbLoadArchivedPosts() {
         const posts = data.posts || [];
 
         if (posts.length === 0) {
-            list.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);padding:0.5rem 0">No archived posts</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'No archived posts', compact: true });
             return;
         }
 
@@ -17531,7 +17546,7 @@ async function hbToggleTemplateDropdown() {
 async function hbLoadTemplates() {
     const list = document.getElementById('hbTemplateList');
     if (!list) return;
-    list.innerHTML = '<div style="padding:0.75rem;font-size:0.8rem;color:var(--text-muted)">Loading...</div>';
+    list.innerHTML = lsMicro.skeleton('list', 3);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/templates`, { headers: getAuthHeaders() });
@@ -17540,7 +17555,7 @@ async function hbLoadTemplates() {
         hbTemplates = data.templates || [];
 
         if (hbTemplates.length === 0) {
-            list.innerHTML = '<div style="padding:0.75rem;font-size:0.8rem;color:var(--text-muted)">No templates yet. Write a post and click "Save current" to create one.</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'edit', title: 'No templates yet', message: 'Write a post and click "Save current" to create one.', compact: true });
             return;
         }
 
@@ -17698,8 +17713,7 @@ async function hbSaveDraft() {
     if (!body) { lsModal.alert({ title: 'Nothing to save', message: 'Write something before saving a draft.', variant: 'info' }); return; }
 
     const btn = document.getElementById('hbDraftBtn');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
+    const restoreBtn = lsMicro.btnLoading(btn, 'Saving...');
 
     try {
         if (hbEditingDraftId) {
@@ -17734,8 +17748,7 @@ async function hbSaveDraft() {
         console.error(err);
         lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Save Draft';
+        restoreBtn();
     }
 }
 
@@ -17815,7 +17828,7 @@ async function hbPublishDraft(postId) {
 async function hbLoadDrafts() {
     const feed = document.getElementById('hbFeed');
     if (!feed) return;
-    feed.innerHTML = '<div class="hb-loading">Loading drafts...</div>';
+    feed.innerHTML = lsMicro.skeleton('posts', 2);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/scheduled`, { headers: getAuthHeaders() });
@@ -17824,7 +17837,7 @@ async function hbLoadDrafts() {
         const drafts = (data.posts || []).filter(p => !p.scheduled_for);
 
         if (drafts.length === 0) {
-            feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">&#128221;</div>No drafts yet. Save a post as draft to find it here.</div>';
+            feed.innerHTML = lsMicro.emptyState({ icon: 'edit', title: 'No drafts yet', message: 'Save a post as draft to find it here.' });
             return;
         }
 
@@ -17846,7 +17859,7 @@ async function hbLoadDrafts() {
                 </div>`;
             }).join('') + '</div>';
     } catch (err) {
-        feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">⚠️</div>Failed to load drafts.</div>';
+        feed.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'Failed to load drafts' });
     }
 }
 
@@ -18208,7 +18221,7 @@ function hbFilterPosts(filter) {
 async function hbLoadBookmarkedPosts() {
     const feed = document.getElementById('hbFeed');
     if (!feed) return;
-    feed.innerHTML = '<div class="hb-loading">Loading saved posts...</div>';
+    feed.innerHTML = lsMicro.skeleton('posts', 2);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/bookmarks`, { headers: getAuthHeaders() });
@@ -18218,7 +18231,7 @@ async function hbLoadBookmarkedPosts() {
         hbIsSearching = false;
         hbRenderFeed();
     } catch (err) {
-        feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">🔖</div>Failed to load saved posts.</div>';
+        feed.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'Failed to load saved posts' });
         console.error('Bookmarks load error:', err);
     }
 }
@@ -18270,7 +18283,7 @@ async function hbToggleComments(postId) {
 
     section.classList.add('open');
     const list = document.getElementById(`hb-comments-list-${postId}`);
-    list.innerHTML = '<div class="hb-loading" style="padding:0.5rem">Loading...</div>';
+    list.innerHTML = lsMicro.skeleton('list', 3);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/posts/${postId}/comments`, { headers: getAuthHeaders() });
@@ -18279,12 +18292,12 @@ async function hbToggleComments(postId) {
         const comments = data.comments || [];
 
         if (comments.length === 0) {
-            list.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);padding:0.25rem 0">No comments yet</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'No comments yet', compact: true });
         } else {
             list.innerHTML = comments.map(c => hbRenderComment(c, postId)).join('');
         }
     } catch (err) {
-        list.innerHTML = '<div style="font-size:0.8rem;color:#DC2626">Failed to load comments</div>';
+        list.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'Failed to load comments', compact: true });
     }
 }
 
@@ -18516,7 +18529,7 @@ function hbOnSearch(value) {
             hbPosts = data.posts || [];
             hbRenderFeed();
         } catch (err) {
-            if (feed) feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">⚠️</div>Search failed. Try again.</div>';
+            if (feed) feed.innerHTML = lsMicro.emptyState({ icon: 'search', title: 'Search failed', message: 'Try again.' });
         }
     }, 300);
 }
@@ -18629,7 +18642,7 @@ async function hbToggleNotifications() {
 async function hbLoadNotifications() {
     const list = document.getElementById('hbNotifList');
     if (!list) return;
-    list.innerHTML = '<div class="hb-loading" style="padding:0.75rem">Loading...</div>';
+    list.innerHTML = lsMicro.skeleton('list', 4);
 
     try {
         const resp = await fetch(`${API_BASE_URL}/api/home-base/notifications`, { headers: getAuthHeaders() });
@@ -18638,7 +18651,7 @@ async function hbLoadNotifications() {
         const notifs = data.notifications || [];
 
         if (notifs.length === 0) {
-            list.innerHTML = '<div class="hb-notif-empty">No notifications yet</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'bell', title: 'No notifications yet', compact: true });
             return;
         }
 
@@ -18658,7 +18671,7 @@ async function hbLoadNotifications() {
             </div>`;
         }).join('');
     } catch (err) {
-        list.innerHTML = '<div class="hb-notif-empty">Failed to load notifications</div>';
+        list.innerHTML = lsMicro.emptyState({ icon: 'bell', title: 'Failed to load notifications', compact: true });
     }
 }
 
@@ -18823,7 +18836,7 @@ function hbToggleActivityPanel() {
 async function hbLoadActivity() {
     const content = document.getElementById('hbActivityContent');
     if (!content) return;
-    content.innerHTML = '<div class="hb-loading" style="padding:1rem">Loading analytics...</div>';
+    content.innerHTML = lsMicro.skeleton('cards', 2);
 
     const days = document.getElementById('hbActivityPeriod')?.value || 7;
 

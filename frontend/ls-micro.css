@@ -1,0 +1,631 @@
+/* ============================================================
+   LIGHTSPEED MICRO-INTERACTIONS & FEEDBACK
+   Phase 2 polish: hover states, click feedback, transitions,
+   skeleton loaders, button loading states
+   ============================================================ */
+
+/* ══════════════════════════════════════════════════════════════
+   PHASE 7: BRAND & VISUAL CONSISTENCY
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 7.1 Custom Scrollbar ───────────────────────────────────── */
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+/* ── 2.1 Global Button Hover & Active ─────────────────────── */
+
+/* Generic button press feedback — applies to all buttons unless overridden */
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+[role="button"]:active:not(:disabled) {
+    transform: scale(0.97) !important;
+    transition-duration: 0.05s !important;
+}
+
+/* Sidebar nav buttons */
+.sidebar-btn {
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.sidebar-btn:hover {
+    background: var(--bg-alt);
+}
+
+/* Table rows — hover highlight */
+.data-table tbody tr,
+.usage-table tbody tr,
+.ls-table tbody tr,
+table tbody tr {
+    transition: background 0.15s ease;
+}
+.data-table tbody tr:hover,
+.usage-table tbody tr:hover,
+.ls-table tbody tr:hover {
+    background: var(--bg-alt);
+}
+
+/* Zebra striping for data-heavy tables */
+.data-table tbody tr:nth-child(even),
+.ls-table tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.015);
+}
+.data-table tbody tr:nth-child(even):hover,
+.ls-table tbody tr:nth-child(even):hover {
+    background: var(--bg-alt);
+}
+
+/* ── Markdown / AI-generated table ──────────────────────────── */
+
+.ls-table-wrap {
+    overflow-x: auto;
+    margin: 0.5em 0;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--border, #e5e7eb);
+}
+
+.ls-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.88em;
+}
+
+.ls-table th {
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border, #e5e7eb);
+    white-space: nowrap;
+    background: var(--bg-alt, #f9fafb);
+}
+
+.ls-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    color: var(--text-primary, #1a1a2e);
+}
+
+.ls-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Sort indicator transition (for future sorting) */
+.ls-sort-icon {
+    display: inline-block;
+    margin-left: 4px;
+    opacity: 0.3;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.ls-sort-icon.active {
+    opacity: 1;
+}
+.ls-sort-icon.desc {
+    transform: rotate(180deg);
+}
+
+/* Card hover elevation (elements not already covered by .ls-card) */
+.hb-post,
+.als-conversation-item,
+.template-card,
+.rule-item {
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.hb-post:hover,
+.template-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border);
+}
+
+/* Settings card sections */
+.settings-section,
+.manage-card {
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.settings-section:hover,
+.manage-card:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+/* Toast notification icons — use proper SVG size */
+.toast-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── 2.2 View / Tab Transitions ───────────────────────────── */
+
+/* Smooth page transitions (pages use .active class) */
+.page {
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.page.active {
+    opacity: 1;
+}
+
+/* Tool app transitions */
+.app-container {
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.app-container.visible {
+    opacity: 1;
+}
+
+/* Tab panel content fade */
+.data-page {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.data-page.active {
+    opacity: 1;
+}
+
+/* Compare tabs */
+.compare-result-panel {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.compare-result-panel.active {
+    opacity: 1;
+}
+
+/* Landing demo panels */
+.tool-description-panel {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.tool-description-panel.active {
+    opacity: 1;
+}
+
+/* ── 2.3 Skeleton Loading ─────────────────────────────────── */
+
+/* Shimmer variant — more premium than pulse */
+@keyframes skeleton-shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+.skeleton-shimmer {
+    background: linear-gradient(90deg, var(--border) 25%, #f0f4f8 37%, var(--border) 63%);
+    background-size: 800px 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+
+/* Skeleton group container */
+.skeleton-group {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Skeleton post (Home Base style) */
+.skeleton-post {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.skeleton-post-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.skeleton-post-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+.skeleton-post-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.skeleton-post-name {
+    height: 12px;
+    width: 120px;
+}
+.skeleton-post-date {
+    height: 10px;
+    width: 80px;
+}
+.skeleton-post-body {
+    height: 14px;
+    width: 100%;
+}
+.skeleton-post-body-short {
+    height: 14px;
+    width: 65%;
+}
+
+/* Skeleton list item */
+.skeleton-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+.skeleton-list-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-sm);
+}
+.skeleton-list-text {
+    height: 13px;
+    flex: 1;
+}
+
+/* ── 2.4 Button Loading States ────────────────────────────── */
+
+/* Loading spinner for buttons */
+@keyframes ls-btn-spin {
+    to { transform: rotate(360deg); }
+}
+
+.ls-btn-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: ls-btn-spin 0.6s linear infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+/* Dark spinner for secondary/light buttons */
+.ls-btn-spinner-dark {
+    border-color: rgba(0, 0, 0, 0.15);
+    border-top-color: var(--text-secondary);
+}
+
+/* Button loading state */
+.ls-btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+/* Proper disabled button styling */
+button:disabled,
+.btn:disabled,
+[role="button"][aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Transition for button state changes */
+button,
+.btn,
+[role="button"] {
+    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PHASE 3: FORM EXPERIENCE
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 3.1 Enhanced Input Focus ─────────────────────────────── */
+
+/* Override generic focus to use brand color */
+textarea:focus,
+input:focus,
+select:focus {
+    border-color: var(--cta) !important;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.12) !important;
+    outline: none;
+}
+
+/* Smooth transition on all form inputs */
+input,
+textarea,
+select {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+/* ── 3.2 Inline Validation ────────────────────────────────── */
+
+/* Valid state */
+input.ls-valid,
+textarea.ls-valid {
+    border-color: var(--success) !important;
+    box-shadow: 0 0 0 3px rgba(48, 177, 48, 0.08) !important;
+}
+
+/* Invalid state */
+input.ls-invalid,
+textarea.ls-invalid {
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 3px rgba(223, 27, 65, 0.08) !important;
+}
+
+/* Validation message below input */
+.ls-validation-msg {
+    font-size: 0.75rem;
+    margin-top: 4px;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.15s ease, max-height 0.15s ease, margin 0.15s ease;
+}
+.ls-validation-msg.visible {
+    opacity: 1;
+    max-height: 30px;
+    margin-top: 4px;
+}
+.ls-validation-msg.error {
+    color: var(--danger);
+}
+.ls-validation-msg.success {
+    color: var(--success);
+}
+
+/* ── 3.3 Disabled States (CSS-only) ──────────────────────── */
+
+/* Disabled inputs */
+input:disabled,
+textarea:disabled,
+select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg-alt);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PHASE 6: NAVIGATION & PAGE TRANSITIONS
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 6.1 Active Nav Indicator ───────────────────────────────── */
+
+/* Left accent bar on active sidebar button */
+.sidebar-btn.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    background: #E91E8C;
+    border-radius: 0 3px 3px 0;
+    opacity: 1;
+    transition: opacity 0.2s ease, height 0.2s ease;
+}
+
+.sidebar-btn::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 0%;
+    background: #E91E8C;
+    border-radius: 0 3px 3px 0;
+    opacity: 0;
+    transition: opacity 0.2s ease, height 0.2s ease;
+}
+
+/* ── 6.2 Enhanced Page Transitions ──────────────────────────── */
+
+@keyframes ls-page-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.page.active {
+    animation: ls-page-enter 0.25s ease-out !important;
+}
+
+/* ── 6.3 Sidebar Group Labels ───────────────────────────────── */
+
+.sidebar-group-label {
+    transition: color 0.15s ease;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PHASE 4: EMPTY STATES & EDGE CASES
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 4.1 Empty State Component ──────────────────────────────── */
+
+.ls-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+}
+
+.ls-empty-icon {
+    color: var(--text-muted, #9ca3af);
+    margin-bottom: 1rem;
+    opacity: 0.6;
+}
+
+.ls-empty-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary, #1a1a2e);
+    margin: 0 0 0.35rem 0;
+}
+
+.ls-empty-message {
+    font-size: 0.8rem;
+    color: var(--text-muted, #9ca3af);
+    margin: 0;
+    max-width: 280px;
+    line-height: 1.5;
+}
+
+.ls-empty-btn {
+    margin-top: 1rem;
+    padding: 0.45rem 1.1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #fff;
+    background: var(--cta, #635BFF);
+    border: none;
+    border-radius: var(--radius-pill, 24px);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.ls-empty-btn:hover {
+    background: var(--cta-hover, #524aee);
+}
+
+/* Compact variant for small containers (sidebars, dropdowns) */
+.ls-empty-state.ls-empty-compact {
+    padding: 1rem 0.75rem;
+}
+.ls-empty-compact .ls-empty-icon {
+    margin-bottom: 0.5rem;
+}
+.ls-empty-compact .ls-empty-icon svg {
+    width: 24px;
+    height: 24px;
+}
+.ls-empty-compact .ls-empty-title {
+    font-size: 0.8rem;
+}
+.ls-empty-compact .ls-empty-message {
+    font-size: 0.75rem;
+}
+
+/* ── 4.2 Network Error Banner ───────────────────────────────── */
+
+.ls-network-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    background: var(--danger, #DF1B41);
+    color: #fff;
+    text-align: center;
+    padding: 8px 16px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+}
+.ls-network-banner.visible {
+    transform: translateY(0);
+}
+.ls-network-banner-icon {
+    display: flex;
+    align-items: center;
+}
+.ls-network-banner-dismiss {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 2px 6px;
+}
+.ls-network-banner-dismiss:hover {
+    opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PHASE 8: SUCCESS & DELIGHT
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 8.1 Success Flash on Copy ──────────────────────────────── */
+
+@keyframes ls-success-flash {
+    0% { box-shadow: 0 0 0 0 rgba(48, 177, 48, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(48, 177, 48, 0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(48, 177, 48, 0); }
+}
+
+.btn-copy.copied,
+.template-copy-btn.copied,
+button.copied {
+    animation: ls-success-flash 0.6s ease-out;
+}
+
+/* ── 8.2 Subtle Pulse on Save ───────────────────────────────── */
+
+@keyframes ls-save-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+}
+
+.ls-saved {
+    animation: ls-save-pulse 0.3s ease;
+}
+
+/* ── 8.3 Card Entry Animation ───────────────────────────────── */
+
+@keyframes ls-card-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hb-post {
+    animation: ls-card-enter 0.3s ease-out both;
+}
+
+/* Stagger posts for a cascade effect */
+.hb-post:nth-child(1) { animation-delay: 0s; }
+.hb-post:nth-child(2) { animation-delay: 0.05s; }
+.hb-post:nth-child(3) { animation-delay: 0.1s; }
+.hb-post:nth-child(4) { animation-delay: 0.15s; }
+.hb-post:nth-child(5) { animation-delay: 0.2s; }
