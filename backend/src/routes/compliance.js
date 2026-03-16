@@ -522,11 +522,16 @@ router.post('/admin/entries', authenticate, requireSuperAdmin, async (req, res) 
     try {
         const {
             jurisdiction_code, category, title, content,
-            source_name, source_url, source_section, is_active
+            original_text, plain_summary,
+            source_name, source_url, source_section,
+            last_verified_date, verified_by, is_active
         } = req.body;
 
-        if (!jurisdiction_code || !category || !title || !content) {
-            return res.status(400).json({ error: 'jurisdiction_code, category, title, and content are required' });
+        // Accept either content directly or original_text + plain_summary
+        const effectiveContent = content || [original_text, plain_summary].filter(Boolean).join('\n\n---\n\nPlain Language Summary:\n');
+
+        if (!jurisdiction_code || !category || !title || (!effectiveContent && !original_text)) {
+            return res.status(400).json({ error: 'jurisdiction_code, category, title, and content (or original_text) are required' });
         }
 
         // Get jurisdiction info
@@ -541,14 +546,17 @@ router.post('/admin/entries', authenticate, requireSuperAdmin, async (req, res) 
         const result = await pool.query(
             `INSERT INTO compliance_knowledge_base
              (jurisdiction_code, jurisdiction_name, regulatory_body, category, title, content,
+              original_text, plain_summary,
               source_name, source_url, source_section, last_verified_date, verified_by, is_active)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_DATE, $10, $11)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              RETURNING *`,
             [
                 jurisdiction_code, jurisResult.rows[0].name, jurisResult.rows[0].regulatory_body,
-                category, title, content,
+                category, title, effectiveContent,
+                original_text || null, plain_summary || null,
                 source_name || null, source_url || null, source_section || null,
-                req.user.first_name || 'System',
+                last_verified_date || new Date().toISOString().split('T')[0],
+                verified_by || req.user.first_name || 'System',
                 is_active !== false
             ]
         );
@@ -572,6 +580,7 @@ router.put('/admin/entries/:id', authenticate, requireSuperAdmin, async (req, re
         const { id } = req.params;
         const {
             jurisdiction_code, category, title, content,
+            original_text, plain_summary,
             source_name, source_url, source_section, is_active, last_verified_date
         } = req.body;
 
@@ -598,20 +607,26 @@ router.put('/admin/entries/:id', authenticate, requireSuperAdmin, async (req, re
             regulatoryBody = jurisResult.rows[0].regulatory_body;
         }
 
+        // Build effective content from original_text + plain_summary if provided
+        const effectiveContent = content || (original_text ? [original_text, plain_summary].filter(Boolean).join('\n\n---\n\nPlain Language Summary:\n') : null);
+
         const result = await pool.query(
             `UPDATE compliance_knowledge_base SET
                 jurisdiction_code = $1, jurisdiction_name = $2, regulatory_body = $3,
                 category = $4, title = $5, content = $6,
-                source_name = $7, source_url = $8, source_section = $9,
-                is_active = $10, last_verified_date = $11, updated_at = NOW()
-             WHERE id = $12 RETURNING *`,
+                original_text = $7, plain_summary = $8,
+                source_name = $9, source_url = $10, source_section = $11,
+                is_active = $12, last_verified_date = $13, updated_at = NOW()
+             WHERE id = $14 RETURNING *`,
             [
                 jurisdiction_code || entry.jurisdiction_code,
                 jurisdictionName,
                 regulatoryBody,
                 category || entry.category,
                 title || entry.title,
-                content || entry.content,
+                effectiveContent || entry.content,
+                original_text !== undefined ? original_text : entry.original_text,
+                plain_summary !== undefined ? plain_summary : entry.plain_summary,
                 source_name !== undefined ? source_name : entry.source_name,
                 source_url !== undefined ? source_url : entry.source_url,
                 source_section !== undefined ? source_section : entry.source_section,
@@ -733,6 +748,81 @@ router.post('/admin/entries/bulk-deactivate', authenticate, requireSuperAdmin, a
     } catch (error) {
         log.error('Error bulk-deactivating compliance KB entries', { error });
         res.status(500).json({ error: 'Failed to bulk deactivate' });
+    }
+});
+
+/**
+ * POST /api/compliance/admin/entries/bulk-import
+ * Bulk-import multiple entries at once (for populating from PDF processing)
+ */
+router.post('/admin/entries/bulk-import', authenticate, requireSuperAdmin, async (req, res) => {
+    try {
+        const { entries } = req.body;
+        if (!entries || !Array.isArray(entries) || entries.length === 0) {
+            return res.status(400).json({ error: 'entries array is required' });
+        }
+
+        const imported = [];
+        const errors = [];
+
+        for (let i = 0; i < entries.length; i++) {
+            const e = entries[i];
+            try {
+                if (!e.jurisdiction_code || !e.category || !e.title || (!e.content && !e.original_text)) {
+                    errors.push({ index: i, title: e.title, error: 'Missing required fields' });
+                    continue;
+                }
+
+                // Get jurisdiction info
+                const jurisResult = await pool.query(
+                    'SELECT name, regulatory_body FROM compliance_jurisdictions WHERE code = $1',
+                    [e.jurisdiction_code]
+                );
+                if (jurisResult.rows.length === 0) {
+                    errors.push({ index: i, title: e.title, error: 'Invalid jurisdiction code' });
+                    continue;
+                }
+
+                const effectiveContent = e.content || [e.original_text, e.plain_summary].filter(Boolean).join('\n\n---\n\nPlain Language Summary:\n');
+
+                const result = await pool.query(
+                    `INSERT INTO compliance_knowledge_base
+                     (jurisdiction_code, jurisdiction_name, regulatory_body, category, title, content,
+                      original_text, plain_summary,
+                      source_name, source_url, source_section, last_verified_date, verified_by, is_active)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                     RETURNING id, title`,
+                    [
+                        e.jurisdiction_code, jurisResult.rows[0].name, jurisResult.rows[0].regulatory_body,
+                        e.category, e.title, effectiveContent,
+                        e.original_text || null, e.plain_summary || null,
+                        e.source_name || null, e.source_url || null, e.source_section || null,
+                        e.last_verified_date || new Date().toISOString().split('T')[0],
+                        e.verified_by || req.user.first_name || 'System',
+                        e.is_active !== false
+                    ]
+                );
+                imported.push(result.rows[0]);
+            } catch (entryErr) {
+                errors.push({ index: i, title: e.title, error: entryErr.message });
+            }
+        }
+
+        // Update entry counts for affected jurisdictions
+        const codes = [...new Set(entries.map(e => e.jurisdiction_code).filter(Boolean))];
+        for (const code of codes) {
+            await updateEntryCount(code);
+        }
+
+        res.json({
+            imported: imported.length,
+            errors: errors.length,
+            imported_entries: imported,
+            error_details: errors
+        });
+    } catch (error) {
+        log.error('Error bulk-importing compliance KB entries', { error });
+        res.status(500).json({ error: 'Failed to bulk import' });
     }
 });
 
