@@ -164,12 +164,17 @@ router.post('/chat', authenticate, checkAIRateLimit, checkUsageLimit, async (req
                     }
 
                     // Build disclaimer
-                    const latestVerified = citedEntries.length > 0
-                        ? citedEntries.reduce((latest, e) => {
+                    let latestVerified = null;
+                    if (citedEntries.length > 0) {
+                        const latest = citedEntries.reduce((max, e) => {
                             const d = new Date(e.last_verified_date || '2020-01-01');
-                            return d > latest ? d : latest;
-                        }, new Date('2020-01-01')).toISOString().split('T')[0]
-                        : null;
+                            return d > max ? d : max;
+                        }, new Date('2020-01-01'));
+                        const dd = String(latest.getUTCDate()).padStart(2, '0');
+                        const mm = String(latest.getUTCMonth() + 1).padStart(2, '0');
+                        const yyyy = latest.getUTCFullYear();
+                        latestVerified = `${dd}-${mm}-${yyyy}`;
+                    }
 
                     const disclaimer = buildDisclaimer(
                         jurisdiction.regulatory_body,
@@ -420,9 +425,14 @@ router.get('/welcome', authenticate, async (req, res) => {
              WHERE jurisdiction_code = $1 AND is_active = true`,
             [jurisdiction_code]
         );
-        const latestDate = dateResult.rows[0]?.latest
-            ? new Date(dateResult.rows[0].latest).toISOString().split('T')[0]
-            : 'N/A';
+        let latestDate = 'N/A';
+        if (dateResult.rows[0]?.latest) {
+            const d = new Date(dateResult.rows[0].latest);
+            const dd = String(d.getUTCDate()).padStart(2, '0');
+            const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const yyyy = d.getUTCFullYear();
+            latestDate = `${dd}-${mm}-${yyyy}`;
+        }
 
         const welcomeMessage = buildWelcomeMessage(
             jurisdiction.name,
