@@ -19026,6 +19026,7 @@ async function initComplianceNav() {
                 compAdminBtn.dataset.page = 'compliance-admin';
                 compAdminBtn.innerHTML = '<span class="sidebar-btn-icon">&#128737;&#65039;</span><span class="sidebar-btn-label">Compliance KB</span>';
                 compAdminBtn.addEventListener('click', () => {
+                    openTool('customer-response');
                     switchPage('compliance-admin');
                     if (window.initComplianceAdmin) window.initComplianceAdmin();
                 });
