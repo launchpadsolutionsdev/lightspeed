@@ -585,6 +585,119 @@ router.get('/sync/logs', authenticate, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/shopify/debug
+ * Diagnostic endpoint — makes raw Shopify API calls and returns what Shopify sees.
+ * Shows counts, scopes, and sample data to help debug sync issues.
+ */
+router.get('/debug', authenticate, async (req, res) => {
+    try {
+        const organizationId = await getOrgId(req.userId);
+        if (!organizationId) {
+            return res.status(403).json({ error: 'No organization found' });
+        }
+
+        const store = await shopifyService.getStoreConnection(organizationId);
+        if (!store) {
+            return res.status(404).json({ error: 'No Shopify store connected' });
+        }
+
+        const apiBase = `https://${store.shop_domain}/admin/api/2024-01`;
+        const headers = {
+            'X-Shopify-Access-Token': store.access_token,
+            'Content-Type': 'application/json'
+        };
+
+        const results = {
+            shopDomain: store.shop_domain,
+            storedScope: store.scope,
+            tests: {}
+        };
+
+        // Test 1: Count products
+        try {
+            const r = await fetch(`${apiBase}/products/count.json`, { headers });
+            if (r.ok) {
+                const d = await r.json();
+                results.tests.products = { status: r.status, count: d.count };
+            } else {
+                results.tests.products = { status: r.status, error: await r.text() };
+            }
+        } catch (e) { results.tests.products = { error: e.message }; }
+
+        // Test 2: Count orders
+        try {
+            const r = await fetch(`${apiBase}/orders/count.json?status=any`, { headers });
+            if (r.ok) {
+                const d = await r.json();
+                results.tests.orders = { status: r.status, count: d.count };
+            } else {
+                results.tests.orders = { status: r.status, error: await r.text() };
+            }
+        } catch (e) { results.tests.orders = { error: e.message }; }
+
+        // Test 3: Count orders (last 90 days — same as sync)
+        try {
+            const since = new Date();
+            since.setDate(since.getDate() - 90);
+            const r = await fetch(`${apiBase}/orders/count.json?status=any&created_at_min=${since.toISOString()}`, { headers });
+            if (r.ok) {
+                const d = await r.json();
+                results.tests.orders_90d = { status: r.status, count: d.count };
+            } else {
+                results.tests.orders_90d = { status: r.status, error: await r.text() };
+            }
+        } catch (e) { results.tests.orders_90d = { error: e.message }; }
+
+        // Test 4: Count customers
+        try {
+            const r = await fetch(`${apiBase}/customers/count.json`, { headers });
+            if (r.ok) {
+                const d = await r.json();
+                results.tests.customers = { status: r.status, count: d.count };
+            } else {
+                results.tests.customers = { status: r.status, error: await r.text() };
+            }
+        } catch (e) { results.tests.customers = { error: e.message }; }
+
+        // Test 5: Fetch 1 order to see structure
+        try {
+            const r = await fetch(`${apiBase}/orders.json?limit=1&status=any`, { headers });
+            if (r.ok) {
+                const d = await r.json();
+                results.tests.sample_order = {
+                    status: r.status,
+                    returned: d.orders?.length || 0,
+                    sample: d.orders?.[0] ? {
+                        id: d.orders[0].id,
+                        name: d.orders[0].name,
+                        created_at: d.orders[0].created_at,
+                        financial_status: d.orders[0].financial_status,
+                        total_price: d.orders[0].total_price
+                    } : null
+                };
+            } else {
+                results.tests.sample_order = { status: r.status, error: await r.text() };
+            }
+        } catch (e) { results.tests.sample_order = { error: e.message }; }
+
+        // Sync logs from DB
+        const logs = await pool.query(
+            `SELECT sync_type, status, records_synced, error_message, started_at, completed_at
+             FROM shopify_sync_logs WHERE organization_id = $1
+             ORDER BY created_at DESC LIMIT 10`,
+            [organizationId]
+        );
+        results.recentSyncLogs = logs.rows;
+
+        res.json(results);
+
+    } catch (error) {
+        console.error('Shopify debug error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ─── Data Access ─────────────────────────────────────────────────────
 
 /**

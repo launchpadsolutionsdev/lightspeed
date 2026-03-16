@@ -16308,6 +16308,28 @@ async function initShopifyDashboard() {
                 }
             }
 
+            // Run diagnostics if data looks empty
+            if (data.counts.orders === 0 || data.counts.customers === 0) {
+                fetch(`${API_BASE_URL}/api/shopify/debug`, { headers: getAuthHeaders() })
+                    .then(r => r.json())
+                    .then(debug => {
+                        console.log('=== SHOPIFY DEBUG ===', JSON.stringify(debug, null, 2));
+                        // Show a summary alert so the user can report it
+                        const t = debug.tests || {};
+                        const msg = [
+                            `Shopify API says:`,
+                            `  Products: ${t.products?.count ?? t.products?.error ?? '?'}`,
+                            `  Orders (all): ${t.orders?.count ?? t.orders?.error ?? '?'}`,
+                            `  Orders (90d): ${t.orders_90d?.count ?? t.orders_90d?.error ?? '?'}`,
+                            `  Customers: ${t.customers?.count ?? t.customers?.error ?? '?'}`,
+                            `  Scopes: ${debug.storedScope || 'unknown'}`,
+                            t.sample_order?.sample ? `  Latest order: ${t.sample_order.sample.name} ($${t.sample_order.sample.total_price})` : '  No sample order found'
+                        ].join('\n');
+                        console.log(msg);
+                    })
+                    .catch(() => {});
+            }
+
             // Load dashboard data
             await refreshShopifyDashboard();
 
