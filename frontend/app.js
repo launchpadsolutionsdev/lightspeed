@@ -16189,8 +16189,11 @@ async function connectShopify() {
             await initShopifyDashboard();
         }
 
-        // Trigger initial sync from the dashboard (shows progress there)
-        triggerDashboardSync();
+        // Sync products in background
+        fetch(`${API_BASE_URL}/api/shopify/sync`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        }).catch(() => {});
 
     } catch (err) {
         errorEl.textContent = err.message;
@@ -16202,19 +16205,18 @@ async function connectShopify() {
 }
 
 /**
- * Trigger a full Shopify data sync.
+ * Trigger a product sync (products only — orders/customers are live from Shopify API).
  */
 async function syncShopifyData() {
     const statusEl = document.getElementById('shopifySyncStatus');
     statusEl.style.display = 'block';
     statusEl.style.color = 'var(--text-secondary, #888)';
-    statusEl.textContent = 'Syncing products, orders, and customers... (this may take a minute)';
+    statusEl.textContent = 'Syncing products...';
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/shopify/sync`, {
             method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ types: ['products', 'orders', 'customers'] })
+            headers: getAuthHeaders()
         });
 
         if (!response.ok) {
@@ -16222,7 +16224,8 @@ async function syncShopifyData() {
             throw new Error(data.error || 'Sync failed');
         }
 
-        statusEl.textContent = 'Sync in progress... this runs in the background.';
+        const result = await response.json();
+        statusEl.textContent = result.message || 'Products synced successfully.';
 
     } catch (err) {
         statusEl.style.color = '#ef4444';
@@ -16291,51 +16294,12 @@ async function initShopifyDashboard() {
             liveDash.style.display = 'block';
             document.getElementById('dashShopDomain').textContent = data.shopDomain;
 
-            // Show sync errors if any types have 0 data
-            if (data.syncErrors && data.syncErrors.length > 0) {
-                const zeroTypes = [];
-                if (data.counts.orders === 0 && data.lastSync.orders === null) zeroTypes.push('orders');
-                if (data.counts.customers === 0 && data.lastSync.customers === null) zeroTypes.push('customers');
-
-                if (zeroTypes.length > 0) {
-                    const relevantErrors = data.syncErrors.filter(e => zeroTypes.includes(e.sync_type));
-                    if (relevantErrors.length > 0) {
-                        updateSyncProgress(
-                            `Sync error (${relevantErrors.map(e => e.sync_type).join(', ')}): ${relevantErrors[0].error_message}`,
-                            100, 'error'
-                        );
-                    }
-                }
-            }
-
-            // Run diagnostics if data looks empty
-            if (data.counts.orders === 0 || data.counts.customers === 0) {
-                fetch(`${API_BASE_URL}/api/shopify/debug`, { headers: getAuthHeaders() })
-                    .then(r => r.json())
-                    .then(debug => {
-                        console.log('=== SHOPIFY DEBUG ===', JSON.stringify(debug, null, 2));
-                        // Show a summary alert so the user can report it
-                        const t = debug.tests || {};
-                        const msg = [
-                            `Shopify API says:`,
-                            `  Products: ${t.products?.count ?? t.products?.error ?? '?'}`,
-                            `  Orders (all): ${t.orders?.count ?? t.orders?.error ?? '?'}`,
-                            `  Orders (90d): ${t.orders_90d?.count ?? t.orders_90d?.error ?? '?'}`,
-                            `  Customers: ${t.customers?.count ?? t.customers?.error ?? '?'}`,
-                            `  Scopes: ${debug.storedScope || 'unknown'}`,
-                            t.sample_order?.sample ? `  Latest order: ${t.sample_order.sample.name} ($${t.sample_order.sample.total_price})` : '  No sample order found'
-                        ].join('\n');
-                        console.log(msg);
-                    })
-                    .catch(() => {});
-            }
-
-            // Load dashboard data
+            // Load live data from Shopify API
             await refreshShopifyDashboard();
 
-            // Start polling every 45 seconds
+            // Auto-refresh every 60 seconds
             stopShopifyDashPolling();
-            _shopifyDashPollTimer = setInterval(refreshShopifyDashboard, 45000);
+            _shopifyDashPollTimer = setInterval(refreshShopifyDashboard, 60000);
         } else {
             connectPrompt.style.display = 'block';
             liveDash.style.display = 'none';
@@ -16364,18 +16328,15 @@ async function refreshShopifyDashboard() {
     const days = parseInt(document.getElementById('dashPeriodSelect')?.value || '30');
 
     try {
-        const [analyticsRes, statusRes] = await Promise.all([
-            fetch(`${API_BASE_URL}/api/shopify/analytics?days=${days}`, { headers: getAuthHeaders() }),
-            fetch(`${API_BASE_URL}/api/shopify/status`, { headers: getAuthHeaders() })
-        ]);
+        const analyticsRes = await fetch(`${API_BASE_URL}/api/shopify/analytics?days=${days}`, {
+            headers: getAuthHeaders()
+        });
 
-        if (!analyticsRes.ok || !statusRes.ok) return;
+        if (!analyticsRes.ok) return;
 
         const analytics = await analyticsRes.json();
-        const status = await statusRes.json();
-
-        _shopifyDashLastData = { analytics, status, days };
-        renderShopifyLiveDashboard(analytics, status);
+        _shopifyDashLastData = { analytics, days };
+        renderShopifyLiveDashboard(analytics);
     } catch (err) {
         console.warn('Dashboard refresh failed:', err.message);
     }
@@ -16384,7 +16345,7 @@ async function refreshShopifyDashboard() {
 /**
  * Render KPI cards, charts, and top products.
  */
-function renderShopifyLiveDashboard(analytics, status) {
+function renderShopifyLiveDashboard(analytics) {
     const s = analytics.summary;
 
     const totalRevenue = parseFloat(s.total_revenue) || 0;
@@ -16507,145 +16468,8 @@ function renderDashTopProducts(products) {
     }).join('');
 }
 
-let _syncPollTimer = null;
-
-// Sync stages: products → orders → customers
-const SYNC_STAGES = {
-    products: { label: 'Syncing products...', pct: 15 },
-    orders: { label: 'Syncing orders...', pct: 55 },
-    customers: { label: 'Syncing customers...', pct: 85 }
-};
-
-/**
- * Show/update the sync progress bar.
- */
-function updateSyncProgress(label, pct, state) {
-    const wrap = document.getElementById('dashSyncProgress');
-    const labelEl = document.getElementById('dashSyncProgressLabel');
-    const pctEl = document.getElementById('dashSyncProgressPct');
-    const fill = document.getElementById('dashSyncProgressFill');
-    if (!wrap) return;
-
-    wrap.classList.add('visible');
-    if (labelEl) labelEl.textContent = label;
-    if (pctEl) pctEl.textContent = `${Math.round(pct)}%`;
-    if (fill) {
-        fill.style.width = `${pct}%`;
-        fill.classList.remove('done', 'error');
-        if (state === 'done') fill.classList.add('done');
-        if (state === 'error') fill.classList.add('error');
-    }
-}
-
-/**
- * Hide the sync progress bar.
- */
-function hideSyncProgress() {
-    const wrap = document.getElementById('dashSyncProgress');
-    if (wrap) wrap.classList.remove('visible');
-}
-
-/**
- * Trigger a sync from the dashboard sync button.
- */
-async function triggerDashboardSync() {
-    const btn = document.getElementById('dashSyncBtn');
-    if (!btn) return;
-
-    btn.classList.add('syncing');
-    btn.disabled = true;
-
-    updateSyncProgress('Starting sync...', 5);
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/shopify/sync`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ types: ['products', 'orders', 'customers'] })
-        });
-
-        if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Sync failed');
-        }
-
-        pollSyncStatus();
-
-    } catch (err) {
-        updateSyncProgress(`Sync failed: ${err.message}`, 100, 'error');
-        setTimeout(hideSyncProgress, 5000);
-        btn.classList.remove('syncing');
-        btn.disabled = false;
-    }
-}
-
-/**
- * Poll the sync status endpoint until sync completes.
- */
-function pollSyncStatus() {
-    if (_syncPollTimer) clearInterval(_syncPollTimer);
-
-    _syncPollTimer = setInterval(async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/shopify/sync/status`, {
-                headers: getAuthHeaders()
-            });
-            if (!response.ok) return;
-
-            const data = await response.json();
-            const btn = document.getElementById('dashSyncBtn');
-
-            if (data.running) {
-                const stage = SYNC_STAGES[data.runningType] || { label: 'Syncing...', pct: 30 };
-                updateSyncProgress(stage.label, stage.pct);
-
-                // Also refresh dashboard mid-sync so completed types show up
-                refreshShopifyDashboard();
-                return;
-            }
-
-            // Sync finished
-            clearInterval(_syncPollTimer);
-            _syncPollTimer = null;
-
-            if (btn) {
-                btn.classList.remove('syncing');
-                btn.disabled = false;
-            }
-
-            const r = data.results || {};
-            const parts = [];
-            if (r.products) parts.push(`${r.products.synced || 0} products`);
-            if (r.orders) parts.push(`${r.orders.synced || 0} orders`);
-            if (r.customers) parts.push(`${r.customers.synced || 0} customers`);
-
-            const errors = Object.values(r).filter(v => v.status === 'error');
-            if (errors.length > 0) {
-                updateSyncProgress(`Error: ${errors[0].error || 'Unknown'}`, 100, 'error');
-            } else {
-                updateSyncProgress(parts.length ? `Done — ${parts.join(', ')}` : 'Sync complete', 100, 'done');
-            }
-
-            // Hide after 5 seconds
-            setTimeout(hideSyncProgress, 5000);
-
-            await refreshShopifyDashboard();
-
-        } catch (err) {
-            console.warn('Sync poll error:', err.message);
-        }
-    }, 3000);
-}
-
-/**
- * Stop sync polling (called when leaving dashboard).
- */
-function stopSyncPolling() {
-    if (_syncPollTimer) {
-        clearInterval(_syncPollTimer);
-        _syncPollTimer = null;
-    }
-}
+// stopSyncPolling kept as no-op for backward compatibility with openTool()
+function stopSyncPolling() {}
 
 /**
  * Open settings modal and scroll to the Shopify section.
@@ -16692,7 +16516,7 @@ async function handleShopifyAnalytics() {
         }
 
         const analyticsData = await response.json();
-        renderShopifyDashboard(analyticsData);
+        renderShopifyDashboard({ analytics: analyticsData });
 
     } catch (err) {
         loadingEl.style.display = 'none';
@@ -16727,7 +16551,7 @@ function renderShopifyDashboard(data) {
 
     // Set report name
     const reportNameEl = document.getElementById('dataReportName');
-    if (reportNameEl) reportNameEl.textContent = `Shopify - ${data.shopDomain || 'Store'} (Last 30 Days)`;
+    if (reportNameEl) reportNameEl.textContent = `Shopify Store Analytics (Last 30 Days)`;
 
     // Fill key metrics
     const revenueEl = document.getElementById('dataTotalRevenue');
@@ -16880,7 +16704,7 @@ async function generateShopifyInsights(data) {
             body: JSON.stringify({
                 data: data.analytics,
                 reportType: 'shopify',
-                additionalContext: `Store: ${data.shopDomain}. Products in catalog: ${data.counts.products}. Total customers: ${data.counts.customers}.`
+                additionalContext: `Store analytics for the selected period. Orders: ${data.analytics?.summary?.total_orders || 0}. Unique customers: ${data.analytics?.summary?.unique_customers || 0}.`
             })
         });
 
