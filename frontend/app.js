@@ -2206,11 +2206,18 @@ function showToolMenu() {
         setTimeout(hbUpdateNotifBadge, 1000);
     }
 
+    // Initialize Shopify live dashboard
+    if (typeof initShopifyDashboard === 'function') {
+        initShopifyDashboard();
+    }
 }
 
 function openTool(toolId) {
     currentTool = toolId;
     document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
+
+    // Stop Shopify dashboard polling when leaving dashboard
+    if (typeof stopShopifyDashPolling === 'function') stopShopifyDashPolling();
 
     // Update URL
     pushRoute(TOOL_ROUTES[toolId] || '/dashboard');
@@ -16249,6 +16256,264 @@ async function disconnectShopify() {
     } catch (err) {
         showToast(`Failed to disconnect: ${err.message}`, 'error');
     }
+}
+
+// ==================== SHOPIFY LIVE DASHBOARD ====================
+
+let _shopifyDashChart = null;
+let _shopifyDashPollTimer = null;
+let _shopifyDashLastData = null;
+
+/**
+ * Initialize the Shopify dashboard section on the tool menu page.
+ * Checks connection status and shows either connect prompt or live dashboard.
+ */
+async function initShopifyDashboard() {
+    const section = document.getElementById('shopifyDashboardSection');
+    const connectPrompt = document.getElementById('shopifyConnectPrompt');
+    const liveDash = document.getElementById('shopifyLiveDashboard');
+    if (!section) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shopify/status`, {
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) {
+            section.style.display = 'none';
+            return;
+        }
+
+        const data = await response.json();
+        section.style.display = 'block';
+
+        if (data.connected) {
+            connectPrompt.style.display = 'none';
+            liveDash.style.display = 'block';
+            document.getElementById('dashShopDomain').textContent = data.shopDomain;
+
+            // Load dashboard data
+            await refreshShopifyDashboard();
+
+            // Start polling every 45 seconds
+            stopShopifyDashPolling();
+            _shopifyDashPollTimer = setInterval(refreshShopifyDashboard, 45000);
+        } else {
+            connectPrompt.style.display = 'block';
+            liveDash.style.display = 'none';
+            stopShopifyDashPolling();
+        }
+    } catch (err) {
+        console.warn('Shopify dashboard init failed:', err.message);
+        section.style.display = 'none';
+    }
+}
+
+/**
+ * Stop the dashboard auto-refresh polling.
+ */
+function stopShopifyDashPolling() {
+    if (_shopifyDashPollTimer) {
+        clearInterval(_shopifyDashPollTimer);
+        _shopifyDashPollTimer = null;
+    }
+}
+
+/**
+ * Fetch analytics data and re-render the dashboard.
+ */
+async function refreshShopifyDashboard() {
+    const days = parseInt(document.getElementById('dashPeriodSelect')?.value || '30');
+
+    try {
+        const [analyticsRes, statusRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/shopify/analytics?days=${days}`, { headers: getAuthHeaders() }),
+            fetch(`${API_BASE_URL}/api/shopify/status`, { headers: getAuthHeaders() })
+        ]);
+
+        if (!analyticsRes.ok || !statusRes.ok) return;
+
+        const analytics = await analyticsRes.json();
+        const status = await statusRes.json();
+
+        _shopifyDashLastData = { analytics, status, days };
+        renderShopifyLiveDashboard(analytics, status);
+    } catch (err) {
+        console.warn('Dashboard refresh failed:', err.message);
+    }
+}
+
+/**
+ * Render KPI cards, charts, and top products.
+ */
+function renderShopifyLiveDashboard(analytics, status) {
+    const s = analytics.summary;
+
+    const totalRevenue = parseFloat(s.total_revenue) || 0;
+    const totalOrders = parseInt(s.total_orders) || 0;
+    const avgOrderValue = parseFloat(s.avg_order_value) || 0;
+    const uniqueCustomers = parseInt(s.unique_customers) || 0;
+    const fulfilledOrders = parseInt(s.fulfilled_orders) || 0;
+    const unfulfilledOrders = parseInt(s.unfulfilled_orders) || 0;
+    const refundedOrders = parseInt(s.refunded_orders) || 0;
+
+    // KPI cards
+    animateCurrency(document.getElementById('dashRevenue'), totalRevenue);
+    animateNumber(document.getElementById('dashOrders'), totalOrders);
+    animateNumber(document.getElementById('dashCustomers'), uniqueCustomers);
+    animateNumber(document.getElementById('dashUnfulfilled'), unfulfilledOrders);
+
+    document.getElementById('dashRevenueAvg').textContent = `Avg $${avgOrderValue.toFixed(2)}/order`;
+    document.getElementById('dashOrdersFulfilled').textContent = `${fulfilledOrders} fulfilled`;
+    document.getElementById('dashRefunded').textContent = `${refundedOrders} refunded`;
+
+    // Unfulfilled color
+    const unfulfilledEl = document.getElementById('dashUnfulfilled');
+    if (unfulfilledOrders > 0) {
+        unfulfilledEl.classList.add('shopify-kpi-warn');
+    } else {
+        unfulfilledEl.classList.remove('shopify-kpi-warn');
+    }
+
+    // Revenue chart
+    renderDashRevenueChart(analytics.daily || []);
+
+    // Top products
+    renderDashTopProducts(analytics.topProducts || []);
+}
+
+/**
+ * Render the daily revenue bar chart.
+ */
+function renderDashRevenueChart(dailyData) {
+    const ctx = document.getElementById('dashRevenueChart');
+    if (!ctx) return;
+
+    if (_shopifyDashChart) {
+        _shopifyDashChart.destroy();
+        _shopifyDashChart = null;
+    }
+
+    if (dailyData.length === 0) return;
+
+    const labels = dailyData.map(d => {
+        const dt = new Date(d.date);
+        return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+    const revenues = dailyData.map(d => parseFloat(d.revenue) || 0);
+
+    _shopifyDashChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Revenue',
+                data: revenues,
+                backgroundColor: '#635BFF',
+                borderRadius: 4,
+                maxBarThickness: 24
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 800, easing: 'easeOutQuart' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `$${ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 10 }, color: '#6B7C93', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
+                },
+                y: {
+                    grid: { color: '#F1F5F9' },
+                    ticks: {
+                        font: { size: 10 },
+                        color: '#6B7C93',
+                        callback: v => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Render the top products list.
+ */
+function renderDashTopProducts(products) {
+    const container = document.getElementById('dashTopProducts');
+    if (!container) return;
+
+    if (products.length === 0) {
+        container.innerHTML = '<div class="shopify-kpi-sub">No sales data yet</div>';
+        return;
+    }
+
+    const top5 = products.slice(0, 5);
+    container.innerHTML = top5.map(p => {
+        const rev = parseFloat(p.total_revenue) || 0;
+        const qty = parseInt(p.total_quantity) || 0;
+        return `<div class="shopify-top-product">
+            <span class="shopify-top-product-name">${escapeHtml(p.product_title)}</span>
+            <span class="shopify-top-product-rev">$${rev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span class="shopify-top-product-qty">${qty} sold</span>
+        </div>`;
+    }).join('');
+}
+
+/**
+ * Trigger a sync from the dashboard sync button.
+ */
+async function triggerDashboardSync() {
+    const btn = document.getElementById('dashSyncBtn');
+    if (!btn) return;
+
+    btn.classList.add('syncing');
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/shopify/sync`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ types: ['products', 'orders', 'customers'] })
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Sync failed');
+        }
+
+        // Refresh dashboard after sync
+        await refreshShopifyDashboard();
+        showToast('Shopify data synced', 'success');
+    } catch (err) {
+        showToast(`Sync failed: ${err.message}`, 'error');
+    } finally {
+        btn.classList.remove('syncing');
+        btn.disabled = false;
+    }
+}
+
+/**
+ * Open settings modal with Shopify tab focused.
+ */
+function openSettingsShopify() {
+    // Open settings modal - find and click the settings button
+    const settingsBtn = document.querySelector('[data-tool="settings"]') || document.getElementById('settingsBtn');
+    if (settingsBtn) settingsBtn.click();
+
+    // After a brief delay, try to switch to the Shopify/integrations tab
+    setTimeout(() => {
+        const shopifyTab = document.querySelector('[data-settings-tab="integrations"]') || document.querySelector('[data-settings-tab="shopify"]');
+        if (shopifyTab) shopifyTab.click();
+    }, 200);
 }
 
 /**

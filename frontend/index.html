@@ -686,6 +686,209 @@
             }
         }
 
+        /* ==================== SHOPIFY DASHBOARD ==================== */
+        .shopify-connect-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            background: #fff;
+            border: 1px solid #E3E8EE;
+            border-radius: 16px;
+            padding: 24px 28px;
+        }
+        .shopify-connect-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .shopify-connect-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            background: #F0FDF4;
+            color: #16A34A;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .shopify-connect-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #0A2540;
+            margin-bottom: 2px;
+        }
+        .shopify-connect-desc {
+            font-size: 0.85rem;
+            color: #6B7C93;
+            margin: 0;
+        }
+
+        .shopify-dash-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .shopify-dash-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #0A2540;
+        }
+        .shopify-dash-live-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #16A34A;
+            display: inline-block;
+            animation: livePulse 2s ease-in-out infinite;
+        }
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(22,163,74,0.4); }
+            50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(22,163,74,0); }
+        }
+        .shopify-dash-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .shopify-dash-period {
+            font-size: 0.82rem;
+            padding: 6px 12px;
+            border: 1px solid #E3E8EE;
+            border-radius: 8px;
+            background: #fff;
+            color: #425466;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .shopify-dash-sync-btn {
+            width: 32px; height: 32px;
+            border: 1px solid #E3E8EE;
+            border-radius: 8px;
+            background: #fff;
+            color: #6B7C93;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .shopify-dash-sync-btn:hover {
+            background: #F6F9FC;
+            border-color: #C5CCD6;
+        }
+        .shopify-dash-sync-btn.syncing svg {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .shopify-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .shopify-kpi-card {
+            background: #fff;
+            border: 1px solid #E3E8EE;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .shopify-kpi-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6B7C93;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .shopify-kpi-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #0A2540;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+        .shopify-kpi-value.shopify-kpi-warn {
+            color: #D97706;
+        }
+        .shopify-kpi-sub {
+            font-size: 0.78rem;
+            color: #6B7C93;
+            margin-top: 4px;
+        }
+
+        .shopify-charts-row {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 12px;
+        }
+        .shopify-chart-card {
+            background: #fff;
+            border: 1px solid #E3E8EE;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .shopify-chart-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #425466;
+            margin-bottom: 12px;
+        }
+        .shopify-chart-wrap {
+            height: 180px;
+            position: relative;
+        }
+        .shopify-chart-wrap canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .shopify-top-product {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #F1F5F9;
+        }
+        .shopify-top-product:last-child {
+            border-bottom: none;
+        }
+        .shopify-top-product-name {
+            font-size: 0.82rem;
+            color: #0A2540;
+            font-weight: 500;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 12px;
+        }
+        .shopify-top-product-rev {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #425466;
+            white-space: nowrap;
+        }
+        .shopify-top-product-qty {
+            font-size: 0.72rem;
+            color: #6B7C93;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+            .shopify-connect-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .shopify-kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .shopify-charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* ==================== ASK LIGHTSPEED ==================== */
         .ask-lightspeed {
             width: 100%;
@@ -12987,6 +13190,90 @@
             <div class="tool-menu-greeting">
                 <h1 class="tool-menu-title" id="menuGreeting">Good morning.</h1>
                 <p class="tool-menu-subtitle">What would you like to work on?</p>
+            </div>
+
+            <!-- Shopify Store Dashboard (real-time) -->
+            <div id="shopifyDashboardSection" style="display: none; width: 100%; margin-bottom: 32px;">
+
+                <!-- Connect Prompt (shown when no store connected) -->
+                <div id="shopifyConnectPrompt" style="display: none;">
+                    <div class="shopify-connect-card">
+                        <div class="shopify-connect-left">
+                            <div class="shopify-connect-icon">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="shopify-connect-title">Connect your Shopify store</h3>
+                                <p class="shopify-connect-desc">See live sales, orders, and customer data right on your dashboard.</p>
+                            </div>
+                        </div>
+                        <button class="bento-cta" onclick="openSettingsShopify()" style="margin-top: 0;">
+                            Connect Store
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Dashboard (shown when store connected) -->
+                <div id="shopifyLiveDashboard" style="display: none;">
+                    <!-- Store header -->
+                    <div class="shopify-dash-header">
+                        <div class="shopify-dash-header-left">
+                            <span class="shopify-dash-live-dot"></span>
+                            <span class="shopify-dash-store-name" id="dashShopDomain">Store</span>
+                        </div>
+                        <div class="shopify-dash-header-right">
+                            <select id="dashPeriodSelect" class="shopify-dash-period" onchange="refreshShopifyDashboard()">
+                                <option value="7">Last 7 days</option>
+                                <option value="30" selected>Last 30 days</option>
+                                <option value="90">Last 90 days</option>
+                            </select>
+                            <button class="shopify-dash-sync-btn" id="dashSyncBtn" onclick="triggerDashboardSync()" title="Sync now">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- KPI Cards -->
+                    <div class="shopify-kpi-grid">
+                        <div class="shopify-kpi-card">
+                            <div class="shopify-kpi-label">Revenue</div>
+                            <div class="shopify-kpi-value" id="dashRevenue">$0</div>
+                            <div class="shopify-kpi-sub" id="dashRevenueAvg">Avg $0/order</div>
+                        </div>
+                        <div class="shopify-kpi-card">
+                            <div class="shopify-kpi-label">Orders</div>
+                            <div class="shopify-kpi-value" id="dashOrders">0</div>
+                            <div class="shopify-kpi-sub" id="dashOrdersFulfilled">0 fulfilled</div>
+                        </div>
+                        <div class="shopify-kpi-card">
+                            <div class="shopify-kpi-label">Customers</div>
+                            <div class="shopify-kpi-value" id="dashCustomers">0</div>
+                            <div class="shopify-kpi-sub" id="dashCustomersRepeat">&nbsp;</div>
+                        </div>
+                        <div class="shopify-kpi-card">
+                            <div class="shopify-kpi-label">Unfulfilled</div>
+                            <div class="shopify-kpi-value shopify-kpi-warn" id="dashUnfulfilled">0</div>
+                            <div class="shopify-kpi-sub" id="dashRefunded">0 refunded</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="shopify-charts-row">
+                        <div class="shopify-chart-card shopify-chart-wide">
+                            <div class="shopify-chart-title">Daily Revenue</div>
+                            <div class="shopify-chart-wrap">
+                                <canvas id="dashRevenueChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="shopify-chart-card shopify-chart-narrow">
+                            <div class="shopify-chart-title">Top Products</div>
+                            <div class="shopify-top-products" id="dashTopProducts">
+                                <div class="shopify-kpi-sub">No data yet</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="bento-grid">
