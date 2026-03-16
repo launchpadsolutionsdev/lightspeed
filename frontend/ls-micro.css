@@ -311,3 +311,118 @@ select:disabled {
     cursor: not-allowed;
     background: var(--bg-alt);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PHASE 4: EMPTY STATES & EDGE CASES
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 4.1 Empty State Component ──────────────────────────────── */
+
+.ls-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+}
+
+.ls-empty-icon {
+    color: var(--text-muted, #9ca3af);
+    margin-bottom: 1rem;
+    opacity: 0.6;
+}
+
+.ls-empty-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary, #1a1a2e);
+    margin: 0 0 0.35rem 0;
+}
+
+.ls-empty-message {
+    font-size: 0.8rem;
+    color: var(--text-muted, #9ca3af);
+    margin: 0;
+    max-width: 280px;
+    line-height: 1.5;
+}
+
+.ls-empty-btn {
+    margin-top: 1rem;
+    padding: 0.45rem 1.1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #fff;
+    background: var(--cta, #635BFF);
+    border: none;
+    border-radius: var(--radius-pill, 24px);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.ls-empty-btn:hover {
+    background: var(--cta-hover, #524aee);
+}
+
+/* Compact variant for small containers (sidebars, dropdowns) */
+.ls-empty-state.ls-empty-compact {
+    padding: 1rem 0.75rem;
+}
+.ls-empty-compact .ls-empty-icon {
+    margin-bottom: 0.5rem;
+}
+.ls-empty-compact .ls-empty-icon svg {
+    width: 24px;
+    height: 24px;
+}
+.ls-empty-compact .ls-empty-title {
+    font-size: 0.8rem;
+}
+.ls-empty-compact .ls-empty-message {
+    font-size: 0.75rem;
+}
+
+/* ── 4.2 Network Error Banner ───────────────────────────────── */
+
+.ls-network-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    background: var(--danger, #DF1B41);
+    color: #fff;
+    text-align: center;
+    padding: 8px 16px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+}
+.ls-network-banner.visible {
+    transform: translateY(0);
+}
+.ls-network-banner-icon {
+    display: flex;
+    align-items: center;
+}
+.ls-network-banner-dismiss {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 2px 6px;
+}
+.ls-network-banner-dismiss:hover {
+    opacity: 1;
+}

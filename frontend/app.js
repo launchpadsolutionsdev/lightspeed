@@ -3696,7 +3696,7 @@ async function loadAlsConversationsList(container, search, teamView) {
 
         const response = await fetch(url, { headers: getAuthHeaders() });
         if (!response.ok) {
-            container.innerHTML = '<div class="als-sidebar-empty">Could not load conversations.</div>';
+            container.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'Could not load conversations', compact: true });
             return;
         }
 
@@ -3704,9 +3704,12 @@ async function loadAlsConversationsList(container, search, teamView) {
         const conversations = data.conversations || [];
 
         if (conversations.length === 0) {
-            container.innerHTML = `<div class="als-sidebar-empty">
-                ${search ? 'No matching conversations.' : 'No saved conversations yet.<br>Start chatting and your conversations will be saved automatically.'}
-            </div>`;
+            container.innerHTML = lsMicro.emptyState({
+                icon: 'chat',
+                title: search ? 'No matching conversations' : 'No saved conversations yet',
+                message: search ? '' : 'Start chatting and your conversations will be saved automatically.',
+                compact: true
+            });
             return;
         }
 
@@ -3728,7 +3731,7 @@ async function loadAlsConversationsList(container, search, teamView) {
         }).join('');
     } catch (e) {
         console.warn('Failed to load conversations:', e);
-        container.innerHTML = '<div class="als-sidebar-empty">Failed to load.</div>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'Failed to load', compact: true });
     }
 }
 
@@ -3736,7 +3739,7 @@ async function loadAlsSharedPrompts(container, search) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/shared-prompts?sort=popular`, { headers: getAuthHeaders() });
         if (!response.ok) {
-            container.innerHTML = '<div class="als-sidebar-empty">Could not load prompts.</div>';
+            container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'Could not load prompts', compact: true });
             return;
         }
 
@@ -3749,9 +3752,12 @@ async function loadAlsSharedPrompts(container, search) {
         }
 
         if (prompts.length === 0) {
-            container.innerHTML = `<div class="als-sidebar-empty">
-                ${search ? 'No matching prompts.' : 'No shared prompts yet.<br>Save useful prompts to share with your team.'}
-            </div>`;
+            container.innerHTML = lsMicro.emptyState({
+                icon: 'file',
+                title: search ? 'No matching prompts' : 'No shared prompts yet',
+                message: search ? '' : 'Save useful prompts to share with your team.',
+                compact: true
+            });
             return;
         }
 
@@ -3764,7 +3770,7 @@ async function loadAlsSharedPrompts(container, search) {
         }).join('');
     } catch (e) {
         console.warn('Failed to load shared prompts:', e);
-        container.innerHTML = '<div class="als-sidebar-empty">Failed to load.</div>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'Failed to load', compact: true });
     }
 }
 
@@ -7845,7 +7851,7 @@ async function calLoadComments(eventId) {
         if (!resp.ok) throw new Error();
         const comments = await resp.json();
         if (comments.length === 0) {
-            list.innerHTML = '<div class="cal-comments-empty">No comments yet</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'No comments yet', compact: true });
             return;
         }
         list.innerHTML = comments.map(c => {
@@ -7859,7 +7865,7 @@ async function calLoadComments(eventId) {
             </div>`;
         }).join('');
     } catch {
-        list.innerHTML = '<div class="cal-comments-empty">Failed to load comments</div>';
+        list.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'Failed to load comments', compact: true });
     }
 }
 
@@ -8034,7 +8040,7 @@ async function calLoadNotifications() {
         if (!resp.ok) throw new Error();
         const notifs = await resp.json();
         if (notifs.length === 0) {
-            list.innerHTML = '<div class="cal-notif-empty">No notifications</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'bell', title: 'No notifications', compact: true });
             return;
         }
         list.innerHTML = notifs.map(n => {
@@ -8046,7 +8052,7 @@ async function calLoadNotifications() {
             </div>`;
         }).join('');
     } catch {
-        list.innerHTML = '<div class="cal-notif-empty">Failed to load notifications</div>';
+        list.innerHTML = lsMicro.emptyState({ icon: 'bell', title: 'Failed to load notifications', compact: true });
     }
 }
 
@@ -8356,9 +8362,7 @@ function renderOrgTemplates() {
     }
 
     if (templates.length === 0) {
-        container.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: #9ca3af; font-size: 0.9rem;">
-            No templates yet. Import from the library or create your own.
-        </div>`;
+        container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'No templates yet', message: 'Import from the library or create your own.' });
         return;
     }
 
@@ -8394,7 +8398,7 @@ async function showTemplateLibrary() {
         const library = data.templates || [];
 
         if (library.length === 0) {
-            listEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #9ca3af;">No system templates available.</div>';
+            listEl.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'No system templates available', compact: true });
             return;
         }
 
@@ -8412,7 +8416,7 @@ async function showTemplateLibrary() {
         `).join('');
     } catch (error) {
         console.error('Load template library error:', error);
-        listEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #ef4444;">Failed to load template library</div>';
+        listEl.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'Failed to load template library', compact: true });
     }
 }
 
@@ -8552,7 +8556,7 @@ async function loadMembers() {
 
     } catch (error) {
         console.error('Error loading members:', error);
-        document.getElementById('membersList').innerHTML = '<p class="no-invitations">Failed to load members</p>';
+        document.getElementById('membersList').innerHTML = lsMicro.emptyState({ icon: 'users', title: 'Failed to load members', compact: true });
     }
 }
 
@@ -8560,7 +8564,7 @@ function renderMembersList(members) {
     const container = document.getElementById('membersList');
 
     if (!members || members.length === 0) {
-        container.innerHTML = '<p class="no-invitations">No team members yet</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'users', title: 'No team members yet', compact: true });
         return;
     }
 
@@ -8606,7 +8610,7 @@ function renderPendingInvitations(invitations) {
     const card = document.getElementById('pendingInvitationsCard');
 
     if (!invitations || invitations.length === 0) {
-        container.innerHTML = '<p class="no-invitations">No pending invitations</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'No pending invitations', compact: true });
         card.style.display = ['owner', 'admin'].includes(currentUserRole) ? 'block' : 'none';
         return;
     }
@@ -10609,7 +10613,7 @@ async function loadFeedbackIntelligence() {
                 </div>`;
             }).join('');
         } else if (gapsListEl) {
-            gapsListEl.innerHTML = '<p style="color:#9ca3af;">No KB gaps detected yet. This is good!</p>';
+            gapsListEl.innerHTML = lsMicro.emptyState({ icon: 'search', title: 'No KB gaps detected yet', message: 'This is good!', compact: true });
         }
 
         // Render negative feedback
@@ -10624,7 +10628,7 @@ async function loadFeedbackIntelligence() {
                 </div>`;
             }).join('');
         } else if (negEl) {
-            negEl.innerHTML = '<p style="color:#9ca3af;">No negative feedback yet.</p>';
+            negEl.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'No negative feedback yet', compact: true });
         }
     } catch (e) {
         console.warn('Feedback intelligence load failed:', e);
@@ -10649,9 +10653,9 @@ function updateAnalyticsFromLocalStorage() {
     const times = allHistory.filter(h => h.responseTime).map(h => h.responseTime);
     document.getElementById("analyticsAvgTime").textContent = `${times.length > 0 ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0}s`;
 
-    document.getElementById("categoryChart").innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Connect to see team data</div>';
-    document.getElementById("monthlyBreakdown").innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Connect to see team data</div>';
-    document.getElementById("historyList").innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Connect to see team data</div>';
+    document.getElementById("categoryChart").innerHTML = lsMicro.emptyState({ icon: 'users', title: 'Connect to see team data', compact: true });
+    document.getElementById("monthlyBreakdown").innerHTML = lsMicro.emptyState({ icon: 'users', title: 'Connect to see team data', compact: true });
+    document.getElementById("historyList").innerHTML = lsMicro.emptyState({ icon: 'users', title: 'Connect to see team data' });
 
     renderLeaderboard();
 }
@@ -10805,9 +10809,13 @@ function renderKbEntries() {
             : (activeKbTab === 'support'
                 ? 'No customer support entries yet. Add FAQs, policies, and common responses to power the Response Assistant.'
                 : 'No internal entries yet. Add brand guidelines, procedures, and reference material to power Draft Assistant and Ask Lightspeed.');
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#128218;</div><p class="empty-state-title">' +
-            (search ? 'No results' : 'No entries yet') + '</p><p class="empty-state-text">' + msg + '</p>' +
-            (!search ? '<button class="empty-state-btn" onclick="openKbAddForm()">+ Add Entry</button>' : '') + '</div>';
+        container.innerHTML = lsMicro.emptyState({
+            icon: search ? 'search' : 'file',
+            title: search ? 'No results' : 'No entries yet',
+            message: msg,
+            btnLabel: !search ? '+ Add Entry' : '',
+            btnAction: !search ? 'openKbAddForm()' : ''
+        });
         return;
     }
 
@@ -10881,10 +10889,11 @@ function renderResponseRules() {
     if (!container) return;
 
     if (responseRules.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="padding:2rem"><div class="empty-state-icon">&#9881;</div>' +
-            '<p class="empty-state-title">No response rules yet</p>' +
-            '<p class="empty-state-text">Add rules above to control how the Response Assistant writes every reply. ' +
-            'For example: "Never tell the customer to contact us" or "Always start with Hi there."</p></div>';
+        container.innerHTML = lsMicro.emptyState({
+            icon: 'edit',
+            title: 'No response rules yet',
+            message: 'Add rules above to control how the Response Assistant writes every reply. For example: "Never tell the customer to contact us" or "Always start with Hi there."'
+        });
         return;
     }
 
@@ -14370,7 +14379,7 @@ function runDuplicateFinder() {
 function showDupFinderPreview(dupeGroups) {
     const container = document.getElementById("dupFinderPreviewTable");
     if (dupeGroups.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No duplicates found! Your list is clean.</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'search', title: 'No duplicates found!', message: 'Your list is clean.' });
         return;
     }
     const columns = Object.keys(dupFinderData[0]);
@@ -14569,7 +14578,7 @@ function showComparePreview() {
     const data = compareResultData[compareActiveTab];
     const container = document.getElementById("comparePreviewTable");
     if (!data || data.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No records in this category.</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'No records in this category' });
         return;
     }
     const columns = Object.keys(data[0]);
@@ -14794,7 +14803,7 @@ function showEmailCleanerPreview() {
     const container = document.getElementById("emailCleanerPreviewTable");
 
     if (!data || data.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No records in this category.</p>';
+        container.innerHTML = lsMicro.emptyState({ icon: 'file', title: 'No records in this category' });
         return;
     }
 
@@ -16626,7 +16635,7 @@ function skeletonRows(count) {
         if (!container) return;
 
         if (filteredCommands.length === 0) {
-            container.innerHTML = '<div class="cmdk-empty">No results found</div>';
+            container.innerHTML = lsMicro.emptyState({ icon: 'search', title: 'No results found', compact: true });
             return;
         }
 
@@ -16963,7 +16972,7 @@ async function hbLoadPosts() {
         hbPosts = data.posts || [];
         hbRenderFeed();
     } catch (err) {
-        feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">⚠️</div>Failed to load posts. Try again later.</div>';
+        feed.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'Failed to load posts', message: 'Try again later.' });
         console.error('Home Base load error:', err);
     }
 
@@ -16991,9 +17000,11 @@ function hbRenderFeed() {
     if (!feed) return;
 
     if (hbPosts.length === 0) {
-        const icon = hbIsSearching ? '🔍' : '🏠';
-        const msg = hbIsSearching ? 'No posts match your search.' : 'No posts yet. Be the first to share an update!';
-        feed.innerHTML = `<div class="hb-empty"><div class="hb-empty-icon">${icon}</div>${msg}</div>`;
+        feed.innerHTML = lsMicro.emptyState({
+            icon: hbIsSearching ? 'search' : 'chat',
+            title: hbIsSearching ? 'No posts match your search' : 'No posts yet',
+            message: hbIsSearching ? '' : 'Be the first to share an update!'
+        });
         return;
     }
 
@@ -17428,7 +17439,7 @@ async function hbLoadArchivedPosts() {
         const posts = data.posts || [];
 
         if (posts.length === 0) {
-            list.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);padding:0.5rem 0">No archived posts</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'No archived posts', compact: true });
             return;
         }
 
@@ -17524,7 +17535,7 @@ async function hbLoadTemplates() {
         hbTemplates = data.templates || [];
 
         if (hbTemplates.length === 0) {
-            list.innerHTML = '<div style="padding:0.75rem;font-size:0.8rem;color:var(--text-muted)">No templates yet. Write a post and click "Save current" to create one.</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'edit', title: 'No templates yet', message: 'Write a post and click "Save current" to create one.', compact: true });
             return;
         }
 
@@ -17806,7 +17817,7 @@ async function hbLoadDrafts() {
         const drafts = (data.posts || []).filter(p => !p.scheduled_for);
 
         if (drafts.length === 0) {
-            feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">&#128221;</div>No drafts yet. Save a post as draft to find it here.</div>';
+            feed.innerHTML = lsMicro.emptyState({ icon: 'edit', title: 'No drafts yet', message: 'Save a post as draft to find it here.' });
             return;
         }
 
@@ -17828,7 +17839,7 @@ async function hbLoadDrafts() {
                 </div>`;
             }).join('') + '</div>';
     } catch (err) {
-        feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">⚠️</div>Failed to load drafts.</div>';
+        feed.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'Failed to load drafts' });
     }
 }
 
@@ -18200,7 +18211,7 @@ async function hbLoadBookmarkedPosts() {
         hbIsSearching = false;
         hbRenderFeed();
     } catch (err) {
-        feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">🔖</div>Failed to load saved posts.</div>';
+        feed.innerHTML = lsMicro.emptyState({ icon: 'inbox', title: 'Failed to load saved posts' });
         console.error('Bookmarks load error:', err);
     }
 }
@@ -18261,12 +18272,12 @@ async function hbToggleComments(postId) {
         const comments = data.comments || [];
 
         if (comments.length === 0) {
-            list.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);padding:0.25rem 0">No comments yet</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'No comments yet', compact: true });
         } else {
             list.innerHTML = comments.map(c => hbRenderComment(c, postId)).join('');
         }
     } catch (err) {
-        list.innerHTML = '<div style="font-size:0.8rem;color:#DC2626">Failed to load comments</div>';
+        list.innerHTML = lsMicro.emptyState({ icon: 'chat', title: 'Failed to load comments', compact: true });
     }
 }
 
@@ -18498,7 +18509,7 @@ function hbOnSearch(value) {
             hbPosts = data.posts || [];
             hbRenderFeed();
         } catch (err) {
-            if (feed) feed.innerHTML = '<div class="hb-empty"><div class="hb-empty-icon">⚠️</div>Search failed. Try again.</div>';
+            if (feed) feed.innerHTML = lsMicro.emptyState({ icon: 'search', title: 'Search failed', message: 'Try again.' });
         }
     }, 300);
 }
@@ -18620,7 +18631,7 @@ async function hbLoadNotifications() {
         const notifs = data.notifications || [];
 
         if (notifs.length === 0) {
-            list.innerHTML = '<div class="hb-notif-empty">No notifications yet</div>';
+            list.innerHTML = lsMicro.emptyState({ icon: 'bell', title: 'No notifications yet', compact: true });
             return;
         }
 
@@ -18640,7 +18651,7 @@ async function hbLoadNotifications() {
             </div>`;
         }).join('');
     } catch (err) {
-        list.innerHTML = '<div class="hb-notif-empty">Failed to load notifications</div>';
+        list.innerHTML = lsMicro.emptyState({ icon: 'bell', title: 'Failed to load notifications', compact: true });
     }
 }
 
