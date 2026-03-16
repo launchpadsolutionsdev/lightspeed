@@ -2218,6 +2218,7 @@ function openTool(toolId) {
 
     // Stop Shopify dashboard polling when leaving dashboard
     if (typeof stopShopifyDashPolling === 'function') stopShopifyDashPolling();
+    if (typeof stopSyncPolling === 'function') stopSyncPolling();
 
     // Update URL
     pushRoute(TOOL_ROUTES[toolId] || '/dashboard');
@@ -16179,8 +16180,17 @@ async function connectShopify() {
         // Refresh status
         await checkShopifyStatus();
 
-        // Trigger initial sync
-        syncShopifyData();
+        // Close settings modal so user sees the dashboard
+        const modal = document.getElementById('settingsModal');
+        if (modal) modal.classList.remove('show');
+
+        // Initialize dashboard (shows connect → live view)
+        if (typeof initShopifyDashboard === 'function') {
+            await initShopifyDashboard();
+        }
+
+        // Trigger initial sync from the dashboard (shows progress there)
+        triggerDashboardSync();
 
     } catch (err) {
         errorEl.textContent = err.message;
@@ -16198,7 +16208,7 @@ async function syncShopifyData() {
     const statusEl = document.getElementById('shopifySyncStatus');
     statusEl.style.display = 'block';
     statusEl.style.color = 'var(--text-secondary, #888)';
-    statusEl.textContent = 'Syncing products, orders, and customers...';
+    statusEl.textContent = 'Syncing products, orders, and customers... (this may take a minute)';
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/shopify/sync`, {
@@ -16207,22 +16217,12 @@ async function syncShopifyData() {
             body: JSON.stringify({ types: ['products', 'orders', 'customers'] })
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
+            const data = await response.json();
             throw new Error(data.error || 'Sync failed');
         }
 
-        const products = data.results.products?.synced || 0;
-        const orders = data.results.orders?.synced || 0;
-        const customers = data.results.customers?.synced || 0;
-
-        statusEl.style.color = '#10b981';
-        statusEl.textContent = `Sync complete: ${products} products, ${orders} orders, ${customers} customers`;
-        showToast('Shopify sync complete!', 'success');
-
-        // Refresh counts
-        await checkShopifyStatus();
+        statusEl.textContent = 'Sync in progress... this runs in the background.';
 
     } catch (err) {
         statusEl.style.color = '#ef4444';
@@ -16469,7 +16469,25 @@ function renderDashTopProducts(products) {
 }
 
 /**
+ * Get or create the dashboard sync status element.
+ */
+function getDashSyncStatus() {
+    let el = document.getElementById('dashSyncStatus');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'dashSyncStatus';
+        el.style.cssText = 'font-size: 0.82rem; padding: 8px 0; color: #6B7C93;';
+        const header = document.querySelector('.shopify-dash-header');
+        if (header) header.parentNode.insertBefore(el, header.nextSibling);
+    }
+    return el;
+}
+
+let _syncPollTimer = null;
+
+/**
  * Trigger a sync from the dashboard sync button.
+ * Kicks off an async backend sync, then polls for completion.
  */
 async function triggerDashboardSync() {
     const btn = document.getElementById('dashSyncBtn');
@@ -16477,6 +16495,10 @@ async function triggerDashboardSync() {
 
     btn.classList.add('syncing');
     btn.disabled = true;
+
+    const statusEl = getDashSyncStatus();
+    statusEl.style.color = '#6B7C93';
+    statusEl.textContent = 'Syncing products, orders, and customers...';
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/shopify/sync`, {
@@ -16490,14 +16512,90 @@ async function triggerDashboardSync() {
             throw new Error(data.error || 'Sync failed');
         }
 
-        // Refresh dashboard after sync
-        await refreshShopifyDashboard();
-        showToast('Shopify data synced', 'success');
+        // Start polling for sync completion
+        pollSyncStatus();
+
     } catch (err) {
-        showToast(`Sync failed: ${err.message}`, 'error');
-    } finally {
+        statusEl.style.color = '#ef4444';
+        statusEl.textContent = `Sync failed: ${err.message}`;
         btn.classList.remove('syncing');
         btn.disabled = false;
+    }
+}
+
+/**
+ * Poll the sync status endpoint until sync completes.
+ */
+function pollSyncStatus() {
+    if (_syncPollTimer) clearInterval(_syncPollTimer);
+
+    _syncPollTimer = setInterval(async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/shopify/sync/status`, {
+                headers: getAuthHeaders()
+            });
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const statusEl = getDashSyncStatus();
+            const btn = document.getElementById('dashSyncBtn');
+
+            if (data.running) {
+                // Still running — update status text
+                statusEl.style.color = '#6B7C93';
+                const type = data.runningType || 'data';
+                statusEl.textContent = `Syncing ${type}...`;
+                return;
+            }
+
+            // Sync finished — stop polling
+            clearInterval(_syncPollTimer);
+            _syncPollTimer = null;
+
+            if (btn) {
+                btn.classList.remove('syncing');
+                btn.disabled = false;
+            }
+
+            // Show results
+            const r = data.results || {};
+            const parts = [];
+            if (r.products) parts.push(`${r.products.synced || 0} products`);
+            if (r.orders) parts.push(`${r.orders.synced || 0} orders`);
+            if (r.customers) parts.push(`${r.customers.synced || 0} customers`);
+
+            // Check for errors
+            const errors = Object.values(r).filter(v => v.status === 'error');
+            if (errors.length > 0) {
+                statusEl.style.color = '#ef4444';
+                statusEl.textContent = `Sync error: ${errors[0].error || 'Unknown error'}`;
+            } else if (parts.length > 0) {
+                statusEl.style.color = '#10b981';
+                statusEl.textContent = `Synced: ${parts.join(', ')}`;
+            } else {
+                statusEl.style.color = '#10b981';
+                statusEl.textContent = 'Sync complete';
+            }
+
+            // Clear status after 8 seconds
+            setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 8000);
+
+            // Refresh dashboard with new data
+            await refreshShopifyDashboard();
+
+        } catch (err) {
+            console.warn('Sync poll error:', err.message);
+        }
+    }, 3000); // Poll every 3 seconds
+}
+
+/**
+ * Stop sync polling (called when leaving dashboard).
+ */
+function stopSyncPolling() {
+    if (_syncPollTimer) {
+        clearInterval(_syncPollTimer);
+        _syncPollTimer = null;
     }
 }
 

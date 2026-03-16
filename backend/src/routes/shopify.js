@@ -442,6 +442,7 @@ router.post('/connect', authenticate, async (req, res) => {
 /**
  * POST /api/shopify/sync
  * Trigger a manual sync of Shopify data.
+ * Runs asynchronously — returns 202 immediately, frontend polls /sync/status.
  * Body: { types: ["products", "orders", "customers"] }
  */
 router.post('/sync', authenticate, async (req, res) => {
@@ -456,26 +457,94 @@ router.post('/sync', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'No Shopify store connected' });
         }
 
+        // Check if a sync is already running
+        const running = await pool.query(
+            `SELECT id FROM shopify_sync_logs WHERE organization_id = $1 AND status = 'running' LIMIT 1`,
+            [organizationId]
+        );
+        if (running.rows.length > 0) {
+            return res.status(202).json({ success: true, message: 'Sync already in progress', status: 'running' });
+        }
+
         const { types = ['products', 'orders', 'customers'] } = req.body;
-        const results = {};
 
-        if (types.includes('products')) {
-            results.products = await shopifyService.syncProducts(organizationId);
-        }
+        // Respond immediately
+        res.status(202).json({ success: true, message: 'Sync started', status: 'running' });
 
-        if (types.includes('orders')) {
-            results.orders = await shopifyService.syncOrders(organizationId);
-        }
-
-        if (types.includes('customers')) {
-            results.customers = await shopifyService.syncCustomers(organizationId);
-        }
-
-        res.json({ success: true, results });
+        // Run sync in background
+        (async () => {
+            try {
+                if (types.includes('products')) {
+                    await shopifyService.syncProducts(organizationId);
+                }
+                if (types.includes('orders')) {
+                    await shopifyService.syncOrders(organizationId);
+                }
+                if (types.includes('customers')) {
+                    await shopifyService.syncCustomers(organizationId);
+                }
+                console.log(`Shopify sync complete for org ${organizationId}`);
+            } catch (err) {
+                console.error(`Shopify background sync error for org ${organizationId}:`, err.message);
+            }
+        })();
 
     } catch (error) {
         console.error('Shopify sync error:', error);
         res.status(500).json({ error: error.message || 'Sync failed' });
+    }
+});
+
+/**
+ * GET /api/shopify/sync/status
+ * Check if a sync is currently running and get latest results.
+ */
+router.get('/sync/status', authenticate, async (req, res) => {
+    try {
+        const organizationId = await getOrgId(req.userId);
+        if (!organizationId) {
+            return res.status(403).json({ error: 'No organization found' });
+        }
+
+        // Check for running sync
+        const running = await pool.query(
+            `SELECT id, sync_type, started_at FROM shopify_sync_logs
+             WHERE organization_id = $1 AND status = 'running'
+             ORDER BY started_at DESC LIMIT 1`,
+            [organizationId]
+        );
+
+        // Get latest completed syncs
+        const latest = await pool.query(
+            `SELECT sync_type, status, records_synced, error_message, completed_at
+             FROM shopify_sync_logs
+             WHERE organization_id = $1 AND status IN ('success', 'error')
+             ORDER BY completed_at DESC LIMIT 5`,
+            [organizationId]
+        );
+
+        const isRunning = running.rows.length > 0;
+        const results = {};
+        for (const row of latest.rows) {
+            if (!results[row.sync_type]) {
+                results[row.sync_type] = {
+                    status: row.status,
+                    synced: row.records_synced,
+                    error: row.error_message,
+                    completedAt: row.completed_at
+                };
+            }
+        }
+
+        res.json({
+            running: isRunning,
+            runningType: running.rows[0]?.sync_type || null,
+            results
+        });
+
+    } catch (error) {
+        console.error('Shopify sync status error:', error);
+        res.status(500).json({ error: 'Failed to check sync status' });
     }
 });
 
