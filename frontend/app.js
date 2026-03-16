@@ -7095,6 +7095,11 @@ function switchPage(pageId) {
         page.classList.toggle("active", page.id === `page-${pageId}`);
     });
 
+    // Scroll to top on page switch
+    var mainContainer = document.querySelector('.container');
+    if (mainContainer) mainContainer.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+
     // Calendar zero-padding: toggle on .container only (full-height handled globally)
     const calPage = document.getElementById('page-content-calendar');
     if (calPage) {

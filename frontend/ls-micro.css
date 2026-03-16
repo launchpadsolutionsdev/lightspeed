@@ -377,6 +377,64 @@ select:disabled {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   PHASE 6: NAVIGATION & PAGE TRANSITIONS
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 6.1 Active Nav Indicator ───────────────────────────────── */
+
+/* Left accent bar on active sidebar button */
+.sidebar-btn.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    background: #E91E8C;
+    border-radius: 0 3px 3px 0;
+    opacity: 1;
+    transition: opacity 0.2s ease, height 0.2s ease;
+}
+
+.sidebar-btn::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 0%;
+    background: #E91E8C;
+    border-radius: 0 3px 3px 0;
+    opacity: 0;
+    transition: opacity 0.2s ease, height 0.2s ease;
+}
+
+/* ── 6.2 Enhanced Page Transitions ──────────────────────────── */
+
+@keyframes ls-page-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.page.active {
+    animation: ls-page-enter 0.25s ease-out !important;
+}
+
+/* ── 6.3 Sidebar Group Labels ───────────────────────────────── */
+
+.sidebar-group-label {
+    transition: color 0.15s ease;
+}
+
+/* ══════════════════════════════════════════════════════════════
    PHASE 4: EMPTY STATES & EDGE CASES
    ══════════════════════════════════════════════════════════════ */
 
