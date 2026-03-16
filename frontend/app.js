@@ -16291,6 +16291,23 @@ async function initShopifyDashboard() {
             liveDash.style.display = 'block';
             document.getElementById('dashShopDomain').textContent = data.shopDomain;
 
+            // Show sync errors if any types have 0 data
+            if (data.syncErrors && data.syncErrors.length > 0) {
+                const zeroTypes = [];
+                if (data.counts.orders === 0 && data.lastSync.orders === null) zeroTypes.push('orders');
+                if (data.counts.customers === 0 && data.lastSync.customers === null) zeroTypes.push('customers');
+
+                if (zeroTypes.length > 0) {
+                    const relevantErrors = data.syncErrors.filter(e => zeroTypes.includes(e.sync_type));
+                    if (relevantErrors.length > 0) {
+                        updateSyncProgress(
+                            `Sync error (${relevantErrors.map(e => e.sync_type).join(', ')}): ${relevantErrors[0].error_message}`,
+                            100, 'error'
+                        );
+                    }
+                }
+            }
+
             // Load dashboard data
             await refreshShopifyDashboard();
 
