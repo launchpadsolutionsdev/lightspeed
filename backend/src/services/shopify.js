@@ -269,11 +269,11 @@ async function getProductCount(organizationId) {
 // ─── Orders ──────────────────────────────────────────────────────────
 
 /**
- * Sync recent orders from Shopify (last 30 days by default).
- * Uses page-by-page processing to avoid loading all orders into memory,
- * and batch DB inserts for speed.
+ * Sync recent orders from Shopify.
+ * Caps at maxPages (default 20 = ~5,000 orders) to keep sync fast.
+ * Webhooks handle all new orders in real-time going forward.
  */
-async function syncOrders(organizationId, { days = 30 } = {}) {
+async function syncOrders(organizationId, { days = 30, maxPages = 20 } = {}) {
     const store = await getStoreConnection(organizationId);
     if (!store) throw new Error('No Shopify store connected');
 
@@ -288,7 +288,7 @@ async function syncOrders(organizationId, { days = 30 } = {}) {
         let totalSynced = 0;
         let page = 0;
 
-        while (url) {
+        while (url && page < maxPages) {
             page++;
             // Fetch one page with timeout
             const controller = new AbortController();
@@ -389,6 +389,10 @@ async function syncOrders(organizationId, { days = 30 } = {}) {
                     url = nextMatch[1];
                 }
             }
+        }
+
+        if (page >= maxPages) {
+            console.log(`Shopify orders: capped at ${maxPages} pages (${totalSynced} orders). Webhooks will handle the rest.`);
         }
 
         await pool.query(
@@ -518,9 +522,10 @@ async function getOrderAnalytics(organizationId, { days = 30 } = {}) {
 
 /**
  * Sync customers from Shopify.
- * Uses page-by-page processing with batch DB writes.
+ * Caps at maxPages (default 20 = ~5,000 customers) to keep sync fast.
+ * Webhooks handle new/updated customers in real-time going forward.
  */
-async function syncCustomers(organizationId) {
+async function syncCustomers(organizationId, { maxPages = 20 } = {}) {
     const store = await getStoreConnection(organizationId);
     if (!store) throw new Error('No Shopify store connected');
 
@@ -531,7 +536,7 @@ async function syncCustomers(organizationId) {
         let totalSynced = 0;
         let page = 0;
 
-        while (url) {
+        while (url && page < maxPages) {
             page++;
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 30000);
@@ -626,6 +631,10 @@ async function syncCustomers(organizationId) {
                     url = nextMatch[1];
                 }
             }
+        }
+
+        if (page >= maxPages) {
+            console.log(`Shopify customers: capped at ${maxPages} pages (${totalSynced} customers). Webhooks will handle the rest.`);
         }
 
         await pool.query(
