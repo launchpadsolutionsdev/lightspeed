@@ -16183,8 +16183,13 @@ async function connectShopify() {
         const modal = document.getElementById('settingsModal');
         if (modal) modal.classList.remove('show');
 
-        // Trigger initial sync, then refresh dashboard
-        syncShopifyData();
+        // Initialize dashboard (shows connect → live view)
+        if (typeof initShopifyDashboard === 'function') {
+            await initShopifyDashboard();
+        }
+
+        // Trigger initial sync from the dashboard (shows progress there)
+        triggerDashboardSync();
 
     } catch (err) {
         errorEl.textContent = err.message;
@@ -16487,6 +16492,18 @@ async function triggerDashboardSync() {
     btn.classList.add('syncing');
     btn.disabled = true;
 
+    // Show sync status on dashboard
+    let statusEl = document.getElementById('dashSyncStatus');
+    if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.id = 'dashSyncStatus';
+        statusEl.style.cssText = 'font-size: 0.82rem; padding: 8px 0; color: #6B7C93;';
+        const header = document.querySelector('.shopify-dash-header');
+        if (header) header.parentNode.insertBefore(statusEl, header.nextSibling);
+    }
+    statusEl.style.color = '#6B7C93';
+    statusEl.textContent = 'Syncing products, orders, and customers...';
+
     try {
         const response = await fetch(`${API_BASE_URL}/api/shopify/sync`, {
             method: 'POST',
@@ -16494,15 +16511,27 @@ async function triggerDashboardSync() {
             body: JSON.stringify({ types: ['products', 'orders', 'customers'] })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            const data = await response.json();
             throw new Error(data.error || 'Sync failed');
         }
 
+        const products = data.results.products?.synced || 0;
+        const orders = data.results.orders?.synced || 0;
+        const customers = data.results.customers?.synced || 0;
+
+        statusEl.style.color = '#10b981';
+        statusEl.textContent = `Synced: ${products} products, ${orders} orders, ${customers} customers`;
+
+        // Clear status after 5 seconds
+        setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 5000);
+
         // Refresh dashboard after sync
         await refreshShopifyDashboard();
-        showToast('Shopify data synced', 'success');
     } catch (err) {
+        statusEl.style.color = '#ef4444';
+        statusEl.textContent = `Sync failed: ${err.message}`;
         showToast(`Sync failed: ${err.message}`, 'error');
     } finally {
         btn.classList.remove('syncing');
