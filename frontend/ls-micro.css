@@ -241,3 +241,73 @@ button,
 [role="button"] {
     transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PHASE 3: FORM EXPERIENCE
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 3.1 Enhanced Input Focus ─────────────────────────────── */
+
+/* Override generic focus to use brand color */
+textarea:focus,
+input:focus,
+select:focus {
+    border-color: var(--cta) !important;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.12) !important;
+    outline: none;
+}
+
+/* Smooth transition on all form inputs */
+input,
+textarea,
+select {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+/* ── 3.2 Inline Validation ────────────────────────────────── */
+
+/* Valid state */
+input.ls-valid,
+textarea.ls-valid {
+    border-color: var(--success) !important;
+    box-shadow: 0 0 0 3px rgba(48, 177, 48, 0.08) !important;
+}
+
+/* Invalid state */
+input.ls-invalid,
+textarea.ls-invalid {
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 3px rgba(223, 27, 65, 0.08) !important;
+}
+
+/* Validation message below input */
+.ls-validation-msg {
+    font-size: 0.75rem;
+    margin-top: 4px;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.15s ease, max-height 0.15s ease, margin 0.15s ease;
+}
+.ls-validation-msg.visible {
+    opacity: 1;
+    max-height: 30px;
+    margin-top: 4px;
+}
+.ls-validation-msg.error {
+    color: var(--danger);
+}
+.ls-validation-msg.success {
+    color: var(--success);
+}
+
+/* ── 3.3 Disabled States (CSS-only) ──────────────────────── */
+
+/* Disabled inputs */
+input:disabled,
+textarea:disabled,
+select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg-alt);
+}
