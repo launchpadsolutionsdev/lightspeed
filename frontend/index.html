@@ -4029,9 +4029,46 @@
             color: var(--danger);
         }
 
+        .toast.info {
+            border-left: 4px solid var(--cta);
+        }
+
+        .toast.info .toast-icon {
+            background: rgba(99, 91, 255, 0.1);
+            color: var(--cta);
+        }
+
         .toast-message {
             font-size: 0.9rem;
             color: var(--text-primary);
+        }
+
+        /* Success icon pop animation */
+        @keyframes ls-toast-pop {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .toast.show .toast-icon {
+            animation: ls-toast-pop 0.3s ease-out;
+        }
+
+        /* Progress bar auto-dismiss indicator */
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            background: var(--success);
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            animation: ls-toast-progress 3s linear forwards;
+        }
+        .toast.error .toast-progress { background: var(--danger); }
+        .toast.info .toast-progress { background: var(--cta); }
+
+        @keyframes ls-toast-progress {
+            from { width: 100%; }
+            to { width: 0%; }
         }
 
         /* ==================== STATS ==================== */

@@ -575,3 +575,57 @@ select:disabled {
 .ls-network-banner-dismiss:hover {
     opacity: 1;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PHASE 8: SUCCESS & DELIGHT
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 8.1 Success Flash on Copy ──────────────────────────────── */
+
+@keyframes ls-success-flash {
+    0% { box-shadow: 0 0 0 0 rgba(48, 177, 48, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(48, 177, 48, 0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(48, 177, 48, 0); }
+}
+
+.btn-copy.copied,
+.template-copy-btn.copied,
+button.copied {
+    animation: ls-success-flash 0.6s ease-out;
+}
+
+/* ── 8.2 Subtle Pulse on Save ───────────────────────────────── */
+
+@keyframes ls-save-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+}
+
+.ls-saved {
+    animation: ls-save-pulse 0.3s ease;
+}
+
+/* ── 8.3 Card Entry Animation ───────────────────────────────── */
+
+@keyframes ls-card-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hb-post {
+    animation: ls-card-enter 0.3s ease-out both;
+}
+
+/* Stagger posts for a cascade effect */
+.hb-post:nth-child(1) { animation-delay: 0s; }
+.hb-post:nth-child(2) { animation-delay: 0.05s; }
+.hb-post:nth-child(3) { animation-delay: 0.1s; }
+.hb-post:nth-child(4) { animation-delay: 0.15s; }
+.hb-post:nth-child(5) { animation-delay: 0.2s; }
