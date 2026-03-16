@@ -728,9 +728,12 @@
    ============================================================ */
 
 .compliance-admin-container {
-    max-width: 1200px;
-    margin: 0 auto;
+    width: 100%;
     padding: 32px 24px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 .compliance-admin-header {
@@ -830,6 +833,14 @@
 .compliance-admin-filters input {
     flex: 1;
     min-width: 200px;
+}
+
+#complianceAdminContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 /* Entries table */
