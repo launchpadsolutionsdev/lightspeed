@@ -2759,12 +2759,12 @@ function renderSimpleMarkdown(text) {
             }
             if (tableLines.length >= 2 && /^\|[-|: ]+\|/.test(tableLines[1])) {
                 const parseCells = row => row.split('|').slice(1, -1).map(c => c.trim());
-                const headers = parseCells(tableLines[0]).map(h => `<th style="padding:6px 12px;text-align:left;border-bottom:2px solid rgba(0,0,0,0.15);white-space:nowrap;">${inlineMarkdown(h)}</th>`).join('');
+                const headers = parseCells(tableLines[0]).map(h => `<th>${inlineMarkdown(h)}</th>`).join('');
                 const rows = tableLines.slice(2).map(row => {
-                    const cells = parseCells(row).map(c => `<td style="padding:6px 12px;border-bottom:1px solid rgba(0,0,0,0.07);">${inlineMarkdown(c)}</td>`).join('');
+                    const cells = parseCells(row).map(c => `<td>${inlineMarkdown(c)}</td>`).join('');
                     return `<tr>${cells}</tr>`;
                 }).join('');
-                parts.push(`<div style="overflow-x:auto;margin:0.5em 0;"><table style="border-collapse:collapse;width:100%;font-size:0.88em;"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`);
+                parts.push(`<div class="ls-table-wrap"><table class="ls-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`);
             } else {
                 tableLines.forEach(l => parts.push(inlineMarkdown(l) + '<br>'));
             }

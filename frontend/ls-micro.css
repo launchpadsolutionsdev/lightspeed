@@ -25,12 +25,76 @@ button:active:not(:disabled),
 /* Table rows — hover highlight */
 .data-table tbody tr,
 .usage-table tbody tr,
+.ls-table tbody tr,
 table tbody tr {
     transition: background 0.15s ease;
 }
 .data-table tbody tr:hover,
-.usage-table tbody tr:hover {
+.usage-table tbody tr:hover,
+.ls-table tbody tr:hover {
     background: var(--bg-alt);
+}
+
+/* Zebra striping for data-heavy tables */
+.data-table tbody tr:nth-child(even),
+.ls-table tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.015);
+}
+.data-table tbody tr:nth-child(even):hover,
+.ls-table tbody tr:nth-child(even):hover {
+    background: var(--bg-alt);
+}
+
+/* ── Markdown / AI-generated table ──────────────────────────── */
+
+.ls-table-wrap {
+    overflow-x: auto;
+    margin: 0.5em 0;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--border, #e5e7eb);
+}
+
+.ls-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.88em;
+}
+
+.ls-table th {
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border, #e5e7eb);
+    white-space: nowrap;
+    background: var(--bg-alt, #f9fafb);
+}
+
+.ls-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    color: var(--text-primary, #1a1a2e);
+}
+
+.ls-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Sort indicator transition (for future sorting) */
+.ls-sort-icon {
+    display: inline-block;
+    margin-left: 4px;
+    opacity: 0.3;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.ls-sort-icon.active {
+    opacity: 1;
+}
+.ls-sort-icon.desc {
+    transform: rotate(180deg);
 }
 
 /* Card hover elevation (elements not already covered by .ls-card) */
