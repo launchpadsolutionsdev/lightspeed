@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="ls-micro.css?v=20260301">
     <link rel="stylesheet" href="landing.css?v=20260301">
     <link rel="stylesheet" href="rules-of-play.css?v=20260301">
+    <link rel="stylesheet" href="compliance.css?v=20260316">
     <!-- SheetJS for Excel parsing (Data Analysis Tool) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js for visualizations -->
@@ -13117,6 +13118,32 @@
                         </button>
                     </div>
                 </div>
+                <!-- Compliance Assistant -->
+                <div class="bento-card bento-full-width" id="toolCompliance" style="display:none;">
+                    <div class="bento-card-glow" style="background: radial-gradient(ellipse at center, rgba(99,91,255,0.12), transparent 70%);"></div>
+                    <div class="bento-full-width-content">
+                        <div class="bento-full-width-left">
+                            <div class="bento-icon-row">
+                                <div class="bento-icon" style="background: linear-gradient(135deg, #635BFF, #8B5CF6); color: #fff;">
+                                    <span style="font-size: 22px; line-height: 1;">&#128737;</span>
+                                </div>
+                                <span class="bento-badge ai-badge">AI-Powered</span>
+                            </div>
+                            <h3 class="bento-title" style="font-size: 1.25rem;">Compliance Assistant</h3>
+                            <p class="bento-description">Get instant, jurisdiction-aware guidance on charitable lottery and raffle regulations across Canada. Powered by verified regulatory content with source citations.</p>
+                            <div class="bento-features">
+                                <span class="bento-feature">Licensing</span>
+                                <span class="bento-feature">Draw Rules</span>
+                                <span class="bento-feature">Prize Limits</span>
+                                <span class="bento-feature">Online Sales</span>
+                            </div>
+                        </div>
+                        <button class="bento-cta" onclick="openTool('compliance')">
+                            Open Compliance
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
             </div><!-- /.bento-grid -->
 
             <!-- Ask Lightspeed (moved to dedicated page — see sidebar) -->
@@ -13196,6 +13223,10 @@
                     <button class="sidebar-btn" data-tool="rules-of-play">
                         <span class="sidebar-btn-icon">&#9878;</span>
                         <span class="sidebar-btn-label">Rules of Play</span>
+                    </button>
+                    <button class="sidebar-btn" data-tool="compliance" id="complianceNavBtn" style="display:none;">
+                        <span class="sidebar-btn-icon">&#128737;</span>
+                        <span class="sidebar-btn-label">Compliance</span>
                     </button>
                     <!-- Notification dropdown -->
                     <div class="cal-notif-dropdown" id="calNotifDropdown" style="display:none;">
@@ -14695,6 +14726,23 @@
             <div class="page" id="page-admin">
                 <div id="adminDashboard">
                     <!-- Admin dashboard content loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Compliance KB Admin Page (Super Admin Only) -->
+            <div class="page" id="page-compliance-admin">
+                <div class="compliance-admin-container">
+                    <div class="compliance-admin-header">
+                        <h2>&#128737; Compliance Knowledge Base</h2>
+                    </div>
+                    <div class="compliance-admin-tabs">
+                        <button class="compliance-admin-tab active" data-tab="dashboard">Dashboard</button>
+                        <button class="compliance-admin-tab" data-tab="entries">Entries</button>
+                        <button class="compliance-admin-tab" data-tab="jurisdictions">Jurisdictions</button>
+                    </div>
+                    <div id="complianceAdminContent">
+                        <!-- Content loaded dynamically -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -16874,6 +16922,72 @@
         </div>
     </div><!-- /#rulesOfPlayApp -->
 
+    <!-- ==================== COMPLIANCE TOOL ==================== -->
+    <div class="app" id="complianceApp">
+        <div class="compliance-container">
+            <!-- Header -->
+            <div class="compliance-header">
+                <div class="compliance-header-left">
+                    <div class="compliance-header-icon">&#128737;</div>
+                    <div>
+                        <div class="compliance-header-title">Compliance Assistant</div>
+                        <div class="compliance-header-subtitle" id="complianceHeaderSubtitle">Ontario — AGCO</div>
+                    </div>
+                </div>
+                <div class="compliance-header-right">
+                    <button class="compliance-history-btn" id="complianceHistoryBtn">
+                        &#128336; Past Conversations
+                    </button>
+                    <select class="compliance-jurisdiction-select" id="complianceJurisdictionSelect">
+                        <option value="ON">Ontario</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Split-screen body -->
+            <div class="compliance-body">
+                <!-- Chat Panel (Left) -->
+                <div class="compliance-chat-panel">
+                    <div class="compliance-chat-messages" id="complianceChatMessages">
+                        <!-- Messages rendered here -->
+                    </div>
+                    <div class="compliance-chat-input-area">
+                        <button class="compliance-mobile-sources-btn" id="complianceMobileSourcesBtn" style="display:none;">View sources (0)</button>
+                        <div class="compliance-chat-input-wrapper">
+                            <textarea class="compliance-chat-input" id="complianceChatInput" placeholder="Ask about compliance in Ontario..." rows="1"></textarea>
+                            <button class="compliance-send-btn" id="complianceSendBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reference Panel (Right) -->
+                <div class="compliance-reference-panel" id="complianceReferencePanel">
+                    <div class="compliance-reference-header">Sources &amp; References</div>
+                    <div class="compliance-reference-content" id="complianceReferenceContent">
+                        <div class="compliance-reference-empty">
+                            <div class="compliance-reference-empty-icon">&#128218;</div>
+                            <div class="compliance-reference-empty-text">Sources and references will appear here when the Compliance Assistant cites regulatory content.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversation History Overlay -->
+        <div class="compliance-history-overlay" id="complianceHistoryOverlay">
+            <div class="compliance-history-panel">
+                <div class="compliance-history-panel-header">
+                    <h3>Past Conversations</h3>
+                    <button class="compliance-history-close" id="complianceHistoryClose">&times;</button>
+                </div>
+                <div class="compliance-history-list" id="complianceHistoryList"></div>
+                <button class="compliance-history-new-btn" id="complianceHistoryNewBtn">+ New Conversation</button>
+            </div>
+        </div>
+    </div><!-- /#complianceApp -->
+
     </div><!-- /.app-tools-area -->
     </div><!-- /#appWrapper -->
 
@@ -17198,6 +17312,7 @@ Answer to question 2..."></textarea>
     <script src="knowledge-base.js?v=20260301"></script>
     <script src="draft-knowledge-base.js?v=20260301"></script>
     <script src="admin-dashboard.js?v=20260301"></script>
+    <script src="compliance.js?v=20260316"></script>
     <script src="app.js?v=20260301"></script>
 
     <!-- Live Status Check -->
