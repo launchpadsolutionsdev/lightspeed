@@ -240,7 +240,61 @@ async function runMigrations() {
     }
 }
 
-runMigrations().then(() => {
+runMigrations().then(async () => {
+    // Seed compliance KB entries from JSON files if table is empty
+    try {
+        const kbCount = await pool.query('SELECT COUNT(*) FROM compliance_knowledge_base');
+        if (parseInt(kbCount.rows[0].count) === 0) {
+            log.info('Compliance KB is empty — seeding from JSON files...');
+            const fs2 = require('fs');
+            const path2 = require('path');
+            const dataDir = path2.join(__dirname, '..', 'data');
+            const kbFiles = fs2.readdirSync(dataDir).filter(f => f.endsWith('-kb-entries.json')).sort();
+            let totalSeeded = 0;
+            for (const file of kbFiles) {
+                try {
+                    const raw = JSON.parse(fs2.readFileSync(path2.join(dataDir, file), 'utf8'));
+                    const entries = raw.entries || raw;
+                    for (const entry of entries) {
+                        const jurisResult = await pool.query(
+                            'SELECT name, regulatory_body FROM compliance_jurisdictions WHERE code = $1',
+                            [entry.jurisdiction_code]
+                        );
+                        if (jurisResult.rows.length === 0) continue;
+                        const { name: jName, regulatory_body: rBody } = jurisResult.rows[0];
+                        const effectiveContent = entry.original_text || entry.content || '';
+                        await pool.query(
+                            `INSERT INTO compliance_knowledge_base
+                             (jurisdiction_code, jurisdiction_name, regulatory_body, category, title, content,
+                              original_text, plain_summary,
+                              source_name, source_url, source_section, last_verified_date, verified_by, is_active)
+                             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+                            [entry.jurisdiction_code, jName, rBody, entry.category, entry.title, effectiveContent,
+                             entry.original_text || null, entry.plain_summary || null,
+                             entry.source_name || null, entry.source_url || null, entry.source_section || null,
+                             entry.last_verified_date || new Date().toISOString().split('T')[0], 'System', true]
+                        );
+                        totalSeeded++;
+                    }
+                    log.info('Compliance KB file seeded', { file, entries: entries.length });
+                } catch (fileErr) {
+                    log.error('Error seeding compliance KB file', { file, error: fileErr.message });
+                }
+            }
+            // Update Ontario entry count
+            const countResult = await pool.query(
+                "SELECT COUNT(*) FROM compliance_knowledge_base WHERE jurisdiction_code = 'ON' AND is_active = true"
+            );
+            await pool.query(
+                "UPDATE compliance_jurisdictions SET entry_count = $1, updated_at = NOW() WHERE code = 'ON'",
+                [parseInt(countResult.rows[0].count)]
+            );
+            log.info('Compliance KB seeding complete', { totalSeeded });
+        }
+    } catch (seedErr) {
+        log.error('Compliance KB seed error (non-fatal)', { error: seedErr.message });
+    }
+
     const server = app.listen(PORT, '0.0.0.0', () => {
         log.info('Lightspeed API server running', { port: PORT });
 
