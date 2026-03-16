@@ -269,9 +269,11 @@ async function getProductCount(organizationId) {
 // ─── Orders ──────────────────────────────────────────────────────────
 
 /**
- * Sync recent orders from Shopify (last 90 days by default).
+ * Sync recent orders from Shopify (last 30 days by default).
+ * Uses page-by-page processing to avoid loading all orders into memory,
+ * and batch DB inserts for speed.
  */
-async function syncOrders(organizationId, { days = 90 } = {}) {
+async function syncOrders(organizationId, { days = 30 } = {}) {
     const store = await getStoreConnection(organizationId);
     if (!store) throw new Error('No Shopify store connected');
 
@@ -282,55 +284,111 @@ async function syncOrders(organizationId, { days = 90 } = {}) {
         sinceDate.setDate(sinceDate.getDate() - days);
         const sinceISO = sinceDate.toISOString();
 
-        const orders = await shopifyFetchAll(
-            store.shop_domain,
-            store.access_token,
-            `/orders.json?limit=250&status=any&created_at_min=${sinceISO}`,
-            'orders'
-        );
+        let url = `https://${store.shop_domain}/admin/api/${SHOPIFY_API_VERSION}/orders.json?limit=250&status=any&created_at_min=${sinceISO}`;
+        let totalSynced = 0;
+        let page = 0;
 
-        for (const order of orders) {
-            const tags = order.tags ? order.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
-            const customerName = order.customer
-                ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim()
-                : '';
+        while (url) {
+            page++;
+            // Fetch one page with timeout
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 30000);
 
-            await pool.query(
-                `INSERT INTO shopify_orders
-                    (id, organization_id, shopify_order_id, order_number, email, financial_status, fulfillment_status, total_price, subtotal_price, currency, customer_name, customer_email, line_items, shipping_address, note, tags, created_at_shopify, updated_at_shopify, synced_at)
-                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
-                 ON CONFLICT (organization_id, shopify_order_id) DO UPDATE SET
-                    financial_status = EXCLUDED.financial_status,
-                    fulfillment_status = EXCLUDED.fulfillment_status,
-                    total_price = EXCLUDED.total_price,
-                    customer_name = EXCLUDED.customer_name,
-                    customer_email = EXCLUDED.customer_email,
-                    line_items = EXCLUDED.line_items,
-                    shipping_address = EXCLUDED.shipping_address,
-                    note = EXCLUDED.note,
-                    tags = EXCLUDED.tags,
-                    updated_at_shopify = EXCLUDED.updated_at_shopify,
-                    synced_at = NOW()`,
-                [
-                    organizationId,
-                    order.id,
-                    order.name || `#${order.order_number}`,
-                    order.email,
-                    order.financial_status,
-                    order.fulfillment_status,
-                    parseFloat(order.total_price) || 0,
-                    parseFloat(order.subtotal_price) || 0,
-                    order.currency || 'CAD',
-                    customerName,
-                    order.customer?.email || order.email,
-                    JSON.stringify(order.line_items || []),
-                    order.shipping_address ? JSON.stringify(order.shipping_address) : null,
-                    order.note,
-                    tags,
-                    order.created_at,
-                    order.updated_at
-                ]
-            );
+            let response;
+            try {
+                response = await fetch(url, {
+                    headers: {
+                        'X-Shopify-Access-Token': store.access_token,
+                        'Content-Type': 'application/json'
+                    },
+                    signal: controller.signal
+                });
+                clearTimeout(timeout);
+            } catch (err) {
+                clearTimeout(timeout);
+                if (err.name === 'AbortError') {
+                    throw new Error(`Shopify API timeout on page ${page} (synced ${totalSynced} orders so far)`);
+                }
+                throw err;
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                throw new Error(`Shopify API error ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+            const orders = data.orders || [];
+
+            if (orders.length > 0) {
+                // Batch upsert this page using a single transaction
+                const client = await pool.connect();
+                try {
+                    await client.query('BEGIN');
+                    for (const order of orders) {
+                        const tags = order.tags ? order.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+                        const customerName = order.customer
+                            ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim()
+                            : '';
+
+                        await client.query(
+                            `INSERT INTO shopify_orders
+                                (id, organization_id, shopify_order_id, order_number, email, financial_status, fulfillment_status, total_price, subtotal_price, currency, customer_name, customer_email, line_items, shipping_address, note, tags, created_at_shopify, updated_at_shopify, synced_at)
+                             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
+                             ON CONFLICT (organization_id, shopify_order_id) DO UPDATE SET
+                                financial_status = EXCLUDED.financial_status,
+                                fulfillment_status = EXCLUDED.fulfillment_status,
+                                total_price = EXCLUDED.total_price,
+                                customer_name = EXCLUDED.customer_name,
+                                customer_email = EXCLUDED.customer_email,
+                                line_items = EXCLUDED.line_items,
+                                shipping_address = EXCLUDED.shipping_address,
+                                note = EXCLUDED.note,
+                                tags = EXCLUDED.tags,
+                                updated_at_shopify = EXCLUDED.updated_at_shopify,
+                                synced_at = NOW()`,
+                            [
+                                organizationId,
+                                order.id,
+                                order.name || `#${order.order_number}`,
+                                order.email,
+                                order.financial_status,
+                                order.fulfillment_status,
+                                parseFloat(order.total_price) || 0,
+                                parseFloat(order.subtotal_price) || 0,
+                                order.currency || 'CAD',
+                                customerName,
+                                order.customer?.email || order.email,
+                                JSON.stringify(order.line_items || []),
+                                order.shipping_address ? JSON.stringify(order.shipping_address) : null,
+                                order.note,
+                                tags,
+                                order.created_at,
+                                order.updated_at
+                            ]
+                        );
+                    }
+                    await client.query('COMMIT');
+                } catch (batchErr) {
+                    await client.query('ROLLBACK');
+                    throw batchErr;
+                } finally {
+                    client.release();
+                }
+
+                totalSynced += orders.length;
+                console.log(`Shopify orders: page ${page} written to DB (${orders.length} orders, total: ${totalSynced})`);
+            }
+
+            // Next page
+            const linkHeader = response.headers.get('link');
+            url = null;
+            if (linkHeader) {
+                const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+                if (nextMatch) {
+                    url = nextMatch[1];
+                }
+            }
         }
 
         await pool.query(
@@ -338,8 +396,8 @@ async function syncOrders(organizationId, { days = 90 } = {}) {
             [organizationId]
         );
 
-        await completeSyncLog(logId, 'success', orders.length);
-        return { synced: orders.length };
+        await completeSyncLog(logId, 'success', totalSynced);
+        return { synced: totalSynced };
 
     } catch (error) {
         await completeSyncLog(logId, 'error', 0, error.message);
@@ -460,6 +518,7 @@ async function getOrderAnalytics(organizationId, { days = 30 } = {}) {
 
 /**
  * Sync customers from Shopify.
+ * Uses page-by-page processing with batch DB writes.
  */
 async function syncCustomers(organizationId) {
     const store = await getStoreConnection(organizationId);
@@ -468,51 +527,105 @@ async function syncCustomers(organizationId) {
     const logId = await createSyncLog(organizationId, 'customers');
 
     try {
-        const customers = await shopifyFetchAll(
-            store.shop_domain,
-            store.access_token,
-            '/customers.json?limit=250',
-            'customers'
-        );
+        let url = `https://${store.shop_domain}/admin/api/${SHOPIFY_API_VERSION}/customers.json?limit=250`;
+        let totalSynced = 0;
+        let page = 0;
 
-        for (const customer of customers) {
-            const tags = customer.tags ? customer.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
-            const defaultAddress = customer.default_address || {};
+        while (url) {
+            page++;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 30000);
 
-            await pool.query(
-                `INSERT INTO shopify_customers
-                    (id, organization_id, shopify_customer_id, email, first_name, last_name, phone, orders_count, total_spent, tags, city, province, country, zip, created_at_shopify, updated_at_shopify, synced_at)
-                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
-                 ON CONFLICT (organization_id, shopify_customer_id) DO UPDATE SET
-                    email = EXCLUDED.email,
-                    first_name = EXCLUDED.first_name,
-                    last_name = EXCLUDED.last_name,
-                    phone = EXCLUDED.phone,
-                    orders_count = EXCLUDED.orders_count,
-                    total_spent = EXCLUDED.total_spent,
-                    tags = EXCLUDED.tags,
-                    city = EXCLUDED.city,
-                    province = EXCLUDED.province,
-                    country = EXCLUDED.country,
-                    zip = EXCLUDED.zip,
-                    updated_at_shopify = EXCLUDED.updated_at_shopify,
-                    synced_at = NOW()`,
-                [
-                    organizationId,
-                    customer.id,
-                    customer.email,
-                    customer.first_name,
-                    customer.last_name,
-                    customer.phone,
-                    customer.orders_count || 0,
-                    parseFloat(customer.total_spent) || 0,
-                    tags,
-                    defaultAddress.city,
-                    defaultAddress.province,
-                    defaultAddress.country_code,
-                    defaultAddress.zip
-                ]
-            );
+            let response;
+            try {
+                response = await fetch(url, {
+                    headers: {
+                        'X-Shopify-Access-Token': store.access_token,
+                        'Content-Type': 'application/json'
+                    },
+                    signal: controller.signal
+                });
+                clearTimeout(timeout);
+            } catch (err) {
+                clearTimeout(timeout);
+                if (err.name === 'AbortError') {
+                    throw new Error(`Shopify API timeout on page ${page} (synced ${totalSynced} customers so far)`);
+                }
+                throw err;
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                throw new Error(`Shopify API error ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+            const customers = data.customers || [];
+
+            if (customers.length > 0) {
+                const client = await pool.connect();
+                try {
+                    await client.query('BEGIN');
+                    for (const customer of customers) {
+                        const tags = customer.tags ? customer.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+                        const defaultAddress = customer.default_address || {};
+
+                        await client.query(
+                            `INSERT INTO shopify_customers
+                                (id, organization_id, shopify_customer_id, email, first_name, last_name, phone, orders_count, total_spent, tags, city, province, country, zip, created_at_shopify, updated_at_shopify, synced_at)
+                             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+                             ON CONFLICT (organization_id, shopify_customer_id) DO UPDATE SET
+                                email = EXCLUDED.email,
+                                first_name = EXCLUDED.first_name,
+                                last_name = EXCLUDED.last_name,
+                                phone = EXCLUDED.phone,
+                                orders_count = EXCLUDED.orders_count,
+                                total_spent = EXCLUDED.total_spent,
+                                tags = EXCLUDED.tags,
+                                city = EXCLUDED.city,
+                                province = EXCLUDED.province,
+                                country = EXCLUDED.country,
+                                zip = EXCLUDED.zip,
+                                updated_at_shopify = EXCLUDED.updated_at_shopify,
+                                synced_at = NOW()`,
+                            [
+                                organizationId,
+                                customer.id,
+                                customer.email,
+                                customer.first_name,
+                                customer.last_name,
+                                customer.phone,
+                                customer.orders_count || 0,
+                                parseFloat(customer.total_spent) || 0,
+                                tags,
+                                defaultAddress.city,
+                                defaultAddress.province,
+                                defaultAddress.country_code,
+                                defaultAddress.zip
+                            ]
+                        );
+                    }
+                    await client.query('COMMIT');
+                } catch (batchErr) {
+                    await client.query('ROLLBACK');
+                    throw batchErr;
+                } finally {
+                    client.release();
+                }
+
+                totalSynced += customers.length;
+                console.log(`Shopify customers: page ${page} written to DB (${customers.length} customers, total: ${totalSynced})`);
+            }
+
+            // Next page
+            const linkHeader = response.headers.get('link');
+            url = null;
+            if (linkHeader) {
+                const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+                if (nextMatch) {
+                    url = nextMatch[1];
+                }
+            }
         }
 
         await pool.query(
@@ -520,8 +633,8 @@ async function syncCustomers(organizationId) {
             [organizationId]
         );
 
-        await completeSyncLog(logId, 'success', customers.length);
-        return { synced: customers.length };
+        await completeSyncLog(logId, 'success', totalSynced);
+        return { synced: totalSynced };
 
     } catch (error) {
         await completeSyncLog(logId, 'error', 0, error.message);
