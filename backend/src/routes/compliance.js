@@ -218,7 +218,7 @@ router.post('/chat', authenticate, checkAIRateLimit, checkUsageLimit, async (req
 
                     // Log usage
                     await pool.query(
-                        `INSERT INTO usage_logs (id, organization_id, user_id, tool, tokens_used, created_at)
+                        `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, created_at)
                          VALUES (gen_random_uuid(), $1, $2, 'compliance', $3, NOW())`,
                         [organizationId, userId, (usage.input_tokens || 0) + (usage.output_tokens || 0)]
                     );
