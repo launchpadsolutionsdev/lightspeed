@@ -16596,7 +16596,7 @@ function skeletonRows(count) {
         { id: 'normalizer', label: 'List Normalizer', desc: 'Clean and format lists', icon: '📋', group: 'Tools', action: function() { openTool('list-normalizer'); } },
         { id: 'ask', label: 'Ask Lightspeed', desc: 'Chat with your AI assistant', icon: '💬', group: 'Tools', action: function() { openTool('ask-lightspeed'); } },
         { id: 'rop', label: 'Rules of Play', desc: 'Generate rules of play documents', icon: '📜', group: 'Tools', action: function() { openTool('rules-of-play'); } },
-        { id: 'compliance', label: 'Compliance Assistant', desc: 'Get compliance guidance for lottery regulations', icon: '🛡️', group: 'Tools', action: function() { openTool('compliance'); } },
+        { id: 'compliance', label: 'Compliance Assistant', desc: 'Get compliance guidance for lottery regulations', icon: '🤖', group: 'Tools', action: function() { openTool('compliance'); } },
         { id: 'kb-support', label: 'Support Knowledge Base', desc: 'Manage customer support KB entries', icon: '📚', group: 'Navigate', action: function() { switchPage('knowledge'); switchKbTab('support'); } },
         { id: 'kb-internal', label: 'Internal Knowledge Base', desc: 'Manage internal/operations KB entries', icon: '📖', group: 'Navigate', action: function() { switchPage('knowledge'); switchKbTab('internal'); } },
         { id: 'favorites', label: 'Favorites', desc: 'View saved responses', icon: '⭐', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('favorites'); } },
@@ -19017,20 +19017,20 @@ async function initComplianceNav() {
 
         // Show compliance admin nav for super admins
         if (isSuperAdmin) {
-            // Add compliance admin to sidebar under admin
-            const adminNavBtn = document.getElementById('adminNavBtn');
-            if (adminNavBtn && !document.getElementById('complianceAdminNavBtn')) {
+            // Add compliance admin to sidebar after Knowledge Base
+            const knowledgeNavBtn = document.querySelector('.sidebar-btn[data-page="knowledge"]');
+            if (knowledgeNavBtn && !document.getElementById('complianceAdminNavBtn')) {
                 const compAdminBtn = document.createElement('button');
                 compAdminBtn.className = 'sidebar-btn';
                 compAdminBtn.id = 'complianceAdminNavBtn';
                 compAdminBtn.dataset.page = 'compliance-admin';
-                compAdminBtn.innerHTML = '<span class="sidebar-btn-icon">&#128737;&#65039;</span><span class="sidebar-btn-label">Compliance KB</span>';
+                compAdminBtn.innerHTML = '<span class="sidebar-btn-icon">&#128218;</span><span class="sidebar-btn-label">Compliance KB</span>';
                 compAdminBtn.addEventListener('click', () => {
                     openTool('customer-response');
                     switchPage('compliance-admin');
                     if (window.initComplianceAdmin) window.initComplianceAdmin();
                 });
-                adminNavBtn.parentNode.insertBefore(compAdminBtn, adminNavBtn.nextSibling);
+                knowledgeNavBtn.parentNode.insertBefore(compAdminBtn, knowledgeNavBtn.nextSibling);
             }
         }
     } catch (err) {
