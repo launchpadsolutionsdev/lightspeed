@@ -30,10 +30,17 @@
         try {
             // Load jurisdictions
             const resp = await apiFetch('/api/compliance/jurisdictions');
-            if (resp.ok) {
-                const data = await resp.json();
-                complianceState.jurisdictions = data.jurisdictions || [];
+            if (!resp.ok) {
+                const errText = await resp.text().catch(() => '');
+                console.error('Compliance jurisdictions API error:', resp.status, errText);
+                const messagesEl = document.getElementById('complianceChatMessages');
+                if (messagesEl) {
+                    messagesEl.innerHTML = '<div style="padding:20px;color:#c62828;text-align:center;">Failed to load Compliance Assistant (HTTP ' + resp.status + '). Please try refreshing the page.</div>';
+                }
+                return;
             }
+            const data = await resp.json();
+            complianceState.jurisdictions = data.jurisdictions || [];
 
             // Populate jurisdiction dropdown
             populateJurisdictionDropdown();
@@ -47,6 +54,10 @@
             complianceState.initialized = true;
         } catch (err) {
             console.error('Failed to initialize compliance tool:', err);
+            const messagesEl = document.getElementById('complianceChatMessages');
+            if (messagesEl) {
+                messagesEl.innerHTML = '<div style="padding:20px;color:#c62828;text-align:center;">Failed to load Compliance Assistant. Please try refreshing the page.</div>';
+            }
         }
     };
 
@@ -241,7 +252,8 @@
 
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.error || 'Failed to get response');
+                console.error('Compliance chat API error:', response.status, errData);
+                throw new Error(errData.error || 'Request failed (HTTP ' + response.status + '). Please try refreshing the page.');
             }
 
             // Read SSE stream
