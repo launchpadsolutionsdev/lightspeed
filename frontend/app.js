@@ -16179,7 +16179,11 @@ async function connectShopify() {
         // Refresh status
         await checkShopifyStatus();
 
-        // Trigger initial sync
+        // Close settings modal so user sees the dashboard
+        const modal = document.getElementById('settingsModal');
+        if (modal) modal.classList.remove('show');
+
+        // Trigger initial sync, then refresh dashboard
         syncShopifyData();
 
     } catch (err) {
@@ -16223,6 +16227,11 @@ async function syncShopifyData() {
 
         // Refresh counts
         await checkShopifyStatus();
+
+        // Refresh the live dashboard if it's visible
+        if (typeof initShopifyDashboard === 'function') {
+            initShopifyDashboard();
+        }
 
     } catch (err) {
         statusEl.style.color = '#ef4444';
