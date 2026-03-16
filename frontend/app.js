@@ -16596,7 +16596,7 @@ function skeletonRows(count) {
         { id: 'normalizer', label: 'List Normalizer', desc: 'Clean and format lists', icon: '📋', group: 'Tools', action: function() { openTool('list-normalizer'); } },
         { id: 'ask', label: 'Ask Lightspeed', desc: 'Chat with your AI assistant', icon: '💬', group: 'Tools', action: function() { openTool('ask-lightspeed'); } },
         { id: 'rop', label: 'Rules of Play', desc: 'Generate rules of play documents', icon: '📜', group: 'Tools', action: function() { openTool('rules-of-play'); } },
-        { id: 'compliance', label: 'Compliance', desc: 'Get compliance guidance for lottery regulations', icon: '🛡️', group: 'Tools', action: function() { openTool('compliance'); } },
+        { id: 'compliance', label: 'Compliance Assistant', desc: 'Get compliance guidance for lottery regulations', icon: '🛡️', group: 'Tools', action: function() { openTool('compliance'); } },
         { id: 'kb-support', label: 'Support Knowledge Base', desc: 'Manage customer support KB entries', icon: '📚', group: 'Navigate', action: function() { switchPage('knowledge'); switchKbTab('support'); } },
         { id: 'kb-internal', label: 'Internal Knowledge Base', desc: 'Manage internal/operations KB entries', icon: '📖', group: 'Navigate', action: function() { switchPage('knowledge'); switchKbTab('internal'); } },
         { id: 'favorites', label: 'Favorites', desc: 'View saved responses', icon: '⭐', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('favorites'); } },
