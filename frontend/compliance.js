@@ -1056,7 +1056,7 @@
     }
 
     function getToken() {
-        return localStorage.getItem('token') || '';
+        return localStorage.getItem('authToken') || '';
     }
 
     async function apiFetch(url, options) {
