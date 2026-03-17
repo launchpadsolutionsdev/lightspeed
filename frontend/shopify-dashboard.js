@@ -192,7 +192,7 @@
             { label: 'Total Sales', value: sdFormatCurrency(cp.total_sales), change: changes.total_sales_pct },
             { label: 'Total Orders', value: sdFormatNumber(cp.total_orders), change: changes.total_orders_pct },
             { label: 'Avg Order Value', value: sdFormatCurrencyFull(cp.average_order_value), change: changes.average_order_value_pct },
-            { label: 'Returning Rate', value: Math.round(cp.returning_customer_rate * 100) + '%', change: changes.returning_customer_rate_pct },
+            { label: 'Sessions', value: sdFormatNumber(cp.sessions || 0), change: changes.sessions_pct },
         ];
 
         kpiRow.innerHTML = cards.map(card => {

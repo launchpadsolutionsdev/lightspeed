@@ -164,6 +164,7 @@ async function runFullSync(organizationId) {
             totalRecords += await syncSalesByChannel(store, organizationId, 365);
             totalRecords += await syncSalesByRegion(store, organizationId, 365);
             totalRecords += await syncSalesByCity(store, organizationId, 365);
+            totalRecords += await syncSessions(store, organizationId, 365);
         } else {
             // Fallback: fetch orders via GraphQL and compute all metrics
             // Cap at 90 days — paginating 365 days of individual orders is too slow
@@ -237,6 +238,7 @@ async function runIncrementalSync(organizationId) {
             totalRecords += await syncSalesByChannel(store, organizationId, 7);
             totalRecords += await syncSalesByRegion(store, organizationId, 7);
             totalRecords += await syncSalesByCity(store, organizationId, 7);
+            totalRecords += await syncSessions(store, organizationId, 7);
         } else {
             totalRecords += await syncViaGraphQLFallback(store, organizationId, 30);
         }
@@ -372,6 +374,7 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
                         totalDiscountsSet { shopMoney { amount } }
                         totalShippingPriceSet { shopMoney { amount } }
                         shippingAddress { province country city }
+                        billingAddress { province country city }
                         lineItems(first: 10) {
                             edges {
                                 node { title quantity originalUnitPriceSet { shopMoney { amount } } }
@@ -421,8 +424,8 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
                 productMap[pKey].units += qty;
             }
 
-            // Region + City
-            const addr = order.shippingAddress;
+            // Region + City (prefer shipping address, fall back to billing)
+            const addr = order.shippingAddress || order.billingAddress;
             if (addr) {
                 const rKey = `${date}|${addr.province || 'Unknown'}|${addr.country || 'Unknown'}`;
                 if (!regionMap[rKey]) regionMap[rKey] = { date, province: addr.province || 'Unknown', country: addr.country || 'Unknown', revenue: 0, orders: 0 };
@@ -650,6 +653,32 @@ async function syncSalesByCity(store, organizationId, days) {
         return rows.length;
     } catch (err) {
         console.error('syncSalesByCity error:', err.message);
+        return 0;
+    }
+}
+
+async function syncSessions(store, organizationId, days) {
+    try {
+        const rows = await runShopifyQL(
+            store.shop_domain,
+            store.access_token,
+            `FROM visits SHOW sum(visitor_sessions) AS sessions GROUP BY day SINCE -${days}d UNTIL today ORDER BY day ASC`
+        );
+
+        for (const row of rows) {
+            const date = row.day || row.date;
+            if (!date) continue;
+            const sessions = parseInt(row.sessions) || 0;
+
+            await pool.query(
+                `UPDATE daily_sales_metrics SET sessions = $3, updated_at = NOW()
+                 WHERE organization_id = $1 AND date = $2`,
+                [organizationId, date, sessions]
+            );
+        }
+        return rows.length;
+    } catch (err) {
+        console.error('syncSessions error:', err.message);
         return 0;
     }
 }
@@ -1029,7 +1058,8 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
             COALESCE(SUM(total_units_sold), 0) AS total_units_sold,
             COALESCE(SUM(refunds_cents), 0) AS total_refunds_cents,
             COALESCE(SUM(new_customers), 0) AS new_customers,
-            COALESCE(SUM(returning_customers), 0) AS returning_customers
+            COALESCE(SUM(returning_customers), 0) AS returning_customers,
+            COALESCE(SUM(sessions), 0) AS sessions
          FROM daily_sales_metrics
          WHERE organization_id = $1 AND date >= $2 AND date <= $3`,
         [organizationId, startDate, endDate]
@@ -1042,6 +1072,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
     const totalRefunds = parseInt(c.total_refunds_cents) || 0;
     const newCust = parseInt(c.new_customers) || 0;
     const retCust = parseInt(c.returning_customers) || 0;
+    const totalSessions = parseInt(c.sessions) || 0;
     const aov = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
     const returningRate = (newCust + retCust) > 0 ? retCust / (newCust + retCust) : 0;
     const refundRate = totalSales > 0 ? totalRefunds / totalSales : 0;
@@ -1054,6 +1085,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
             returning_customer_rate: Math.round(returningRate * 100) / 100,
             total_units_sold: totalUnits,
             refund_rate: Math.round(refundRate * 100) / 100,
+            sessions: totalSessions,
         },
     };
 
@@ -1083,7 +1115,8 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
                 COALESCE(SUM(total_orders), 0) AS total_orders,
                 COALESCE(SUM(total_units_sold), 0) AS total_units_sold,
                 COALESCE(SUM(new_customers), 0) AS new_customers,
-                COALESCE(SUM(returning_customers), 0) AS returning_customers
+                COALESCE(SUM(returning_customers), 0) AS returning_customers,
+                COALESCE(SUM(sessions), 0) AS sessions
              FROM daily_sales_metrics
              WHERE organization_id = $1 AND date >= $2 AND date <= $3`,
             [organizationId, compStartStr, compEndStr]
@@ -1096,6 +1129,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
         const prevNewCust = parseInt(p.new_customers) || 0;
         const prevRetCust = parseInt(p.returning_customers) || 0;
         const prevRetRate = (prevNewCust + prevRetCust) > 0 ? prevRetCust / (prevNewCust + prevRetCust) : 0;
+        const prevSessions = parseInt(p.sessions) || 0;
 
         result.comparison_period = {
             total_sales: prevSales / 100,
@@ -1103,13 +1137,14 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
             average_order_value: prevAov / 100,
             returning_customer_rate: Math.round(prevRetRate * 100) / 100,
             total_units_sold: parseInt(p.total_units_sold) || 0,
+            sessions: prevSessions,
         };
 
         result.changes = {
             total_sales_pct: pctChange(totalSales, prevSales),
             total_orders_pct: pctChange(totalOrders, prevOrders),
             average_order_value_pct: pctChange(aov, prevAov),
-            returning_customer_rate_pct: pctChange(returningRate, prevRetRate),
+            sessions_pct: pctChange(totalSessions, prevSessions),
         };
     }
 
