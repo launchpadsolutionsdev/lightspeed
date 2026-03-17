@@ -285,14 +285,15 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
     const cur = processOrderSample(orders, totalOrderCount);
     const prev = processOrderSample(prevOrders, prevOrderCount);
 
-    // Unique buyers in the period
-    const uniqueBuyers = cur.scaleFactor > 1
+    // Unique buyers in the period (capped at totalOrderCount — can't exceed transactions)
+    const uniqueBuyersRaw = cur.scaleFactor > 1
         ? Math.round(cur.uniqueEmails.size * cur.scaleFactor)
         : cur.uniqueEmails.size;
+    const uniqueBuyers = Math.min(uniqueBuyersRaw, totalOrderCount);
 
-    // Transactions per customer (unique buyers / total transactions in period)
-    const transactionsPerCustomer = totalOrderCount > 0
-        ? Math.round((uniqueBuyers / totalOrderCount) * 100) / 100 : 0;
+    // Transactions per customer (orders / unique buyers in period, always >= 1)
+    const transactionsPerCustomer = uniqueBuyers > 0
+        ? Math.round((totalOrderCount / uniqueBuyers) * 100) / 100 : 0;
 
     // City breakdown (scaled)
     const cityBreakdown = Object.entries(cur.cityMap)
@@ -344,8 +345,14 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         }
     }
 
-    // Daily revenue (NOT scaled — scale factor distorts daily granularity for high-volume stores)
-    const daily = Object.values(cur.dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+    // Daily revenue for last 7 days (zero-filled, today on the right)
+    const daily = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        daily.push(cur.dailyMap[key] || { date: key, orders: 0, revenue: 0 });
+    }
 
     // Revenue estimates
     const estRevenue = cur.scaleFactor > 1
