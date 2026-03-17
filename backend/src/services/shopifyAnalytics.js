@@ -12,15 +12,24 @@
 const pool = require('../../config/database');
 const shopifyService = require('./shopify');
 
-const SHOPIFY_API_VERSION = '2025-10';
+const SHOPIFY_API_VERSION = '2025-04';
 
 // ─── ShopifyQL / GraphQL Helpers ────────────────────────────────────
+
+/**
+ * Sanitize shop domain: strip protocol, trailing slashes/paths.
+ */
+function cleanShopDomain(domain) {
+    if (!domain) return domain;
+    return domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+}
 
 /**
  * Execute a GraphQL query against the Shopify Admin API.
  */
 async function shopifyGraphQL(shopDomain, accessToken, query, variables = {}) {
-    const url = `https://${shopDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
+    const domain = cleanShopDomain(shopDomain);
+    const url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
@@ -39,6 +48,7 @@ async function shopifyGraphQL(shopDomain, accessToken, query, variables = {}) {
 
         if (!response.ok) {
             const errorText = await response.text().catch(() => '');
+            console.error(`Shopify GraphQL ${response.status} at ${url}`);
             throw new Error(`Shopify GraphQL error ${response.status}: ${errorText}`);
         }
 

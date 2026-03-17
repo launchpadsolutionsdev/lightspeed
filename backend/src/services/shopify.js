@@ -1,18 +1,24 @@
 /**
  * Shopify API Service
- * Queries Shopify REST Admin API (2025-10) directly for orders/customers/analytics.
+ * Queries Shopify REST Admin API (2025-04) directly for orders/customers/analytics.
  * Only products are synced locally (small catalog). Everything else is live.
  */
 
 const pool = require('../../config/database');
 
-const SHOPIFY_API_VERSION = '2025-10';
+const SHOPIFY_API_VERSION = '2025-04';
+
+function cleanShopDomain(domain) {
+    if (!domain) return domain;
+    return domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+}
 
 /**
  * Make an authenticated request to the Shopify Admin REST API.
  */
 async function shopifyFetch(shopDomain, accessToken, endpoint, options = {}) {
-    const url = `https://${shopDomain}/admin/api/${SHOPIFY_API_VERSION}${endpoint}`;
+    const domain = cleanShopDomain(shopDomain);
+    const url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}${endpoint}`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
@@ -52,7 +58,8 @@ async function shopifyFetch(shopDomain, accessToken, endpoint, options = {}) {
  */
 async function shopifyFetchAll(shopDomain, accessToken, endpoint, resourceKey) {
     const allRecords = [];
-    let url = `https://${shopDomain}/admin/api/${SHOPIFY_API_VERSION}${endpoint}`;
+    const domain = cleanShopDomain(shopDomain);
+    let url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}${endpoint}`;
 
     while (url) {
         const controller = new AbortController();
