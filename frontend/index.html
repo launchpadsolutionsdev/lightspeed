@@ -452,10 +452,10 @@
             flex-direction: column;
             align-items: stretch;
             justify-content: flex-start;
-            padding: 32px 40px 48px;
-            max-width: 1600px;
+            padding: 16px 24px;
+            max-width: 100%;
             width: 100%;
-            margin: 0 auto;
+            margin: 0;
             position: relative;
             z-index: 1;
         }
@@ -938,6 +938,10 @@
         .shopify-breakdown-list {
             max-height: 340px;
             overflow-y: auto;
+        }
+        #dashWhales {
+            max-height: none;
+            overflow-y: visible;
         }
         .shopify-breakdown-row {
             display: flex;
@@ -13466,164 +13470,7 @@
                 </div>
             </div>
 
-            <div class="bento-grid">
-                <!-- Response Assistant - Hero Card (spans 2 rows) -->
-                <div class="bento-card bento-hero" id="toolCustomerResponse">
-                    <div class="bento-card-glow response-glow"></div>
-                    <div class="bento-hero-content">
-                        <div class="bento-icon-row">
-                            <div class="bento-icon response">
-                                <span style="font-size: 28px; line-height: 1;">&#9889;</span>
-                            </div>
-                            <span class="bento-badge ai-badge">AI-Powered</span>
-                        </div>
-                        <h2 class="bento-title">Response Assistant</h2>
-                        <p class="bento-description">Generate professional, AI-powered responses to customer inquiries. Customize tone, length, and format. Includes knowledge base, analytics, and quick reply templates.</p>
-                        <div class="bento-features">
-                            <span class="bento-feature">Smart Replies</span>
-                            <span class="bento-feature">Knowledge Base</span>
-                            <span class="bento-feature">Analytics</span>
-                            <span class="bento-feature">Templates</span>
-                        </div>
-                        <button class="bento-cta">
-                            Open Response Assistant
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Draft Assistant -->
-                <div class="bento-card bento-standard" id="toolDraftAssistant">
-                    <div class="bento-card-glow draft-glow"></div>
-                    <div class="bento-icon-row">
-                        <div class="bento-icon draft">
-                            <span style="font-size: 22px; line-height: 1;">&#9997;&#65039;</span>
-                        </div>
-                        <span class="bento-badge ai-badge">AI-Powered</span>
-                    </div>
-                    <h3 class="bento-title">Draft Assistant</h3>
-                    <p class="bento-description">Create on-brand social posts, emails, media releases, and ads.</p>
-                    <div class="bento-features">
-                        <span class="bento-feature">Social</span>
-                        <span class="bento-feature">Email</span>
-                        <span class="bento-feature">Media</span>
-                    </div>
-                </div>
-
-                <!-- Bottom-right: two compact cards side by side -->
-                <div class="bento-compact-row">
-                    <!-- Insights Engine -->
-                    <div class="bento-card bento-compact" id="toolDataAnalysis">
-                        <div class="bento-card-glow data-glow"></div>
-                        <div class="bento-icon-row">
-                            <div class="bento-icon data">
-                                <span style="font-size: 20px; line-height: 1;">&#128200;</span>
-                            </div>
-                            <span class="bento-badge ai-badge">AI-Powered</span>
-                        </div>
-                        <h3 class="bento-title">Insights Engine</h3>
-                        <p class="bento-description">Upload data and generate visual dashboards instantly.</p>
-                        <span class="bento-badge">Analytics</span>
-                    </div>
-
-                    <!-- List Normalizer -->
-                    <div class="bento-card bento-compact" id="toolListNormalizer">
-                        <div class="bento-card-glow normalizer-glow"></div>
-                        <div class="bento-icon-row">
-                            <div class="bento-icon normalizer">
-                                <span style="font-size: 20px; line-height: 1;">&#128221;</span>
-                            </div>
-                            <span class="bento-badge ai-badge">AI-Powered</span>
-                        </div>
-                        <h3 class="bento-title">List Normalizer</h3>
-                        <p class="bento-description">Clean and format customer lists for Mailchimp export.</p>
-                        <span class="bento-badge">Data Export</span>
-                    </div>
-
-                </div>
-
-                <!-- Ask Lightspeed - Full width bottom card -->
-                <div class="bento-card bento-full-width" id="toolAskLightspeed">
-                    <div class="bento-card-glow ask-glow"></div>
-                    <div class="bento-full-width-content">
-                        <div class="bento-full-width-left">
-                            <div class="bento-icon-row">
-                                <div class="bento-icon ask">
-                                    <span style="font-size: 24px; line-height: 1;">&#10024;</span>
-                                </div>
-                                <span class="bento-badge ai-badge">AI-Powered</span>
-                            </div>
-                            <h3 class="bento-title" style="font-size: 1.25rem;">Ask Lightspeed</h3>
-                            <p class="bento-description">Your all-in-one AI assistant. Draft content, answer questions, brainstorm ideas, and handle any task &mdash; just ask.</p>
-                            <div class="bento-features">
-                                <span class="bento-feature">Freeform Chat</span>
-                                <span class="bento-feature">Brand-Aware</span>
-                                <span class="bento-feature">Knowledge Base</span>
-                                <span class="bento-feature">Any Task</span>
-                            </div>
-                        </div>
-                        <button class="bento-cta">
-                            Open Ask Lightspeed
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Rules of Play Generator -->
-                <div class="bento-card bento-full-width" id="toolRulesOfPlay">
-                    <div class="bento-card-glow rop-glow"></div>
-                    <div class="bento-full-width-content">
-                        <div class="bento-full-width-left">
-                            <div class="bento-icon-row">
-                                <div class="bento-icon rop">
-                                    <span style="font-size: 22px; line-height: 1;">&#9878;</span>
-                                </div>
-                                <span class="bento-badge ai-badge">AI-Powered</span>
-                            </div>
-                            <h3 class="bento-title" style="font-size: 1.25rem;">Rules of Play</h3>
-                            <p class="bento-description">Generate jurisdiction-compliant Rules of Play documents for your raffles. Supports 50/50, Catch the Ace, Prize Raffle, and House Lottery.</p>
-                            <div class="bento-features">
-                                <span class="bento-feature">50/50</span>
-                                <span class="bento-feature">Catch the Ace</span>
-                                <span class="bento-feature">Prize Raffle</span>
-                                <span class="bento-feature">House Lottery</span>
-                            </div>
-                        </div>
-                        <button class="bento-cta">
-                            Open Rules of Play
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                        </button>
-                    </div>
-                </div>
-                <!-- Compliance Assistant -->
-                <div class="bento-card bento-full-width" id="toolCompliance" style="display:none;">
-                    <div class="bento-card-glow" style="background: radial-gradient(ellipse at center, rgba(99,91,255,0.12), transparent 70%);"></div>
-                    <div class="bento-full-width-content">
-                        <div class="bento-full-width-left">
-                            <div class="bento-icon-row">
-                                <div class="bento-icon" style="background: linear-gradient(135deg, #635BFF, #8B5CF6); color: #fff;">
-                                    <span style="font-size: 22px; line-height: 1;">&#129302;</span>
-                                </div>
-                                <span class="bento-badge ai-badge">AI-Powered</span>
-                            </div>
-                            <h3 class="bento-title" style="font-size: 1.25rem;">Compliance Assistant</h3>
-                            <p class="bento-description">Get instant, jurisdiction-aware guidance on charitable lottery and raffle regulations across Canada. Powered by verified regulatory content with source citations.</p>
-                            <div class="bento-features">
-                                <span class="bento-feature">Licensing</span>
-                                <span class="bento-feature">Draw Rules</span>
-                                <span class="bento-feature">Prize Limits</span>
-                                <span class="bento-feature">Online Sales</span>
-                            </div>
-                        </div>
-                        <button class="bento-cta" onclick="openTool('compliance')">
-                            Open Compliance Assistant
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div><!-- /.bento-grid -->
-
-            <!-- Ask Lightspeed (moved to dedicated page — see sidebar) -->
+            <!-- Tool cards removed — accessible via sidebar -->
         </div><!-- /.tool-menu-content -->
         <footer class="site-footer">
             <div class="footer-content">

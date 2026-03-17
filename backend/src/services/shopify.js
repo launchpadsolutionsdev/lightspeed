@@ -280,9 +280,9 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         ? Math.round(cur.uniqueEmails.size * cur.scaleFactor)
         : cur.uniqueEmails.size;
 
-    // Transactions per customer
-    const transactionsPerCustomer = uniqueBuyers > 0
-        ? Math.round((totalOrderCount / uniqueBuyers) * 100) / 100 : 0;
+    // Transactions per customer (total transactions / total customers in period)
+    const transactionsPerCustomer = totalCustomerCount > 0
+        ? Math.round((totalOrderCount / totalCustomerCount) * 100) / 100 : 0;
 
     // City breakdown (scaled)
     const cityBreakdown = Object.entries(cur.cityMap)
@@ -293,8 +293,9 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
             customers: cur.scaleFactor > 1 ? Math.round(count * cur.scaleFactor) : count
         }));
 
-    // Package/price breakdown
+    // Package/price breakdown (exclude $0 items)
     const packageBreakdown = Object.entries(cur.packageMap)
+        .filter(([pkg]) => !pkg.startsWith('$0.00'))
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 15)
         .map(([pkg, data]) => ({
@@ -321,9 +322,10 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         : newCustomerCount;
     const returningBuyersEst = Math.max(0, uniqueBuyers - newBuyersEst);
 
-    // Top products (scaled)
+    // Top products sorted by unit price descending ($100, $75, $50, $20, $10, etc.)
     const topProducts = Object.values(cur.productMap)
-        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .map(p => ({ ...p, unit_price: p.total_quantity > 0 ? p.total_revenue / p.total_quantity : 0 }))
+        .sort((a, b) => b.unit_price - a.unit_price)
         .slice(0, 10);
     if (cur.scaleFactor > 1) {
         for (const p of topProducts) {
@@ -332,14 +334,8 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         }
     }
 
-    // Daily revenue (scaled)
+    // Daily revenue (NOT scaled — scale factor distorts daily granularity for high-volume stores)
     const daily = Object.values(cur.dailyMap).sort((a, b) => a.date.localeCompare(b.date));
-    if (cur.scaleFactor > 1) {
-        for (const d of daily) {
-            d.orders = Math.round(d.orders * cur.scaleFactor);
-            d.revenue = Math.round(d.revenue * cur.scaleFactor * 100) / 100;
-        }
-    }
 
     // Revenue estimates
     const estRevenue = cur.scaleFactor > 1
