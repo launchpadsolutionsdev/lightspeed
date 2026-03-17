@@ -326,7 +326,7 @@
         const rows = data.products.map((p, i) => `
             <tr>
                 <td class="sd-rank">${i + 1}</td>
-                <td>${escapeHtml(sdCleanProductTitle(p.title))}</td>
+                <td>${escapeHtml(p.title)}</td>
                 <td class="sd-amount">${sdFormatCurrencyFull(p.revenue)}</td>
                 <td style="text-align:right">${p.units_sold.toLocaleString()}</td>
                 <td class="sd-pct">${p.pct_of_total}%</td>
@@ -336,7 +336,7 @@
         wrap.innerHTML = `<table class="sd-table">
             <thead><tr>
                 <th>#</th>
-                <th>Product</th>
+                <th>Price</th>
                 <th style="text-align:right">Revenue</th>
                 <th style="text-align:right">Units</th>
                 <th style="text-align:right">% Total</th>
