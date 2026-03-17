@@ -493,10 +493,12 @@ async function buildContextForInquiry(organizationId, inquiry) {
     if (!store) return null;
 
     const contextParts = [];
+    let specificLookupAttempted = false;
 
     // Try to extract an order number from the inquiry
     const orderMatch = inquiry.match(/#?\d{3,}/);
     if (orderMatch) {
+        specificLookupAttempted = true;
         const orderNumber = orderMatch[0];
         const orders = await lookupOrder(organizationId, { orderNumber });
         if (orders.length > 0) {
@@ -507,6 +509,7 @@ async function buildContextForInquiry(organizationId, inquiry) {
     // Try to extract an email from the inquiry
     const emailMatch = inquiry.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
     if (emailMatch) {
+        specificLookupAttempted = true;
         const email = emailMatch[0].toLowerCase();
         const orders = await lookupOrder(organizationId, { email });
         if (orders.length > 0) {
@@ -519,14 +522,19 @@ async function buildContextForInquiry(organizationId, inquiry) {
         }
     }
 
-    // For general Shopify/store questions, inject a quick summary
-    const shopifyKeywords = /\b(shopify|store|order[s]?|sale[s]?|revenue|product[s]?|customer[s]?|inventory|refund|fulfill|shipping|best.?sell)/i;
-    if (contextParts.length === 0 && shopifyKeywords.test(inquiry)) {
-        try {
-            const summary = await buildAnalyticsSummary(organizationId, { days: 30 });
-            if (summary) contextParts.push(summary);
-        } catch {
-            // Continue without analytics
+    // For general Shopify/store questions, inject a quick summary.
+    // Skip this if a specific lookup was already attempted (email/order number)
+    // to avoid injecting aggregate data that would mislead the AI into thinking
+    // it can't do individual lookups — let it use the search tools instead.
+    if (!specificLookupAttempted) {
+        const shopifyKeywords = /\b(shopify|store|order[s]?|sale[s]?|revenue|product[s]?|customer[s]?|inventory|refund|fulfill|shipping|best.?sell)/i;
+        if (contextParts.length === 0 && shopifyKeywords.test(inquiry)) {
+            try {
+                const summary = await buildAnalyticsSummary(organizationId, { days: 30 });
+                if (summary) contextParts.push(summary);
+            } catch {
+                // Continue without analytics
+            }
         }
     }
 
