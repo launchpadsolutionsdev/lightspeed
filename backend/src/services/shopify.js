@@ -245,16 +245,16 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
     const sinceISO = sinceDate.toISOString();
 
     // Fetch counts and recent orders in parallel
-    const [orderCountData, customerCountData, orders] = await Promise.all([
+    const [orderCountData, totalCustomerData, orders] = await Promise.all([
         shopifyFetch(store.shop_domain, store.access_token,
             `/orders/count.json?status=any&created_at_min=${sinceISO}`),
         shopifyFetch(store.shop_domain, store.access_token,
-            `/customers/count.json?created_at_min=${sinceISO}`),
+            `/customers/count.json`),
         fetchRecentOrders(store, sinceISO, 10) // up to 10 pages = 2,500 orders for analytics
     ]);
 
     const totalOrderCount = orderCountData.count || 0;
-    const totalCustomerCount = customerCountData.count || 0;
+    const totalCustomerCount = totalCustomerData.count || 0;
 
     // Compute analytics from fetched orders
     let totalRevenue = 0;
@@ -334,12 +334,18 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
 
     const avgOrderValue = totalOrderCount > 0 ? estimatedRevenue / totalOrderCount : 0;
 
+    // Unique buyers in the period: scale the sample's unique emails
+    const uniqueBuyers = scaleFactor > 1
+        ? Math.round(uniqueEmails.size * scaleFactor)
+        : uniqueEmails.size;
+
     return {
         summary: {
             total_orders: totalOrderCount,
             total_revenue: estimatedRevenue.toFixed(2),
             avg_order_value: avgOrderValue.toFixed(2),
-            unique_customers: scaleFactor > 1 ? totalCustomerCount : uniqueEmails.size,
+            unique_customers: uniqueBuyers,
+            total_customers: totalCustomerCount,
             fulfilled_orders: scaleFactor > 1 ? Math.round(fulfilledOrders * scaleFactor) : fulfilledOrders,
             unfulfilled_orders: scaleFactor > 1 ? Math.round(unfulfilledOrders * scaleFactor) : unfulfilledOrders,
             refunded_orders: scaleFactor > 1 ? Math.round(refundedOrders * scaleFactor) : refundedOrders,

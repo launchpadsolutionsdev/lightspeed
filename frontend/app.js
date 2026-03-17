@@ -16352,6 +16352,7 @@ function renderShopifyLiveDashboard(analytics) {
     const totalOrders = parseInt(s.total_orders) || 0;
     const avgOrderValue = parseFloat(s.avg_order_value) || 0;
     const uniqueCustomers = parseInt(s.unique_customers) || 0;
+    const totalCustomers = parseInt(s.total_customers) || 0;
     const fulfilledOrders = parseInt(s.fulfilled_orders) || 0;
     const unfulfilledOrders = parseInt(s.unfulfilled_orders) || 0;
     const refundedOrders = parseInt(s.refunded_orders) || 0;
@@ -16364,6 +16365,7 @@ function renderShopifyLiveDashboard(analytics) {
 
     document.getElementById('dashRevenueAvg').textContent = `Avg $${avgOrderValue.toFixed(2)}/order`;
     document.getElementById('dashOrdersFulfilled').textContent = `${fulfilledOrders} fulfilled`;
+    document.getElementById('dashCustomersRepeat').textContent = `${totalCustomers.toLocaleString()} total`;
     document.getElementById('dashRefunded').textContent = `${refundedOrders} refunded`;
 
     // Unfulfilled color
