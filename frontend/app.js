@@ -3535,6 +3535,7 @@ KNOWLEDGE: search_knowledge_base (search KB), save_to_knowledge_base (save to KB
 CONTENT: draft_content (draft emails/posts using brand voice pipeline)
 TEAM: search_home_base (search the Home Base bulletin board for internal posts, announcements, updates, and team communications)
 ANALYSIS: run_insights_analysis (analyze data with Insights Engine), search_response_history (find past AI outputs)
+SHOPIFY: search_shopify_orders (search orders by order number, email, or customer name), search_shopify_customers (search customers by name, email, or phone)
 
 TOOL USAGE:
 - File uploads with schedules → parse the data, then call create_runway_events immediately with all events. The system shows a confirmation dialog — do NOT ask in text first.
@@ -3545,6 +3546,8 @@ TOOL USAGE:
 - Policy/procedure questions → call search_knowledge_base
 - Team announcements, internal updates, or "what did the team post about X?" → call search_home_base
 - Calendar questions → call search_runway_events
+- Order lookups ("any orders under...", "order #1042", "what did X buy?") → call search_shopify_orders with orderNumber, email, or customerName
+- Customer lookups ("find customer...", "who is...", "look up...") → call search_shopify_customers with the query
 
 For draw events, use category "Draw" and color "blue". Format titles clearly, e.g., "Draw #47 — $250,000 Jackpot".
 
