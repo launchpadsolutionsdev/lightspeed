@@ -91,7 +91,17 @@ async function runShopifyQL(shopDomain, accessToken, shopifyqlQuery) {
     const data = await shopifyGraphQL(shopDomain, accessToken, graphql);
     const result = data?.shopifyqlQuery;
 
-    if (!result) return [];
+    if (!result) {
+        console.error('ShopifyQL returned null result for query:', shopifyqlQuery.substring(0, 100));
+        return [];
+    }
+
+    // Handle ShopifyQL parse/validation errors
+    if (result.__typename === 'ParseErrors' || result.__typename === 'QueryError') {
+        const errMsg = JSON.stringify(result.parseErrors || result.errors || result);
+        console.error(`ShopifyQL ${result.__typename} for query: ${shopifyqlQuery.substring(0, 100)}... Error: ${errMsg}`);
+        throw new Error(`ShopifyQL query error: ${errMsg}`);
+    }
 
     if (result.__typename === 'TableResponse' && result.tableData) {
         const columns = result.tableData.columns.map(c => c.name);
@@ -109,6 +119,7 @@ async function runShopifyQL(shopDomain, accessToken, shopifyqlQuery) {
         return result.data;
     }
 
+    console.error(`ShopifyQL unexpected response type: ${result.__typename} for query: ${shopifyqlQuery.substring(0, 100)}`);
     return [];
 }
 
@@ -139,17 +150,24 @@ async function runFullSync(organizationId) {
 
         let totalRecords = 0;
 
-        // All of these use ShopifyQL (server-side aggregation) — no individual order fetching
+        // ShopifyQL aggregate queries — no individual order fetching
         totalRecords += await syncDailySales(store, organizationId, 365);
         totalRecords += await syncProductSales(store, organizationId, 365);
         totalRecords += await syncSalesByChannel(store, organizationId, 365);
         totalRecords += await syncSalesByRegion(store, organizationId, 365);
+        totalRecords += await syncSalesByCity(store, organizationId, 365);
 
         // Fetch only 50 recent orders via GraphQL (not REST pagination)
         totalRecords += await syncRecentOrders(store, organizationId);
 
+        // Derive price points from recent orders line items
+        totalRecords += await syncPricePoints(store, organizationId);
+
         // Customer metrics via GraphQL (aggregated, not per-order)
         totalRecords += await syncCustomerMetrics(store, organizationId);
+
+        // Compute new vs returning customer rate from customer data
+        totalRecords += await syncCustomerRetention(organizationId);
 
         // Store currency from shop info
         await syncStoreCurrency(store, organizationId);
@@ -193,8 +211,11 @@ async function runIncrementalSync(organizationId) {
         totalRecords += await syncProductSales(store, organizationId, 2);
         totalRecords += await syncSalesByChannel(store, organizationId, 2);
         totalRecords += await syncSalesByRegion(store, organizationId, 2);
+        totalRecords += await syncSalesByCity(store, organizationId, 2);
         totalRecords += await syncRecentOrders(store, organizationId);
+        totalRecords += await syncPricePoints(store, organizationId);
         totalRecords += await syncCustomerMetrics(store, organizationId);
+        totalRecords += await syncCustomerRetention(organizationId);
 
         await pool.query(
             `UPDATE shopify_stores SET last_incremental_sync_at = NOW(), analytics_sync_status = 'synced', analytics_sync_error = NULL, updated_at = NOW() WHERE organization_id = $1`,
@@ -213,36 +234,38 @@ async function runIncrementalSync(organizationId) {
 
 async function syncDailySales(store, organizationId, days) {
     try {
-        // Revenue metrics from the sales dataset
-        const rows = await runShopifyQL(
-            store.shop_domain,
-            store.access_token,
-            `FROM sales SHOW sum(gross_sales) AS gross_sales, sum(net_sales) AS net_sales, sum(returns) AS refunds, sum(discounts) AS discounts, sum(taxes) AS taxes, sum(shipping) AS shipping GROUP BY day SINCE -${days}d UNTIL today ORDER BY day ASC`
-        );
-
-        // Order counts from the orders dataset (sales count(*) counts line items, not orders)
-        let orderCountByDay = {};
-        try {
-            const orderRows = await runShopifyQL(
+        // Revenue + units from the sales dataset, order counts from the orders dataset.
+        // These are separate datasets: 'sales' has line-item granularity with product/revenue data,
+        // 'orders' has order-level data with order counts, channels, and geographic dimensions.
+        const [salesRows, orderRows] = await Promise.all([
+            runShopifyQL(
+                store.shop_domain,
+                store.access_token,
+                `FROM sales SHOW sum(gross_sales) AS gross_sales, sum(net_sales) AS net_sales, sum(returns) AS refunds, sum(discounts) AS discounts, sum(taxes) AS taxes, sum(shipping) AS shipping, sum(quantity) AS total_units GROUP BY day SINCE -${days}d UNTIL today ORDER BY day ASC`
+            ),
+            runShopifyQL(
                 store.shop_domain,
                 store.access_token,
                 `FROM orders SHOW sum(orders) AS total_orders GROUP BY day SINCE -${days}d UNTIL today ORDER BY day ASC`
-            );
-            for (const row of orderRows) {
-                const date = row.day || row.date;
-                if (date) orderCountByDay[date] = parseInt(row.total_orders) || 0;
-            }
-        } catch (err) {
-            console.error('syncDailySales order count query error (non-fatal):', err.message);
+            ).catch(err => {
+                console.error('syncDailySales order count query error (non-fatal):', err.message);
+                return [];
+            }),
+        ]);
+
+        const orderCountByDay = {};
+        for (const row of orderRows) {
+            const date = row.day || row.date;
+            if (date) orderCountByDay[date] = parseInt(row.total_orders) || 0;
         }
 
-        for (const row of rows) {
+        for (const row of salesRows) {
             const date = row.day || row.date;
             if (!date) continue;
 
             await pool.query(
-                `INSERT INTO daily_sales_metrics (organization_id, date, gross_sales_cents, net_sales_cents, refunds_cents, discounts_cents, taxes_cents, shipping_cents, total_orders, updated_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+                `INSERT INTO daily_sales_metrics (organization_id, date, gross_sales_cents, net_sales_cents, refunds_cents, discounts_cents, taxes_cents, shipping_cents, total_orders, total_units_sold, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
                  ON CONFLICT (organization_id, date) DO UPDATE SET
                     gross_sales_cents = EXCLUDED.gross_sales_cents,
                     net_sales_cents = EXCLUDED.net_sales_cents,
@@ -251,6 +274,7 @@ async function syncDailySales(store, organizationId, days) {
                     taxes_cents = EXCLUDED.taxes_cents,
                     shipping_cents = EXCLUDED.shipping_cents,
                     total_orders = EXCLUDED.total_orders,
+                    total_units_sold = EXCLUDED.total_units_sold,
                     updated_at = NOW()`,
                 [
                     organizationId,
@@ -262,11 +286,12 @@ async function syncDailySales(store, organizationId, days) {
                     toCents(row.taxes),
                     toCents(row.shipping),
                     orderCountByDay[date] || 0,
+                    parseInt(row.total_units) || 0,
                 ]
             );
         }
 
-        return rows.length;
+        return salesRows.length;
     } catch (error) {
         console.error('syncDailySales error:', error.message);
         // If ShopifyQL is not available, use GraphQL order count as minimal fallback
@@ -334,22 +359,24 @@ async function syncProductSales(store, organizationId, days) {
             );
         }
         return rows.length;
-    } catch {
+    } catch (err) {
+        console.error('syncProductSales error:', err.message);
         return 0;
     }
 }
 
 async function syncSalesByChannel(store, organizationId, days) {
     try {
+        // Use 'orders' dataset — it has sales_channel dimension and orders count
         const rows = await runShopifyQL(
             store.shop_domain,
             store.access_token,
-            `FROM sales SHOW sum(net_sales) AS revenue, count(*) AS order_count GROUP BY channel_name, day SINCE -${days}d UNTIL today ORDER BY day ASC`
+            `FROM orders SHOW sum(net_sales) AS revenue, sum(orders) AS order_count GROUP BY sales_channel, day SINCE -${days}d UNTIL today ORDER BY day ASC`
         );
 
         for (const row of rows) {
             const date = row.day || row.date;
-            const channel = row.channel_name || 'Online Store';
+            const channel = row.sales_channel || 'Online Store';
             if (!date) continue;
 
             await pool.query(
@@ -362,17 +389,19 @@ async function syncSalesByChannel(store, organizationId, days) {
             );
         }
         return rows.length;
-    } catch {
+    } catch (err) {
+        console.error('syncSalesByChannel error:', err.message);
         return 0;
     }
 }
 
 async function syncSalesByRegion(store, organizationId, days) {
     try {
+        // Use 'orders' dataset — has billing dimensions and proper orders count
         const rows = await runShopifyQL(
             store.shop_domain,
             store.access_token,
-            `FROM sales SHOW sum(net_sales) AS revenue, count(*) AS order_count GROUP BY billing_region, billing_country, day SINCE -${days}d UNTIL today ORDER BY day ASC`
+            `FROM orders SHOW sum(net_sales) AS revenue, sum(orders) AS order_count GROUP BY billing_region, billing_country, day SINCE -${days}d UNTIL today ORDER BY day ASC`
         );
 
         for (const row of rows) {
@@ -389,7 +418,86 @@ async function syncSalesByRegion(store, organizationId, days) {
             );
         }
         return rows.length;
-    } catch {
+    } catch (err) {
+        console.error('syncSalesByRegion error:', err.message);
+        return 0;
+    }
+}
+
+async function syncSalesByCity(store, organizationId, days) {
+    try {
+        const rows = await runShopifyQL(
+            store.shop_domain,
+            store.access_token,
+            `FROM orders SHOW sum(net_sales) AS revenue, sum(orders) AS order_count GROUP BY billing_city, billing_region, billing_country, day SINCE -${days}d UNTIL today ORDER BY day ASC`
+        );
+
+        for (const row of rows) {
+            const date = row.day || row.date;
+            const city = row.billing_city || 'Unknown';
+            if (!date || city === 'Unknown') continue;
+
+            await pool.query(
+                `INSERT INTO sales_by_city (organization_id, date, city, province, country, revenue_cents, order_count, customer_count)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 0)
+                 ON CONFLICT (organization_id, date, city, province) DO UPDATE SET
+                    revenue_cents = EXCLUDED.revenue_cents,
+                    order_count = EXCLUDED.order_count,
+                    country = EXCLUDED.country`,
+                [organizationId, date, city, row.billing_region || 'Unknown', row.billing_country || 'Unknown', toCents(row.revenue), parseInt(row.order_count) || 0]
+            );
+        }
+        return rows.length;
+    } catch (err) {
+        console.error('syncSalesByCity error:', err.message);
+        return 0;
+    }
+}
+
+async function syncPricePoints(store, organizationId) {
+    // Derive price point buckets from the recent orders' line items already in DB
+    try {
+        const result = await pool.query(
+            `SELECT line_items_summary, date(created_at) AS date FROM dashboard_recent_orders WHERE organization_id = $1`,
+            [organizationId]
+        );
+
+        const bucketMap = {}; // key: "date|bucket|title" → { units, revenue }
+        for (const row of result.rows) {
+            const date = row.date instanceof Date ? row.date.toISOString().substring(0, 10) : String(row.date).substring(0, 10);
+            const items = typeof row.line_items_summary === 'string'
+                ? JSON.parse(row.line_items_summary)
+                : row.line_items_summary;
+            if (!Array.isArray(items)) continue;
+
+            for (const item of items) {
+                const unitPrice = (item.price_cents || 0) / 100;
+                const bucket = priceBucket(unitPrice);
+                const title = (item.title || 'Unknown').substring(0, 500);
+                const key = `${date}|${bucket}|${title}`;
+                if (!bucketMap[key]) bucketMap[key] = { date, bucket, title, unitPriceCents: item.price_cents || 0, units: 0, revenue: 0 };
+                bucketMap[key].units += item.quantity || 1;
+                bucketMap[key].revenue += (item.price_cents || 0) * (item.quantity || 1);
+            }
+        }
+
+        // Clear old price point data and insert new
+        await pool.query('DELETE FROM price_point_metrics WHERE organization_id = $1', [organizationId]);
+
+        for (const entry of Object.values(bucketMap)) {
+            await pool.query(
+                `INSERT INTO price_point_metrics (organization_id, date, price_bucket, product_title, unit_price_cents, units_sold, revenue_cents)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 ON CONFLICT (organization_id, date, price_bucket, product_title) DO UPDATE SET
+                    units_sold = EXCLUDED.units_sold,
+                    revenue_cents = EXCLUDED.revenue_cents`,
+                [organizationId, entry.date, entry.bucket, entry.title, entry.unitPriceCents, entry.units, entry.revenue]
+            );
+        }
+
+        return Object.keys(bucketMap).length;
+    } catch (err) {
+        console.error('syncPricePoints error:', err.message);
         return 0;
     }
 }
@@ -501,6 +609,47 @@ async function syncCustomerMetrics(store, organizationId) {
         return customers.length;
     } catch (err) {
         console.error('syncCustomerMetrics error:', err.message);
+        return 0;
+    }
+}
+
+/**
+ * Compute new vs returning customer counts from the top customers data
+ * and update daily_sales_metrics so the dashboard KPI shows the returning rate.
+ */
+async function syncCustomerRetention(organizationId) {
+    try {
+        // Count customers with 1 order (new) vs 2+ orders (returning) from the top customers table
+        const result = await pool.query(
+            `SELECT
+                COUNT(*) FILTER (WHERE order_count = 1) AS new_customers,
+                COUNT(*) FILTER (WHERE order_count > 1) AS returning_customers
+             FROM shopify_top_customers
+             WHERE organization_id = $1`,
+            [organizationId]
+        );
+
+        const newCust = parseInt(result.rows[0]?.new_customers) || 0;
+        const retCust = parseInt(result.rows[0]?.returning_customers) || 0;
+
+        if (newCust + retCust === 0) return 0;
+
+        // Store retention counts on today's daily_sales_metrics row.
+        // Uses UPSERT so it works even if no row exists yet for today.
+        const today = new Date().toISOString().substring(0, 10);
+        await pool.query(
+            `INSERT INTO daily_sales_metrics (organization_id, date, new_customers, returning_customers, updated_at)
+             VALUES ($1, $2, $3, $4, NOW())
+             ON CONFLICT (organization_id, date) DO UPDATE SET
+                new_customers = EXCLUDED.new_customers,
+                returning_customers = EXCLUDED.returning_customers,
+                updated_at = NOW()`,
+            [organizationId, today, newCust, retCust]
+        );
+
+        return 1;
+    } catch (err) {
+        console.error('syncCustomerRetention error:', err.message);
         return 0;
     }
 }
