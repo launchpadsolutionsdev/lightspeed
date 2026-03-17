@@ -17,6 +17,7 @@ const { authenticate, checkUsageLimit } = require('../middleware/auth');
 const claudeService = require('../services/claude');
 const { buildEnhancedPrompt } = require('../services/promptBuilder');
 const { DRAFT_STATIC_PROMPT, buildDraftDynamicPrompt, buildDraftUserPrompt, getMaxTokensForContentType } = require('../services/draftPromptBuilder');
+const shopifyService = require('../services/shopify');
 
 // Multer config: in-memory storage, 10MB limit
 const upload = multer({
@@ -210,6 +211,30 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
                 additionalContext: { type: 'string', description: 'Optional extra context or specific questions about the data' }
             },
             required: ['data']
+        }
+    },
+    {
+        name: 'search_shopify_orders',
+        description: 'Search Shopify orders by order number, email address, or customer name. Use this when the user asks about orders, purchases, transactions, or wants to look up what a customer has bought.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                orderNumber: { type: 'string', description: 'Order number to look up (e.g. "1042" or "#1042")' },
+                email: { type: 'string', description: 'Customer email to search orders by' },
+                customerName: { type: 'string', description: 'Customer name to search orders by (e.g. "Glenn Craig")' }
+            },
+            required: []
+        }
+    },
+    {
+        name: 'search_shopify_customers',
+        description: 'Search Shopify customers by name, email, or phone number. Use this when the user asks about customers, supporters, buyers, or wants to look up customer information.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                query: { type: 'string', description: 'Search query — can be a name, email, or phone number' }
+            },
+            required: ['query']
         }
     }
 ];
@@ -740,6 +765,20 @@ function generateSuggestions(completedTool, toolInput, toolResult) {
                 { label: 'Summarize key takeaways', icon: '📋', prompt: 'Summarize the key takeaways from these Home Base posts' }
             );
             break;
+
+        case 'search_shopify_orders':
+            suggestions.push(
+                { label: 'Search another order', icon: '🔍', prompt: 'Search for another Shopify order' },
+                { label: 'Look up customer', icon: '👤', prompt: 'Look up the customer details for this order' }
+            );
+            break;
+
+        case 'search_shopify_customers':
+            suggestions.push(
+                { label: 'View their orders', icon: '🛒', prompt: 'Show me the orders for this customer' },
+                { label: 'Search another customer', icon: '🔍', prompt: 'Search for another customer' }
+            );
+            break;
     }
 
     return suggestions.slice(0, 4);
@@ -1196,6 +1235,73 @@ async function processResponse(response, messages, system, organizationId, userI
 
             await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
             return;
+
+        } else if (toolUse.name === 'search_shopify_orders') {
+            // Read action — search Shopify orders
+            sendEvent({ type: 'status', message: 'Searching Shopify orders...' });
+            let toolResult;
+            try {
+                const { orderNumber, email, customerName } = toolUse.input;
+                let orders = await shopifyService.lookupOrder(organizationId, { orderNumber, email, customerName });
+                if (!Array.isArray(orders)) orders = orders ? [orders] : [];
+                toolResult = orders.length > 0
+                    ? `Found ${orders.length} order(s):\n\n${JSON.stringify(orders, null, 2)}`
+                    : 'No orders found matching your search criteria.';
+            } catch (err) {
+                console.error('Shopify order search error:', err);
+                toolResult = `Order search failed: ${err.message}`;
+            }
+
+            trackTool('search_shopify_orders');
+            const followUpMessages = [
+                ...messages,
+                { role: 'assistant', content: response.content },
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
+            ];
+
+            const followUp = await claudeService.generateResponse({
+                messages: followUpMessages,
+                system,
+                max_tokens: 4096,
+                tools: TOOLS,
+                model
+            });
+
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            return;
+
+        } else if (toolUse.name === 'search_shopify_customers') {
+            // Read action — search Shopify customers
+            sendEvent({ type: 'status', message: 'Searching Shopify customers...' });
+            let toolResult;
+            try {
+                const { query } = toolUse.input;
+                const customers = await shopifyService.searchCustomers(organizationId, query);
+                toolResult = customers.length > 0
+                    ? `Found ${customers.length} customer(s):\n\n${JSON.stringify(customers, null, 2)}`
+                    : 'No customers found matching your search.';
+            } catch (err) {
+                console.error('Shopify customer search error:', err);
+                toolResult = `Customer search failed: ${err.message}`;
+            }
+
+            trackTool('search_shopify_customers');
+            const followUpMessages = [
+                ...messages,
+                { role: 'assistant', content: response.content },
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
+            ];
+
+            const followUp = await claudeService.generateResponse({
+                messages: followUpMessages,
+                system,
+                max_tokens: 4096,
+                tools: TOOLS,
+                model
+            });
+
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            return;
         }
     }
 }
@@ -1392,6 +1498,10 @@ KNOWLEDGE & CONTENT TOOLS:
 TEAM & INTERNAL TOOLS:
 - search_home_base: Search or browse the team's Home Base bulletin board for internal posts, announcements, urgent notices, draw updates, campaign plans, and other team communications. Posts may contain important operational details, decisions, or context shared by team members. You can search by keyword (query parameter) OR browse recent posts by omitting the query parameter. Use browse mode (no query) when the user asks for "latest posts", "recent updates", "what's new", or wants a summary of recent activity.
 
+SHOPIFY TOOLS:
+- search_shopify_orders: Search Shopify orders by order number, email, or customer name. Use when the user asks about orders, purchases, or what a customer has bought.
+- search_shopify_customers: Search Shopify customers by name, email, or phone. Use when the user asks about customers, supporters, or buyers.
+
 ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
 - run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
@@ -1406,6 +1516,8 @@ TOOL USAGE GUIDELINES:
 - For "ad", "ad copy", "Facebook ad": Call draft_content with content_type="ad"
 - For "board report", "memo", "grant application", "talking points", or any other written content: Call draft_content with content_type="write-anything"
 - For "what did I write about X?": Call search_response_history
+- For order lookups ("any orders under...", "order #1042", "what did X buy?"): Call search_shopify_orders with the appropriate parameter (orderNumber, email, or customerName)
+- For customer lookups ("find customer...", "who is...", "look up..."): Call search_shopify_customers with the query
 - For data analysis requests: Call run_insights_analysis with the data
 - For policy/procedure questions: Call search_knowledge_base
 - For team announcements, internal updates, or "what did the team post about X?": Call search_home_base with a query
