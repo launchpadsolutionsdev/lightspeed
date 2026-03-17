@@ -600,24 +600,31 @@ async function syncSalesByChannel(store, organizationId, days) {
 
 async function syncSalesByRegion(store, organizationId, days) {
     try {
-        // Use 'orders' dataset — has billing dimensions and proper orders count
+        // Query WITHOUT day grouping to avoid ShopifyQL row limits (same fix as cities)
         const rows = await runShopifyQL(
             store.shop_domain,
             store.access_token,
-            `FROM orders SHOW sum(net_sales) AS revenue, sum(orders) AS order_count GROUP BY billing_region, billing_country, day SINCE -${days}d UNTIL today ORDER BY day ASC`
+            `FROM orders SHOW sum(net_sales) AS revenue, sum(orders) AS order_count GROUP BY billing_region, billing_country SINCE -${days}d UNTIL today ORDER BY sum(net_sales) DESC`
+        );
+
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        const startDateStr = startDate.toISOString().substring(0, 10);
+        const endDateStr = new Date().toISOString().substring(0, 10);
+
+        await pool.query(
+            `DELETE FROM sales_by_region WHERE organization_id = $1 AND date >= $2 AND date <= $3`,
+            [organizationId, startDateStr, endDateStr]
         );
 
         for (const row of rows) {
-            const date = row.day || row.date;
-            if (!date) continue;
-
             await pool.query(
                 `INSERT INTO sales_by_region (organization_id, date, province, country, revenue_cents, order_count)
                  VALUES ($1, $2, $3, $4, $5, $6)
                  ON CONFLICT (organization_id, date, province, country) DO UPDATE SET
                     revenue_cents = EXCLUDED.revenue_cents,
                     order_count = EXCLUDED.order_count`,
-                [organizationId, date, row.billing_region || 'Unknown', row.billing_country || 'Unknown', toCents(row.revenue), parseInt(row.order_count) || 0]
+                [organizationId, endDateStr, row.billing_region || 'Unknown', row.billing_country || 'Unknown', toCents(row.revenue), parseInt(row.order_count) || 0]
             );
         }
         return rows.length;
@@ -629,17 +636,30 @@ async function syncSalesByRegion(store, organizationId, days) {
 
 async function syncSalesByCity(store, organizationId, days) {
     try {
+        // Query WITHOUT day grouping to avoid ShopifyQL row limits.
+        // Grouping by city+region+country+day can produce thousands of rows (365 days × N cities)
+        // which exceeds ShopifyQL's ~1000-row response limit, causing most data to be truncated.
+        // Instead, we aggregate across the full period and store with a synthetic date.
         const rows = await runShopifyQL(
             store.shop_domain,
             store.access_token,
-            `FROM orders SHOW sum(net_sales) AS revenue, sum(orders) AS order_count GROUP BY billing_city, billing_region, billing_country, day SINCE -${days}d UNTIL today ORDER BY day ASC`
+            `FROM orders SHOW sum(net_sales) AS revenue, sum(orders) AS order_count GROUP BY billing_city, billing_region, billing_country SINCE -${days}d UNTIL today ORDER BY sum(net_sales) DESC`
+        );
+
+        // Clear existing city data for this period before re-inserting aggregated totals
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        const startDateStr = startDate.toISOString().substring(0, 10);
+        const endDateStr = new Date().toISOString().substring(0, 10);
+
+        await pool.query(
+            `DELETE FROM sales_by_city WHERE organization_id = $1 AND date >= $2 AND date <= $3`,
+            [organizationId, startDateStr, endDateStr]
         );
 
         for (const row of rows) {
-            const date = row.day || row.date;
-            // ShopifyQL may return the column as 'billing_city' or just 'city'
             const city = row.billing_city || row.city || 'Unknown';
-            if (!date || city === 'Unknown') continue;
+            if (city === 'Unknown') continue;
 
             await pool.query(
                 `INSERT INTO sales_by_city (organization_id, date, city, province, country, revenue_cents, order_count, customer_count)
@@ -648,7 +668,7 @@ async function syncSalesByCity(store, organizationId, days) {
                     revenue_cents = EXCLUDED.revenue_cents,
                     order_count = EXCLUDED.order_count,
                     country = EXCLUDED.country`,
-                [organizationId, date, city, row.billing_region || row.region || 'Unknown', row.billing_country || row.country || 'Unknown', toCents(row.revenue), parseInt(row.order_count) || 0]
+                [organizationId, endDateStr, city, row.billing_region || row.region || 'Unknown', row.billing_country || row.country || 'Unknown', toCents(row.revenue), parseInt(row.order_count) || 0]
             );
         }
         return rows.length;
