@@ -211,11 +211,17 @@ if (homeBaseRoutes.sendDigestEmails) {
     console.log('Home Base digest email checker started (hourly)');
 }
 
-// Start Shopify analytics incremental sync (every 15 minutes)
+// Start Shopify analytics incremental sync (every 15 minutes) with concurrency guard
+let analyticsSyncRunning = false;
 setInterval(() => {
-    shopifyAnalytics.syncAllStores().catch(err => {
-        console.error('Shopify analytics sync error:', err.message);
-    });
+    if (analyticsSyncRunning) {
+        console.log('Shopify analytics sync skipped — previous sync still running');
+        return;
+    }
+    analyticsSyncRunning = true;
+    shopifyAnalytics.syncAllStores()
+        .catch(err => console.error('Shopify analytics sync error:', err.message))
+        .finally(() => { analyticsSyncRunning = false; });
 }, 15 * 60 * 1000);
 console.log('Shopify analytics sync scheduler started (15min interval)');
 
