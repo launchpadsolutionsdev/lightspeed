@@ -84,7 +84,8 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
     body('ticketDeadlineTime').optional(),
     body('socialRequiredLine').optional(),
     body('brandTerminology').optional(),
-    body('emailAddons').optional()
+    body('emailAddons').optional(),
+    body('complianceEnabled').optional().isBoolean()
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -110,7 +111,8 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
             ticketDeadlineTime: 'ticket_deadline_time',
             socialRequiredLine: 'social_required_line',
             brandTerminology: 'brand_terminology',
-            emailAddons: 'email_addons'
+            emailAddons: 'email_addons',
+            complianceEnabled: 'compliance_enabled'
         };
 
         const updates = [];
