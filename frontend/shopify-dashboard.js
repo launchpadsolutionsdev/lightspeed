@@ -123,12 +123,6 @@
         const tableWrap = document.getElementById('sdProductsTableWrap');
         if (tableWrap) tableWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
 
-        const channelWrap = document.getElementById('sdChannelChartWrap');
-        if (channelWrap) channelWrap.innerHTML = '<div class="sd-skeleton" style="height:220px"></div>';
-
-        const regionWrap = document.getElementById('sdRegionWrap');
-        if (regionWrap) regionWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
-
         const feedWrap = document.getElementById('sdOrderFeedWrap');
         if (feedWrap) feedWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
 
@@ -138,8 +132,6 @@
         const cityWrap = document.getElementById('sdCityWrap');
         if (cityWrap) cityWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
 
-        const priceWrap = document.getElementById('sdPricePointsWrap');
-        if (priceWrap) priceWrap.innerHTML = '<div class="sd-skeleton" style="height:250px"></div>';
     }
 
     // ─── Data Loading ───────────────────────────────────────────────
@@ -168,27 +160,21 @@
 
         // Load all data in parallel
         const params = sdGetDateParams();
-        const [summary, salesTime, products, channels, regions, orders, customers, cities, pricePoints] = await Promise.allSettled([
+        const [summary, salesTime, products, orders, customers, cities] = await Promise.allSettled([
             sdFetch('summary', params),
             sdFetch('sales-over-time', params),
             sdFetch('top-products', params),
-            sdFetch('sales-by-channel', params),
-            sdFetch('sales-by-region', params),
             sdFetch('recent-orders', { limit: 20 }),
             sdFetch('top-customers', { limit: 10 }),
             sdFetch('sales-by-city', params),
-            sdFetch('price-points', params),
         ]);
 
         if (summary.status === 'fulfilled') sdRenderKPIs(summary.value);
         if (salesTime.status === 'fulfilled') sdRenderSalesChart(salesTime.value);
         if (products.status === 'fulfilled') sdRenderProductsTable(products.value);
-        if (channels.status === 'fulfilled') sdRenderChannelChart(channels.value);
-        if (regions.status === 'fulfilled') sdRenderRegionBars(regions.value);
         if (orders.status === 'fulfilled') sdRenderOrderFeed(orders.value);
         if (customers.status === 'fulfilled') sdRenderTopCustomers(customers.value);
         if (cities.status === 'fulfilled') sdRenderCityBreakdown(cities.value);
-        if (pricePoints.status === 'fulfilled') sdRenderPricePoints(pricePoints.value);
 
         // Load AI insights (separate, slower call)
         sdLoadInsights();
@@ -310,6 +296,20 @@
 
     // ─── Render: Products Table ─────────────────────────────────────
 
+    function sdCleanProductTitle(title) {
+        if (!title) return 'Unknown';
+        // Clean up titles like "Product for 700" → "Product - $7.00" or "Gift Card for 50" → "Gift Card - $50"
+        const match = title.match(/^(.+?)\s+for\s+(\d+)$/i);
+        if (match) {
+            const name = match[1].trim();
+            const val = parseInt(match[2]);
+            // Determine if value is cents or dollars based on magnitude
+            const price = val >= 1000 ? val / 100 : val;
+            return `${name} - ${sdFormatCurrency(price)}`;
+        }
+        return title;
+    }
+
     function sdRenderProductsTable(data) {
         const wrap = document.getElementById('sdProductsTableWrap');
         if (!wrap) return;
@@ -322,7 +322,7 @@
         const rows = data.products.map((p, i) => `
             <tr>
                 <td class="sd-rank">${i + 1}</td>
-                <td>${escapeHtml(p.title)}</td>
+                <td>${escapeHtml(sdCleanProductTitle(p.title))}</td>
                 <td class="sd-amount">${sdFormatCurrencyFull(p.revenue)}</td>
                 <td style="text-align:right">${p.units_sold.toLocaleString()}</td>
                 <td class="sd-pct">${p.pct_of_total}%</td>
