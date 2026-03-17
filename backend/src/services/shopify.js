@@ -1,12 +1,12 @@
 /**
  * Shopify API Service
- * Queries Shopify REST Admin API (2024-01) directly for orders/customers/analytics.
+ * Queries Shopify REST Admin API (2025-10) directly for orders/customers/analytics.
  * Only products are synced locally (small catalog). Everything else is live.
  */
 
 const pool = require('../../config/database');
 
-const SHOPIFY_API_VERSION = '2024-01';
+const SHOPIFY_API_VERSION = '2025-10';
 
 /**
  * Make an authenticated request to the Shopify Admin REST API.
