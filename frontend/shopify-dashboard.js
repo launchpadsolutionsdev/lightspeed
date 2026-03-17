@@ -175,8 +175,22 @@
         if (customers.status === 'fulfilled') sdRenderTopCustomers(customers.value);
         if (cities.status === 'fulfilled') sdRenderCityBreakdown(cities.value);
 
+        // Match Live Orders height to left column
+        sdMatchColumnHeights();
+
         // Load AI insights (separate, slower call)
         sdLoadInsights();
+    }
+
+    function sdMatchColumnHeights() {
+        const leftCol = document.querySelector('.sd-left-col');
+        const feed = document.querySelector('.sd-order-feed');
+        if (!leftCol || !feed) return;
+        const card = feed.closest('.sd-card');
+        if (!card) return;
+        // Card chrome = card title + padding + border — everything except the feed
+        const cardChrome = card.offsetHeight - feed.offsetHeight;
+        feed.style.maxHeight = (leftCol.offsetHeight - cardChrome) + 'px';
     }
 
     // ─── Render: KPI Cards ──────────────────────────────────────────
