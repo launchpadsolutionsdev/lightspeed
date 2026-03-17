@@ -606,23 +606,26 @@ async function syncRecentOrders(store, organizationId) {
 async function syncTopCustomers(store, organizationId, days) {
     try {
         const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=email,customer,total_price,created_at`;
-        const orders = await fetchAllPages(store, endpoint, 'orders');
 
         const customerMap = {};
-        for (const order of orders) {
-            const email = (order.email || order.customer?.email || '').toLowerCase();
-            if (!email) continue;
-            if (!customerMap[email]) {
-                customerMap[email] = {
-                    email,
-                    name: order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : email,
-                    total_spent: 0, order_count: 0, last_order_at: order.created_at,
-                };
-            }
-            customerMap[email].total_spent += parseFloat(order.total_price) || 0;
-            customerMap[email].order_count++;
-            if (order.created_at > customerMap[email].last_order_at) customerMap[email].last_order_at = order.created_at;
-        }
+        await fetchAllPages(store, endpoint, 'orders', {
+            onPage(batch) {
+                for (const order of batch) {
+                    const email = (order.email || order.customer?.email || '').toLowerCase();
+                    if (!email) continue;
+                    if (!customerMap[email]) {
+                        customerMap[email] = {
+                            email,
+                            name: order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : email,
+                            total_spent: 0, order_count: 0, last_order_at: order.created_at,
+                        };
+                    }
+                    customerMap[email].total_spent += parseFloat(order.total_price) || 0;
+                    customerMap[email].order_count++;
+                    if (order.created_at > customerMap[email].last_order_at) customerMap[email].last_order_at = order.created_at;
+                }
+            },
+        });
 
         // Upsert top 50 by spend
         const sorted = Object.values(customerMap).sort((a, b) => b.total_spent - a.total_spent).slice(0, 50);
@@ -647,25 +650,27 @@ async function syncTopCustomers(store, organizationId, days) {
 async function syncSalesByCity(store, organizationId, days) {
     try {
         const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=created_at,total_price,shipping_address,billing_address,email`;
-        const orders = await fetchAllPages(store, endpoint, 'orders');
 
         const cityMap = {};
-        const cityCustomers = {};
-        for (const order of orders) {
-            const date = order.created_at?.substring(0, 10);
-            if (!date) continue;
-            const addr = order.shipping_address || order.billing_address;
-            const city = addr?.city?.trim() || 'Unknown';
-            const province = addr?.province || '';
-            const country = addr?.country || addr?.country_code || 'Unknown';
-            const key = `${date}:${city}:${province}`;
-            if (!cityMap[key]) {
-                cityMap[key] = { date, city, province, country, revenue: 0, orders: 0, emails: new Set() };
-            }
-            cityMap[key].revenue += parseFloat(order.total_price) || 0;
-            cityMap[key].orders++;
-            if (order.email) cityMap[key].emails.add(order.email.toLowerCase());
-        }
+        await fetchAllPages(store, endpoint, 'orders', {
+            onPage(batch) {
+                for (const order of batch) {
+                    const date = order.created_at?.substring(0, 10);
+                    if (!date) continue;
+                    const addr = order.shipping_address || order.billing_address;
+                    const city = addr?.city?.trim() || 'Unknown';
+                    const province = addr?.province || '';
+                    const country = addr?.country || addr?.country_code || 'Unknown';
+                    const key = `${date}:${city}:${province}`;
+                    if (!cityMap[key]) {
+                        cityMap[key] = { date, city, province, country, revenue: 0, orders: 0, emails: new Set() };
+                    }
+                    cityMap[key].revenue += parseFloat(order.total_price) || 0;
+                    cityMap[key].orders++;
+                    if (order.email) cityMap[key].emails.add(order.email.toLowerCase());
+                }
+            },
+        });
 
         for (const c of Object.values(cityMap)) {
             await pool.query(
@@ -687,23 +692,26 @@ async function syncSalesByCity(store, organizationId, days) {
 async function syncPricePoints(store, organizationId, days) {
     try {
         const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=created_at,line_items`;
-        const orders = await fetchAllPages(store, endpoint, 'orders');
 
         const ppMap = {};
-        for (const order of orders) {
-            const date = order.created_at?.substring(0, 10);
-            if (!date) continue;
-            for (const item of (order.line_items || [])) {
-                const price = parseFloat(item.price) || 0;
-                const bucket = priceBucket(price);
-                const key = `${date}:${bucket}:${item.title || 'Unknown'}`;
-                if (!ppMap[key]) {
-                    ppMap[key] = { date, bucket, title: item.title || 'Unknown', price_cents: toCents(price), units: 0, revenue: 0 };
+        await fetchAllPages(store, endpoint, 'orders', {
+            onPage(batch) {
+                for (const order of batch) {
+                    const date = order.created_at?.substring(0, 10);
+                    if (!date) continue;
+                    for (const item of (order.line_items || [])) {
+                        const price = parseFloat(item.price) || 0;
+                        const bucket = priceBucket(price);
+                        const key = `${date}:${bucket}:${item.title || 'Unknown'}`;
+                        if (!ppMap[key]) {
+                            ppMap[key] = { date, bucket, title: item.title || 'Unknown', price_cents: toCents(price), units: 0, revenue: 0 };
+                        }
+                        ppMap[key].units += item.quantity || 0;
+                        ppMap[key].revenue += price * (item.quantity || 0);
+                    }
                 }
-                ppMap[key].units += item.quantity || 0;
-                ppMap[key].revenue += price * (item.quantity || 0);
-            }
-        }
+            },
+        });
 
         for (const p of Object.values(ppMap)) {
             await pool.query(
@@ -739,10 +747,13 @@ function daysAgoISO(days) {
     return d.toISOString();
 }
 
-async function fetchAllPages(store, endpoint, resourceKey) {
-    const records = [];
+const MAX_PAGES = 20; // Cap at 20 pages (5,000 orders max) to prevent OOM
+
+async function fetchAllPages(store, endpoint, resourceKey, { maxPages = MAX_PAGES, onPage } = {}) {
+    const records = onPage ? null : [];
     let url = `https://${store.shop_domain}/admin/api/${SHOPIFY_API_VERSION}${endpoint}`;
-    while (url) {
+    let page = 0;
+    while (url && page < maxPages) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 30000);
         try {
@@ -753,7 +764,13 @@ async function fetchAllPages(store, endpoint, resourceKey) {
             clearTimeout(timeout);
             if (!response.ok) break;
             const data = await response.json();
-            if (data[resourceKey]) records.push(...data[resourceKey]);
+            const batch = data[resourceKey] || [];
+            if (onPage) {
+                onPage(batch);
+            } else {
+                records.push(...batch);
+            }
+            page++;
             const linkHeader = response.headers.get('link');
             url = null;
             if (linkHeader) {
