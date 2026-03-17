@@ -16343,58 +16343,102 @@ async function refreshShopifyDashboard() {
 }
 
 /**
- * Render KPI cards, charts, and top products.
+ * Render the full dashboard: KPIs, charts, breakdowns, whales, insights.
  */
 function renderShopifyLiveDashboard(analytics) {
     const s = analytics.summary;
+    const prev = analytics.previousPeriod || {};
 
-    const totalRevenue = parseFloat(s.total_revenue) || 0;
     const totalOrders = parseInt(s.total_orders) || 0;
+    const totalRevenue = parseFloat(s.total_revenue) || 0;
     const avgOrderValue = parseFloat(s.avg_order_value) || 0;
-    const uniqueCustomers = parseInt(s.unique_customers) || 0;
+    const txPerCustomer = parseFloat(s.transactions_per_customer) || 0;
+    const uniqueBuyers = parseInt(s.unique_customers) || 0;
     const totalCustomers = parseInt(s.total_customers) || 0;
-    const fulfilledOrders = parseInt(s.fulfilled_orders) || 0;
+    const newCustomers = parseInt(s.new_customers) || 0;
+    const newBuyers = parseInt(s.new_buyers) || 0;
+    const returningBuyers = parseInt(s.returning_buyers) || 0;
     const unfulfilledOrders = parseInt(s.unfulfilled_orders) || 0;
     const refundedOrders = parseInt(s.refunded_orders) || 0;
 
-    // KPI cards
-    animateCurrency(document.getElementById('dashRevenue'), totalRevenue);
+    const prevOrders = parseInt(prev.total_orders) || 0;
+    const prevRevenue = parseFloat(prev.total_revenue) || 0;
+    const prevAvg = parseFloat(prev.avg_order_value) || 0;
+
+    // Row 1: Core KPIs
     animateNumber(document.getElementById('dashOrders'), totalOrders);
-    animateNumber(document.getElementById('dashCustomers'), uniqueCustomers);
+    animateCurrency(document.getElementById('dashAvgOrder'), avgOrderValue);
+    setText('dashTxPerCustomer', txPerCustomer.toFixed(2));
+    animateCurrency(document.getElementById('dashRevenue'), totalRevenue);
+
+    setText('dashOrdersChange', changeText(totalOrders, prevOrders, 'orders'));
+    setText('dashAvgChange', changeText(avgOrderValue, prevAvg, '', true));
+    setText('dashTotalCustomers', `${totalCustomers.toLocaleString()} total customers`);
+    setText('dashRevenueChange', changeText(totalRevenue, prevRevenue, '', true));
+
+    setChangeClass('dashOrdersChange', totalOrders, prevOrders);
+    setChangeClass('dashAvgChange', avgOrderValue, prevAvg);
+    setChangeClass('dashRevenueChange', totalRevenue, prevRevenue);
+
+    // Row 2: Customer KPIs
+    animateNumber(document.getElementById('dashNewCustomers'), newCustomers);
+    setText('dashNewCustomersSub', 'accounts created in period');
+
+    const newPct = (newBuyers + returningBuyers) > 0 ? Math.round((newBuyers / (newBuyers + returningBuyers)) * 100) : 0;
+    setText('dashNewVsReturn', `${newPct}% / ${100 - newPct}%`);
+    setText('dashNewVsReturnSub', `${newBuyers.toLocaleString()} new, ${returningBuyers.toLocaleString()} returning`);
+
+    animateNumber(document.getElementById('dashUniqueBuyers'), uniqueBuyers);
+    setText('dashUniqueBuyersSub', 'placed orders in period');
+
     animateNumber(document.getElementById('dashUnfulfilled'), unfulfilledOrders);
+    setText('dashRefunded', `${refundedOrders} refunded`);
 
-    document.getElementById('dashRevenueAvg').textContent = `Avg $${avgOrderValue.toFixed(2)}/order`;
-    document.getElementById('dashOrdersFulfilled').textContent = `${fulfilledOrders} fulfilled`;
-    document.getElementById('dashCustomersRepeat').textContent = `${totalCustomers.toLocaleString()} total`;
-    document.getElementById('dashRefunded').textContent = `${refundedOrders} refunded`;
-
-    // Unfulfilled color
     const unfulfilledEl = document.getElementById('dashUnfulfilled');
-    if (unfulfilledOrders > 0) {
-        unfulfilledEl.classList.add('shopify-kpi-warn');
-    } else {
-        unfulfilledEl.classList.remove('shopify-kpi-warn');
+    if (unfulfilledEl) {
+        if (unfulfilledOrders > 0) unfulfilledEl.classList.add('shopify-kpi-warn');
+        else unfulfilledEl.classList.remove('shopify-kpi-warn');
     }
 
-    // Revenue chart
+    // Charts
     renderDashRevenueChart(analytics.daily || []);
-
-    // Top products
     renderDashTopProducts(analytics.topProducts || []);
+
+    // Breakdowns
+    renderCityBreakdown(analytics.cityBreakdown || []);
+    renderPackageBreakdown(analytics.packageBreakdown || []);
+    renderWhales(analytics.whales || []);
+
+    // AI Insights (async)
+    generateDashInsights(analytics);
 }
 
-/**
- * Render the daily revenue bar chart.
- */
+function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+
+function changeText(current, previous, suffix, isCurrency) {
+    if (!previous || previous === 0) return 'No prior data';
+    const pctChange = Math.round(((current - previous) / previous) * 100);
+    const dir = pctChange >= 0 ? '+' : '';
+    return `${dir}${pctChange}% vs prior period`;
+}
+
+function setChangeClass(id, current, previous) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('shopify-change-up', 'shopify-change-down');
+    if (previous > 0) {
+        el.classList.add(current >= previous ? 'shopify-change-up' : 'shopify-change-down');
+    }
+}
+
 function renderDashRevenueChart(dailyData) {
     const ctx = document.getElementById('dashRevenueChart');
     if (!ctx) return;
 
-    if (_shopifyDashChart) {
-        _shopifyDashChart.destroy();
-        _shopifyDashChart = null;
-    }
-
+    if (_shopifyDashChart) { _shopifyDashChart.destroy(); _shopifyDashChart = null; }
     if (dailyData.length === 0) return;
 
     const labels = dailyData.map(d => {
@@ -16421,45 +16465,22 @@ function renderDashRevenueChart(dailyData) {
             animation: { duration: 800, easing: 'easeOutQuart' },
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: ctx => `$${ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-                    }
-                }
+                tooltip: { callbacks: { label: c => `$${c.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })}` } }
             },
             scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { font: { size: 10 }, color: '#6B7C93', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
-                },
-                y: {
-                    grid: { color: '#F1F5F9' },
-                    ticks: {
-                        font: { size: 10 },
-                        color: '#6B7C93',
-                        callback: v => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`
-                    },
-                    beginAtZero: true
-                }
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#6B7C93', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
+                y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 }, color: '#6B7C93', callback: v => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}` }, beginAtZero: true }
             }
         }
     });
 }
 
-/**
- * Render the top products list.
- */
 function renderDashTopProducts(products) {
     const container = document.getElementById('dashTopProducts');
     if (!container) return;
+    if (products.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No sales data yet</div>'; return; }
 
-    if (products.length === 0) {
-        container.innerHTML = '<div class="shopify-kpi-sub">No sales data yet</div>';
-        return;
-    }
-
-    const top5 = products.slice(0, 5);
-    container.innerHTML = top5.map(p => {
+    container.innerHTML = products.slice(0, 5).map(p => {
         const rev = parseFloat(p.total_revenue) || 0;
         const qty = parseInt(p.total_quantity) || 0;
         return `<div class="shopify-top-product">
@@ -16468,6 +16489,100 @@ function renderDashTopProducts(products) {
             <span class="shopify-top-product-qty">${qty} sold</span>
         </div>`;
     }).join('');
+}
+
+function renderCityBreakdown(cities) {
+    const container = document.getElementById('dashCityBreakdown');
+    if (!container) return;
+    if (cities.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No location data</div>'; return; }
+
+    container.innerHTML = cities.map(c => `<div class="shopify-breakdown-row">
+        <span class="shopify-breakdown-label">${escapeHtml(c.city)}</span>
+        <span class="shopify-breakdown-value">${c.customers.toLocaleString()}</span>
+        <span class="shopify-breakdown-sub">orders</span>
+    </div>`).join('');
+}
+
+function renderPackageBreakdown(packages) {
+    const container = document.getElementById('dashPackageBreakdown');
+    if (!container) return;
+    if (packages.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No package data</div>'; return; }
+
+    container.innerHTML = packages.map(p => `<div class="shopify-breakdown-row">
+        <span class="shopify-breakdown-label">${escapeHtml(p.package)}</span>
+        <span class="shopify-breakdown-value">${p.count.toLocaleString()}</span>
+        <span class="shopify-breakdown-sub">$${p.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+    </div>`).join('');
+}
+
+function renderWhales(whales) {
+    const container = document.getElementById('dashWhales');
+    if (!container) return;
+    if (whales.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No customer data</div>'; return; }
+
+    container.innerHTML = whales.map((w, i) => `<div class="shopify-breakdown-row">
+        <span class="shopify-whale-rank">#${i + 1}</span>
+        <span class="shopify-breakdown-label">${escapeHtml(w.name || w.email)}</span>
+        <span class="shopify-breakdown-value">$${w.total_spent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span class="shopify-breakdown-sub">${w.order_count} orders</span>
+    </div>`).join('');
+}
+
+/**
+ * Generate AI insights by sending analytics to the /api/analyze endpoint.
+ */
+async function generateDashInsights(analytics) {
+    const container = document.getElementById('dashInsights');
+    if (!container) return;
+
+    container.innerHTML = '<div class="shopify-kpi-sub">Generating insights...</div>';
+
+    const s = analytics.summary;
+    const prev = analytics.previousPeriod || {};
+    const days = parseInt(document.getElementById('dashPeriodSelect')?.value || '30');
+
+    const prompt = `You are a Shopify store analyst. Based on the following data for the last ${days} days, provide exactly 10 concise, actionable insights. Compare current period vs previous ${days} days where relevant. Be specific with numbers.
+
+CURRENT PERIOD (Last ${days} days):
+- Transactions: ${s.total_orders} | Revenue: $${s.total_revenue} | Avg Order: $${s.avg_order_value}
+- Unique Buyers: ${s.unique_customers} | Transactions/Customer: ${s.transactions_per_customer}
+- New Buyers: ${s.new_buyers} | Returning Buyers: ${s.returning_buyers}
+- New Customer Accounts: ${s.new_customers}
+- Unfulfilled: ${s.unfulfilled_orders} | Refunded: ${s.refunded_orders}
+
+PREVIOUS PERIOD (Prior ${days} days):
+- Transactions: ${prev.total_orders || 0} | Revenue: $${prev.total_revenue || 0} | Avg Order: $${prev.avg_order_value || 0}
+
+TOP PRODUCTS: ${(analytics.topProducts || []).slice(0, 5).map(p => `${p.product_title}: ${p.total_quantity} sold, $${p.total_revenue}`).join('; ')}
+
+TOP CITIES: ${(analytics.cityBreakdown || []).slice(0, 5).map(c => `${c.city}: ${c.customers}`).join('; ')}
+
+TOP CUSTOMERS: ${(analytics.whales || []).slice(0, 5).map(w => `${w.name}: $${w.total_spent} (${w.order_count} orders)`).join('; ')}
+
+Format as a numbered list 1-10. Each insight should be 1-2 sentences. Focus on trends, opportunities, and concerns.`;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                data: { prompt },
+                reportType: 'shopify-insights',
+                additionalContext: prompt
+            })
+        });
+
+        if (!response.ok) {
+            container.innerHTML = '<div class="shopify-kpi-sub">Unable to generate insights at this time.</div>';
+            return;
+        }
+
+        const result = await response.json();
+        const text = result.content?.[0]?.text || result.text || 'No insights generated.';
+        container.innerHTML = renderSimpleMarkdown(text);
+    } catch {
+        container.innerHTML = '<div class="shopify-kpi-sub">Unable to generate insights at this time.</div>';
+    }
 }
 
 // stopSyncPolling kept as no-op for backward compatibility with openTool()

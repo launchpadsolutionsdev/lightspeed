@@ -912,6 +912,72 @@
             white-space: nowrap;
         }
 
+        .shopify-chart-half {
+            flex: 1;
+            min-width: 0;
+        }
+        .shopify-breakdown-list {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .shopify-breakdown-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #F1F5F9;
+            font-size: 0.82rem;
+        }
+        .shopify-breakdown-row:last-child {
+            border-bottom: none;
+        }
+        .shopify-breakdown-label {
+            color: #0A2540;
+            font-weight: 500;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 12px;
+        }
+        .shopify-breakdown-value {
+            font-weight: 600;
+            color: #425466;
+            white-space: nowrap;
+        }
+        .shopify-breakdown-sub {
+            font-size: 0.72rem;
+            color: #6B7C93;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+        .shopify-whale-rank {
+            font-size: 0.72rem;
+            color: #6B7C93;
+            width: 24px;
+            flex-shrink: 0;
+        }
+        .shopify-change-up {
+            color: #10B981;
+            font-size: 0.75rem;
+        }
+        .shopify-change-down {
+            color: #EF4444;
+            font-size: 0.75rem;
+        }
+        .shopify-insights {
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: #0A2540;
+        }
+        .shopify-insights ol {
+            padding-left: 20px;
+            margin: 8px 0;
+        }
+        .shopify-insights li {
+            margin-bottom: 8px;
+        }
+
         @media (max-width: 768px) {
             .shopify-connect-card {
                 flex-direction: column;
@@ -13262,27 +13328,50 @@
                             <select id="dashPeriodSelect" class="shopify-dash-period" onchange="refreshShopifyDashboard()">
                                 <option value="7">Last 7 days</option>
                                 <option value="30" selected>Last 30 days</option>
-                                <option value="90">Last 90 days</option>
                             </select>
                         </div>
                     </div>
 
-                    <!-- KPI Cards -->
+                    <!-- Row 1: Core KPIs -->
                     <div class="shopify-kpi-grid">
+                        <div class="shopify-kpi-card">
+                            <div class="shopify-kpi-label">Total Transactions</div>
+                            <div class="shopify-kpi-value" id="dashOrders">0</div>
+                            <div class="shopify-kpi-sub" id="dashOrdersChange">&nbsp;</div>
+                        </div>
+                        <div class="shopify-kpi-card">
+                            <div class="shopify-kpi-label">Avg Transaction Value</div>
+                            <div class="shopify-kpi-value" id="dashAvgOrder">$0</div>
+                            <div class="shopify-kpi-sub" id="dashAvgChange">&nbsp;</div>
+                        </div>
+                        <div class="shopify-kpi-card">
+                            <div class="shopify-kpi-label">Transactions / Customer</div>
+                            <div class="shopify-kpi-value" id="dashTxPerCustomer">0</div>
+                            <div class="shopify-kpi-sub" id="dashTotalCustomers">&nbsp;</div>
+                        </div>
                         <div class="shopify-kpi-card">
                             <div class="shopify-kpi-label">Revenue</div>
                             <div class="shopify-kpi-value" id="dashRevenue">$0</div>
-                            <div class="shopify-kpi-sub" id="dashRevenueAvg">Avg $0/order</div>
+                            <div class="shopify-kpi-sub" id="dashRevenueChange">&nbsp;</div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Customer KPIs -->
+                    <div class="shopify-kpi-grid" style="margin-top: 12px;">
+                        <div class="shopify-kpi-card">
+                            <div class="shopify-kpi-label">New Customers</div>
+                            <div class="shopify-kpi-value" id="dashNewCustomers">0</div>
+                            <div class="shopify-kpi-sub" id="dashNewCustomersSub">&nbsp;</div>
                         </div>
                         <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">Orders</div>
-                            <div class="shopify-kpi-value" id="dashOrders">0</div>
-                            <div class="shopify-kpi-sub" id="dashOrdersFulfilled">0 fulfilled</div>
+                            <div class="shopify-kpi-label">New vs Returning</div>
+                            <div class="shopify-kpi-value" id="dashNewVsReturn">-</div>
+                            <div class="shopify-kpi-sub" id="dashNewVsReturnSub">&nbsp;</div>
                         </div>
                         <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">Customers</div>
-                            <div class="shopify-kpi-value" id="dashCustomers">0</div>
-                            <div class="shopify-kpi-sub" id="dashCustomersRepeat">&nbsp;</div>
+                            <div class="shopify-kpi-label">Unique Buyers</div>
+                            <div class="shopify-kpi-value" id="dashUniqueBuyers">0</div>
+                            <div class="shopify-kpi-sub" id="dashUniqueBuyersSub">&nbsp;</div>
                         </div>
                         <div class="shopify-kpi-card">
                             <div class="shopify-kpi-label">Unfulfilled</div>
@@ -13291,7 +13380,7 @@
                         </div>
                     </div>
 
-                    <!-- Charts Row -->
+                    <!-- Row 3: Charts -->
                     <div class="shopify-charts-row">
                         <div class="shopify-chart-card shopify-chart-wide">
                             <div class="shopify-chart-title">Daily Revenue</div>
@@ -13303,6 +13392,42 @@
                             <div class="shopify-chart-title">Top Products</div>
                             <div class="shopify-top-products" id="dashTopProducts">
                                 <div class="shopify-kpi-sub">No data yet</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 4: Breakdowns -->
+                    <div class="shopify-charts-row" style="margin-top: 16px;">
+                        <div class="shopify-chart-card shopify-chart-half">
+                            <div class="shopify-chart-title">Customers by City</div>
+                            <div class="shopify-breakdown-list" id="dashCityBreakdown">
+                                <div class="shopify-kpi-sub">Loading...</div>
+                            </div>
+                        </div>
+                        <div class="shopify-chart-card shopify-chart-half">
+                            <div class="shopify-chart-title">Package Breakdown</div>
+                            <div class="shopify-breakdown-list" id="dashPackageBreakdown">
+                                <div class="shopify-kpi-sub">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 5: Whales -->
+                    <div class="shopify-charts-row" style="margin-top: 16px;">
+                        <div class="shopify-chart-card" style="flex: 1;">
+                            <div class="shopify-chart-title">Top 10 Customers by Spend</div>
+                            <div class="shopify-breakdown-list" id="dashWhales">
+                                <div class="shopify-kpi-sub">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 6: AI Insights -->
+                    <div class="shopify-charts-row" style="margin-top: 16px;">
+                        <div class="shopify-chart-card" style="flex: 1;">
+                            <div class="shopify-chart-title">AI Insights</div>
+                            <div class="shopify-insights" id="dashInsights">
+                                <div class="shopify-kpi-sub">Generating insights...</div>
                             </div>
                         </div>
                     </div>
