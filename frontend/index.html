@@ -326,10 +326,10 @@
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background: #ffffff;
+            background: #F8F9FB;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: stretch;
             z-index: 1000;
             opacity: 0;
             visibility: hidden;
@@ -362,14 +362,12 @@
 
         .tool-menu-header {
             width: 100%;
-            padding: 16px 32px;
+            padding: 16px 40px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0,0,0,0.08);
+            background: #fff;
+            border-bottom: 1px solid #E8ECF1;
             position: relative;
             z-index: 1;
         }
@@ -452,11 +450,12 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 48px 32px;
-            max-width: 960px;
+            align-items: stretch;
+            justify-content: flex-start;
+            padding: 32px 40px 48px;
+            max-width: 1600px;
             width: 100%;
+            margin: 0 auto;
             position: relative;
             z-index: 1;
         }
@@ -464,20 +463,20 @@
         .tool-menu-greeting {
             text-align: left;
             width: 100%;
-            margin-bottom: 36px;
+            margin-bottom: 28px;
         }
 
         .tool-menu-title {
-            font-size: 2.4rem;
-            font-weight: 800;
+            font-size: 1.8rem;
+            font-weight: 700;
             color: #0A2540;
-            margin-bottom: 6px;
-            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+            letter-spacing: -0.3px;
         }
 
         .tool-menu-subtitle {
-            font-size: 1.05rem;
-            color: rgba(0, 0, 0, 0.45);
+            font-size: 0.95rem;
+            color: #8492A6;
             font-weight: 400;
         }
 
@@ -488,21 +487,24 @@
             grid-template-rows: auto auto;
             gap: 16px;
             width: 100%;
+            max-width: 960px;
         }
 
         .bento-card {
             background: #fff;
-            border: 1px solid #E3E8EE;
-            border-radius: 16px;
+            border: 1px solid #E8ECF1;
+            border-radius: 14px;
             padding: 28px;
             position: relative;
             overflow: hidden;
             cursor: pointer;
-            transition: border-color 0.2s ease;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
 
         .bento-card:hover {
             border-color: #C5CCD6;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
 
         .bento-card-glow {
@@ -693,9 +695,10 @@
             justify-content: space-between;
             gap: 24px;
             background: #fff;
-            border: 1px solid #E3E8EE;
-            border-radius: 16px;
-            padding: 24px 28px;
+            border: 1px solid #E8ECF1;
+            border-radius: 14px;
+            padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         .shopify-connect-left {
             display: flex;
@@ -726,13 +729,15 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #E8ECF1;
         }
         .shopify-dash-header-left {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
+            gap: 10px;
+            font-size: 0.95rem;
             font-weight: 600;
             color: #0A2540;
         }
@@ -820,25 +825,31 @@
         .shopify-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 16px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
         .shopify-kpi-card {
             background: #fff;
-            border: 1px solid #E3E8EE;
-            border-radius: 12px;
-            padding: 20px;
+            border: 1px solid #E8ECF1;
+            border-radius: 14px;
+            padding: 22px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .shopify-kpi-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-color: #D1D9E0;
         }
         .shopify-kpi-label {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             font-weight: 600;
-            color: #6B7C93;
+            color: #8492A6;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
+            letter-spacing: 0.6px;
+            margin-bottom: 8px;
         }
         .shopify-kpi-value {
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             font-weight: 800;
             color: #0A2540;
             letter-spacing: -0.5px;
@@ -849,29 +860,33 @@
         }
         .shopify-kpi-sub {
             font-size: 0.78rem;
-            color: #6B7C93;
-            margin-top: 4px;
+            color: #8492A6;
+            margin-top: 6px;
         }
 
         .shopify-charts-row {
             display: grid;
             grid-template-columns: 1.6fr 1fr;
-            gap: 12px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
         .shopify-chart-card {
             background: #fff;
-            border: 1px solid #E3E8EE;
-            border-radius: 12px;
-            padding: 20px;
+            border: 1px solid #E8ECF1;
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         .shopify-chart-title {
             font-size: 0.82rem;
-            font-weight: 600;
-            color: #425466;
-            margin-bottom: 12px;
+            font-weight: 700;
+            color: #0A2540;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
         .shopify-chart-wrap {
-            height: 180px;
+            height: 260px;
             position: relative;
         }
         .shopify-chart-wrap canvas {
@@ -883,32 +898,32 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 10px 0;
             border-bottom: 1px solid #F1F5F9;
         }
         .shopify-top-product:last-child {
             border-bottom: none;
         }
         .shopify-top-product-name {
-            font-size: 0.82rem;
+            font-size: 0.85rem;
             color: #0A2540;
             font-weight: 500;
             flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            margin-right: 12px;
+            margin-right: 16px;
         }
         .shopify-top-product-rev {
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: #425466;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #0A2540;
             white-space: nowrap;
         }
         .shopify-top-product-qty {
-            font-size: 0.72rem;
-            color: #6B7C93;
-            margin-left: 8px;
+            font-size: 0.75rem;
+            color: #8492A6;
+            margin-left: 10px;
             white-space: nowrap;
         }
 
@@ -916,17 +931,21 @@
             flex: 1;
             min-width: 0;
         }
+        .shopify-full-row {
+            width: 100%;
+            margin-bottom: 20px;
+        }
         .shopify-breakdown-list {
-            max-height: 280px;
+            max-height: 340px;
             overflow-y: auto;
         }
         .shopify-breakdown-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 6px 0;
+            padding: 10px 0;
             border-bottom: 1px solid #F1F5F9;
-            font-size: 0.82rem;
+            font-size: 0.85rem;
         }
         .shopify-breakdown-row:last-child {
             border-bottom: none;
@@ -938,56 +957,73 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            margin-right: 12px;
+            margin-right: 16px;
         }
         .shopify-breakdown-value {
-            font-weight: 600;
-            color: #425466;
+            font-weight: 700;
+            color: #0A2540;
             white-space: nowrap;
+            font-size: 0.88rem;
         }
         .shopify-breakdown-sub {
-            font-size: 0.72rem;
-            color: #6B7C93;
-            margin-left: 8px;
+            font-size: 0.75rem;
+            color: #8492A6;
+            margin-left: 10px;
             white-space: nowrap;
         }
         .shopify-whale-rank {
-            font-size: 0.72rem;
-            color: #6B7C93;
-            width: 24px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #8492A6;
+            width: 28px;
             flex-shrink: 0;
         }
         .shopify-change-up {
             color: #10B981;
-            font-size: 0.75rem;
+            font-size: 0.78rem;
+            font-weight: 600;
         }
         .shopify-change-down {
             color: #EF4444;
-            font-size: 0.75rem;
+            font-size: 0.78rem;
+            font-weight: 600;
         }
         .shopify-insights {
-            font-size: 0.85rem;
-            line-height: 1.7;
-            color: #0A2540;
+            font-size: 0.88rem;
+            line-height: 1.75;
+            color: #1A2B3D;
         }
         .shopify-insights ol {
-            padding-left: 20px;
-            margin: 8px 0;
+            padding-left: 24px;
+            margin: 12px 0;
         }
         .shopify-insights li {
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            padding-left: 4px;
         }
 
+        @media (max-width: 1100px) {
+            .shopify-kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
         @media (max-width: 768px) {
+            .tool-menu-content {
+                padding: 24px 20px 40px;
+            }
             .shopify-connect-card {
                 flex-direction: column;
                 align-items: flex-start;
             }
             .shopify-kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
             }
             .shopify-charts-row {
                 grid-template-columns: 1fr;
+            }
+            .shopify-kpi-value {
+                font-size: 1.4rem;
             }
         }
 
@@ -13357,7 +13393,7 @@
                     </div>
 
                     <!-- Row 2: Customer KPIs -->
-                    <div class="shopify-kpi-grid" style="margin-top: 12px;">
+                    <div class="shopify-kpi-grid">
                         <div class="shopify-kpi-card">
                             <div class="shopify-kpi-label">New Customers</div>
                             <div class="shopify-kpi-value" id="dashNewCustomers">0</div>
@@ -13397,7 +13433,7 @@
                     </div>
 
                     <!-- Row 4: Breakdowns -->
-                    <div class="shopify-charts-row" style="margin-top: 16px;">
+                    <div class="shopify-charts-row">
                         <div class="shopify-chart-card shopify-chart-half">
                             <div class="shopify-chart-title">Customers by City</div>
                             <div class="shopify-breakdown-list" id="dashCityBreakdown">
@@ -13413,22 +13449,18 @@
                     </div>
 
                     <!-- Row 5: Whales -->
-                    <div class="shopify-charts-row" style="margin-top: 16px;">
-                        <div class="shopify-chart-card" style="flex: 1;">
-                            <div class="shopify-chart-title">Top 10 Customers by Spend</div>
-                            <div class="shopify-breakdown-list" id="dashWhales">
-                                <div class="shopify-kpi-sub">Loading...</div>
-                            </div>
+                    <div class="shopify-chart-card shopify-full-row">
+                        <div class="shopify-chart-title">Top 10 Customers by Spend</div>
+                        <div class="shopify-breakdown-list" id="dashWhales">
+                            <div class="shopify-kpi-sub">Loading...</div>
                         </div>
                     </div>
 
                     <!-- Row 6: AI Insights -->
-                    <div class="shopify-charts-row" style="margin-top: 16px;">
-                        <div class="shopify-chart-card" style="flex: 1;">
-                            <div class="shopify-chart-title">AI Insights</div>
-                            <div class="shopify-insights" id="dashInsights">
-                                <div class="shopify-kpi-sub">Generating insights...</div>
-                            </div>
+                    <div class="shopify-chart-card shopify-full-row">
+                        <div class="shopify-chart-title">AI Insights</div>
+                        <div class="shopify-insights" id="dashInsights">
+                            <div class="shopify-kpi-sub">Generating insights...</div>
                         </div>
                     </div>
                 </div>
