@@ -943,7 +943,7 @@ function setupAuthEventListeners() {
     document.addEventListener("click", (e) => {
         const userMenu = document.getElementById("userMenuBtn");
         const dropdown = document.getElementById("userDropdown");
-        if (!userMenu.contains(e.target) && !dropdown.contains(e.target)) {
+        if (userMenu && dropdown && !userMenu.contains(e.target) && !dropdown.contains(e.target)) {
             closeUserDropdown();
         }
         const sidebarUserMenu = document.getElementById("sidebarUserMenuBtn");
@@ -953,15 +953,20 @@ function setupAuthEventListeners() {
         }
     });
 
-    // Tool selection cards
-    document.getElementById("toolDraftAssistant").addEventListener("click", () => openTool('draft-assistant'));
-    document.getElementById("toolCustomerResponse").addEventListener("click", () => openTool('customer-response'));
-    document.getElementById("toolDataAnalysis").addEventListener("click", () => openTool('data-analysis'));
-    document.getElementById("toolListNormalizer").addEventListener("click", () => openTool('list-normalizer'));
-    document.getElementById("toolAskLightspeed").addEventListener("click", () => openTool('ask-lightspeed'));
-    document.getElementById("toolRulesOfPlay").addEventListener("click", () => openTool('rules-of-play'));
-    var toolComplianceEl = document.getElementById("toolCompliance");
-    if (toolComplianceEl) toolComplianceEl.addEventListener("click", () => openTool('compliance'));
+    // Tool selection cards (bento grid removed — tools accessible via sidebar)
+    var _bento = {
+        toolDraftAssistant: 'draft-assistant',
+        toolCustomerResponse: 'customer-response',
+        toolDataAnalysis: 'data-analysis',
+        toolListNormalizer: 'list-normalizer',
+        toolAskLightspeed: 'ask-lightspeed',
+        toolRulesOfPlay: 'rules-of-play',
+        toolCompliance: 'compliance'
+    };
+    for (var _id in _bento) {
+        var _el = document.getElementById(_id);
+        if (_el) _el.addEventListener("click", openTool.bind(null, _bento[_id]));
+    }
 
     // Back to menu button (in sidebar)
     document.getElementById("backToMenuBtn").addEventListener("click", goBackToMenu);
