@@ -8,30 +8,19 @@ const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
 /**
- * Strip lone surrogates from a string to produce valid JSON.
- * Orphaned high/low surrogates cause "no low surrogate in string" API errors.
+ * Sanitize a JSON string by replacing escaped lone surrogate code points.
+ *
+ * JSON.stringify() in Node.js 12+ outputs lone surrogates as \uXXXX escape
+ * sequences (e.g. \ud83d). These are regular ASCII characters in the output
+ * string, NOT actual surrogate code units, so a character-level scan won't
+ * find them. Instead, we regex-match the \uD800-\uDFFF escape patterns.
+ *
+ * In Node.js 12+, valid surrogate pairs are emitted as their actual UTF-8
+ * character (e.g. 😀), so any \uD800-\uDFFF escape in the JSON is lone.
  */
-function stripLoneSurrogates(str) {
-    if (typeof str !== 'string') return str;
-    let result = '';
-    for (let i = 0; i < str.length; i++) {
-        const code = str.charCodeAt(i);
-        if (code >= 0xD800 && code <= 0xDBFF) {
-            // High surrogate — check for matching low surrogate
-            const next = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
-            if (next >= 0xDC00 && next <= 0xDFFF) {
-                result += str[i] + str[i + 1];
-                i++; // skip the low surrogate
-            } else {
-                result += '\uFFFD'; // replace orphaned high surrogate
-            }
-        } else if (code >= 0xDC00 && code <= 0xDFFF) {
-            result += '\uFFFD'; // replace orphaned low surrogate
-        } else {
-            result += str[i];
-        }
-    }
-    return result;
+function sanitizeJsonString(jsonStr) {
+    if (typeof jsonStr !== 'string') return jsonStr;
+    return jsonStr.replace(/\\u[dD][89a-fA-F][0-9a-fA-F]{2}/g, '\\ufffd');
 }
 
 /**
@@ -66,7 +55,7 @@ async function generateResponse({ messages, system, max_tokens = 1024, tools, mo
 
     // Sanitize the final JSON to strip any lone surrogates from all fields
     // (system prompt, messages, KB entries, org profile, conversation history, etc.)
-    const jsonBody = stripLoneSurrogates(JSON.stringify(body));
+    const jsonBody = sanitizeJsonString(JSON.stringify(body));
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -225,7 +214,7 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
                 'x-api-key': ANTHROPIC_API_KEY,
                 'anthropic-version': '2023-06-01'
             },
-            body: stripLoneSurrogates(JSON.stringify({
+            body: sanitizeJsonString(JSON.stringify({
                 model: HAIKU_MODEL,
                 max_tokens: 200,
                 system: `You are a relevance picker. Given a customer inquiry and a numbered list of knowledge base entries, return ONLY the index numbers of the most relevant entries as a JSON array. Pick up to ${maxEntries} entries. Return ONLY the JSON array, nothing else. Example: [0, 3, 7]`,
@@ -307,7 +296,7 @@ async function pickRelevantRatedExamples(inquiry, positiveExamples, negativeExam
                 'x-api-key': ANTHROPIC_API_KEY,
                 'anthropic-version': '2023-06-01'
             },
-            body: stripLoneSurrogates(JSON.stringify({
+            body: sanitizeJsonString(JSON.stringify({
                 model: HAIKU_MODEL,
                 max_tokens: 200,
                 system: `You are a relevance picker. Given a new customer inquiry and a numbered list of past customer inquiries (each marked positive or negative), return ONLY the index numbers of past inquiries that are on a SIMILAR TOPIC to the new inquiry. Only pick examples where the subject matter is clearly related. Return ONLY a JSON array of index numbers. If none are relevant, return an empty array []. Example: [0, 3, 7]`,
@@ -417,7 +406,7 @@ async function streamResponse({ messages, system, staticSystem, dynamicSystem, m
             'x-api-key': ANTHROPIC_API_KEY,
             'anthropic-version': '2023-06-01'
         },
-        body: stripLoneSurrogates(JSON.stringify({
+        body: sanitizeJsonString(JSON.stringify({
             model: model || ANTHROPIC_MODEL,
             max_tokens,
             system: systemBlocks.length > 0 ? systemBlocks : '',
