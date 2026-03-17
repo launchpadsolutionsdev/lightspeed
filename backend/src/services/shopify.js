@@ -290,9 +290,9 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         ? Math.round(cur.uniqueEmails.size * cur.scaleFactor)
         : cur.uniqueEmails.size;
 
-    // Transactions per customer (total transactions / unique buyers in period)
-    const transactionsPerCustomer = uniqueBuyers > 0
-        ? Math.round((totalOrderCount / uniqueBuyers) * 100) / 100 : 0;
+    // Transactions per customer (unique buyers / total transactions in period)
+    const transactionsPerCustomer = totalOrderCount > 0
+        ? Math.round((uniqueBuyers / totalOrderCount) * 100) / 100 : 0;
 
     // City breakdown (scaled)
     const cityBreakdown = Object.entries(cur.cityMap)
