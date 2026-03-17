@@ -16231,7 +16231,7 @@ async function syncShopifyData() {
     const statusEl = document.getElementById('shopifySyncStatus');
     statusEl.style.display = 'block';
     statusEl.style.color = 'var(--text-secondary, #888)';
-    statusEl.textContent = 'Syncing products...';
+    statusEl.textContent = 'Syncing...';
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/shopify/sync`, {
@@ -16245,7 +16245,7 @@ async function syncShopifyData() {
         }
 
         const result = await response.json();
-        statusEl.textContent = result.message || 'Products synced successfully.';
+        statusEl.textContent = (result.message || 'Synced successfully.') + ' Analytics data syncing in background.';
 
     } catch (err) {
         statusEl.style.color = '#ef4444';

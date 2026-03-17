@@ -823,8 +823,8 @@
     }
 
     function sdPollSyncStatus(attempt) {
-        if (attempt > 12) return;
-        var delay = attempt < 3 ? 5000 : 10000;
+        if (attempt > 30) return;
+        var delay = attempt < 3 ? 3000 : 5000;
         setTimeout(async () => {
             try {
                 var status = await sdFetch('sync-status');

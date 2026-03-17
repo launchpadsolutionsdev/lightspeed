@@ -434,8 +434,24 @@ router.post('/sync', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'No Shopify store connected' });
         }
 
-        // Only sync products now — orders/customers come from live API
+        // Sync products
         const result = await shopifyService.syncProducts(organizationId);
+
+        // Also trigger analytics sync in background
+        const shopifyAnalytics = require('../services/shopifyAnalytics');
+        const syncStatus = await shopifyAnalytics.getSyncStatus(organizationId);
+        if (syncStatus.connected && syncStatus.sync_status !== 'syncing') {
+            await pool.query(
+                `UPDATE shopify_stores SET analytics_sync_status = 'syncing', analytics_sync_error = NULL, updated_at = NOW() WHERE organization_id = $1`,
+                [organizationId]
+            );
+            const syncFn = syncStatus.last_full_sync
+                ? shopifyAnalytics.runIncrementalSync
+                : shopifyAnalytics.runFullSync;
+            syncFn(organizationId).catch(error => {
+                console.error('Analytics sync error (from product sync):', error.message);
+            });
+        }
 
         res.json({
             success: true,
