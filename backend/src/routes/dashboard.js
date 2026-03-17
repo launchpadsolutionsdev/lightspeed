@@ -9,6 +9,11 @@ const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const analyticsService = require('../services/shopifyAnalytics');
 
+function clampLimit(val, defaultVal, max) {
+    const n = parseInt(val) || defaultVal;
+    return Math.max(1, Math.min(n, max));
+}
+
 async function getOrgId(userId) {
     const result = await pool.query(
         'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
@@ -116,7 +121,7 @@ router.get('/top-products', authenticate, async (req, res) => {
         if (!organizationId) return res.status(403).json({ error: 'No organization found' });
 
         const { startDate, endDate } = parseDateRange(req.query);
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = clampLimit(req.query.limit, 10, 50);
 
         const data = await analyticsService.getTopProducts(organizationId, startDate, endDate, limit);
         res.json(data);
@@ -149,7 +154,7 @@ router.get('/sales-by-region', authenticate, async (req, res) => {
         if (!organizationId) return res.status(403).json({ error: 'No organization found' });
 
         const { startDate, endDate } = parseDateRange(req.query);
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = clampLimit(req.query.limit, 10, 50);
 
         const data = await analyticsService.getSalesByRegion(organizationId, startDate, endDate, limit);
         res.json(data);
@@ -165,7 +170,7 @@ router.get('/recent-orders', authenticate, async (req, res) => {
         const organizationId = await getOrgId(req.userId);
         if (!organizationId) return res.status(403).json({ error: 'No organization found' });
 
-        const limit = parseInt(req.query.limit) || 20;
+        const limit = clampLimit(req.query.limit, 20, 100);
         const data = await analyticsService.getRecentOrders(organizationId, limit);
         res.json(data);
     } catch (error) {
@@ -197,6 +202,10 @@ router.post('/sync', authenticate, async (req, res) => {
         const syncStatus = await analyticsService.getSyncStatus(organizationId);
         if (!syncStatus.connected) {
             return res.status(404).json({ error: 'No Shopify store connected' });
+        }
+
+        if (syncStatus.sync_status === 'syncing') {
+            return res.json({ success: true, message: 'Sync already in progress' });
         }
 
         // Respond immediately, run sync in background

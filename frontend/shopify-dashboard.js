@@ -436,19 +436,36 @@
             if (resp.ok) {
                 const indicator = document.getElementById('sdSyncIndicator');
                 if (indicator) indicator.innerHTML = '<span class="sd-sync-dot syncing"></span> Syncing...';
-
-                // Poll for completion
-                setTimeout(async () => {
-                    const status = await sdFetch('sync-status');
-                    sdUpdateSyncIndicator(status);
-                    if (status.sync_status === 'synced') {
-                        sdLoadDashboard();
-                    }
-                }, 10000);
+                sdPollSyncStatus(0);
+            } else {
+                const indicator = document.getElementById('sdSyncIndicator');
+                if (indicator) indicator.innerHTML = '<span class="sd-sync-dot error"></span> Sync failed to start';
             }
         } catch (e) {
             console.error('Sync trigger failed:', e);
+            const indicator = document.getElementById('sdSyncIndicator');
+            if (indicator) indicator.innerHTML = '<span class="sd-sync-dot error"></span> Sync failed';
         }
+    }
+
+    function sdPollSyncStatus(attempt) {
+        if (attempt > 12) return; // Stop after ~2 minutes
+        var delay = attempt < 3 ? 5000 : 10000; // 5s for first 3 checks, then 10s
+        setTimeout(async () => {
+            try {
+                var status = await sdFetch('sync-status');
+                sdUpdateSyncIndicator(status);
+                if (status.sync_status === 'synced') {
+                    sdLoadDashboard();
+                } else if (status.sync_status === 'error') {
+                    // Stop polling on error
+                } else {
+                    sdPollSyncStatus(attempt + 1);
+                }
+            } catch {
+                // Stop polling on fetch error
+            }
+        }, delay);
     }
 
     async function sdRefreshOrders() {

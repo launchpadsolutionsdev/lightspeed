@@ -769,7 +769,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
     const retCust = parseInt(c.returning_customers) || 0;
     const aov = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
     const returningRate = (newCust + retCust) > 0 ? retCust / (newCust + retCust) : 0;
-    const refundRate = totalOrders > 0 ? parseInt(c.total_refunds_cents > 0 ? 1 : 0) / totalOrders : 0;
+    const refundRate = totalSales > 0 ? totalRefunds / totalSales : 0;
 
     const result = {
         current_period: {
