@@ -175,27 +175,8 @@
         if (customers.status === 'fulfilled') sdRenderTopCustomers(customers.value);
         if (cities.status === 'fulfilled') sdRenderCityBreakdown(cities.value);
 
-        // Match Live Orders height to left column
-        sdMatchColumnHeights();
-
         // Load AI insights (separate, slower call)
         sdLoadInsights();
-    }
-
-    function sdMatchColumnHeights() {
-        const leftCol = document.querySelector('.sd-left-col');
-        const rightCard = document.querySelector('.sd-right-col > .sd-card');
-        if (!leftCol || !rightCard) return;
-        rightCard.style.height = leftCol.offsetHeight + 'px';
-        rightCard.style.overflow = 'hidden';
-        rightCard.style.display = 'flex';
-        rightCard.style.flexDirection = 'column';
-        const feedWrap = document.getElementById('sdOrderFeedWrap');
-        if (feedWrap) {
-            feedWrap.style.flex = '1';
-            feedWrap.style.minHeight = '0';
-            feedWrap.style.overflow = 'hidden';
-        }
     }
 
     // ─── Render: KPI Cards ──────────────────────────────────────────
