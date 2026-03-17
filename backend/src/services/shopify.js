@@ -232,11 +232,21 @@ async function getProductCount(organizationId) {
 
 // ─── Live Analytics (direct Shopify API) ─────────────────────────────
 
+// In-memory cache: { key: { data, ts } }
+const _analyticsCache = {};
+const ANALYTICS_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+
 /**
  * Get live order analytics by querying Shopify API directly.
  * Uses count endpoints + a limited page fetch for daily breakdown and top products.
+ * Results are cached for 2 minutes to speed up refreshes.
  */
 async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
+    const cacheKey = `${organizationId}:${days}`;
+    const cached = _analyticsCache[cacheKey];
+    if (cached && (Date.now() - cached.ts) < ANALYTICS_CACHE_TTL) {
+        return cached.data;
+    }
     const store = await getStoreConnection(organizationId);
     if (!store) throw new Error('No Shopify store connected');
 
@@ -262,8 +272,8 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
             `/customers/count.json`),
         shopifyFetch(store.shop_domain, store.access_token,
             `/customers/count.json?created_at_min=${sinceISO}`),
-        fetchRecentOrders(store, sinceISO, null, 10),
-        fetchRecentOrders(store, prevStartISO, prevEndISO, 4) // smaller sample for prev period
+        fetchRecentOrders(store, sinceISO, null, 5),
+        fetchRecentOrders(store, prevStartISO, prevEndISO, 2) // smaller sample for prev period
     ]);
 
     const totalOrderCount = orderCountData.count || 0;
@@ -280,9 +290,9 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         ? Math.round(cur.uniqueEmails.size * cur.scaleFactor)
         : cur.uniqueEmails.size;
 
-    // Transactions per customer (total transactions / total customers in period)
-    const transactionsPerCustomer = totalCustomerCount > 0
-        ? Math.round((totalOrderCount / totalCustomerCount) * 100) / 100 : 0;
+    // Transactions per customer (total transactions / unique buyers in period)
+    const transactionsPerCustomer = uniqueBuyers > 0
+        ? Math.round((totalOrderCount / uniqueBuyers) * 100) / 100 : 0;
 
     // City breakdown (scaled)
     const cityBreakdown = Object.entries(cur.cityMap)
@@ -346,7 +356,7 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
     const prevEstRevenue = prev.scaleFactor > 1
         ? Math.round(prev.totalRevenue * prev.scaleFactor * 100) / 100 : prev.totalRevenue;
 
-    return {
+    const result = {
         summary: {
             total_orders: totalOrderCount,
             total_revenue: estRevenue.toFixed(2),
@@ -357,10 +367,8 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
             transactions_per_customer: transactionsPerCustomer,
             new_buyers: newBuyersEst,
             returning_buyers: returningBuyersEst,
-            fulfilled_orders: cur.scaleFactor > 1 ? Math.round(cur.fulfilledOrders * cur.scaleFactor) : cur.fulfilledOrders,
-            unfulfilled_orders: cur.scaleFactor > 1 ? Math.round(cur.unfulfilledOrders * cur.scaleFactor) : cur.unfulfilledOrders,
-            refunded_orders: cur.scaleFactor > 1 ? Math.round(cur.refundedOrders * cur.scaleFactor) : cur.refundedOrders,
-            refund_total: cur.scaleFactor > 1 ? Math.round(cur.refundTotal * cur.scaleFactor * 100) / 100 : cur.refundTotal,
+            repeat_rate: (newBuyersEst + returningBuyersEst) > 0
+                ? Math.round((returningBuyersEst / (newBuyersEst + returningBuyersEst)) * 100) : 0,
             sampled: cur.fetchedCount < totalOrderCount,
             sample_size: cur.fetchedCount
         },
@@ -375,6 +383,9 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         packageBreakdown,
         whales
     };
+
+    _analyticsCache[cacheKey] = { data: result, ts: Date.now() };
+    return result;
 }
 
 /**
