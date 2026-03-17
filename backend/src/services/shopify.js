@@ -272,8 +272,8 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
             `/customers/count.json`),
         shopifyFetch(store.shop_domain, store.access_token,
             `/customers/count.json?created_at_min=${sinceISO}`),
-        fetchRecentOrders(store, sinceISO, null, 5),
-        fetchRecentOrders(store, prevStartISO, prevEndISO, 2) // smaller sample for prev period
+        fetchRecentOrders(store, sinceISO, null),
+        fetchRecentOrders(store, prevStartISO, prevEndISO)
     ]);
 
     const totalOrderCount = orderCountData.count || 0;
@@ -281,27 +281,26 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
     const totalCustomerCount = totalCustomerData.count || 0;
     const newCustomerCount = newCustomerData.count || 0;
 
-    // Process current and previous period samples
-    const cur = processOrderSample(orders, totalOrderCount);
-    const prev = processOrderSample(prevOrders, prevOrderCount);
+    // Process all orders (no sampling — we fetch everything)
+    const cur = processOrders(orders);
+    const prev = processOrders(prevOrders);
 
-    // Unique buyers in the period (capped at totalOrderCount — can't exceed transactions)
-    const uniqueBuyersRaw = cur.scaleFactor > 1
-        ? Math.round(cur.uniqueEmails.size * cur.scaleFactor)
-        : cur.uniqueEmails.size;
-    const uniqueBuyers = Math.min(uniqueBuyersRaw, totalOrderCount);
+    const uniqueBuyers = cur.uniqueEmails.size;
+    const totalRevenue = cur.totalRevenue;
+    const avgOrderValue = totalOrderCount > 0 ? totalRevenue / totalOrderCount : 0;
+    const prevTotalRevenue = prev.totalRevenue;
 
     // Transactions per customer (orders / unique buyers in period, always >= 1)
     const transactionsPerCustomer = uniqueBuyers > 0
         ? Math.round((totalOrderCount / uniqueBuyers) * 100) / 100 : 0;
 
-    // City breakdown (scaled)
+    // City breakdown
     const cityBreakdown = Object.entries(cur.cityMap)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 15)
         .map(([city, count]) => ({
             city: city || 'Unknown',
-            customers: cur.scaleFactor > 1 ? Math.round(count * cur.scaleFactor) : count
+            customers: count
         }));
 
     // Package/price breakdown (exclude $0 items)
@@ -311,11 +310,11 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         .slice(0, 15)
         .map(([pkg, data]) => ({
             package: pkg,
-            count: cur.scaleFactor > 1 ? Math.round(data.count * cur.scaleFactor) : data.count,
-            revenue: Math.round((data.revenue * (cur.scaleFactor > 1 ? cur.scaleFactor : 1)) * 100) / 100
+            count: data.count,
+            revenue: Math.round(data.revenue * 100) / 100
         }));
 
-    // Top 10 whales (by dollar amount in sample — not scaled, these are real customers)
+    // Top 10 whales (by dollar amount)
     const whales = Object.values(cur.customerSpendMap)
         .sort((a, b) => b.total_spent - a.total_spent)
         .slice(0, 10)
@@ -327,23 +326,14 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         }));
 
     // New vs returning buyers
-    const sampleBuyers = cur.newBuyerCount + cur.returningBuyerCount;
-    const newBuyersEst = sampleBuyers > 0
-        ? Math.round((cur.newBuyerCount / sampleBuyers) * uniqueBuyers)
-        : newCustomerCount;
-    const returningBuyersEst = Math.max(0, uniqueBuyers - newBuyersEst);
+    const newBuyers = cur.newBuyerCount;
+    const returningBuyers = cur.returningBuyerCount;
 
-    // Top products sorted by unit price descending ($100, $75, $50, $20, $10, etc.)
+    // Top products sorted by unit price descending
     const topProducts = Object.values(cur.productMap)
         .map(p => ({ ...p, unit_price: p.total_quantity > 0 ? p.total_revenue / p.total_quantity : 0 }))
         .sort((a, b) => b.unit_price - a.unit_price)
         .slice(0, 10);
-    if (cur.scaleFactor > 1) {
-        for (const p of topProducts) {
-            p.total_quantity = Math.round(p.total_quantity * cur.scaleFactor);
-            p.total_revenue = Math.round(p.total_revenue * cur.scaleFactor * 100) / 100;
-        }
-    }
 
     // Daily revenue for last 7 days (zero-filled, today on the right)
     const daily = [];
@@ -354,35 +344,24 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
         daily.push(cur.dailyMap[key] || { date: key, orders: 0, revenue: 0 });
     }
 
-    // Revenue estimates
-    const estRevenue = cur.scaleFactor > 1
-        ? Math.round(cur.totalRevenue * cur.scaleFactor * 100) / 100 : cur.totalRevenue;
-    const avgOrderValue = totalOrderCount > 0 ? estRevenue / totalOrderCount : 0;
-
-    // Previous period revenue estimate
-    const prevEstRevenue = prev.scaleFactor > 1
-        ? Math.round(prev.totalRevenue * prev.scaleFactor * 100) / 100 : prev.totalRevenue;
-
     const result = {
         summary: {
             total_orders: totalOrderCount,
-            total_revenue: estRevenue.toFixed(2),
+            total_revenue: totalRevenue.toFixed(2),
             avg_order_value: avgOrderValue.toFixed(2),
             unique_customers: uniqueBuyers,
             total_customers: totalCustomerCount,
             new_customers: newCustomerCount,
             transactions_per_customer: transactionsPerCustomer,
-            new_buyers: newBuyersEst,
-            returning_buyers: returningBuyersEst,
-            repeat_rate: (newBuyersEst + returningBuyersEst) > 0
-                ? Math.round((returningBuyersEst / (newBuyersEst + returningBuyersEst)) * 100) : 0,
-            sampled: cur.fetchedCount < totalOrderCount,
-            sample_size: cur.fetchedCount
+            new_buyers: newBuyers,
+            returning_buyers: returningBuyers,
+            repeat_rate: (newBuyers + returningBuyers) > 0
+                ? Math.round((returningBuyers / (newBuyers + returningBuyers)) * 100) : 0
         },
         previousPeriod: {
             total_orders: prevOrderCount,
-            total_revenue: prevEstRevenue.toFixed(2),
-            avg_order_value: (prevOrderCount > 0 ? prevEstRevenue / prevOrderCount : 0).toFixed(2)
+            total_revenue: prevTotalRevenue.toFixed(2),
+            avg_order_value: (prevOrderCount > 0 ? prevTotalRevenue / prevOrderCount : 0).toFixed(2)
         },
         daily,
         topProducts,
@@ -396,9 +375,9 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
 }
 
 /**
- * Process an order sample and return computed statistics.
+ * Process orders and return computed statistics.
  */
-function processOrderSample(orders, totalOrderCount) {
+function processOrders(orders) {
     let totalRevenue = 0;
     let fulfilledOrders = 0;
     let unfulfilledOrders = 0;
@@ -474,14 +453,10 @@ function processOrderSample(orders, totalOrderCount) {
         }
     }
 
-    const fetchedCount = orders.length;
-    const scaleFactor = totalOrderCount > 0 && fetchedCount > 0 && fetchedCount < totalOrderCount
-        ? totalOrderCount / fetchedCount : 1;
-
     return {
         totalRevenue, fulfilledOrders, unfulfilledOrders, refundedOrders, refundTotal,
         newBuyerCount, returningBuyerCount, uniqueEmails, dailyMap, productMap,
-        cityMap, packageMap, customerSpendMap, fetchedCount, scaleFactor
+        cityMap, packageMap, customerSpendMap
     };
 }
 
@@ -489,14 +464,12 @@ function processOrderSample(orders, totalOrderCount) {
  * Fetch recent orders directly from Shopify with a page cap.
  * Optional untilISO limits the upper end of the date range.
  */
-async function fetchRecentOrders(store, sinceISO, untilISO, maxPages = 10) {
+async function fetchRecentOrders(store, sinceISO, untilISO) {
     const orders = [];
     let url = `https://${store.shop_domain}/admin/api/${SHOPIFY_API_VERSION}/orders.json?limit=250&status=any&created_at_min=${sinceISO}`;
     if (untilISO) url += `&created_at_max=${untilISO}`;
-    let page = 0;
 
-    while (url && page < maxPages) {
-        page++;
+    while (url) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 30000);
 
@@ -708,9 +681,6 @@ async function buildAnalyticsSummary(organizationId, { days = 30 } = {}) {
         });
     }
 
-    if (s.sampled) {
-        summary += `\n\n(Note: Revenue/product estimates based on a sample of ${s.sample_size} of ${s.total_orders} orders)`;
-    }
 
     return summary;
 }
