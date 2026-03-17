@@ -16363,8 +16363,7 @@ function renderShopifyLiveDashboard(analytics) {
     const newCustomers = parseInt(s.new_customers) || 0;
     const newBuyers = parseInt(s.new_buyers) || 0;
     const returningBuyers = parseInt(s.returning_buyers) || 0;
-    const unfulfilledOrders = parseInt(s.unfulfilled_orders) || 0;
-    const refundedOrders = parseInt(s.refunded_orders) || 0;
+    const repeatRate = parseInt(s.repeat_rate) || 0;
 
     const prevOrders = parseInt(prev.total_orders) || 0;
     const prevRevenue = parseFloat(prev.total_revenue) || 0;
@@ -16396,14 +16395,8 @@ function renderShopifyLiveDashboard(analytics) {
     animateNumber(document.getElementById('dashUniqueBuyers'), uniqueBuyers);
     setText('dashUniqueBuyersSub', 'placed orders in period');
 
-    animateNumber(document.getElementById('dashUnfulfilled'), unfulfilledOrders);
-    setText('dashRefunded', `${refundedOrders} refunded`);
-
-    const unfulfilledEl = document.getElementById('dashUnfulfilled');
-    if (unfulfilledEl) {
-        if (unfulfilledOrders > 0) unfulfilledEl.classList.add('shopify-kpi-warn');
-        else unfulfilledEl.classList.remove('shopify-kpi-warn');
-    }
+    setText('dashRepeatRate', `${repeatRate}%`);
+    setText('dashRepeatRateSub', `${returningBuyers.toLocaleString()} of ${(newBuyers + returningBuyers).toLocaleString()} buyers are returning`);
 
     // Charts
     renderDashRevenueChart(analytics.daily || []);
@@ -16553,7 +16546,7 @@ CURRENT PERIOD (Last ${days} days):
 - Unique Buyers: ${s.unique_customers} | Transactions/Customer: ${s.transactions_per_customer}
 - New Buyers: ${s.new_buyers} | Returning Buyers: ${s.returning_buyers}
 - New Customer Accounts: ${s.new_customers}
-- Unfulfilled: ${s.unfulfilled_orders} | Refunded: ${s.refunded_orders}
+- Repeat Rate: ${s.repeat_rate}%
 
 PREVIOUS PERIOD (Prior ${days} days):
 - Transactions: ${prev.total_orders || 0} | Revenue: $${prev.total_revenue || 0} | Avg Order: $${prev.avg_order_value || 0}
