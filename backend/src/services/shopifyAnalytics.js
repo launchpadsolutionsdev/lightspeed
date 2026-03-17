@@ -216,6 +216,11 @@ async function runIncrementalSync(organizationId) {
     const logId = await createSyncLog(organizationId, 'incremental');
 
     try {
+        await pool.query(
+            `UPDATE shopify_stores SET analytics_sync_status = 'syncing', analytics_sync_error = NULL, updated_at = NOW() WHERE organization_id = $1`,
+            [organizationId]
+        );
+
         let totalRecords = 0;
 
         // Test ShopifyQL availability
@@ -248,6 +253,10 @@ async function runIncrementalSync(organizationId) {
         await completeSyncLog(logId, 'completed', totalRecords);
         return { success: true, records: totalRecords };
     } catch (error) {
+        await pool.query(
+            `UPDATE shopify_stores SET analytics_sync_status = 'error', analytics_sync_error = $2, updated_at = NOW() WHERE organization_id = $1`,
+            [organizationId, error.message]
+        );
         await completeSyncLog(logId, 'failed', 0, error.message);
         throw error;
     }
@@ -316,44 +325,7 @@ async function syncDailySales(store, organizationId, days) {
 
         return salesRows.length;
     } catch (error) {
-        console.error('syncDailySales error:', error.message);
-        // If ShopifyQL is not available, use GraphQL order count as minimal fallback
-        return await syncDailySalesMinimalFallback(store, organizationId, days);
-    }
-}
-
-/**
- * Minimal fallback when ShopifyQL is not available.
- * Uses GraphQL ordersCount instead of paginating all orders via REST.
- */
-async function syncDailySalesMinimalFallback(store, organizationId, days) {
-    try {
-        const sinceDate = new Date();
-        sinceDate.setDate(sinceDate.getDate() - days);
-        const sinceISO = sinceDate.toISOString().substring(0, 10);
-
-        const query = `{
-            ordersCount(query: "created_at:>=${sinceISO}") { count }
-            currentAppInstallation { activeSubscriptions { name } }
-        }`;
-
-        const data = await shopifyGraphQL(store.shop_domain, store.access_token, query);
-        const totalOrders = data?.ordersCount?.count || 0;
-
-        // Insert a single summary row for today with order count
-        const today = new Date().toISOString().substring(0, 10);
-        await pool.query(
-            `INSERT INTO daily_sales_metrics (organization_id, date, total_orders, updated_at)
-             VALUES ($1, $2, $3, NOW())
-             ON CONFLICT (organization_id, date) DO UPDATE SET
-                total_orders = EXCLUDED.total_orders,
-                updated_at = NOW()`,
-            [organizationId, today, totalOrders]
-        );
-
-        return 1;
-    } catch (err) {
-        console.error('syncDailySalesMinimalFallback error:', err.message);
+        console.error('syncDailySales ShopifyQL error:', error.message);
         return 0;
     }
 }
@@ -719,70 +691,75 @@ async function syncPricePoints(store, organizationId) {
 }
 
 async function syncRecentOrders(store, organizationId) {
-    const query = `{
-        orders(first: 50, sortKey: CREATED_AT, reverse: true) {
-            edges {
-                node {
-                    id
-                    name
-                    createdAt
-                    totalPriceSet { shopMoney { amount currencyCode } }
-                    displayFinancialStatus
-                    displayFulfillmentStatus
-                    customer { firstName lastName email }
-                    shippingAddress { province country }
-                    lineItems(first: 5) {
-                        edges {
-                            node { title quantity originalUnitPriceSet { shopMoney { amount } } }
+    try {
+        const query = `{
+            orders(first: 50, sortKey: CREATED_AT, reverse: true) {
+                edges {
+                    node {
+                        id
+                        name
+                        createdAt
+                        totalPriceSet { shopMoney { amount currencyCode } }
+                        displayFinancialStatus
+                        displayFulfillmentStatus
+                        customer { firstName lastName email }
+                        shippingAddress { province country }
+                        lineItems(first: 5) {
+                            edges {
+                                node { title quantity originalUnitPriceSet { shopMoney { amount } } }
+                            }
                         }
                     }
                 }
             }
+        }`;
+
+        const data = await shopifyGraphQL(store.shop_domain, store.access_token, query);
+        const orders = data?.orders?.edges || [];
+
+        // Clear old orders and insert new ones
+        await pool.query('DELETE FROM dashboard_recent_orders WHERE organization_id = $1', [organizationId]);
+
+        for (const { node: order } of orders) {
+            const lineItems = (order.lineItems?.edges || []).map(e => ({
+                title: e.node.title,
+                quantity: e.node.quantity,
+                price_cents: toCents(e.node.originalUnitPriceSet?.shopMoney?.amount),
+            }));
+
+            await pool.query(
+                `INSERT INTO dashboard_recent_orders (organization_id, shopify_order_id, order_number, created_at, total_price_cents, currency_code, financial_status, fulfillment_status, customer_name, customer_email, province, country, line_items_summary)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                 ON CONFLICT (organization_id, shopify_order_id) DO UPDATE SET
+                    order_number = EXCLUDED.order_number,
+                    total_price_cents = EXCLUDED.total_price_cents,
+                    financial_status = EXCLUDED.financial_status,
+                    fulfillment_status = EXCLUDED.fulfillment_status,
+                    customer_name = EXCLUDED.customer_name,
+                    updated_at = NOW()`,
+                [
+                    organizationId,
+                    order.id,
+                    order.name,
+                    order.createdAt,
+                    toCents(order.totalPriceSet?.shopMoney?.amount),
+                    order.totalPriceSet?.shopMoney?.currencyCode || 'CAD',
+                    order.displayFinancialStatus,
+                    order.displayFulfillmentStatus,
+                    [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' ') || 'Guest',
+                    order.customer?.email,
+                    order.shippingAddress?.province,
+                    order.shippingAddress?.country,
+                    JSON.stringify(lineItems),
+                ]
+            );
         }
-    }`;
 
-    const data = await shopifyGraphQL(store.shop_domain, store.access_token, query);
-    const orders = data?.orders?.edges || [];
-
-    // Clear old orders and insert new ones
-    await pool.query('DELETE FROM dashboard_recent_orders WHERE organization_id = $1', [organizationId]);
-
-    for (const { node: order } of orders) {
-        const lineItems = (order.lineItems?.edges || []).map(e => ({
-            title: e.node.title,
-            quantity: e.node.quantity,
-            price_cents: toCents(e.node.originalUnitPriceSet?.shopMoney?.amount),
-        }));
-
-        await pool.query(
-            `INSERT INTO dashboard_recent_orders (organization_id, shopify_order_id, order_number, created_at, total_price_cents, currency_code, financial_status, fulfillment_status, customer_name, customer_email, province, country, line_items_summary)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-             ON CONFLICT (organization_id, shopify_order_id) DO UPDATE SET
-                order_number = EXCLUDED.order_number,
-                total_price_cents = EXCLUDED.total_price_cents,
-                financial_status = EXCLUDED.financial_status,
-                fulfillment_status = EXCLUDED.fulfillment_status,
-                customer_name = EXCLUDED.customer_name,
-                updated_at = NOW()`,
-            [
-                organizationId,
-                order.id,
-                order.name,
-                order.createdAt,
-                toCents(order.totalPriceSet?.shopMoney?.amount),
-                order.totalPriceSet?.shopMoney?.currencyCode || 'CAD',
-                order.displayFinancialStatus,
-                order.displayFulfillmentStatus,
-                [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' ') || 'Guest',
-                order.customer?.email,
-                order.shippingAddress?.province,
-                order.shippingAddress?.country,
-                JSON.stringify(lineItems),
-            ]
-        );
+        return orders.length;
+    } catch (err) {
+        console.error('syncRecentOrders error:', err.message);
+        return 0;
     }
-
-    return orders.length;
 }
 
 /**
