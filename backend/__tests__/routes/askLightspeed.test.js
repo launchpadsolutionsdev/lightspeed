@@ -550,14 +550,14 @@ describe('Tool Definitions', () => {
         expect(source).toContain("name: 'search_home_base'");
     });
 
-    it('has exactly 8 tools defined', () => {
+    it('has exactly 10 tools defined', () => {
         const toolCount = (source.match(/name: '/g) || []).length;
-        // The TOOLS array should have 8 entries
+        // The TOOLS array should have 10 entries
         // (name: ' appears for each tool definition plus maybe elsewhere, so check the TOOLS array)
         expect(source).toContain('const TOOLS = [');
         // Count tool objects by looking for 'input_schema'
         const schemaCount = (source.match(/input_schema:/g) || []).length;
-        expect(schemaCount).toBe(8);
+        expect(schemaCount).toBe(10);
     });
 
     it('requires confirmation for write tools (create_runway_events, save_to_knowledge_base)', () => {

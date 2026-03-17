@@ -6,7 +6,11 @@
 (function () {
     'use strict';
 
-    const API_BASE = window.API_BASE || '';
+    const API_BASE = window.API_BASE || (
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:3001'
+            : 'https://lightspeed-backend.onrender.com'
+    );
     let sdCharts = {};
     let sdCurrentPreset = 'last_30_days';
     let sdCompare = false;
@@ -22,7 +26,7 @@
     // ─── Helpers ────────────────────────────────────────────────────
 
     function sdAuthHeaders() {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token');
         return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
     }
 

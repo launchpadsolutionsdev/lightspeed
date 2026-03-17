@@ -356,7 +356,7 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
 /**
  * Look up orders by order number or email directly from Shopify.
  */
-async function lookupOrder(organizationId, { orderNumber, email }) {
+async function lookupOrder(organizationId, { orderNumber, email, customerName }) {
     const store = await getStoreConnection(organizationId);
     if (!store) return [];
 
@@ -371,6 +371,23 @@ async function lookupOrder(organizationId, { orderNumber, email }) {
         const data = await shopifyFetch(store.shop_domain, store.access_token,
             `/orders.json?email=${encodeURIComponent(email.toLowerCase())}&status=any&limit=10`);
         return (data.orders || []).map(normalizeOrder);
+    }
+
+    // Search by customer name: find matching customers first, then fetch their orders
+    if (customerName) {
+        const customers = await searchCustomers(organizationId, customerName);
+        if (customers.length === 0) return [];
+
+        const allOrders = [];
+        // Fetch orders for up to 3 matching customers to avoid excessive API calls
+        for (const cust of customers.slice(0, 3)) {
+            if (cust.email) {
+                const data = await shopifyFetch(store.shop_domain, store.access_token,
+                    `/orders.json?email=${encodeURIComponent(cust.email)}&status=any&limit=10`);
+                allOrders.push(...(data.orders || []).map(normalizeOrder));
+            }
+        }
+        return allOrders;
     }
 
     return [];
@@ -388,6 +405,25 @@ async function lookupCustomer(organizationId, email) {
     const customer = data.customers?.[0];
     if (!customer) return null;
 
+    return normalizeCustomer(customer);
+}
+
+/**
+ * Search customers by name, email, or general query from Shopify.
+ */
+async function searchCustomers(organizationId, query) {
+    const store = await getStoreConnection(organizationId);
+    if (!store) return [];
+
+    const data = await shopifyFetch(store.shop_domain, store.access_token,
+        `/customers/search.json?query=${encodeURIComponent(query)}&limit=10`);
+    return (data.customers || []).map(normalizeCustomer);
+}
+
+/**
+ * Normalize a Shopify customer into a flat object.
+ */
+function normalizeCustomer(customer) {
     return {
         first_name: customer.first_name,
         last_name: customer.last_name,
@@ -769,6 +805,7 @@ module.exports = {
     // Live lookups (direct API)
     lookupOrder,
     lookupCustomer,
+    searchCustomers,
 
     // AI Context
     buildContextForInquiry,
