@@ -2,6 +2,11 @@
  * Shopify Analytics Sync Service
  * Uses ShopifyQL for aggregated metrics and GraphQL for recent orders.
  * All data stored locally for instant dashboard loads.
+ *
+ * IMPORTANT: This service NEVER paginates individual orders via REST API.
+ * Stores can have 100k+ orders — fetching them individually would OOM.
+ * All aggregate metrics come from ShopifyQL (server-side aggregation).
+ * Only the 50 most recent orders are fetched via GraphQL for the order list.
  */
 
 const pool = require('../../config/database');
@@ -45,7 +50,7 @@ async function shopifyGraphQL(shopDomain, accessToken, query, variables = {}) {
     } catch (err) {
         clearTimeout(timeout);
         if (err.name === 'AbortError') {
-            throw new Error('Shopify GraphQL request timed out');
+            throw new Error('Shopify API request timed out');
         }
         throw err;
     }
@@ -117,23 +122,17 @@ async function runFullSync(organizationId) {
 
         let totalRecords = 0;
 
-        // Sync daily sales (last 365 days)
+        // All of these use ShopifyQL (server-side aggregation) — no individual order fetching
         totalRecords += await syncDailySales(store, organizationId, 365);
-
-        // Sync product sales (last 365 days)
         totalRecords += await syncProductSales(store, organizationId, 365);
-
-        // Sync sales by channel (last 365 days)
         totalRecords += await syncSalesByChannel(store, organizationId, 365);
-
-        // Sync sales by region (last 365 days)
         totalRecords += await syncSalesByRegion(store, organizationId, 365);
 
-        // Sync recent orders via GraphQL
+        // Fetch only 50 recent orders via GraphQL (not REST pagination)
         totalRecords += await syncRecentOrders(store, organizationId);
 
-        // Sync extended analytics (customers, cities, price points) in a single pass
-        totalRecords += await syncExtendedMetrics(store, organizationId, 365);
+        // Customer metrics via GraphQL (aggregated, not per-order)
+        totalRecords += await syncCustomerMetrics(store, organizationId);
 
         // Store currency from shop info
         await syncStoreCurrency(store, organizationId);
@@ -178,7 +177,7 @@ async function runIncrementalSync(organizationId) {
         totalRecords += await syncSalesByChannel(store, organizationId, 2);
         totalRecords += await syncSalesByRegion(store, organizationId, 2);
         totalRecords += await syncRecentOrders(store, organizationId);
-        totalRecords += await syncExtendedMetrics(store, organizationId, 2);
+        totalRecords += await syncCustomerMetrics(store, organizationId);
 
         await pool.query(
             `UPDATE shopify_stores SET last_incremental_sync_at = NOW(), analytics_sync_status = 'synced', analytics_sync_error = NULL, updated_at = NOW() WHERE organization_id = $1`,
@@ -193,7 +192,7 @@ async function runIncrementalSync(organizationId) {
     }
 }
 
-// ─── Sync Helpers ───────────────────────────────────────────────────
+// ─── Sync Helpers (all use ShopifyQL — server-side aggregation) ─────
 
 async function syncDailySales(store, organizationId, days) {
     try {
@@ -233,190 +232,84 @@ async function syncDailySales(store, organizationId, days) {
             );
         }
 
-        // Also sync fulfillment / customer breakdowns via orders table
-        const orderRows = await runShopifyQL(
-            store.shop_domain,
-            store.access_token,
-            `FROM orders SHOW count(*) AS order_count, financial_status GROUP BY day, financial_status SINCE -${days}d UNTIL today ORDER BY day ASC`
-        );
-
-        const dayStatusMap = {};
-        for (const row of orderRows) {
-            const date = row.day || row.date;
-            if (!date) continue;
-            if (!dayStatusMap[date]) dayStatusMap[date] = {};
-            dayStatusMap[date][row.financial_status] = parseInt(row.order_count) || 0;
-        }
-
-        for (const [date, statuses] of Object.entries(dayStatusMap)) {
-            await pool.query(
-                `UPDATE daily_sales_metrics SET
-                    cancelled_orders = $3,
-                    refunded_orders = $4,
-                    updated_at = NOW()
-                 WHERE organization_id = $1 AND date = $2`,
-                [
-                    organizationId,
-                    date,
-                    statuses.cancelled || statuses.voided || 0,
-                    statuses.refunded || statuses.partially_refunded || 0,
-                ]
+        // Also sync fulfillment / customer breakdowns via orders ShopifyQL
+        try {
+            const orderRows = await runShopifyQL(
+                store.shop_domain,
+                store.access_token,
+                `FROM orders SHOW count(*) AS order_count, financial_status GROUP BY day, financial_status SINCE -${days}d UNTIL today ORDER BY day ASC`
             );
+
+            const dayStatusMap = {};
+            for (const row of orderRows) {
+                const date = row.day || row.date;
+                if (!date) continue;
+                if (!dayStatusMap[date]) dayStatusMap[date] = {};
+                dayStatusMap[date][row.financial_status] = parseInt(row.order_count) || 0;
+            }
+
+            for (const [date, statuses] of Object.entries(dayStatusMap)) {
+                await pool.query(
+                    `UPDATE daily_sales_metrics SET
+                        cancelled_orders = $3,
+                        refunded_orders = $4,
+                        updated_at = NOW()
+                     WHERE organization_id = $1 AND date = $2`,
+                    [
+                        organizationId,
+                        date,
+                        statuses.cancelled || statuses.voided || 0,
+                        statuses.refunded || statuses.partially_refunded || 0,
+                    ]
+                );
+            }
+        } catch (err) {
+            console.error('syncDailySales order status error (non-fatal):', err.message);
         }
 
         return rows.length;
     } catch (error) {
         console.error('syncDailySales error:', error.message);
-        // Fall back to REST API if ShopifyQL not available
-        return await syncDailySalesFromREST(store, organizationId, days);
+        // If ShopifyQL is not available, use GraphQL order count as minimal fallback
+        return await syncDailySalesMinimalFallback(store, organizationId, days);
     }
 }
 
 /**
- * Fallback: sync daily sales from REST API order counts (for stores without ShopifyQL access).
+ * Minimal fallback when ShopifyQL is not available.
+ * Uses GraphQL ordersCount instead of paginating all orders via REST.
  */
-async function syncDailySalesFromREST(store, organizationId, days) {
-    const now = new Date();
-    const sinceDate = new Date(now);
-    sinceDate.setDate(sinceDate.getDate() - days);
+async function syncDailySalesMinimalFallback(store, organizationId, days) {
+    try {
+        const sinceDate = new Date();
+        sinceDate.setDate(sinceDate.getDate() - days);
+        const sinceISO = sinceDate.toISOString().substring(0, 10);
 
-    const endpoint = `/orders.json?limit=250&status=any&created_at_min=${sinceDate.toISOString()}&fields=id,created_at,total_price,subtotal_price,total_tax,total_discounts,financial_status,fulfillment_status,customer,line_items,shipping_lines,shipping_address,billing_address`;
+        const query = `{
+            ordersCount(query: "created_at:>=${sinceISO}") { count }
+            currentAppInstallation { activeSubscriptions { name } }
+        }`;
 
-    // Aggregate all three maps in a single streaming pass to avoid holding all orders in memory
-    const dayMap = {};
-    const productDayMap = {};
-    const regionDayMap = {};
+        const data = await shopifyGraphQL(store.shop_domain, store.access_token, query);
+        const totalOrders = data?.ordersCount?.count || 0;
 
-    await fetchAllPages(store, endpoint, 'orders', {
-        onPage(batch) {
-            for (const order of batch) {
-                const date = order.created_at?.substring(0, 10);
-                if (!date) continue;
-
-                // --- Daily aggregation ---
-                if (!dayMap[date]) {
-                    dayMap[date] = {
-                        gross_sales: 0, net_sales: 0, refunds: 0, discounts: 0, taxes: 0, shipping: 0,
-                        total_orders: 0, units_sold: 0, new_customers: 0, returning_customers: 0,
-                        fulfilled: 0, unfulfilled: 0, partially_fulfilled: 0, cancelled: 0, refunded: 0,
-                    };
-                }
-
-                const d = dayMap[date];
-                const totalPrice = parseFloat(order.total_price) || 0;
-                const subtotal = parseFloat(order.subtotal_price) || 0;
-                const tax = parseFloat(order.total_tax) || 0;
-                const discount = parseFloat(order.total_discounts) || 0;
-                const shipping = (order.shipping_lines || []).reduce((s, l) => s + (parseFloat(l.price) || 0), 0);
-
-                d.gross_sales += subtotal + discount;
-                d.net_sales += subtotal;
-                d.taxes += tax;
-                d.discounts += discount;
-                d.shipping += shipping;
-                d.total_orders++;
-
-                const units = (order.line_items || []).reduce((s, li) => s + (li.quantity || 0), 0);
-                d.units_sold += units;
-
-                if (order.financial_status === 'refunded') { d.refunded++; d.refunds += totalPrice; }
-                if (order.financial_status === 'voided' || order.cancelled_at) d.cancelled++;
-
-                if (order.fulfillment_status === 'fulfilled') d.fulfilled++;
-                else if (order.fulfillment_status === 'partial') d.partially_fulfilled++;
-                else d.unfulfilled++;
-
-                if (order.customer?.orders_count <= 1) d.new_customers++;
-                else d.returning_customers++;
-
-                // --- Product aggregation ---
-                for (const item of (order.line_items || [])) {
-                    const pkey = `${date}:${item.product_id || 'unknown'}`;
-                    if (!productDayMap[pkey]) {
-                        productDayMap[pkey] = { date, product_id: String(item.product_id || 'unknown'), product_title: item.title || 'Unknown', revenue: 0, units: 0 };
-                    }
-                    productDayMap[pkey].revenue += (parseFloat(item.price) || 0) * (item.quantity || 0);
-                    productDayMap[pkey].units += item.quantity || 0;
-                }
-
-                // --- Region aggregation ---
-                const addr = order.shipping_address || order.billing_address;
-                const province = addr?.province || 'Unknown';
-                const country = addr?.country || addr?.country_code || 'Unknown';
-                const rkey = `${date}:${province}:${country}`;
-                if (!regionDayMap[rkey]) {
-                    regionDayMap[rkey] = { date, province, country, revenue: 0, orders: 0 };
-                }
-                regionDayMap[rkey].revenue += parseFloat(order.total_price) || 0;
-                regionDayMap[rkey].orders++;
-            }
-        },
-    });
-
-    for (const [date, d] of Object.entries(dayMap)) {
-        const aov = d.total_orders > 0 ? Math.round((d.net_sales / d.total_orders) * 100) : 0;
+        // Insert a single summary row for today with order count
+        const today = new Date().toISOString().substring(0, 10);
         await pool.query(
-            `INSERT INTO daily_sales_metrics (organization_id, date, gross_sales_cents, net_sales_cents, refunds_cents, discounts_cents, taxes_cents, shipping_cents, total_orders, total_units_sold, new_customers, returning_customers, average_order_value_cents, fulfilled_orders, unfulfilled_orders, partially_fulfilled_orders, cancelled_orders, refunded_orders, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
+            `INSERT INTO daily_sales_metrics (organization_id, date, total_orders, updated_at)
+             VALUES ($1, $2, $3, NOW())
              ON CONFLICT (organization_id, date) DO UPDATE SET
-                gross_sales_cents = EXCLUDED.gross_sales_cents,
-                net_sales_cents = EXCLUDED.net_sales_cents,
-                refunds_cents = EXCLUDED.refunds_cents,
-                discounts_cents = EXCLUDED.discounts_cents,
-                taxes_cents = EXCLUDED.taxes_cents,
-                shipping_cents = EXCLUDED.shipping_cents,
                 total_orders = EXCLUDED.total_orders,
-                total_units_sold = EXCLUDED.total_units_sold,
-                new_customers = EXCLUDED.new_customers,
-                returning_customers = EXCLUDED.returning_customers,
-                average_order_value_cents = EXCLUDED.average_order_value_cents,
-                fulfilled_orders = EXCLUDED.fulfilled_orders,
-                unfulfilled_orders = EXCLUDED.unfulfilled_orders,
-                partially_fulfilled_orders = EXCLUDED.partially_fulfilled_orders,
-                cancelled_orders = EXCLUDED.cancelled_orders,
-                refunded_orders = EXCLUDED.refunded_orders,
                 updated_at = NOW()`,
-            [
-                organizationId, date,
-                toCents(d.gross_sales), toCents(d.net_sales), toCents(d.refunds), toCents(d.discounts),
-                toCents(d.taxes), toCents(d.shipping), d.total_orders, d.units_sold,
-                d.new_customers, d.returning_customers, aov,
-                d.fulfilled, d.unfulfilled, d.partially_fulfilled, d.cancelled, d.refunded,
-            ]
+            [organizationId, today, totalOrders]
         );
-    }
 
-    // Write product aggregations
-    for (const p of Object.values(productDayMap)) {
-        await pool.query(
-            `INSERT INTO product_sales_metrics (organization_id, date, product_id, product_title, revenue_cents, units_sold, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, NOW())
-             ON CONFLICT (organization_id, date, product_id) DO UPDATE SET
-                product_title = EXCLUDED.product_title,
-                revenue_cents = EXCLUDED.revenue_cents,
-                units_sold = EXCLUDED.units_sold,
-                updated_at = NOW()`,
-            [organizationId, p.date, p.product_id, p.product_title, toCents(p.revenue), p.units]
-        );
+        return 1;
+    } catch (err) {
+        console.error('syncDailySalesMinimalFallback error:', err.message);
+        return 0;
     }
-
-    // Write region aggregations
-    for (const r of Object.values(regionDayMap)) {
-        await pool.query(
-            `INSERT INTO sales_by_region (organization_id, date, province, country, revenue_cents, order_count)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (organization_id, date, province, country) DO UPDATE SET
-                revenue_cents = EXCLUDED.revenue_cents,
-                order_count = EXCLUDED.order_count`,
-            [organizationId, r.date, r.province, r.country, toCents(r.revenue), r.orders]
-        );
-    }
-
-    return Object.keys(dayMap).length;
 }
-
-// aggregateProductSalesFromOrders and aggregateRegionSalesFromOrders
-// are now inlined into syncDailySalesFromREST's streaming onPage callback
 
 async function syncProductSales(store, organizationId, days) {
     try {
@@ -443,7 +336,7 @@ async function syncProductSales(store, organizationId, days) {
         }
         return rows.length;
     } catch {
-        return 0; // Fallback already handled in syncDailySalesFromREST
+        return 0;
     }
 }
 
@@ -504,7 +397,7 @@ async function syncSalesByRegion(store, organizationId, days) {
 
 async function syncRecentOrders(store, organizationId) {
     const query = `{
-        orders(first: 100, sortKey: CREATED_AT, reverse: true) {
+        orders(first: 50, sortKey: CREATED_AT, reverse: true) {
             edges {
                 node {
                     id
@@ -570,170 +463,47 @@ async function syncRecentOrders(store, organizationId) {
 }
 
 /**
- * Combined sync for customers, cities, and price points in a SINGLE pass through orders.
- * Previously these were 3 separate fetchAllPages calls, each fetching all orders — causing OOM.
+ * Sync customer metrics using GraphQL customers query.
+ * Uses GraphQL to fetch top customers by order count — no REST pagination.
  */
-async function syncExtendedMetrics(store, organizationId, days) {
+async function syncCustomerMetrics(store, organizationId) {
     try {
-        const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=created_at,total_price,email,customer,shipping_address,billing_address,line_items`;
-
-        const customerMap = {};
-        const cityMap = {};
-        const ppMap = {};
-
-        await fetchAllPages(store, endpoint, 'orders', {
-            onPage(batch) {
-                for (const order of batch) {
-                    const date = order.created_at?.substring(0, 10);
-                    if (!date) continue;
-                    const totalPrice = parseFloat(order.total_price) || 0;
-
-                    // --- Customer aggregation ---
-                    const email = (order.email || order.customer?.email || '').toLowerCase();
-                    if (email) {
-                        if (!customerMap[email]) {
-                            customerMap[email] = {
-                                email,
-                                name: order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : email,
-                                total_spent: 0, order_count: 0, last_order_at: order.created_at,
-                            };
-                        }
-                        customerMap[email].total_spent += totalPrice;
-                        customerMap[email].order_count++;
-                        if (order.created_at > customerMap[email].last_order_at) customerMap[email].last_order_at = order.created_at;
-                    }
-
-                    // --- City aggregation ---
-                    const addr = order.shipping_address || order.billing_address;
-                    const city = addr?.city?.trim() || 'Unknown';
-                    const province = addr?.province || '';
-                    const country = addr?.country || addr?.country_code || 'Unknown';
-                    const cityKey = `${date}:${city}:${province}`;
-                    if (!cityMap[cityKey]) {
-                        cityMap[cityKey] = { date, city, province, country, revenue: 0, orders: 0, emails: new Set() };
-                    }
-                    cityMap[cityKey].revenue += totalPrice;
-                    cityMap[cityKey].orders++;
-                    if (order.email) cityMap[cityKey].emails.add(order.email.toLowerCase());
-
-                    // --- Price point aggregation ---
-                    for (const item of (order.line_items || [])) {
-                        const price = parseFloat(item.price) || 0;
-                        const bucket = priceBucket(price);
-                        const ppKey = `${date}:${bucket}:${item.title || 'Unknown'}`;
-                        if (!ppMap[ppKey]) {
-                            ppMap[ppKey] = { date, bucket, title: item.title || 'Unknown', price_cents: toCents(price), units: 0, revenue: 0 };
-                        }
-                        ppMap[ppKey].units += item.quantity || 0;
-                        ppMap[ppKey].revenue += price * (item.quantity || 0);
+        const query = `{
+            customers(first: 50, sortKey: TOTAL_SPENT, reverse: true) {
+                edges {
+                    node {
+                        email
+                        firstName
+                        lastName
+                        ordersCount
+                        totalSpentV2 { amount currencyCode }
+                        lastOrder { createdAt }
                     }
                 }
-            },
-        });
+            }
+        }`;
 
-        let totalRecords = 0;
+        const data = await shopifyGraphQL(store.shop_domain, store.access_token, query);
+        const customers = data?.customers?.edges || [];
 
-        // Write customer data
-        const sorted = Object.values(customerMap).sort((a, b) => b.total_spent - a.total_spent).slice(0, 50);
         await pool.query('DELETE FROM shopify_top_customers WHERE organization_id = $1', [organizationId]);
-        for (const c of sorted) {
+        for (const { node: c } of customers) {
+            if (!c.email) continue;
+            const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email;
             await pool.query(
                 `INSERT INTO shopify_top_customers (organization_id, customer_email, customer_name, total_spent_cents, order_count, last_order_at, updated_at)
                  VALUES ($1, $2, $3, $4, $5, $6, NOW())
                  ON CONFLICT (organization_id, customer_email) DO UPDATE SET
                     customer_name = EXCLUDED.customer_name, total_spent_cents = EXCLUDED.total_spent_cents,
                     order_count = EXCLUDED.order_count, last_order_at = EXCLUDED.last_order_at, updated_at = NOW()`,
-                [organizationId, c.email, c.name, toCents(c.total_spent), c.order_count, c.last_order_at]
+                [organizationId, c.email, name, toCents(c.totalSpentV2?.amount), parseInt(c.ordersCount) || 0, c.lastOrder?.createdAt]
             );
         }
-        totalRecords += sorted.length;
-
-        // Write city data
-        for (const c of Object.values(cityMap)) {
-            await pool.query(
-                `INSERT INTO sales_by_city (organization_id, date, city, province, country, revenue_cents, order_count, customer_count)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                 ON CONFLICT (organization_id, date, city, province) DO UPDATE SET
-                    country = EXCLUDED.country, revenue_cents = EXCLUDED.revenue_cents,
-                    order_count = EXCLUDED.order_count, customer_count = EXCLUDED.customer_count`,
-                [organizationId, c.date, c.city, c.province, c.country, toCents(c.revenue), c.orders, c.emails.size]
-            );
-        }
-        totalRecords += Object.keys(cityMap).length;
-
-        // Write price point data
-        for (const p of Object.values(ppMap)) {
-            await pool.query(
-                `INSERT INTO price_point_metrics (organization_id, date, price_bucket, product_title, unit_price_cents, units_sold, revenue_cents)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)
-                 ON CONFLICT (organization_id, date, price_bucket, product_title) DO UPDATE SET
-                    unit_price_cents = EXCLUDED.unit_price_cents, units_sold = EXCLUDED.units_sold,
-                    revenue_cents = EXCLUDED.revenue_cents`,
-                [organizationId, p.date, p.bucket, p.title, p.price_cents, p.units, toCents(p.revenue)]
-            );
-        }
-        totalRecords += Object.keys(ppMap).length;
-
-        return totalRecords;
+        return customers.length;
     } catch (err) {
-        console.error('syncExtendedMetrics error:', err.message);
+        console.error('syncCustomerMetrics error:', err.message);
         return 0;
     }
-}
-
-function priceBucket(price) {
-    if (price <= 0) return '$0';
-    if (price < 10) return '$1-9';
-    if (price < 25) return '$10-24';
-    if (price < 50) return '$25-49';
-    if (price < 100) return '$50-99';
-    if (price < 250) return '$100-249';
-    if (price < 500) return '$250-499';
-    return '$500+';
-}
-
-function daysAgoISO(days) {
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    return d.toISOString();
-}
-
-const MAX_PAGES = 10; // Cap at 10 pages (2,500 orders max) to prevent OOM on 512MB heap
-
-async function fetchAllPages(store, endpoint, resourceKey, { maxPages = MAX_PAGES, onPage } = {}) {
-    const records = onPage ? null : [];
-    let url = `https://${store.shop_domain}/admin/api/${SHOPIFY_API_VERSION}${endpoint}`;
-    let page = 0;
-    while (url && page < maxPages) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000);
-        try {
-            const response = await fetch(url, {
-                headers: { 'X-Shopify-Access-Token': store.access_token, 'Content-Type': 'application/json' },
-                signal: controller.signal,
-            });
-            clearTimeout(timeout);
-            if (!response.ok) break;
-            const data = await response.json();
-            const batch = data[resourceKey] || [];
-            if (onPage) {
-                onPage(batch);
-            } else {
-                records.push(...batch);
-            }
-            page++;
-            const linkHeader = response.headers.get('link');
-            url = null;
-            if (linkHeader) {
-                const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-                if (nextMatch) url = nextMatch[1];
-            }
-        } catch {
-            clearTimeout(timeout);
-            break;
-        }
-    }
-    return records;
 }
 
 async function syncStoreCurrency(store, organizationId) {
@@ -748,6 +518,17 @@ async function syncStoreCurrency(store, organizationId) {
     } catch {
         // Non-fatal
     }
+}
+
+function priceBucket(price) {
+    if (price <= 0) return '$0';
+    if (price < 10) return '$1-9';
+    if (price < 25) return '$10-24';
+    if (price < 50) return '$25-49';
+    if (price < 100) return '$50-99';
+    if (price < 250) return '$100-249';
+    if (price < 500) return '$250-499';
+    return '$500+';
 }
 
 // ─── Webhook Handlers for Analytics ─────────────────────────────────
@@ -868,7 +649,6 @@ async function handleOrderWebhook(organizationId, topic, payload) {
     }
 
     if (topic === 'fulfillments/create' || topic === 'fulfillments/update') {
-        // Update the recent order's fulfillment status
         const orderId = String(payload.order_id);
         await pool.query(
             `UPDATE dashboard_recent_orders SET fulfillment_status = $3, updated_at = NOW() WHERE organization_id = $1 AND shopify_order_id = $2`,
@@ -877,7 +657,6 @@ async function handleOrderWebhook(organizationId, topic, payload) {
     }
 
     if (topic === 'orders/updated') {
-        // Update recent order status
         await pool.query(
             `UPDATE dashboard_recent_orders SET financial_status = $3, fulfillment_status = $4, updated_at = NOW() WHERE organization_id = $1 AND shopify_order_id = $2`,
             [organizationId, String(payload.id), payload.financial_status, payload.fulfillment_status]
