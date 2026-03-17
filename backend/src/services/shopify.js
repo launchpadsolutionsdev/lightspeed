@@ -500,9 +500,16 @@ async function buildContextForInquiry(organizationId, inquiry) {
     if (orderMatch) {
         specificLookupAttempted = true;
         const orderNumber = orderMatch[0];
-        const orders = await lookupOrder(organizationId, { orderNumber });
-        if (orders.length > 0) {
-            contextParts.push(formatOrderContext(orders));
+        try {
+            const orders = await lookupOrder(organizationId, { orderNumber });
+            if (orders.length > 0) {
+                contextParts.push(formatOrderContext(orders));
+            } else {
+                contextParts.push(`No orders found matching order number "${orderNumber}" in Shopify.`);
+            }
+        } catch (err) {
+            console.error('Shopify order lookup error:', err.message);
+            contextParts.push(`Order lookup for "${orderNumber}" failed: ${err.message}`);
         }
     }
 
@@ -511,24 +518,35 @@ async function buildContextForInquiry(organizationId, inquiry) {
     if (emailMatch) {
         specificLookupAttempted = true;
         const email = emailMatch[0].toLowerCase();
-        const orders = await lookupOrder(organizationId, { email });
-        if (orders.length > 0) {
-            contextParts.push(formatOrderContext(orders));
+        try {
+            const orders = await lookupOrder(organizationId, { email });
+            if (orders.length > 0) {
+                contextParts.push(formatOrderContext(orders));
+            } else {
+                contextParts.push(`No orders found for email "${email}" in Shopify.`);
+            }
+        } catch (err) {
+            console.error('Shopify order lookup by email error:', err.message);
+            contextParts.push(`Order lookup for "${email}" failed: ${err.message}`);
         }
 
-        const customer = await lookupCustomer(organizationId, email);
-        if (customer) {
-            contextParts.push(formatCustomerContext(customer));
+        try {
+            const customer = await lookupCustomer(organizationId, email);
+            if (customer) {
+                contextParts.push(formatCustomerContext(customer));
+            } else {
+                contextParts.push(`No customer profile found for "${email}" in Shopify.`);
+            }
+        } catch (err) {
+            console.error('Shopify customer lookup error:', err.message);
+            contextParts.push(`Customer lookup for "${email}" failed: ${err.message}`);
         }
     }
 
-    // For general Shopify/store questions, inject a quick summary.
-    // Skip this if a specific lookup was already attempted (email/order number)
-    // to avoid injecting aggregate data that would mislead the AI into thinking
-    // it can't do individual lookups — let it use the search tools instead.
+    // For general Shopify/store questions (no specific email/order), inject a summary
     if (!specificLookupAttempted) {
         const shopifyKeywords = /\b(shopify|store|order[s]?|sale[s]?|revenue|product[s]?|customer[s]?|inventory|refund|fulfill|shipping|best.?sell)/i;
-        if (contextParts.length === 0 && shopifyKeywords.test(inquiry)) {
+        if (shopifyKeywords.test(inquiry)) {
             try {
                 const summary = await buildAnalyticsSummary(organizationId, { days: 30 });
                 if (summary) contextParts.push(summary);
@@ -540,7 +558,7 @@ async function buildContextForInquiry(organizationId, inquiry) {
 
     if (contextParts.length === 0) return null;
 
-    return `\n\n--- SHOPIFY STORE DATA ---\nThe following real-time data was pulled from the organization's Shopify store. Use this data to provide accurate, specific responses. Reference actual order numbers, amounts, and statuses.\n\n${contextParts.join('\n\n')}`;
+    return `\n\n--- SHOPIFY STORE DATA ---\nThe following data was retrieved from the organization's connected Shopify store via live API lookup. Report these results directly to the user.\n\n${contextParts.join('\n\n')}`;
 }
 
 /**
