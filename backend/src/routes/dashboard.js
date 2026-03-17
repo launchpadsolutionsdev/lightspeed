@@ -313,8 +313,17 @@ router.post('/sync', authenticate, async (req, res) => {
             ? analyticsService.runIncrementalSync
             : analyticsService.runFullSync;
 
-        syncFn(organizationId).catch(error => {
+        syncFn(organizationId).catch(async (error) => {
             console.error('Manual sync error:', error.message);
+            // Safety net: ensure DB status is updated to 'error' so polling doesn't hang forever
+            try {
+                await pool.query(
+                    `UPDATE shopify_stores SET analytics_sync_status = 'error', analytics_sync_error = $2, updated_at = NOW() WHERE organization_id = $1 AND analytics_sync_status = 'syncing'`,
+                    [organizationId, error.message]
+                );
+            } catch (dbErr) {
+                console.error('Failed to update sync error status:', dbErr.message);
+            }
         });
     } catch (error) {
         console.error('Dashboard sync trigger error:', error);

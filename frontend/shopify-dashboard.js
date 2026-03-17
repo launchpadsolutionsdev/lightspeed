@@ -790,7 +790,13 @@
         const syncClass = status.sync_status === 'syncing' ? 'syncing' : status.sync_status === 'error' ? 'error' : '';
         const lastSync = status.last_incremental_sync || status.last_full_sync;
         const timeStr = lastSync ? sdTimeAgo(lastSync) : 'Never';
-        indicator.innerHTML = `<span class="sd-sync-dot ${syncClass}"></span> Last updated: ${timeStr}`;
+        if (status.sync_status === 'syncing') {
+            indicator.innerHTML = `<span class="sd-sync-dot syncing"></span> Syncing...`;
+        } else if (status.sync_status === 'error' && status.sync_error) {
+            indicator.innerHTML = `<span class="sd-sync-dot error"></span> Sync failed — click Refresh to retry`;
+        } else {
+            indicator.innerHTML = `<span class="sd-sync-dot ${syncClass}"></span> Last updated: ${timeStr}`;
+        }
 
         const banner = document.getElementById('sdSyncBanner');
         if (banner && status.sync_error) {
@@ -823,8 +829,13 @@
     }
 
     function sdPollSyncStatus(attempt) {
-        if (attempt > 30) return;
-        var delay = attempt < 3 ? 3000 : 5000;
+        // Keep polling for up to 5 minutes (60 attempts), backing off gradually
+        if (attempt > 60) {
+            var indicator = document.getElementById('sdSyncIndicator');
+            if (indicator) indicator.innerHTML = '<span class="sd-sync-dot error"></span> Sync timed out — try refreshing again';
+            return;
+        }
+        var delay = attempt < 3 ? 3000 : attempt < 10 ? 5000 : 10000;
         setTimeout(async () => {
             try {
                 var status = await sdFetch('sync-status');
@@ -832,12 +843,18 @@
                 if (status.sync_status === 'synced') {
                     sdLoadDashboard();
                 } else if (status.sync_status === 'error') {
-                    // Stop polling on error
+                    // Show error to user
+                    var indicator = document.getElementById('sdSyncIndicator');
+                    if (indicator) {
+                        var errMsg = status.sync_error || 'Unknown error';
+                        indicator.innerHTML = '<span class="sd-sync-dot error"></span> Sync failed: ' + errMsg;
+                    }
                 } else {
                     sdPollSyncStatus(attempt + 1);
                 }
             } catch {
-                // Stop polling on fetch error
+                // Retry on transient fetch errors instead of giving up
+                if (attempt < 60) sdPollSyncStatus(attempt + 1);
             }
         }, delay);
     }
