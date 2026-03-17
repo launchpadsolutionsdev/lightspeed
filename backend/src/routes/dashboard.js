@@ -300,6 +300,12 @@ router.post('/sync', authenticate, async (req, res) => {
             }
         }
 
+        // Set status to 'syncing' immediately so polling picks it up
+        await pool.query(
+            `UPDATE shopify_stores SET analytics_sync_status = 'syncing', analytics_sync_error = NULL, updated_at = NOW() WHERE organization_id = $1`,
+            [organizationId]
+        );
+
         // Respond immediately, run sync in background
         res.json({ success: true, message: 'Sync started' });
 
