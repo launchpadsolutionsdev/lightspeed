@@ -15,7 +15,6 @@
     let sdCurrentPreset = 'last_30_days';
     let sdCompare = false;
     let sdCurrency = 'CAD';
-    let sdRefreshTimer = null;
     let sdSalesMetric = 'net_sales'; // net_sales | gross_sales | orders
     let sdCustomStartDate = '';
     let sdCustomEndDate = '';
@@ -178,14 +177,6 @@
 
         // Load AI insights (separate, slower call)
         sdLoadInsights();
-
-        // Auto-refresh orders every 10s
-        sdStartAutoRefresh();
-    }
-
-    function sdStartAutoRefresh() {
-        if (sdRefreshTimer) clearInterval(sdRefreshTimer);
-        sdRefreshTimer = setInterval(sdRefreshOrders, 10000);
     }
 
     // ─── Render: KPI Cards ──────────────────────────────────────────
@@ -863,14 +854,6 @@
         }, delay);
     }
 
-    async function sdRefreshOrders() {
-        try {
-            const data = await sdFetch('recent-orders', { limit: 20 });
-            sdRenderOrderFeed(data);
-        } catch {
-            // Silent failure on auto-refresh
-        }
-    }
 
     // ─── Empty State ────────────────────────────────────────────────
 
@@ -1020,21 +1003,10 @@
         sdAlsConversation = [];
         sdAlsStreaming = false;
         sdSetupEvents();
-        sdLoadDashboard().then(() => {
-            // Timer is set inside sdLoadDashboard, but ensure it's running
-            // even if something went wrong during render
-            if (!sdRefreshTimer) sdStartAutoRefresh();
-        }).catch(() => {
-            // Ensure auto-refresh runs even if initial load fails
-            sdStartAutoRefresh();
-        });
+        sdLoadDashboard();
     };
 
     window.sdCleanup = function () {
-        if (sdRefreshTimer) {
-            clearInterval(sdRefreshTimer);
-            sdRefreshTimer = null;
-        }
         if (sdSearchDebounce) {
             clearTimeout(sdSearchDebounce);
             sdSearchDebounce = null;
