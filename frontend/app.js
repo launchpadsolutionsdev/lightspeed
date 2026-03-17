@@ -16277,319 +16277,229 @@ async function disconnectShopify() {
 
 // ==================== SHOPIFY LIVE DASHBOARD ====================
 
-let _shopifyDashChart = null;
-let _shopifyDashPollTimer = null;
-let _shopifyDashLastData = null;
+let _feedDashPollTimer = null;
+let _feedDashLastData = null;
+let _feedDashCountdown = null;
 
 /**
- * Initialize the Shopify dashboard section on the tool menu page.
- * Checks connection status and shows either connect prompt or live dashboard.
+ * Initialize the 50/50 Raffle Dashboard on the tool menu page.
  */
 async function initShopifyDashboard() {
     const section = document.getElementById('shopifyDashboardSection');
-    const connectPrompt = document.getElementById('shopifyConnectPrompt');
-    const liveDash = document.getElementById('shopifyLiveDashboard');
     if (!section) return;
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/shopify/status`, {
-            headers: getAuthHeaders()
-        });
-        if (!response.ok) {
-            section.style.display = 'none';
-            return;
-        }
+    section.style.display = 'block';
 
-        const data = await response.json();
-        section.style.display = 'block';
+    const connectPrompt = document.getElementById('shopifyConnectPrompt');
+    const liveDash = document.getElementById('shopifyLiveDashboard');
+    if (connectPrompt) connectPrompt.style.display = 'none';
+    if (liveDash) liveDash.style.display = 'block';
 
-        if (data.connected) {
-            connectPrompt.style.display = 'none';
-            liveDash.style.display = 'block';
-            document.getElementById('dashShopDomain').textContent = data.shopDomain;
+    await refreshFeedDashboard();
 
-            // Load live data from Shopify API
-            await refreshShopifyDashboard();
-
-            // Auto-refresh every 60 seconds
-            stopShopifyDashPolling();
-            _shopifyDashPollTimer = setInterval(refreshShopifyDashboard, 60000);
-        } else {
-            connectPrompt.style.display = 'block';
-            liveDash.style.display = 'none';
-            stopShopifyDashPolling();
-        }
-    } catch (err) {
-        console.warn('Shopify dashboard init failed:', err.message);
-        section.style.display = 'none';
-    }
+    // Auto-refresh every 2 minutes (matches backend cache TTL)
+    stopShopifyDashPolling();
+    _feedDashPollTimer = setInterval(refreshFeedDashboard, 2 * 60 * 1000);
 }
 
 /**
  * Stop the dashboard auto-refresh polling.
  */
 function stopShopifyDashPolling() {
-    if (_shopifyDashPollTimer) {
-        clearInterval(_shopifyDashPollTimer);
-        _shopifyDashPollTimer = null;
+    if (_feedDashPollTimer) {
+        clearInterval(_feedDashPollTimer);
+        _feedDashPollTimer = null;
+    }
+    if (_feedDashCountdown) {
+        clearInterval(_feedDashCountdown);
+        _feedDashCountdown = null;
     }
 }
 
 /**
- * Fetch analytics data and re-render the dashboard.
+ * Fetch raffle data from the feed proxy and render.
  */
-async function refreshShopifyDashboard() {
-    const days = parseInt(document.getElementById('dashPeriodSelect')?.value || '30');
+async function refreshFeedDashboard() {
+    const container = document.getElementById('feedDashboardContent');
+    if (!container) return;
+
+    // Only show loading on first load
+    if (!_feedDashLastData) {
+        container.innerHTML = '<div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading raffle data...</div></div>';
+    }
 
     try {
-        const analyticsRes = await fetch(`${API_BASE_URL}/api/shopify/analytics?days=${days}`, {
+        const res = await fetch(`${API_BASE_URL}/api/feed-dashboard/data`, {
             headers: getAuthHeaders()
         });
 
-        if (!analyticsRes.ok) return;
-
-        const analytics = await analyticsRes.json();
-        _shopifyDashLastData = { analytics, days };
-        renderShopifyLiveDashboard(analytics);
-    } catch (err) {
-        console.warn('Dashboard refresh failed:', err.message);
-    }
-}
-
-/**
- * Render the full dashboard: KPIs, charts, breakdowns, whales, insights.
- */
-function renderShopifyLiveDashboard(analytics) {
-    const s = analytics.summary;
-    const prev = analytics.previousPeriod || {};
-
-    const totalOrders = parseInt(s.total_orders) || 0;
-    const totalRevenue = parseFloat(s.total_revenue) || 0;
-    const avgOrderValue = parseFloat(s.avg_order_value) || 0;
-    const txPerCustomer = parseFloat(s.transactions_per_customer) || 0;
-    const uniqueBuyers = parseInt(s.unique_customers) || 0;
-    const totalCustomers = parseInt(s.total_customers) || 0;
-    const newCustomers = parseInt(s.new_customers) || 0;
-    const newBuyers = parseInt(s.new_buyers) || 0;
-    const returningBuyers = parseInt(s.returning_buyers) || 0;
-    const repeatRate = parseInt(s.repeat_rate) || 0;
-
-    const prevOrders = parseInt(prev.total_orders) || 0;
-    const prevRevenue = parseFloat(prev.total_revenue) || 0;
-    const prevAvg = parseFloat(prev.avg_order_value) || 0;
-
-    // Row 1: Core KPIs
-    animateNumber(document.getElementById('dashOrders'), totalOrders);
-    animateCurrency(document.getElementById('dashAvgOrder'), avgOrderValue);
-    setText('dashTxPerCustomer', txPerCustomer.toFixed(2));
-    animateCurrency(document.getElementById('dashRevenue'), totalRevenue);
-
-    setText('dashOrdersChange', changeText(totalOrders, prevOrders, 'orders'));
-    setText('dashAvgChange', changeText(avgOrderValue, prevAvg, '', true));
-    setText('dashTotalCustomers', `${totalCustomers.toLocaleString()} total customers`);
-    setText('dashRevenueChange', changeText(totalRevenue, prevRevenue, '', true));
-
-    setChangeClass('dashOrdersChange', totalOrders, prevOrders);
-    setChangeClass('dashAvgChange', avgOrderValue, prevAvg);
-    setChangeClass('dashRevenueChange', totalRevenue, prevRevenue);
-
-    // Row 2: Customer KPIs
-    animateNumber(document.getElementById('dashNewCustomers'), newCustomers);
-    setText('dashNewCustomersSub', 'accounts created in period');
-
-    const newPct = (newBuyers + returningBuyers) > 0 ? Math.round((newBuyers / (newBuyers + returningBuyers)) * 100) : 0;
-    setText('dashNewVsReturn', `${newPct}% / ${100 - newPct}%`);
-    setText('dashNewVsReturnSub', `${newBuyers.toLocaleString()} new, ${returningBuyers.toLocaleString()} returning`);
-
-    animateNumber(document.getElementById('dashUniqueBuyers'), uniqueBuyers);
-    setText('dashUniqueBuyersSub', 'placed orders in period');
-
-    setText('dashRepeatRate', `${repeatRate}%`);
-    setText('dashRepeatRateSub', `${returningBuyers.toLocaleString()} of ${(newBuyers + returningBuyers).toLocaleString()} buyers are returning`);
-
-    // Charts
-    renderDashRevenueChart(analytics.daily || []);
-    renderDashTopProducts(analytics.topProducts || []);
-
-    // Breakdowns
-    renderCityBreakdown(analytics.cityBreakdown || []);
-    renderPackageBreakdown(analytics.packageBreakdown || []);
-    renderWhales(analytics.whales || []);
-
-    // AI Insights (async)
-    generateDashInsights(analytics);
-}
-
-function setText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-}
-
-function changeText(current, previous, suffix, isCurrency) {
-    if (!previous || previous === 0) return 'No prior data';
-    const pctChange = Math.round(((current - previous) / previous) * 100);
-    const dir = pctChange >= 0 ? '+' : '';
-    return `${dir}${pctChange}% vs prior period`;
-}
-
-function setChangeClass(id, current, previous) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.remove('shopify-change-up', 'shopify-change-down');
-    if (previous > 0) {
-        el.classList.add(current >= previous ? 'shopify-change-up' : 'shopify-change-down');
-    }
-}
-
-function renderDashRevenueChart(dailyData) {
-    const ctx = document.getElementById('dashRevenueChart');
-    if (!ctx) return;
-
-    if (_shopifyDashChart) { _shopifyDashChart.destroy(); _shopifyDashChart = null; }
-    if (dailyData.length === 0) return;
-
-    const labels = dailyData.map(d => {
-        const dt = new Date(d.date);
-        return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    });
-    const revenues = dailyData.map(d => parseFloat(d.revenue) || 0);
-
-    _shopifyDashChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Revenue',
-                data: revenues,
-                backgroundColor: '#635BFF',
-                borderRadius: 4,
-                maxBarThickness: 24
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 800, easing: 'easeOutQuart' },
-            plugins: {
-                legend: { display: false },
-                tooltip: { callbacks: { label: c => `$${c.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })}` } }
-            },
-            scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#6B7C93', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
-                y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 }, color: '#6B7C93', callback: v => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}` }, beginAtZero: true }
+        if (!res.ok) {
+            if (!_feedDashLastData) {
+                container.innerHTML = '<div class="shopify-kpi-sub">Unable to load raffle data. Please try again later.</div>';
             }
-        }
-    });
-}
-
-function renderDashTopProducts(products) {
-    const container = document.getElementById('dashTopProducts');
-    if (!container) return;
-    if (products.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No sales data yet</div>'; return; }
-
-    container.innerHTML = products.slice(0, 5).map(p => {
-        const rev = parseFloat(p.total_revenue) || 0;
-        const qty = parseInt(p.total_quantity) || 0;
-        return `<div class="shopify-top-product">
-            <span class="shopify-top-product-name">${escapeHtml(p.product_title)}</span>
-            <span class="shopify-top-product-rev">$${rev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            <span class="shopify-top-product-qty">${qty} sold</span>
-        </div>`;
-    }).join('');
-}
-
-function renderCityBreakdown(cities) {
-    const container = document.getElementById('dashCityBreakdown');
-    if (!container) return;
-    if (cities.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No location data</div>'; return; }
-
-    container.innerHTML = cities.map(c => `<div class="shopify-breakdown-row">
-        <span class="shopify-breakdown-label">${escapeHtml(c.city)}</span>
-        <span class="shopify-breakdown-value">${c.customers.toLocaleString()}</span>
-        <span class="shopify-breakdown-sub">orders</span>
-    </div>`).join('');
-}
-
-function renderPackageBreakdown(packages) {
-    const container = document.getElementById('dashPackageBreakdown');
-    if (!container) return;
-    if (packages.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No package data</div>'; return; }
-
-    container.innerHTML = packages.map(p => `<div class="shopify-breakdown-row">
-        <span class="shopify-breakdown-label">${escapeHtml(p.package)}</span>
-        <span class="shopify-breakdown-value">${p.count.toLocaleString()}</span>
-        <span class="shopify-breakdown-sub">$${p.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-    </div>`).join('');
-}
-
-function renderWhales(whales) {
-    const container = document.getElementById('dashWhales');
-    if (!container) return;
-    if (whales.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No customer data</div>'; return; }
-
-    container.innerHTML = whales.map((w, i) => `<div class="shopify-breakdown-row">
-        <span class="shopify-whale-rank">#${i + 1}</span>
-        <span class="shopify-breakdown-label">${escapeHtml(w.name || w.email)}</span>
-        <span class="shopify-breakdown-value">$${w.total_spent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        <span class="shopify-breakdown-sub">${w.order_count} orders</span>
-    </div>`).join('');
-}
-
-/**
- * Generate AI insights by sending analytics to the /api/analyze endpoint.
- */
-async function generateDashInsights(analytics) {
-    const container = document.getElementById('dashInsights');
-    if (!container) return;
-
-    container.innerHTML = '<div class="shopify-kpi-sub">Generating insights...</div>';
-
-    const s = analytics.summary;
-    const prev = analytics.previousPeriod || {};
-    const days = parseInt(document.getElementById('dashPeriodSelect')?.value || '30');
-
-    const prompt = `You are a Shopify store analyst. Based on the following data for the last ${days} days, provide exactly 10 concise, actionable insights. Compare current period vs previous ${days} days where relevant. Be specific with numbers.
-
-CURRENT PERIOD (Last ${days} days):
-- Transactions: ${s.total_orders} | Revenue: $${s.total_revenue} | Avg Order: $${s.avg_order_value}
-- Unique Buyers: ${s.unique_customers} | Transactions/Customer: ${s.transactions_per_customer}
-- New Buyers: ${s.new_buyers} | Returning Buyers: ${s.returning_buyers}
-- New Customer Accounts: ${s.new_customers}
-- Repeat Rate: ${s.repeat_rate}%
-
-PREVIOUS PERIOD (Prior ${days} days):
-- Transactions: ${prev.total_orders || 0} | Revenue: $${prev.total_revenue || 0} | Avg Order: $${prev.avg_order_value || 0}
-
-TOP PRODUCTS: ${(analytics.topProducts || []).slice(0, 5).map(p => `${p.product_title}: ${p.total_quantity} sold, $${p.total_revenue}`).join('; ')}
-
-TOP CITIES: ${(analytics.cityBreakdown || []).slice(0, 5).map(c => `${c.city}: ${c.customers}`).join('; ')}
-
-TOP CUSTOMERS: ${(analytics.whales || []).slice(0, 5).map(w => `${w.name}: $${w.total_spent} (${w.order_count} orders)`).join('; ')}
-
-Format as a numbered list 1-10. Each insight should be 1-2 sentences. Focus on trends, opportunities, and concerns.`;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/analyze`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                data: { prompt },
-                reportType: 'shopify-insights',
-                additionalContext: prompt
-            })
-        });
-
-        if (!response.ok) {
-            container.innerHTML = '<div class="shopify-kpi-sub">Unable to generate insights at this time.</div>';
             return;
         }
 
-        const result = await response.json();
-        const text = result.content?.[0]?.text || result.text || 'No insights generated.';
-        container.innerHTML = renderSimpleMarkdown(text);
-    } catch {
-        container.innerHTML = '<div class="shopify-kpi-sub">Unable to generate insights at this time.</div>';
+        const data = await res.json();
+        _feedDashLastData = data;
+        renderRaffleDashboard(data);
+    } catch (err) {
+        console.warn('Feed dashboard refresh failed:', err.message);
+        if (!_feedDashLastData) {
+            container.innerHTML = '<div class="shopify-kpi-sub">Unable to connect to data feed.</div>';
+        }
     }
+}
+
+/**
+ * Render the 50/50 raffle dashboard.
+ */
+function renderRaffleDashboard(data) {
+    const container = document.getElementById('feedDashboardContent');
+    if (!container) return;
+
+    let html = '';
+
+    // Event title
+    html += `<div class="raffle-event-title">${escapeHtml(data.event)}</div>`;
+
+    // Date range
+    if (data.startDate && data.endDate) {
+        const start = new Date(data.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const end = new Date(data.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        html += `<div class="raffle-date-range">${start} &mdash; ${end}</div>`;
+    }
+
+    // Main jackpot hero
+    html += `<div class="raffle-hero">
+        <div class="raffle-hero-label">Current Jackpot</div>
+        <div class="raffle-hero-prize">${escapeHtml(data.prizeFormatted)}</div>
+        <div class="raffle-hero-sub">Total Pool: ${escapeHtml(data.poolFormatted)}</div>
+    </div>`;
+
+    // Countdown + Status row
+    html += '<div class="shopify-kpi-grid raffle-status-grid">';
+
+    // Time remaining
+    if (data.timeRemaining) {
+        html += `<div class="shopify-kpi-card">
+            <div class="shopify-kpi-label">Time Remaining</div>
+            <div class="shopify-kpi-value" id="raffleCountdown">${data.timeRemaining.days}d ${data.timeRemaining.hours}h</div>
+            <div class="shopify-kpi-sub">until draw closes</div>
+        </div>`;
+    } else if (data.mainDrawComplete) {
+        html += `<div class="shopify-kpi-card">
+            <div class="shopify-kpi-label">Draw Complete</div>
+            <div class="shopify-kpi-value raffle-winner-highlight">${escapeHtml(data.mainWinningNumber)}</div>
+            <div class="shopify-kpi-sub">Winning number</div>
+        </div>`;
+    } else {
+        html += `<div class="shopify-kpi-card">
+            <div class="shopify-kpi-label">Status</div>
+            <div class="shopify-kpi-value">Draw Pending</div>
+            <div class="shopify-kpi-sub">Ticket sales closed</div>
+        </div>`;
+    }
+
+    // Prizes drawn
+    html += `<div class="shopify-kpi-card">
+        <div class="shopify-kpi-label">Early Bird Prizes Drawn</div>
+        <div class="shopify-kpi-value">${data.totalDrawn} / ${data.totalSecondaryPrizes}</div>
+        <div class="shopify-kpi-sub">${data.upcomingPrizes.length} remaining</div>
+    </div>`;
+
+    // Pool
+    html += `<div class="shopify-kpi-card">
+        <div class="shopify-kpi-label">Total Pool</div>
+        <div class="shopify-kpi-value">${escapeHtml(data.poolFormatted)}</div>
+        <div class="shopify-kpi-sub">50/50 split</div>
+    </div>`;
+
+    // Winner's share
+    html += `<div class="shopify-kpi-card">
+        <div class="shopify-kpi-label">Winner Takes</div>
+        <div class="shopify-kpi-value">${escapeHtml(data.prizeFormatted)}</div>
+        <div class="shopify-kpi-sub">Half the pool</div>
+    </div>`;
+
+    html += '</div>';
+
+    // Early Bird Prizes — Drawn
+    if (data.drawnPrizes && data.drawnPrizes.length > 0) {
+        html += '<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">';
+        html += `<div class="shopify-chart-title">Early Bird Winners (${data.drawnPrizes.length})</div>`;
+        html += '<div class="raffle-prizes-list">';
+        data.drawnPrizes.forEach(p => {
+            const drawDate = p.drawDate ? new Date(p.drawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            html += `<div class="raffle-prize-row raffle-prize-drawn">
+                <span class="raffle-prize-status">&#10003;</span>
+                <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
+                <span class="raffle-prize-winner">${escapeHtml(p.winningNumber)}</span>
+                <span class="raffle-prize-date">${escapeHtml(drawDate)}</span>
+            </div>`;
+        });
+        html += '</div></div>';
+    }
+
+    // Early Bird Prizes — Upcoming
+    if (data.upcomingPrizes && data.upcomingPrizes.length > 0) {
+        html += '<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">';
+        html += `<div class="shopify-chart-title">Upcoming Draws (${data.upcomingPrizes.length})</div>`;
+        html += '<div class="raffle-prizes-list">';
+        data.upcomingPrizes.forEach(p => {
+            html += `<div class="raffle-prize-row raffle-prize-upcoming">
+                <span class="raffle-prize-status raffle-pending">&#9679;</span>
+                <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
+                <span class="raffle-prize-winner raffle-tbd">TBD</span>
+                <span class="raffle-prize-date"></span>
+            </div>`;
+        });
+        html += '</div></div>';
+    }
+
+    // Last updated
+    html += `<div class="feed-dash-updated">
+        Last updated: ${new Date(data.lastUpdated || Date.now()).toLocaleTimeString()}
+        &nbsp;&middot;&nbsp; Auto-refreshes every 2 minutes
+    </div>`;
+
+    container.innerHTML = html;
+
+    // Start live countdown timer
+    startRaffleCountdown(data.endDate);
+}
+
+/**
+ * Live countdown timer that ticks every second.
+ */
+function startRaffleCountdown(endDateStr) {
+    if (_feedDashCountdown) {
+        clearInterval(_feedDashCountdown);
+        _feedDashCountdown = null;
+    }
+    if (!endDateStr) return;
+
+    const endDate = new Date(endDateStr);
+
+    _feedDashCountdown = setInterval(() => {
+        const el = document.getElementById('raffleCountdown');
+        if (!el) { clearInterval(_feedDashCountdown); return; }
+
+        const now = new Date();
+        const diff = endDate - now;
+        if (diff <= 0) {
+            el.textContent = 'Draw Closed';
+            clearInterval(_feedDashCountdown);
+            return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+        el.textContent = `${days}d ${hours}h ${mins}m ${secs}s`;
+    }, 1000);
 }
 
 // stopSyncPolling kept as no-op for backward compatibility with openTool()
