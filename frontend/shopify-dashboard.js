@@ -179,9 +179,13 @@
         // Load AI insights (separate, slower call)
         sdLoadInsights();
 
-        // Auto-refresh orders every 30s
+        // Auto-refresh orders every 10s
+        sdStartAutoRefresh();
+    }
+
+    function sdStartAutoRefresh() {
         if (sdRefreshTimer) clearInterval(sdRefreshTimer);
-        sdRefreshTimer = setInterval(sdRefreshOrders, 30000);
+        sdRefreshTimer = setInterval(sdRefreshOrders, 10000);
     }
 
     // ─── Render: KPI Cards ──────────────────────────────────────────
@@ -1016,7 +1020,14 @@
         sdAlsConversation = [];
         sdAlsStreaming = false;
         sdSetupEvents();
-        sdLoadDashboard();
+        sdLoadDashboard().then(() => {
+            // Timer is set inside sdLoadDashboard, but ensure it's running
+            // even if something went wrong during render
+            if (!sdRefreshTimer) sdStartAutoRefresh();
+        }).catch(() => {
+            // Ensure auto-refresh runs even if initial load fails
+            sdStartAutoRefresh();
+        });
     };
 
     window.sdCleanup = function () {
