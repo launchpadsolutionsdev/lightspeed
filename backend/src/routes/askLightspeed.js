@@ -904,10 +904,15 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
         ];
 
         // Enhance with KB, rules, etc.
-        const { system: enhancedSystem } = await buildEnhancedPrompt(
+        let { system: enhancedSystem } = await buildEnhancedPrompt(
             systemPrompt, message || '', organizationId,
             { kb_type: 'all', userId, tool: 'ask_lightspeed', includeCitations: true }
         );
+
+        // Reinforce tool usage after all context injection (KB, rules, memory, etc.)
+        // This must come LAST so it isn't buried by appended context.
+        enhancedSystem += `\n\nCRITICAL REMINDER — TOOL USAGE:
+When the user asks about a specific customer, email address, order, or purchase, you MUST call the search_shopify_orders or search_shopify_customers tool to look up the data. Do NOT tell the user to check Shopify Admin manually. Do NOT say you only have aggregate data. You have real-time Shopify lookup tools — use them.`;
 
         // Whitelist models
         const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
