@@ -92,14 +92,12 @@ async function runShopifyQL(shopDomain, accessToken, shopifyqlQuery) {
     const result = data?.shopifyqlQuery;
 
     if (!result) {
-        console.error('ShopifyQL returned null result for query:', shopifyqlQuery.substring(0, 100));
-        return [];
+        throw new Error('ShopifyQL returned null — access token may be missing the read_reports scope');
     }
 
     // Handle ShopifyQL parse/validation errors
     if (result.__typename === 'ParseErrors' || result.__typename === 'QueryError') {
         const errMsg = JSON.stringify(result.parseErrors || result.errors || result);
-        console.error(`ShopifyQL ${result.__typename} for query: ${shopifyqlQuery.substring(0, 100)}... Error: ${errMsg}`);
         throw new Error(`ShopifyQL query error: ${errMsg}`);
     }
 
@@ -119,8 +117,7 @@ async function runShopifyQL(shopDomain, accessToken, shopifyqlQuery) {
         return result.data;
     }
 
-    console.error(`ShopifyQL unexpected response type: ${result.__typename} for query: ${shopifyqlQuery.substring(0, 100)}`);
-    return [];
+    throw new Error(`ShopifyQL unexpected response type: ${result.__typename}`);
 }
 
 // ─── Full Sync ──────────────────────────────────────────────────────
@@ -150,12 +147,27 @@ async function runFullSync(organizationId) {
 
         let totalRecords = 0;
 
-        // ShopifyQL aggregate queries — no individual order fetching
-        totalRecords += await syncDailySales(store, organizationId, 365);
-        totalRecords += await syncProductSales(store, organizationId, 365);
-        totalRecords += await syncSalesByChannel(store, organizationId, 365);
-        totalRecords += await syncSalesByRegion(store, organizationId, 365);
-        totalRecords += await syncSalesByCity(store, organizationId, 365);
+        // Test ShopifyQL availability (requires read_reports scope)
+        let shopifyqlAvailable = false;
+        try {
+            await runShopifyQL(store.shop_domain, store.access_token, 'FROM orders SHOW sum(orders) AS c SINCE -1d UNTIL today');
+            shopifyqlAvailable = true;
+            console.log(`ShopifyQL available for ${cleanShopDomain(store.shop_domain)}`);
+        } catch (sqlErr) {
+            console.warn(`ShopifyQL NOT available for ${cleanShopDomain(store.shop_domain)}: ${sqlErr.message}. Falling back to GraphQL-based sync. For full analytics, ensure the access token has the read_reports scope.`);
+        }
+
+        if (shopifyqlAvailable) {
+            // ShopifyQL aggregate queries — fast, server-side aggregation
+            totalRecords += await syncDailySales(store, organizationId, 365);
+            totalRecords += await syncProductSales(store, organizationId, 365);
+            totalRecords += await syncSalesByChannel(store, organizationId, 365);
+            totalRecords += await syncSalesByRegion(store, organizationId, 365);
+            totalRecords += await syncSalesByCity(store, organizationId, 365);
+        } else {
+            // Fallback: fetch orders via GraphQL and compute all metrics
+            totalRecords += await syncViaGraphQLFallback(store, organizationId, 365);
+        }
 
         // Fetch only 50 recent orders via GraphQL (not REST pagination)
         totalRecords += await syncRecentOrders(store, organizationId);
@@ -206,12 +218,23 @@ async function runIncrementalSync(organizationId) {
     try {
         let totalRecords = 0;
 
-        // Re-sync last 2 days to catch late-arriving data
-        totalRecords += await syncDailySales(store, organizationId, 2);
-        totalRecords += await syncProductSales(store, organizationId, 2);
-        totalRecords += await syncSalesByChannel(store, organizationId, 2);
-        totalRecords += await syncSalesByRegion(store, organizationId, 2);
-        totalRecords += await syncSalesByCity(store, organizationId, 2);
+        // Test ShopifyQL availability
+        let shopifyqlAvailable = false;
+        try {
+            await runShopifyQL(store.shop_domain, store.access_token, 'FROM orders SHOW sum(orders) AS c SINCE -1d UNTIL today');
+            shopifyqlAvailable = true;
+        } catch { /* fallback */ }
+
+        if (shopifyqlAvailable) {
+            totalRecords += await syncDailySales(store, organizationId, 2);
+            totalRecords += await syncProductSales(store, organizationId, 2);
+            totalRecords += await syncSalesByChannel(store, organizationId, 2);
+            totalRecords += await syncSalesByRegion(store, organizationId, 2);
+            totalRecords += await syncSalesByCity(store, organizationId, 2);
+        } else {
+            totalRecords += await syncViaGraphQLFallback(store, organizationId, 30);
+        }
+
         totalRecords += await syncRecentOrders(store, organizationId);
         totalRecords += await syncPricePoints(store, organizationId);
         totalRecords += await syncCustomerMetrics(store, organizationId);
@@ -333,6 +356,209 @@ async function syncDailySalesMinimalFallback(store, organizationId, days) {
         console.error('syncDailySalesMinimalFallback error:', err.message);
         return 0;
     }
+}
+
+/**
+ * Comprehensive GraphQL fallback when ShopifyQL is unavailable.
+ * Fetches orders via GraphQL pagination and computes daily sales, product,
+ * region, city, and channel metrics. Limited to ~1000 orders per sync.
+ */
+async function syncViaGraphQLFallback(store, organizationId, days) {
+    console.log(`Running GraphQL fallback sync for ${days} days (ShopifyQL unavailable)`);
+
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - days);
+    const sinceISO = sinceDate.toISOString().substring(0, 10);
+
+    // Fetch orders in batches of 250, up to 1000 total
+    const allOrders = [];
+    let cursor = null;
+    const maxPages = 4;
+
+    for (let page = 0; page < maxPages; page++) {
+        const afterClause = cursor ? `, after: "${cursor}"` : '';
+        const query = `{
+            orders(first: 250, sortKey: CREATED_AT, reverse: true${afterClause}, query: "created_at:>=${sinceISO}") {
+                edges {
+                    node {
+                        createdAt
+                        totalPriceSet { shopMoney { amount currencyCode } }
+                        subtotalPriceSet { shopMoney { amount } }
+                        totalTaxSet { shopMoney { amount } }
+                        totalDiscountsSet { shopMoney { amount } }
+                        totalShippingPriceSet { shopMoney { amount } }
+                        shippingAddress { province country city }
+                        lineItems(first: 10) {
+                            edges {
+                                node { title quantity originalUnitPriceSet { shopMoney { amount } } }
+                            }
+                        }
+                    }
+                    cursor
+                }
+                pageInfo { hasNextPage }
+            }
+        }`;
+
+        const data = await shopifyGraphQL(store.shop_domain, store.access_token, query);
+        const edges = data?.orders?.edges || [];
+        allOrders.push(...edges.map(e => e.node));
+
+        if (!data?.orders?.pageInfo?.hasNextPage || edges.length === 0) break;
+        cursor = edges[edges.length - 1].cursor;
+    }
+
+    console.log(`GraphQL fallback: fetched ${allOrders.length} orders`);
+    if (allOrders.length === 0) return 0;
+
+    // Also get total order count via ordersCount for accurate totals
+    let totalOrderCountByDay = {};
+    try {
+        const countQuery = `{ ordersCount(query: "created_at:>=${sinceISO}") { count } }`;
+        const countData = await shopifyGraphQL(store.shop_domain, store.access_token, countQuery);
+        const totalCount = countData?.ordersCount?.count || allOrders.length;
+        // We'll scale revenue proportionally if we didn't fetch all orders
+        totalOrderCountByDay._total = totalCount;
+    } catch { /* use allOrders.length */ }
+
+    // Aggregate by day
+    const dailyMap = {};    // date → { gross, net, tax, discount, shipping, orders, units }
+    const productMap = {};  // date|title → { revenue, units }
+    const regionMap = {};   // date|province|country → { revenue, orders }
+    const cityMap = {};     // date|city|province|country → { revenue, orders }
+
+    for (const order of allOrders) {
+        const date = order.createdAt?.substring(0, 10);
+        if (!date) continue;
+
+        const subtotal = parseFloat(order.subtotalPriceSet?.shopMoney?.amount) || 0;
+        const total = parseFloat(order.totalPriceSet?.shopMoney?.amount) || 0;
+        const tax = parseFloat(order.totalTaxSet?.shopMoney?.amount) || 0;
+        const discount = parseFloat(order.totalDiscountsSet?.shopMoney?.amount) || 0;
+        const shipping = parseFloat(order.totalShippingPriceSet?.shopMoney?.amount) || 0;
+
+        // Daily sales
+        if (!dailyMap[date]) dailyMap[date] = { gross: 0, net: 0, tax: 0, discount: 0, shipping: 0, orders: 0, units: 0 };
+        dailyMap[date].gross += subtotal + discount;
+        dailyMap[date].net += subtotal;
+        dailyMap[date].tax += tax;
+        dailyMap[date].discount += discount;
+        dailyMap[date].shipping += shipping;
+        dailyMap[date].orders += 1;
+
+        // Product sales (from line items)
+        for (const edge of (order.lineItems?.edges || [])) {
+            const item = edge.node;
+            const title = item.title || 'Unknown';
+            const qty = item.quantity || 1;
+            const unitPrice = parseFloat(item.originalUnitPriceSet?.shopMoney?.amount) || 0;
+            dailyMap[date].units += qty;
+
+            const pKey = `${date}|${title}`;
+            if (!productMap[pKey]) productMap[pKey] = { date, title, revenue: 0, units: 0 };
+            productMap[pKey].revenue += unitPrice * qty;
+            productMap[pKey].units += qty;
+        }
+
+        // Region
+        const addr = order.shippingAddress;
+        if (addr) {
+            const rKey = `${date}|${addr.province || 'Unknown'}|${addr.country || 'Unknown'}`;
+            if (!regionMap[rKey]) regionMap[rKey] = { date, province: addr.province || 'Unknown', country: addr.country || 'Unknown', revenue: 0, orders: 0 };
+            regionMap[rKey].revenue += total;
+            regionMap[rKey].orders += 1;
+
+            // City
+            if (addr.city) {
+                const cKey = `${date}|${addr.city}|${addr.province || 'Unknown'}|${addr.country || 'Unknown'}`;
+                if (!cityMap[cKey]) cityMap[cKey] = { date, city: addr.city, province: addr.province || 'Unknown', country: addr.country || 'Unknown', revenue: 0, orders: 0 };
+                cityMap[cKey].revenue += total;
+                cityMap[cKey].orders += 1;
+            }
+        }
+    }
+
+    // Scale factor: if we fetched fewer orders than the total, scale revenue up proportionally
+    const fetchedCount = allOrders.length;
+    const totalCount = totalOrderCountByDay._total || fetchedCount;
+    const scaleFactor = totalCount > fetchedCount ? totalCount / fetchedCount : 1;
+    if (scaleFactor > 1) {
+        console.log(`GraphQL fallback: scaling revenue by ${scaleFactor.toFixed(2)}x (fetched ${fetchedCount} of ${totalCount} orders)`);
+    }
+
+    let totalRecords = 0;
+
+    // Write daily sales
+    for (const [date, d] of Object.entries(dailyMap)) {
+        // Scale the order count proportionally for each day
+        const scaledOrders = scaleFactor > 1 ? Math.round(d.orders * scaleFactor) : d.orders;
+        await pool.query(
+            `INSERT INTO daily_sales_metrics (organization_id, date, gross_sales_cents, net_sales_cents, refunds_cents, discounts_cents, taxes_cents, shipping_cents, total_orders, total_units_sold, updated_at)
+             VALUES ($1, $2, $3, $4, 0, $5, $6, $7, $8, $9, NOW())
+             ON CONFLICT (organization_id, date) DO UPDATE SET
+                gross_sales_cents = EXCLUDED.gross_sales_cents,
+                net_sales_cents = EXCLUDED.net_sales_cents,
+                discounts_cents = EXCLUDED.discounts_cents,
+                taxes_cents = EXCLUDED.taxes_cents,
+                shipping_cents = EXCLUDED.shipping_cents,
+                total_orders = EXCLUDED.total_orders,
+                total_units_sold = EXCLUDED.total_units_sold,
+                updated_at = NOW()`,
+            [organizationId, date,
+                Math.round(toCents(d.gross) * scaleFactor),
+                Math.round(toCents(d.net) * scaleFactor),
+                Math.round(toCents(d.discount) * scaleFactor),
+                Math.round(toCents(d.tax) * scaleFactor),
+                Math.round(toCents(d.shipping) * scaleFactor),
+                scaledOrders,
+                Math.round(d.units * scaleFactor)]
+        );
+        totalRecords++;
+    }
+
+    // Write product sales
+    for (const p of Object.values(productMap)) {
+        await pool.query(
+            `INSERT INTO product_sales_metrics (organization_id, date, product_id, product_title, revenue_cents, units_sold, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())
+             ON CONFLICT (organization_id, date, product_id) DO UPDATE SET
+                revenue_cents = EXCLUDED.revenue_cents,
+                units_sold = EXCLUDED.units_sold,
+                updated_at = NOW()`,
+            [organizationId, p.date, p.title, p.title, Math.round(toCents(p.revenue) * scaleFactor), Math.round(p.units * scaleFactor)]
+        );
+        totalRecords++;
+    }
+
+    // Write region sales
+    for (const r of Object.values(regionMap)) {
+        await pool.query(
+            `INSERT INTO sales_by_region (organization_id, date, province, country, revenue_cents, order_count)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (organization_id, date, province, country) DO UPDATE SET
+                revenue_cents = EXCLUDED.revenue_cents,
+                order_count = EXCLUDED.order_count`,
+            [organizationId, r.date, r.province, r.country, Math.round(toCents(r.revenue) * scaleFactor), Math.round(r.orders * scaleFactor)]
+        );
+        totalRecords++;
+    }
+
+    // Write city sales
+    for (const c of Object.values(cityMap)) {
+        await pool.query(
+            `INSERT INTO sales_by_city (organization_id, date, city, province, country, revenue_cents, order_count, customer_count)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 0)
+             ON CONFLICT (organization_id, date, city, province) DO UPDATE SET
+                revenue_cents = EXCLUDED.revenue_cents,
+                order_count = EXCLUDED.order_count,
+                country = EXCLUDED.country`,
+            [organizationId, c.date, c.city, c.province, c.country, Math.round(toCents(c.revenue) * scaleFactor), Math.round(c.orders * scaleFactor)]
+        );
+        totalRecords++;
+    }
+
+    console.log(`GraphQL fallback: wrote ${totalRecords} records`);
+    return totalRecords;
 }
 
 async function syncProductSales(store, organizationId, days) {

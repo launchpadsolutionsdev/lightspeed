@@ -16188,6 +16188,9 @@ async function connectShopify() {
             throw new Error(data.error || 'Connection failed');
         }
 
+        if (data.warnings && data.warnings.length > 0) {
+            showToast(data.warnings[0], 'info');
+        }
         showToast('Shopify store connected! Starting initial sync...', 'success');
 
         // Clear form inputs
