@@ -375,6 +375,7 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
                         totalShippingPriceSet { shopMoney { amount } }
                         shippingAddress { province country city }
                         billingAddress { province country city }
+                        customer { defaultAddress { province country city } }
                         lineItems(first: 10) {
                             edges {
                                 node { title quantity originalUnitPriceSet { shopMoney { amount } } }
@@ -424,8 +425,8 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
                 productMap[pKey].units += qty;
             }
 
-            // Region + City (prefer shipping address, fall back to billing)
-            const addr = order.shippingAddress || order.billingAddress;
+            // Region + City (prefer shipping → billing → customer default address)
+            const addr = order.shippingAddress || order.billingAddress || order.customer?.defaultAddress;
             if (addr) {
                 const rKey = `${date}|${addr.province || 'Unknown'}|${addr.country || 'Unknown'}`;
                 if (!regionMap[rKey]) regionMap[rKey] = { date, province: addr.province || 'Unknown', country: addr.country || 'Unknown', revenue: 0, orders: 0 };
@@ -962,8 +963,8 @@ async function handleOrderWebhook(organizationId, topic, payload) {
             );
         }
 
-        // Update region
-        const addr = payload.shipping_address || payload.billing_address;
+        // Update region + city (fall back through shipping → billing → customer default address)
+        const addr = payload.shipping_address || payload.billing_address || payload.customer?.default_address;
         if (addr) {
             await pool.query(
                 `INSERT INTO sales_by_region (organization_id, date, province, country, revenue_cents, order_count)
@@ -973,6 +974,19 @@ async function handleOrderWebhook(organizationId, topic, payload) {
                     order_count = sales_by_region.order_count + 1`,
                 [organizationId, date, addr.province || 'Unknown', addr.country || addr.country_code || 'Unknown', toCents(totalPrice)]
             );
+
+            // Update city
+            if (addr.city) {
+                await pool.query(
+                    `INSERT INTO sales_by_city (organization_id, date, city, province, country, revenue_cents, order_count, customer_count)
+                     VALUES ($1, $2, $3, $4, $5, $6, 1, 0)
+                     ON CONFLICT (organization_id, date, city, province) DO UPDATE SET
+                        revenue_cents = sales_by_city.revenue_cents + EXCLUDED.revenue_cents,
+                        order_count = sales_by_city.order_count + 1,
+                        country = EXCLUDED.country`,
+                    [organizationId, date, addr.city, addr.province || 'Unknown', addr.country || addr.country_code || 'Unknown', toCents(totalPrice)]
+                );
+            }
         }
 
         // Add to recent orders
