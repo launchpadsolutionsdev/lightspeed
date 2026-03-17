@@ -1,6 +1,6 @@
 /**
  * Feed Dashboard Routes
- * Proxies and parses the external XML feed for the main Dashboard tab.
+ * Proxies and parses the 50/50 raffle XML feed for the main Dashboard tab.
  * Separate from the Shopify Analytics dashboard (dashboard.js).
  */
 
@@ -10,7 +10,7 @@ const { XMLParser } = require('fast-xml-parser');
 const { authenticate } = require('../middleware/auth');
 
 const FEED_URL = process.env.DASHBOARD_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/dak';
-const FEED_CACHE_TTL = 5 * 60 * 1000; // 5-minute cache
+const FEED_CACHE_TTL = 2 * 60 * 1000; // 2-minute cache for near-real-time pool updates
 
 let _feedCache = null;
 let _feedCacheTime = 0;
@@ -18,15 +18,9 @@ let _feedCacheTime = 0;
 const xmlParser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '_',
-    textNodeName: '_text',
-    parseAttributeValue: true,
     parseTagValue: true,
     trimValues: true,
-    isArray: (name, jpath, isLeafNode) => {
-        // Force common collection names to always be arrays
-        const arrayPaths = ['entry', 'item', 'product', 'order', 'record', 'row', 'raffle', 'ticket', 'draw'];
-        return arrayPaths.includes(name.toLowerCase());
-    }
+    isArray: (name) => name === 'node'
 });
 
 /**
@@ -55,16 +49,15 @@ async function fetchFeed() {
         const xml = await response.text();
         const parsed = xmlParser.parse(xml);
 
-        // Normalize: extract the root element (skip xml declaration wrapper)
-        const rootKeys = Object.keys(parsed).filter(k => k !== '?xml');
-        const data = rootKeys.length === 1 ? parsed[rootKeys[0]] : parsed;
+        // Extract root <content> element
+        const content = parsed.content || parsed;
+        const data = extractRaffleData(content);
 
         _feedCache = data;
         _feedCacheTime = now;
         return data;
     } catch (error) {
         clearTimeout(timeout);
-        // Return stale cache if available
         if (_feedCache) {
             console.warn('Feed fetch failed, returning stale cache:', error.message);
             return _feedCache;
@@ -74,75 +67,72 @@ async function fetchFeed() {
 }
 
 /**
- * Attempt to extract structured dashboard metrics from the parsed feed.
- * Adapts to whatever fields are present in the XML.
+ * Extract structured raffle data from the parsed XML.
  */
-function extractMetrics(data) {
-    const metrics = {
-        feedData: data,
-        summary: {},
-        items: [],
-        lastUpdated: new Date().toISOString()
+function extractRaffleData(content) {
+    // Parse secondary prizes into drawn and upcoming
+    const nodes = content.secondary_prizes?.node || [];
+    const prizes = (Array.isArray(nodes) ? nodes : [nodes]).map(n => ({
+        name: n.prize || '',
+        winningNumber: n.winning_no || null,
+        drawDate: n.draw_date || null,
+        drawn: !!(n.winning_no && String(n.winning_no).trim())
+    }));
+
+    const drawnPrizes = prizes.filter(p => p.drawn);
+    const upcomingPrizes = prizes.filter(p => !p.drawn);
+
+    // Calculate time remaining
+    const endDate = content.end ? new Date(content.end) : null;
+    const now = new Date();
+    let timeRemaining = null;
+    if (endDate && endDate > now) {
+        const diff = endDate - now;
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        timeRemaining = { days, hours, totalMs: diff };
+    }
+
+    return {
+        event: content.event || 'Raffle',
+        startDate: content.start || null,
+        endDate: content.end || null,
+        dateDisplay: content.date_display || null,
+        isTest: content.is_test === 1,
+
+        // Pool & prize — use pre-formatted values from the feed
+        pool: parseFloat(content.pool) || 0,
+        poolFormatted: content.pool_nf_wd || `$${(parseFloat(content.pool) || 0).toLocaleString()}`,
+        prize: parseFloat(content.prize) || 0,
+        prizeFormatted: content.prize_fl_nf_wd || content.prize_nf_wd || `$${(parseFloat(content.prize) || 0).toLocaleString()}`,
+
+        // Main draw
+        mainWinningNumber: content.winning_no || null,
+        mainDrawComplete: !!(content.winning_no && String(content.winning_no).trim()),
+
+        // Time remaining
+        timeRemaining,
+
+        // Secondary prizes
+        drawnPrizes,
+        upcomingPrizes,
+        totalSecondaryPrizes: prizes.length,
+        totalDrawn: drawnPrizes.length,
+
+        // Metadata
+        lastUpdated: new Date().toISOString(),
+        feedTimestamp: content.timestamp || null
     };
-
-    // Try to find arrays of items in the data
-    function findArrays(obj, path = '') {
-        if (!obj || typeof obj !== 'object') return;
-        if (Array.isArray(obj)) {
-            if (obj.length > 0) {
-                metrics.items = obj;
-            }
-            return;
-        }
-        for (const [key, val] of Object.entries(obj)) {
-            if (Array.isArray(val) && val.length > 0) {
-                metrics.items = val;
-                metrics.itemsKey = key;
-                return;
-            }
-            if (typeof val === 'object' && !Array.isArray(val)) {
-                findArrays(val, path ? `${path}.${key}` : key);
-            }
-        }
-    }
-
-    // Extract scalar values as summary metrics
-    function extractScalars(obj) {
-        if (!obj || typeof obj !== 'object') return;
-        for (const [key, val] of Object.entries(obj)) {
-            if (val === null || val === undefined) continue;
-            if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
-                metrics.summary[key] = val;
-            }
-        }
-    }
-
-    findArrays(data);
-    extractScalars(data);
-
-    return metrics;
 }
 
 // GET /api/feed-dashboard/data
 router.get('/data', authenticate, async (req, res) => {
     try {
         const data = await fetchFeed();
-        const metrics = extractMetrics(data);
-        res.json(metrics);
+        res.json(data);
     } catch (error) {
         console.error('Feed dashboard error:', error.message);
         res.status(502).json({ error: 'Unable to fetch feed data', message: error.message });
-    }
-});
-
-// GET /api/feed-dashboard/raw — returns the raw parsed feed JSON
-router.get('/raw', authenticate, async (req, res) => {
-    try {
-        const data = await fetchFeed();
-        res.json(data);
-    } catch (error) {
-        console.error('Feed dashboard raw error:', error.message);
-        res.status(502).json({ error: 'Unable to fetch feed data' });
     }
 });
 
@@ -152,8 +142,7 @@ router.post('/refresh', authenticate, async (req, res) => {
     _feedCacheTime = 0;
     try {
         const data = await fetchFeed();
-        const metrics = extractMetrics(data);
-        res.json(metrics);
+        res.json(data);
     } catch (error) {
         console.error('Feed dashboard refresh error:', error.message);
         res.status(502).json({ error: 'Unable to refresh feed data' });

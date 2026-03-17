@@ -16279,10 +16279,10 @@ async function disconnectShopify() {
 
 let _feedDashPollTimer = null;
 let _feedDashLastData = null;
+let _feedDashCountdown = null;
 
 /**
- * Initialize the Feed Dashboard section on the tool menu page.
- * Fetches data from the XML feed proxy and renders the dashboard.
+ * Initialize the 50/50 Raffle Dashboard on the tool menu page.
  */
 async function initShopifyDashboard() {
     const section = document.getElementById('shopifyDashboardSection');
@@ -16290,7 +16290,6 @@ async function initShopifyDashboard() {
 
     section.style.display = 'block';
 
-    // Hide the old connect prompt, show the live dashboard
     const connectPrompt = document.getElementById('shopifyConnectPrompt');
     const liveDash = document.getElementById('shopifyLiveDashboard');
     if (connectPrompt) connectPrompt.style.display = 'none';
@@ -16298,9 +16297,9 @@ async function initShopifyDashboard() {
 
     await refreshFeedDashboard();
 
-    // Auto-refresh every 5 minutes (matches backend cache TTL)
+    // Auto-refresh every 2 minutes (matches backend cache TTL)
     stopShopifyDashPolling();
-    _feedDashPollTimer = setInterval(refreshFeedDashboard, 5 * 60 * 1000);
+    _feedDashPollTimer = setInterval(refreshFeedDashboard, 2 * 60 * 1000);
 }
 
 /**
@@ -16311,208 +16310,196 @@ function stopShopifyDashPolling() {
         clearInterval(_feedDashPollTimer);
         _feedDashPollTimer = null;
     }
+    if (_feedDashCountdown) {
+        clearInterval(_feedDashCountdown);
+        _feedDashCountdown = null;
+    }
 }
 
 /**
- * Fetch data from the XML feed proxy and render.
+ * Fetch raffle data from the feed proxy and render.
  */
 async function refreshFeedDashboard() {
     const container = document.getElementById('feedDashboardContent');
     if (!container) return;
 
-    try {
-        container.innerHTML = '<div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading feed data...</div></div>';
+    // Only show loading on first load
+    if (!_feedDashLastData) {
+        container.innerHTML = '<div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading raffle data...</div></div>';
+    }
 
+    try {
         const res = await fetch(`${API_BASE_URL}/api/feed-dashboard/data`, {
             headers: getAuthHeaders()
         });
 
         if (!res.ok) {
-            container.innerHTML = '<div class="shopify-kpi-sub">Unable to load feed data. Please try again later.</div>';
+            if (!_feedDashLastData) {
+                container.innerHTML = '<div class="shopify-kpi-sub">Unable to load raffle data. Please try again later.</div>';
+            }
             return;
         }
 
         const data = await res.json();
         _feedDashLastData = data;
-        renderFeedDashboard(data);
+        renderRaffleDashboard(data);
     } catch (err) {
         console.warn('Feed dashboard refresh failed:', err.message);
-        container.innerHTML = '<div class="shopify-kpi-sub">Unable to connect to data feed.</div>';
+        if (!_feedDashLastData) {
+            container.innerHTML = '<div class="shopify-kpi-sub">Unable to connect to data feed.</div>';
+        }
     }
 }
 
 /**
- * Render the feed dashboard dynamically based on available data.
+ * Render the 50/50 raffle dashboard.
  */
-function renderFeedDashboard(data) {
+function renderRaffleDashboard(data) {
     const container = document.getElementById('feedDashboardContent');
     if (!container) return;
 
-    const items = data.items || [];
-    const summary = data.summary || {};
     let html = '';
 
-    // Summary metrics cards (from scalar values in the feed)
-    const summaryKeys = Object.keys(summary).filter(k =>
-        typeof summary[k] === 'number' || (typeof summary[k] === 'string' && !isNaN(summary[k]) && summary[k].length < 20)
-    );
+    // Event title
+    html += `<div class="raffle-event-title">${escapeHtml(data.event)}</div>`;
 
-    if (summaryKeys.length > 0) {
-        html += '<div class="shopify-kpi-grid">';
-        summaryKeys.slice(0, 8).forEach(key => {
-            const label = formatFieldLabel(key);
-            const value = summary[key];
-            const display = typeof value === 'number' ? value.toLocaleString() : value;
-            html += `<div class="shopify-kpi-card">
-                <div class="shopify-kpi-label">${escapeHtml(label)}</div>
-                <div class="shopify-kpi-value">${escapeHtml(String(display))}</div>
-            </div>`;
-        });
-        html += '</div>';
+    // Date range
+    if (data.startDate && data.endDate) {
+        const start = new Date(data.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const end = new Date(data.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        html += `<div class="raffle-date-range">${start} &mdash; ${end}</div>`;
     }
 
-    // Items table (from array data in the feed)
-    if (items.length > 0) {
-        html += renderFeedItemsTable(items, data.itemsKey || 'Items');
+    // Main jackpot hero
+    html += `<div class="raffle-hero">
+        <div class="raffle-hero-label">Current Jackpot</div>
+        <div class="raffle-hero-prize">${escapeHtml(data.prizeFormatted)}</div>
+        <div class="raffle-hero-sub">Total Pool: ${escapeHtml(data.poolFormatted)}</div>
+    </div>`;
+
+    // Countdown + Status row
+    html += '<div class="shopify-kpi-grid raffle-status-grid">';
+
+    // Time remaining
+    if (data.timeRemaining) {
+        html += `<div class="shopify-kpi-card">
+            <div class="shopify-kpi-label">Time Remaining</div>
+            <div class="shopify-kpi-value" id="raffleCountdown">${data.timeRemaining.days}d ${data.timeRemaining.hours}h</div>
+            <div class="shopify-kpi-sub">until draw closes</div>
+        </div>`;
+    } else if (data.mainDrawComplete) {
+        html += `<div class="shopify-kpi-card">
+            <div class="shopify-kpi-label">Draw Complete</div>
+            <div class="shopify-kpi-value raffle-winner-highlight">${escapeHtml(data.mainWinningNumber)}</div>
+            <div class="shopify-kpi-sub">Winning number</div>
+        </div>`;
+    } else {
+        html += `<div class="shopify-kpi-card">
+            <div class="shopify-kpi-label">Status</div>
+            <div class="shopify-kpi-value">Draw Pending</div>
+            <div class="shopify-kpi-sub">Ticket sales closed</div>
+        </div>`;
     }
 
-    // If we have nested objects in the feed data, render them as sections
-    const feedData = data.feedData || {};
-    const nestedKeys = Object.keys(feedData).filter(k => {
-        const v = feedData[k];
-        return v && typeof v === 'object' && !Array.isArray(v);
-    });
+    // Prizes drawn
+    html += `<div class="shopify-kpi-card">
+        <div class="shopify-kpi-label">Early Bird Prizes Drawn</div>
+        <div class="shopify-kpi-value">${data.totalDrawn} / ${data.totalSecondaryPrizes}</div>
+        <div class="shopify-kpi-sub">${data.upcomingPrizes.length} remaining</div>
+    </div>`;
 
-    nestedKeys.forEach(key => {
-        const section = feedData[key];
-        const sectionLabel = formatFieldLabel(key);
-        const sectionScalars = {};
-        const sectionArrays = {};
+    // Pool
+    html += `<div class="shopify-kpi-card">
+        <div class="shopify-kpi-label">Total Pool</div>
+        <div class="shopify-kpi-value">${escapeHtml(data.poolFormatted)}</div>
+        <div class="shopify-kpi-sub">50/50 split</div>
+    </div>`;
 
-        for (const [sk, sv] of Object.entries(section)) {
-            if (Array.isArray(sv)) {
-                sectionArrays[sk] = sv;
-            } else if (typeof sv !== 'object') {
-                sectionScalars[sk] = sv;
-            }
-        }
+    // Winner's share
+    html += `<div class="shopify-kpi-card">
+        <div class="shopify-kpi-label">Winner Takes</div>
+        <div class="shopify-kpi-value">${escapeHtml(data.prizeFormatted)}</div>
+        <div class="shopify-kpi-sub">Half the pool</div>
+    </div>`;
 
-        // Section metrics
-        const scalarKeys = Object.keys(sectionScalars);
-        if (scalarKeys.length > 0 && scalarKeys.length <= 12) {
-            html += `<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">`;
-            html += `<div class="shopify-chart-title">${escapeHtml(sectionLabel)}</div>`;
-            html += '<div class="shopify-kpi-grid">';
-            scalarKeys.forEach(sk => {
-                html += `<div class="shopify-kpi-card">
-                    <div class="shopify-kpi-label">${escapeHtml(formatFieldLabel(sk))}</div>
-                    <div class="shopify-kpi-value">${escapeHtml(String(sectionScalars[sk]))}</div>
-                </div>`;
-            });
-            html += '</div></div>';
-        }
+    html += '</div>';
 
-        // Section arrays as tables
-        for (const [ak, av] of Object.entries(sectionArrays)) {
-            if (av.length > 0) {
-                html += renderFeedItemsTable(av, formatFieldLabel(ak));
-            }
-        }
-    });
-
-    // Raw text summary for non-object/non-number values
-    const textKeys = Object.keys(summary).filter(k =>
-        typeof summary[k] === 'string' && (isNaN(summary[k]) || summary[k].length >= 20)
-    );
-
-    if (textKeys.length > 0) {
+    // Early Bird Prizes — Drawn
+    if (data.drawnPrizes && data.drawnPrizes.length > 0) {
         html += '<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">';
-        html += '<div class="shopify-chart-title">Feed Details</div>';
-        html += '<div class="feed-details-list">';
-        textKeys.forEach(key => {
-            html += `<div class="shopify-breakdown-row">
-                <span class="shopify-breakdown-label">${escapeHtml(formatFieldLabel(key))}</span>
-                <span class="shopify-breakdown-value">${escapeHtml(String(summary[key]))}</span>
+        html += `<div class="shopify-chart-title">Early Bird Winners (${data.drawnPrizes.length})</div>`;
+        html += '<div class="raffle-prizes-list">';
+        data.drawnPrizes.forEach(p => {
+            const drawDate = p.drawDate ? new Date(p.drawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            html += `<div class="raffle-prize-row raffle-prize-drawn">
+                <span class="raffle-prize-status">&#10003;</span>
+                <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
+                <span class="raffle-prize-winner">${escapeHtml(p.winningNumber)}</span>
+                <span class="raffle-prize-date">${escapeHtml(drawDate)}</span>
             </div>`;
         });
         html += '</div></div>';
     }
 
-    if (!html) {
-        html = '<div class="shopify-kpi-sub">No data available from feed.</div>';
+    // Early Bird Prizes — Upcoming
+    if (data.upcomingPrizes && data.upcomingPrizes.length > 0) {
+        html += '<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">';
+        html += `<div class="shopify-chart-title">Upcoming Draws (${data.upcomingPrizes.length})</div>`;
+        html += '<div class="raffle-prizes-list">';
+        data.upcomingPrizes.forEach(p => {
+            html += `<div class="raffle-prize-row raffle-prize-upcoming">
+                <span class="raffle-prize-status raffle-pending">&#9679;</span>
+                <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
+                <span class="raffle-prize-winner raffle-tbd">TBD</span>
+                <span class="raffle-prize-date"></span>
+            </div>`;
+        });
+        html += '</div></div>';
     }
 
-    // Last updated timestamp
-    html += `<div class="feed-dash-updated" style="text-align:right;color:#6B7C93;font-size:12px;margin-top:12px;">
+    // Last updated
+    html += `<div class="feed-dash-updated">
         Last updated: ${new Date(data.lastUpdated || Date.now()).toLocaleTimeString()}
+        &nbsp;&middot;&nbsp; Auto-refreshes every 2 minutes
     </div>`;
 
     container.innerHTML = html;
+
+    // Start live countdown timer
+    startRaffleCountdown(data.endDate);
 }
 
 /**
- * Render an array of items as a responsive table.
+ * Live countdown timer that ticks every second.
  */
-function renderFeedItemsTable(items, title) {
-    if (!items || items.length === 0) return '';
-
-    // Get all unique keys from items
-    const allKeys = new Set();
-    items.forEach(item => {
-        if (typeof item === 'object' && item !== null) {
-            Object.keys(item).forEach(k => {
-                if (typeof item[k] !== 'object') allKeys.add(k);
-            });
-        }
-    });
-
-    const columns = Array.from(allKeys).slice(0, 8); // Max 8 columns
-    if (columns.length === 0) return '';
-
-    let html = `<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">`;
-    html += `<div class="shopify-chart-title">${escapeHtml(title)} (${items.length})</div>`;
-    html += '<div class="feed-table-wrap" style="overflow-x:auto;">';
-    html += '<table class="feed-data-table">';
-
-    // Header
-    html += '<thead><tr>';
-    columns.forEach(col => {
-        html += `<th>${escapeHtml(formatFieldLabel(col))}</th>`;
-    });
-    html += '</tr></thead>';
-
-    // Body (max 50 rows)
-    html += '<tbody>';
-    items.slice(0, 50).forEach(item => {
-        html += '<tr>';
-        columns.forEach(col => {
-            const val = item[col];
-            const display = val !== null && val !== undefined ? String(val) : '';
-            html += `<td>${escapeHtml(display)}</td>`;
-        });
-        html += '</tr>';
-    });
-    html += '</tbody></table>';
-
-    if (items.length > 50) {
-        html += `<div class="shopify-kpi-sub" style="margin-top:8px;">Showing 50 of ${items.length} items</div>`;
+function startRaffleCountdown(endDateStr) {
+    if (_feedDashCountdown) {
+        clearInterval(_feedDashCountdown);
+        _feedDashCountdown = null;
     }
+    if (!endDateStr) return;
 
-    html += '</div></div>';
-    return html;
-}
+    const endDate = new Date(endDateStr);
 
-/**
- * Convert a camelCase/snake_case/kebab-case field name to a readable label.
- */
-function formatFieldLabel(key) {
-    return key
-        .replace(/^_/, '')
-        .replace(/([A-Z])/g, ' $1')
-        .replace(/[_-]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .replace(/\b\w/g, c => c.toUpperCase());
+    _feedDashCountdown = setInterval(() => {
+        const el = document.getElementById('raffleCountdown');
+        if (!el) { clearInterval(_feedDashCountdown); return; }
+
+        const now = new Date();
+        const diff = endDate - now;
+        if (diff <= 0) {
+            el.textContent = 'Draw Closed';
+            clearInterval(_feedDashCountdown);
+            return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+        el.textContent = `${days}d ${hours}h ${mins}m ${secs}s`;
+    }, 1000);
 }
 
 // stopSyncPolling kept as no-op for backward compatibility with openTool()
