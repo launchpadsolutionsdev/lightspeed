@@ -343,9 +343,15 @@ router.post('/connect', authenticate, async (req, res) => {
 
         const shopData = await testResponse.json();
 
+        // Use the canonical .myshopify.com domain from the API response.
+        // Users may enter a custom domain (e.g. mystore.ca) but API calls
+        // only work on the .myshopify.com domain.
+        const myshopifyDomain = shopData.shop?.myshopify_domain || normalizedDomain;
+        console.log(`Shopify connect: user entered "${normalizedDomain}", using API domain "${myshopifyDomain}"`);
+
         // Test GraphQL API connectivity (analytics dashboard needs this)
         const graphqlTest = await fetch(
-            `https://${normalizedDomain}/admin/api/2025-04/graphql.json`,
+            `https://${myshopifyDomain}/admin/api/2025-04/graphql.json`,
             {
                 method: 'POST',
                 headers: {
@@ -357,14 +363,14 @@ router.post('/connect', authenticate, async (req, res) => {
         );
 
         if (!graphqlTest.ok) {
-            console.error(`GraphQL test failed for ${normalizedDomain}: ${graphqlTest.status}`);
+            console.error(`GraphQL test failed for ${myshopifyDomain}: ${graphqlTest.status}`);
             return res.status(400).json({
                 error: `Shopify REST API works but GraphQL returned ${graphqlTest.status}. Ensure your access token has Admin API (GraphQL) access and the store supports API version 2025-04.`
             });
         }
 
         await shopifyService.saveStoreConnection(organizationId, {
-            shopDomain: normalizedDomain,
+            shopDomain: myshopifyDomain,
             accessToken,
             scope: 'read_products,read_orders,read_customers'
         });
@@ -385,8 +391,8 @@ router.post('/connect', authenticate, async (req, res) => {
 
         res.json({
             success: true,
-            shopDomain: normalizedDomain,
-            shopName: shopData.shop?.name || normalizedDomain,
+            shopDomain: myshopifyDomain,
+            shopName: shopData.shop?.name || myshopifyDomain,
             webhooksRegistered,
             message: 'Shopify store connected successfully'
         });
