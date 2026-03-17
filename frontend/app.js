@@ -5170,6 +5170,24 @@ function loadSettings() {
     if (langEl) {
         langEl.value = responseLanguage || 'en';
     }
+
+    // Show compliance toggle for org admins/owners
+    const complianceToggleGroup = document.getElementById('complianceToggleGroup');
+    if (complianceToggleGroup) {
+        const canManage = ['owner', 'admin'].includes(currentUserRole);
+        complianceToggleGroup.style.display = canManage ? 'block' : 'none';
+        if (canManage) {
+            // Fetch current compliance_enabled state from org
+            fetch(`${API_BASE_URL}/api/organizations/my`, { headers: getAuthHeaders() })
+                .then(r => r.json())
+                .then(data => {
+                    const org = data.organizations?.[0] || data.organization || null;
+                    const toggle = document.getElementById('complianceEnabledToggle');
+                    if (toggle && org) toggle.checked = !!org.compliance_enabled;
+                })
+                .catch(() => {});
+        }
+    }
 }
 
 let eventListenersSetup = false;
@@ -8994,6 +9012,19 @@ function saveSettings() {
 
     // Save to user data (handles localStorage automatically)
     saveUserData();
+
+    // Save compliance toggle if visible (org admin/owner only)
+    const complianceToggle = document.getElementById('complianceEnabledToggle');
+    const complianceToggleGroup = document.getElementById('complianceToggleGroup');
+    if (complianceToggle && complianceToggleGroup && complianceToggleGroup.style.display !== 'none' && currentOrgId) {
+        fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}`, {
+            method: 'PATCH',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ complianceEnabled: complianceToggle.checked })
+        })
+        .then(() => initComplianceNav())
+        .catch(err => console.error('Failed to update compliance setting:', err));
+    }
 
     document.getElementById("staffName").value = defaultName;
     const threadStaffNameSave = document.getElementById("threadStaffName");
@@ -19367,17 +19398,19 @@ async function initComplianceNav() {
 
         // Show compliance nav for orgs with compliance enabled OR super admins
         const isSuperAdmin = await checkSuperAdmin().catch(() => false);
-        if (org?.compliance_enabled || isSuperAdmin) {
-            complianceNavBtn.style.display = 'flex';
+        const showCompliance = org?.compliance_enabled || isSuperAdmin;
+        complianceNavBtn.style.display = showCompliance ? 'flex' : 'none';
 
+        if (showCompliance && !complianceNavBtn._listenerAdded) {
             complianceNavBtn.addEventListener('click', () => {
                 openTool('compliance');
             });
-
-            // Show bento card on tool menu
-            const bentoCard = document.getElementById('toolCompliance');
-            if (bentoCard) bentoCard.style.display = '';
+            complianceNavBtn._listenerAdded = true;
         }
+
+        // Show/hide bento card on tool menu
+        const bentoCard = document.getElementById('toolCompliance');
+        if (bentoCard) bentoCard.style.display = showCompliance ? '' : 'none';
 
         // Show compliance admin nav for super admins
         if (isSuperAdmin) {
