@@ -319,7 +319,7 @@ router.post('/connect', authenticate, async (req, res) => {
         const normalizedDomain = shopDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
         const testResponse = await fetch(
-            `https://${normalizedDomain}/admin/api/2025-10/shop.json`,
+            `https://${normalizedDomain}/admin/api/2025-04/shop.json`,
             {
                 headers: {
                     'X-Shopify-Access-Token': accessToken,
