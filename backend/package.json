@@ -4,7 +4,7 @@
   "description": "Lightspeed AI Productivity Suite - Backend API",
   "main": "src/index.js",
   "scripts": {
-    "start": "node --max-old-space-size=512 src/index.js",
+    "start": "node --max-old-space-size=1024 src/index.js",
     "dev": "nodemon src/index.js",
     "test": "jest --forceExit --detectOpenHandles",
     "test:watch": "jest --watch --forceExit --detectOpenHandles"
