@@ -54,7 +54,7 @@ async function shopifyGraphQL(shopDomain, accessToken, query, variables = {}) {
 
         const data = await response.json();
         if (data.errors && data.errors.length > 0) {
-            throw new Error(`ShopifyQL error: ${data.errors.map(e => e.message).join(', ')}`);
+            throw new Error(`Shopify GraphQL error: ${data.errors.map(e => e.message).join(', ')}`);
         }
         return data.data;
     } catch (err) {
@@ -213,11 +213,28 @@ async function runIncrementalSync(organizationId) {
 
 async function syncDailySales(store, organizationId, days) {
     try {
+        // Revenue metrics from the sales dataset
         const rows = await runShopifyQL(
             store.shop_domain,
             store.access_token,
-            `FROM sales SHOW sum(gross_sales) AS gross_sales, sum(net_sales) AS net_sales, sum(returns) AS refunds, sum(discounts) AS discounts, sum(taxes) AS taxes, sum(shipping) AS shipping, count(*) AS total_orders GROUP BY day SINCE -${days}d UNTIL today ORDER BY day ASC`
+            `FROM sales SHOW sum(gross_sales) AS gross_sales, sum(net_sales) AS net_sales, sum(returns) AS refunds, sum(discounts) AS discounts, sum(taxes) AS taxes, sum(shipping) AS shipping GROUP BY day SINCE -${days}d UNTIL today ORDER BY day ASC`
         );
+
+        // Order counts from the orders dataset (sales count(*) counts line items, not orders)
+        let orderCountByDay = {};
+        try {
+            const orderRows = await runShopifyQL(
+                store.shop_domain,
+                store.access_token,
+                `FROM orders SHOW sum(orders) AS total_orders GROUP BY day SINCE -${days}d UNTIL today ORDER BY day ASC`
+            );
+            for (const row of orderRows) {
+                const date = row.day || row.date;
+                if (date) orderCountByDay[date] = parseInt(row.total_orders) || 0;
+            }
+        } catch (err) {
+            console.error('syncDailySales order count query error (non-fatal):', err.message);
+        }
 
         for (const row of rows) {
             const date = row.day || row.date;
@@ -244,44 +261,9 @@ async function syncDailySales(store, organizationId, days) {
                     Math.abs(toCents(row.discounts)),
                     toCents(row.taxes),
                     toCents(row.shipping),
-                    parseInt(row.total_orders) || 0,
+                    orderCountByDay[date] || 0,
                 ]
             );
-        }
-
-        // Also sync fulfillment / customer breakdowns via orders ShopifyQL
-        try {
-            const orderRows = await runShopifyQL(
-                store.shop_domain,
-                store.access_token,
-                `FROM orders SHOW count(*) AS order_count, financial_status GROUP BY day, financial_status SINCE -${days}d UNTIL today ORDER BY day ASC`
-            );
-
-            const dayStatusMap = {};
-            for (const row of orderRows) {
-                const date = row.day || row.date;
-                if (!date) continue;
-                if (!dayStatusMap[date]) dayStatusMap[date] = {};
-                dayStatusMap[date][row.financial_status] = parseInt(row.order_count) || 0;
-            }
-
-            for (const [date, statuses] of Object.entries(dayStatusMap)) {
-                await pool.query(
-                    `UPDATE daily_sales_metrics SET
-                        cancelled_orders = $3,
-                        refunded_orders = $4,
-                        updated_at = NOW()
-                     WHERE organization_id = $1 AND date = $2`,
-                    [
-                        organizationId,
-                        date,
-                        statuses.cancelled || statuses.voided || 0,
-                        statuses.refunded || statuses.partially_refunded || 0,
-                    ]
-                );
-            }
-        } catch (err) {
-            console.error('syncDailySales order status error (non-fatal):', err.message);
         }
 
         return rows.length;
@@ -421,7 +403,7 @@ async function syncRecentOrders(store, organizationId) {
                     name
                     createdAt
                     totalPriceSet { shopMoney { amount currencyCode } }
-                    financialStatus
+                    displayFinancialStatus
                     displayFulfillmentStatus
                     customer { firstName lastName email }
                     shippingAddress { province country }
@@ -465,7 +447,7 @@ async function syncRecentOrders(store, organizationId) {
                 order.createdAt,
                 toCents(order.totalPriceSet?.shopMoney?.amount),
                 order.totalPriceSet?.shopMoney?.currencyCode || 'CAD',
-                order.financialStatus,
+                order.displayFinancialStatus,
                 order.displayFulfillmentStatus,
                 [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' ') || 'Guest',
                 order.customer?.email,
