@@ -852,7 +852,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
     };
 
     try {
-        const { message, conversation, system: clientSystem, model } = req.body;
+        const { message, conversation, model, tone, language } = req.body;
         const file = req.file;
         const organizationId = req.organizationId;
         const userId = req.userId;
@@ -893,9 +893,9 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
             ? (message || 'Please analyze the uploaded file.') + fileContext
             : message;
 
-        // Build system prompt with full org profile
+        // Build system prompt with full org profile (always use server-built prompt)
         const orgProfile = await fetchOrgProfile(organizationId);
-        const systemPrompt = clientSystem || buildAgenticSystemPrompt(orgProfile);
+        const systemPrompt = buildAgenticSystemPrompt(orgProfile, { tone, language });
 
         // Build messages array
         const messages = [
@@ -1423,8 +1423,23 @@ async function fetchOrgProfile(organizationId) {
     }
 }
 
-function buildAgenticSystemPrompt(org) {
+function buildAgenticSystemPrompt(org, options = {}) {
     const orgName = org.name || 'your organization';
+    const { tone, language } = options;
+
+    // Build tone/language instructions
+    const TONE_MAP = {
+        professional: 'professional and helpful',
+        friendly: 'warm, friendly, and conversational',
+        casual: 'casual and relaxed'
+    };
+    const toneDesc = TONE_MAP[tone] || TONE_MAP.professional;
+
+    const LANG_MAP = {
+        fr: '\nLANGUAGE: You MUST write your entire response in French (Français). The customer inquiry may be in any language, but your response must always be in French.\n',
+        es: '\nLANGUAGE: You MUST write your entire response in Spanish (Español). The customer inquiry may be in any language, but your response must always be in Spanish.\n'
+    };
+    const langInstruction = LANG_MAP[language] || '';
 
     // Build organization profile section from Teams/Manage data
     let orgProfile = `\nORGANIZATION PROFILE (from the Teams page under Manage):\n- Organization: ${orgName}`;
@@ -1466,7 +1481,8 @@ function buildAgenticSystemPrompt(org) {
     return `You are Ask Lightspeed, an AI assistant for lottery operators built into the Lightspeed platform. You work for ${orgName}.
 
 TODAY'S DATE: ${dayOfWeek}, ${today}
-${orgProfile}
+TONE: Respond in a ${toneDesc} tone.
+${langInstruction}${orgProfile}
 
 You have access to tools that let you interact with other parts of the platform:
 
