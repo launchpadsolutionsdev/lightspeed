@@ -286,74 +286,76 @@ async function syncDailySalesFromREST(store, organizationId, days) {
 
     const endpoint = `/orders.json?limit=250&status=any&created_at_min=${sinceDate.toISOString()}&fields=id,created_at,total_price,subtotal_price,total_tax,total_discounts,financial_status,fulfillment_status,customer,line_items,shipping_lines`;
 
-    const orders = [];
-    let url = `https://${store.shop_domain}/admin/api/${SHOPIFY_API_VERSION}${endpoint}`;
-
-    while (url) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000);
-        try {
-            const response = await fetch(url, {
-                headers: { 'X-Shopify-Access-Token': store.access_token, 'Content-Type': 'application/json' },
-                signal: controller.signal,
-            });
-            clearTimeout(timeout);
-            if (!response.ok) break;
-            const data = await response.json();
-            if (data.orders) orders.push(...data.orders);
-            const linkHeader = response.headers.get('link');
-            url = null;
-            if (linkHeader) {
-                const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-                if (nextMatch) url = nextMatch[1];
-            }
-        } catch {
-            clearTimeout(timeout);
-            break;
-        }
-    }
-
-    // Aggregate by day
+    // Aggregate all three maps in a single streaming pass to avoid holding all orders in memory
     const dayMap = {};
-    for (const order of orders) {
-        const date = order.created_at?.substring(0, 10);
-        if (!date) continue;
+    const productDayMap = {};
+    const regionDayMap = {};
 
-        if (!dayMap[date]) {
-            dayMap[date] = {
-                gross_sales: 0, net_sales: 0, refunds: 0, discounts: 0, taxes: 0, shipping: 0,
-                total_orders: 0, units_sold: 0, new_customers: 0, returning_customers: 0,
-                fulfilled: 0, unfulfilled: 0, partially_fulfilled: 0, cancelled: 0, refunded: 0,
-            };
-        }
+    await fetchAllPages(store, endpoint, 'orders', {
+        onPage(batch) {
+            for (const order of batch) {
+                const date = order.created_at?.substring(0, 10);
+                if (!date) continue;
 
-        const d = dayMap[date];
-        const totalPrice = parseFloat(order.total_price) || 0;
-        const subtotal = parseFloat(order.subtotal_price) || 0;
-        const tax = parseFloat(order.total_tax) || 0;
-        const discount = parseFloat(order.total_discounts) || 0;
-        const shipping = (order.shipping_lines || []).reduce((s, l) => s + (parseFloat(l.price) || 0), 0);
+                // --- Daily aggregation ---
+                if (!dayMap[date]) {
+                    dayMap[date] = {
+                        gross_sales: 0, net_sales: 0, refunds: 0, discounts: 0, taxes: 0, shipping: 0,
+                        total_orders: 0, units_sold: 0, new_customers: 0, returning_customers: 0,
+                        fulfilled: 0, unfulfilled: 0, partially_fulfilled: 0, cancelled: 0, refunded: 0,
+                    };
+                }
 
-        d.gross_sales += subtotal + discount;
-        d.net_sales += subtotal;
-        d.taxes += tax;
-        d.discounts += discount;
-        d.shipping += shipping;
-        d.total_orders++;
+                const d = dayMap[date];
+                const totalPrice = parseFloat(order.total_price) || 0;
+                const subtotal = parseFloat(order.subtotal_price) || 0;
+                const tax = parseFloat(order.total_tax) || 0;
+                const discount = parseFloat(order.total_discounts) || 0;
+                const shipping = (order.shipping_lines || []).reduce((s, l) => s + (parseFloat(l.price) || 0), 0);
 
-        const units = (order.line_items || []).reduce((s, li) => s + (li.quantity || 0), 0);
-        d.units_sold += units;
+                d.gross_sales += subtotal + discount;
+                d.net_sales += subtotal;
+                d.taxes += tax;
+                d.discounts += discount;
+                d.shipping += shipping;
+                d.total_orders++;
 
-        if (order.financial_status === 'refunded') { d.refunded++; d.refunds += totalPrice; }
-        if (order.financial_status === 'voided' || order.cancelled_at) d.cancelled++;
+                const units = (order.line_items || []).reduce((s, li) => s + (li.quantity || 0), 0);
+                d.units_sold += units;
 
-        if (order.fulfillment_status === 'fulfilled') d.fulfilled++;
-        else if (order.fulfillment_status === 'partial') d.partially_fulfilled++;
-        else d.unfulfilled++;
+                if (order.financial_status === 'refunded') { d.refunded++; d.refunds += totalPrice; }
+                if (order.financial_status === 'voided' || order.cancelled_at) d.cancelled++;
 
-        if (order.customer?.orders_count <= 1) d.new_customers++;
-        else d.returning_customers++;
-    }
+                if (order.fulfillment_status === 'fulfilled') d.fulfilled++;
+                else if (order.fulfillment_status === 'partial') d.partially_fulfilled++;
+                else d.unfulfilled++;
+
+                if (order.customer?.orders_count <= 1) d.new_customers++;
+                else d.returning_customers++;
+
+                // --- Product aggregation ---
+                for (const item of (order.line_items || [])) {
+                    const pkey = `${date}:${item.product_id || 'unknown'}`;
+                    if (!productDayMap[pkey]) {
+                        productDayMap[pkey] = { date, product_id: String(item.product_id || 'unknown'), product_title: item.title || 'Unknown', revenue: 0, units: 0 };
+                    }
+                    productDayMap[pkey].revenue += (parseFloat(item.price) || 0) * (item.quantity || 0);
+                    productDayMap[pkey].units += item.quantity || 0;
+                }
+
+                // --- Region aggregation ---
+                const addr = order.shipping_address || order.billing_address;
+                const province = addr?.province || 'Unknown';
+                const country = addr?.country || addr?.country_code || 'Unknown';
+                const rkey = `${date}:${province}:${country}`;
+                if (!regionDayMap[rkey]) {
+                    regionDayMap[rkey] = { date, province, country, revenue: 0, orders: 0 };
+                }
+                regionDayMap[rkey].revenue += parseFloat(order.total_price) || 0;
+                regionDayMap[rkey].orders++;
+            }
+        },
+    });
 
     for (const [date, d] of Object.entries(dayMap)) {
         const aov = d.total_orders > 0 ? Math.round((d.net_sales / d.total_orders) * 100) : 0;
@@ -388,28 +390,7 @@ async function syncDailySalesFromREST(store, organizationId, days) {
         );
     }
 
-    // Also update product and region data from the same orders
-    await aggregateProductSalesFromOrders(orders, organizationId);
-    await aggregateRegionSalesFromOrders(orders, organizationId);
-
-    return Object.keys(dayMap).length;
-}
-
-async function aggregateProductSalesFromOrders(orders, organizationId) {
-    const productDayMap = {};
-    for (const order of orders) {
-        const date = order.created_at?.substring(0, 10);
-        if (!date) continue;
-        for (const item of (order.line_items || [])) {
-            const key = `${date}:${item.product_id || 'unknown'}`;
-            if (!productDayMap[key]) {
-                productDayMap[key] = { date, product_id: String(item.product_id || 'unknown'), product_title: item.title || 'Unknown', revenue: 0, units: 0 };
-            }
-            productDayMap[key].revenue += (parseFloat(item.price) || 0) * (item.quantity || 0);
-            productDayMap[key].units += item.quantity || 0;
-        }
-    }
-
+    // Write product aggregations
     for (const p of Object.values(productDayMap)) {
         await pool.query(
             `INSERT INTO product_sales_metrics (organization_id, date, product_id, product_title, revenue_cents, units_sold, updated_at)
@@ -422,24 +403,8 @@ async function aggregateProductSalesFromOrders(orders, organizationId) {
             [organizationId, p.date, p.product_id, p.product_title, toCents(p.revenue), p.units]
         );
     }
-}
 
-async function aggregateRegionSalesFromOrders(orders, organizationId) {
-    const regionDayMap = {};
-    for (const order of orders) {
-        const date = order.created_at?.substring(0, 10);
-        if (!date) continue;
-        const addr = order.shipping_address || order.billing_address;
-        const province = addr?.province || 'Unknown';
-        const country = addr?.country || addr?.country_code || 'Unknown';
-        const key = `${date}:${province}:${country}`;
-        if (!regionDayMap[key]) {
-            regionDayMap[key] = { date, province, country, revenue: 0, orders: 0 };
-        }
-        regionDayMap[key].revenue += parseFloat(order.total_price) || 0;
-        regionDayMap[key].orders++;
-    }
-
+    // Write region aggregations
     for (const r of Object.values(regionDayMap)) {
         await pool.query(
             `INSERT INTO sales_by_region (organization_id, date, province, country, revenue_cents, order_count)
@@ -450,7 +415,12 @@ async function aggregateRegionSalesFromOrders(orders, organizationId) {
             [organizationId, r.date, r.province, r.country, toCents(r.revenue), r.orders]
         );
     }
+
+    return Object.keys(dayMap).length;
 }
+
+// aggregateProductSalesFromOrders and aggregateRegionSalesFromOrders
+// are now inlined into syncDailySalesFromREST's streaming onPage callback
 
 async function syncProductSales(store, organizationId, days) {
     try {

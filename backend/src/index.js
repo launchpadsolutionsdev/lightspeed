@@ -89,7 +89,7 @@ app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/shopify/webhook', express.raw({ type: 'application/json' }));
 
 // Parse JSON bodies
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '2mb' }));
 
 // Rate limiting
 const limiter = rateLimit({
