@@ -16352,7 +16352,7 @@ async function refreshFeedDashboard() {
 }
 
 /**
- * Render the 50/50 raffle dashboard.
+ * Render the 50/50 raffle dashboard with Lightspeed branding.
  */
 function renderRaffleDashboard(data) {
     const container = document.getElementById('feedDashboardContent');
@@ -16360,10 +16360,8 @@ function renderRaffleDashboard(data) {
 
     let html = '';
 
-    // Event title
+    // Event title & date range
     html += `<div class="raffle-event-title">${escapeHtml(data.event)}</div>`;
-
-    // Date range
     if (data.startDate && data.endDate) {
         const start = new Date(data.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const end = new Date(data.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -16377,96 +16375,155 @@ function renderRaffleDashboard(data) {
         <div class="raffle-hero-sub">Total Pool: ${escapeHtml(data.poolFormatted)}</div>
     </div>`;
 
-    // Countdown + Status row
-    html += '<div class="shopify-kpi-grid raffle-status-grid">';
+    // KPI cards row
+    html += '<div class="raffle-kpi-grid">';
 
-    // Time remaining
+    // Time remaining / status
     if (data.timeRemaining) {
-        html += `<div class="shopify-kpi-card">
-            <div class="shopify-kpi-label">Time Remaining</div>
-            <div class="shopify-kpi-value" id="raffleCountdown">${data.timeRemaining.days}d ${data.timeRemaining.hours}h</div>
-            <div class="shopify-kpi-sub">until draw closes</div>
+        html += `<div class="raffle-kpi-card">
+            <div class="raffle-kpi-label">Time Remaining</div>
+            <div class="raffle-kpi-value" id="raffleCountdown">${data.timeRemaining.days}d ${data.timeRemaining.hours}h</div>
+            <div class="raffle-kpi-sub">until draw closes</div>
         </div>`;
     } else if (data.mainDrawComplete) {
-        html += `<div class="shopify-kpi-card">
-            <div class="shopify-kpi-label">Draw Complete</div>
-            <div class="shopify-kpi-value raffle-winner-highlight">${escapeHtml(data.mainWinningNumber)}</div>
-            <div class="shopify-kpi-sub">Winning number</div>
+        html += `<div class="raffle-kpi-card">
+            <div class="raffle-kpi-label">Draw Complete</div>
+            <div class="raffle-kpi-value raffle-winner-highlight">${escapeHtml(data.mainWinningNumber)}</div>
+            <div class="raffle-kpi-sub">Winning number</div>
         </div>`;
     } else {
-        html += `<div class="shopify-kpi-card">
-            <div class="shopify-kpi-label">Status</div>
-            <div class="shopify-kpi-value">Draw Pending</div>
-            <div class="shopify-kpi-sub">Ticket sales closed</div>
+        html += `<div class="raffle-kpi-card">
+            <div class="raffle-kpi-label">Status</div>
+            <div class="raffle-kpi-value">Draw Pending</div>
+            <div class="raffle-kpi-sub">Ticket sales closed</div>
         </div>`;
     }
 
-    // Prizes drawn
-    html += `<div class="shopify-kpi-card">
-        <div class="shopify-kpi-label">Early Bird Prizes Drawn</div>
-        <div class="shopify-kpi-value">${data.totalDrawn} / ${data.totalSecondaryPrizes}</div>
-        <div class="shopify-kpi-sub">${data.upcomingPrizes.length} remaining</div>
+    html += `<div class="raffle-kpi-card">
+        <div class="raffle-kpi-label">Early Bird Prizes</div>
+        <div class="raffle-kpi-value">${data.totalDrawn}<span class="raffle-kpi-of">/ ${data.totalSecondaryPrizes}</span></div>
+        <div class="raffle-kpi-sub">${data.upcomingPrizes.length} remaining</div>
     </div>`;
 
-    // Pool
-    html += `<div class="shopify-kpi-card">
-        <div class="shopify-kpi-label">Total Pool</div>
-        <div class="shopify-kpi-value">${escapeHtml(data.poolFormatted)}</div>
-        <div class="shopify-kpi-sub">50/50 split</div>
+    html += `<div class="raffle-kpi-card">
+        <div class="raffle-kpi-label">Total Pool</div>
+        <div class="raffle-kpi-value">${escapeHtml(data.poolFormatted)}</div>
+        <div class="raffle-kpi-sub">50/50 split</div>
     </div>`;
 
-    // Winner's share
-    html += `<div class="shopify-kpi-card">
-        <div class="shopify-kpi-label">Winner Takes</div>
-        <div class="shopify-kpi-value">${escapeHtml(data.prizeFormatted)}</div>
-        <div class="shopify-kpi-sub">Half the pool</div>
+    html += `<div class="raffle-kpi-card">
+        <div class="raffle-kpi-label">Winner Takes</div>
+        <div class="raffle-kpi-value">${escapeHtml(data.prizeFormatted)}</div>
+        <div class="raffle-kpi-sub">Half the pool</div>
     </div>`;
 
     html += '</div>';
 
-    // Early Bird Prizes — Drawn
+    // Early Bird Prizes — Drawn (collapsible, show 3)
     if (data.drawnPrizes && data.drawnPrizes.length > 0) {
-        html += '<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">';
-        html += `<div class="shopify-chart-title">Early Bird Winners (${data.drawnPrizes.length})</div>`;
-        html += '<div class="raffle-prizes-list">';
-        data.drawnPrizes.forEach(p => {
-            const drawDate = p.drawDate ? new Date(p.drawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-            html += `<div class="raffle-prize-row raffle-prize-drawn">
-                <span class="raffle-prize-status">&#10003;</span>
-                <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
-                <span class="raffle-prize-winner">${escapeHtml(p.winningNumber)}</span>
-                <span class="raffle-prize-date">${escapeHtml(drawDate)}</span>
-            </div>`;
-        });
-        html += '</div></div>';
+        html += renderCollapsiblePrizeList(
+            data.drawnPrizes,
+            'Early Bird Winners',
+            'drawn',
+            3
+        );
     }
 
-    // Early Bird Prizes — Upcoming
+    // Early Bird Prizes — Upcoming (collapsible, show 3)
     if (data.upcomingPrizes && data.upcomingPrizes.length > 0) {
-        html += '<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">';
-        html += `<div class="shopify-chart-title">Upcoming Draws (${data.upcomingPrizes.length})</div>`;
-        html += '<div class="raffle-prizes-list">';
-        data.upcomingPrizes.forEach(p => {
-            html += `<div class="raffle-prize-row raffle-prize-upcoming">
-                <span class="raffle-prize-status raffle-pending">&#9679;</span>
-                <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
-                <span class="raffle-prize-winner raffle-tbd">TBD</span>
-                <span class="raffle-prize-date"></span>
-            </div>`;
-        });
-        html += '</div></div>';
+        html += renderCollapsiblePrizeList(
+            data.upcomingPrizes,
+            'Upcoming Draws',
+            'upcoming',
+            3
+        );
     }
 
     // Last updated
     html += `<div class="feed-dash-updated">
         Last updated: ${new Date(data.lastUpdated || Date.now()).toLocaleTimeString()}
-        &nbsp;&middot;&nbsp; Auto-refreshes every 2 minutes
+        &middot; Auto-refreshes every 2 minutes
     </div>`;
 
     container.innerHTML = html;
 
     // Start live countdown timer
     startRaffleCountdown(data.endDate);
+}
+
+/**
+ * Render a collapsible prize list showing `previewCount` items with an expand button.
+ */
+function renderCollapsiblePrizeList(prizes, title, type, previewCount) {
+    const isDrawn = type === 'drawn';
+    const total = prizes.length;
+    const hasMore = total > previewCount;
+    const listId = `raffleList_${type}`;
+    const btnId = `raffleToggle_${type}`;
+
+    let html = `<div class="raffle-card">`;
+    html += `<div class="raffle-card-header">
+        <div class="raffle-card-title">${escapeHtml(title)} <span class="raffle-card-count">${total}</span></div>
+    </div>`;
+
+    html += `<div class="raffle-prizes-list">`;
+
+    prizes.forEach((p, i) => {
+        const hidden = hasMore && i >= previewCount ? ' raffle-prize-hidden' : '';
+        const drawDate = p.drawDate ? new Date(p.drawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+
+        if (isDrawn) {
+            html += `<div class="raffle-prize-row raffle-prize-drawn${hidden}" data-list="${listId}">
+                <span class="raffle-prize-status">&#10003;</span>
+                <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
+                <span class="raffle-prize-winner">${escapeHtml(p.winningNumber)}</span>
+                <span class="raffle-prize-date">${escapeHtml(drawDate)}</span>
+            </div>`;
+        } else {
+            html += `<div class="raffle-prize-row raffle-prize-upcoming${hidden}" data-list="${listId}">
+                <span class="raffle-prize-status raffle-pending">&#9679;</span>
+                <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
+                <span class="raffle-prize-winner raffle-tbd">TBD</span>
+                <span class="raffle-prize-date"></span>
+            </div>`;
+        }
+    });
+
+    html += '</div>';
+
+    if (hasMore) {
+        const remaining = total - previewCount;
+        html += `<button class="raffle-expand-btn" id="${btnId}" onclick="toggleRafflePrizeList('${listId}', '${btnId}', ${remaining})">
+            Show all ${total} &middot; ${remaining} more
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>`;
+    }
+
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Toggle visibility of hidden prize rows.
+ */
+function toggleRafflePrizeList(listId, btnId, hiddenCount) {
+    const rows = document.querySelectorAll(`[data-list="${listId}"].raffle-prize-hidden`);
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+
+    const isExpanded = btn.classList.contains('raffle-expanded');
+
+    rows.forEach(row => {
+        row.style.display = isExpanded ? 'none' : '';
+    });
+
+    if (isExpanded) {
+        btn.classList.remove('raffle-expanded');
+        btn.innerHTML = `Show all &middot; ${hiddenCount} more <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
+    } else {
+        btn.classList.add('raffle-expanded');
+        btn.innerHTML = `Show less <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>`;
+    }
 }
 
 /**
