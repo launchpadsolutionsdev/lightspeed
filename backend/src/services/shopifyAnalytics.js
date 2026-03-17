@@ -1153,13 +1153,16 @@ async function getSalesOverTime(organizationId, startDate, endDate, granularity 
 }
 
 async function getTopProducts(organizationId, startDate, endDate, limit = 10) {
+    // Group by unit price (revenue / units) so that products at the same price point
+    // are combined — e.g. "$100 ticket for 500 numbers" and "$100 ticket for 700 numbers"
+    // are both "$100.00" products to the user.
     const result = await pool.query(
-        `SELECT product_title,
+        `SELECT ROUND(revenue_cents::numeric / NULLIF(units_sold, 0)) AS unit_price_cents,
                 SUM(revenue_cents) AS revenue_cents,
                 SUM(units_sold) AS units_sold
          FROM product_sales_metrics
-         WHERE organization_id = $1 AND date >= $2 AND date <= $3
-         GROUP BY product_title
+         WHERE organization_id = $1 AND date >= $2 AND date <= $3 AND units_sold > 0
+         GROUP BY unit_price_cents
          ORDER BY revenue_cents DESC
          LIMIT $4`,
         [organizationId, startDate, endDate, limit]
@@ -1170,8 +1173,10 @@ async function getTopProducts(organizationId, startDate, endDate, limit = 10) {
     return {
         products: result.rows.map(r => {
             const rev = parseInt(r.revenue_cents) || 0;
+            const unitPrice = parseInt(r.unit_price_cents) || 0;
             return {
-                title: r.product_title,
+                title: `$${(unitPrice / 100).toFixed(2)} ticket`,
+                unit_price: unitPrice / 100,
                 revenue: rev / 100,
                 units_sold: parseInt(r.units_sold) || 0,
                 pct_of_total: totalRevenue > 0 ? Math.round((rev / totalRevenue) * 1000) / 10 : 0,
