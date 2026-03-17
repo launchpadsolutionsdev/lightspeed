@@ -3192,13 +3192,9 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
     formData.append('conversation', JSON.stringify(messagesToSend.slice(0, -1))); // exclude last user msg (it's in 'message')
     formData.append('model', alsModel);
 
-    // Build system prompt for agentic mode
-    const toneDesc = askTone === 'professional' ? 'professional and helpful' :
-                     askTone === 'friendly' ? 'warm, friendly, and conversational' :
-                     'casual and relaxed';
-    const orgName = currentUser?.organization?.name || 'your organization';
-    const agenticSystem = buildAlsAgenticSystemPrompt(orgName, toneDesc);
-    formData.append('system', agenticSystem);
+    // Pass tone and language as separate fields; backend builds the full system prompt
+    formData.append('tone', askTone || 'professional');
+    formData.append('language', responseLanguage || 'en');
 
     // Attach the server-parsed file (first one — API accepts one file)
     const serverFile = attachments.find(att => att.isServerParsed);
