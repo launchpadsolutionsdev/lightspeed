@@ -231,11 +231,11 @@ async function runIncrementalSync(organizationId) {
         } catch { /* fallback */ }
 
         if (shopifyqlAvailable) {
-            totalRecords += await syncDailySales(store, organizationId, 2);
-            totalRecords += await syncProductSales(store, organizationId, 2);
-            totalRecords += await syncSalesByChannel(store, organizationId, 2);
-            totalRecords += await syncSalesByRegion(store, organizationId, 2);
-            totalRecords += await syncSalesByCity(store, organizationId, 2);
+            totalRecords += await syncDailySales(store, organizationId, 7);
+            totalRecords += await syncProductSales(store, organizationId, 7);
+            totalRecords += await syncSalesByChannel(store, organizationId, 7);
+            totalRecords += await syncSalesByRegion(store, organizationId, 7);
+            totalRecords += await syncSalesByCity(store, organizationId, 7);
         } else {
             totalRecords += await syncViaGraphQLFallback(store, organizationId, 30);
         }
@@ -622,7 +622,8 @@ async function syncSalesByCity(store, organizationId, days) {
 
         for (const row of rows) {
             const date = row.day || row.date;
-            const city = row.billing_city || 'Unknown';
+            // ShopifyQL may return the column as 'billing_city' or just 'city'
+            const city = row.billing_city || row.city || 'Unknown';
             if (!date || city === 'Unknown') continue;
 
             await pool.query(
@@ -632,7 +633,7 @@ async function syncSalesByCity(store, organizationId, days) {
                     revenue_cents = EXCLUDED.revenue_cents,
                     order_count = EXCLUDED.order_count,
                     country = EXCLUDED.country`,
-                [organizationId, date, city, row.billing_region || 'Unknown', row.billing_country || 'Unknown', toCents(row.revenue), parseInt(row.order_count) || 0]
+                [organizationId, date, city, row.billing_region || row.region || 'Unknown', row.billing_country || row.country || 'Unknown', toCents(row.revenue), parseInt(row.order_count) || 0]
             );
         }
         return rows.length;
@@ -775,8 +776,8 @@ async function syncCustomerMetrics(store, organizationId) {
                         email
                         firstName
                         lastName
-                        ordersCount
-                        totalSpentV2 { amount currencyCode }
+                        numberOfOrders
+                        amountSpent { amount currencyCode }
                         lastOrder { createdAt }
                     }
                 }
@@ -790,13 +791,15 @@ async function syncCustomerMetrics(store, organizationId) {
         for (const { node: c } of customers) {
             if (!c.email) continue;
             const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email;
+            const orderCount = parseInt(c.numberOfOrders) || 0;
+            const totalSpent = toCents(c.amountSpent?.amount);
             await pool.query(
                 `INSERT INTO shopify_top_customers (organization_id, customer_email, customer_name, total_spent_cents, order_count, last_order_at, updated_at)
                  VALUES ($1, $2, $3, $4, $5, $6, NOW())
                  ON CONFLICT (organization_id, customer_email) DO UPDATE SET
                     customer_name = EXCLUDED.customer_name, total_spent_cents = EXCLUDED.total_spent_cents,
                     order_count = EXCLUDED.order_count, last_order_at = EXCLUDED.last_order_at, updated_at = NOW()`,
-                [organizationId, c.email, name, toCents(c.totalSpentV2?.amount), parseInt(c.ordersCount) || 0, c.lastOrder?.createdAt]
+                [organizationId, c.email, name, totalSpent, orderCount, c.lastOrder?.createdAt]
             );
         }
         return customers.length;
@@ -1271,11 +1274,11 @@ async function getTopCustomers(organizationId, limit = 10) {
     );
     return {
         customers: result.rows.map(r => ({
-            email: r.customer_email,
-            name: r.customer_name,
+            customer_email: r.customer_email,
+            customer_name: r.customer_name,
             total_spent: (parseInt(r.total_spent_cents) || 0) / 100,
             order_count: parseInt(r.order_count) || 0,
-            last_order: r.last_order_at,
+            last_order_at: r.last_order_at,
         })),
     };
 }
