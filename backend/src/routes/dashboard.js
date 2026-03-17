@@ -16,14 +16,30 @@ function clampLimit(val, defaultVal, max) {
 
 async function getOrgId(userId) {
     const result = await pool.query(
-        'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+        `SELECT om.organization_id, o.timezone
+         FROM organization_memberships om
+         JOIN organizations o ON o.id = om.organization_id
+         WHERE om.user_id = $1 LIMIT 1`,
         [userId]
     );
-    return result.rows[0]?.organization_id || null;
+    const row = result.rows[0];
+    return row ? { organizationId: row.organization_id, timezone: row.timezone || 'America/Toronto' } : null;
 }
 
-function parseDateRange(query) {
-    const now = new Date();
+/**
+ * Get today's date string (YYYY-MM-DD) in a specific timezone.
+ * Data in daily_sales_metrics is stored in the shop's timezone (via ShopifyQL / Shopify API),
+ * so date range queries must use the same timezone to avoid off-by-one errors.
+ */
+function todayInTimezone(tz) {
+    try {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    } catch {
+        return new Date().toISOString().substring(0, 10);
+    }
+}
+
+function parseDateRange(query, timezone = 'America/Toronto') {
     let startDate, endDate;
 
     if (query.start_date && query.end_date) {
@@ -31,47 +47,51 @@ function parseDateRange(query) {
         endDate = query.end_date;
     } else {
         const preset = query.preset || 'last_30_days';
-        endDate = now.toISOString().substring(0, 10);
+        const todayStr = todayInTimezone(timezone);
+        // Parse today's date in shop timezone for arithmetic
+        const [y, m, d] = todayStr.split('-').map(Number);
+        const today = new Date(y, m - 1, d); // local date (no TZ shift)
+        endDate = todayStr;
 
         switch (preset) {
             case 'today':
                 startDate = endDate;
                 break;
             case 'yesterday': {
-                const y = new Date(now);
-                y.setDate(y.getDate() - 1);
-                startDate = endDate = y.toISOString().substring(0, 10);
+                const yd = new Date(today);
+                yd.setDate(yd.getDate() - 1);
+                startDate = endDate = formatLocalDate(yd);
                 break;
             }
             case 'last_7_days': {
-                const d = new Date(now);
-                d.setDate(d.getDate() - 6);
-                startDate = d.toISOString().substring(0, 10);
+                const sd = new Date(today);
+                sd.setDate(sd.getDate() - 6);
+                startDate = formatLocalDate(sd);
                 break;
             }
             case 'last_90_days': {
-                const d = new Date(now);
-                d.setDate(d.getDate() - 89);
-                startDate = d.toISOString().substring(0, 10);
+                const sd = new Date(today);
+                sd.setDate(sd.getDate() - 89);
+                startDate = formatLocalDate(sd);
                 break;
             }
             case 'this_month':
-                startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+                startDate = `${y}-${String(m).padStart(2, '0')}-01`;
                 break;
             case 'last_month': {
-                const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                startDate = lm.toISOString().substring(0, 10);
-                const lme = new Date(now.getFullYear(), now.getMonth(), 0);
-                endDate = lme.toISOString().substring(0, 10);
+                const lm = new Date(y, m - 2, 1);
+                startDate = formatLocalDate(lm);
+                const lme = new Date(y, m - 1, 0);
+                endDate = formatLocalDate(lme);
                 break;
             }
             case 'this_year':
-                startDate = `${now.getFullYear()}-01-01`;
+                startDate = `${y}-01-01`;
                 break;
             default: { // last_30_days
-                const d = new Date(now);
-                d.setDate(d.getDate() - 29);
-                startDate = d.toISOString().substring(0, 10);
+                const sd = new Date(today);
+                sd.setDate(sd.getDate() - 29);
+                startDate = formatLocalDate(sd);
                 break;
             }
         }
@@ -80,16 +100,20 @@ function parseDateRange(query) {
     return { startDate, endDate };
 }
 
+function formatLocalDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // GET /api/dashboard/summary
 router.get('/summary', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
-        const { startDate, endDate } = parseDateRange(req.query);
+        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
         const compare = req.query.compare || null;
 
-        const summary = await analyticsService.getDashboardSummary(organizationId, startDate, endDate, compare);
+        const summary = await analyticsService.getDashboardSummary(org.organizationId, startDate, endDate, compare);
         res.json(summary);
     } catch (error) {
         console.error('Dashboard summary error:', error);
@@ -100,13 +124,13 @@ router.get('/summary', authenticate, async (req, res) => {
 // GET /api/dashboard/sales-over-time
 router.get('/sales-over-time', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
-        const { startDate, endDate } = parseDateRange(req.query);
+        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
         const granularity = req.query.granularity || 'day';
 
-        const data = await analyticsService.getSalesOverTime(organizationId, startDate, endDate, granularity);
+        const data = await analyticsService.getSalesOverTime(org.organizationId, startDate, endDate, granularity);
         res.json(data);
     } catch (error) {
         console.error('Sales over time error:', error);
@@ -117,13 +141,13 @@ router.get('/sales-over-time', authenticate, async (req, res) => {
 // GET /api/dashboard/top-products
 router.get('/top-products', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
-        const { startDate, endDate } = parseDateRange(req.query);
+        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
         const limit = clampLimit(req.query.limit, 10, 50);
 
-        const data = await analyticsService.getTopProducts(organizationId, startDate, endDate, limit);
+        const data = await analyticsService.getTopProducts(org.organizationId, startDate, endDate, limit);
         res.json(data);
     } catch (error) {
         console.error('Top products error:', error);
@@ -134,12 +158,12 @@ router.get('/top-products', authenticate, async (req, res) => {
 // GET /api/dashboard/sales-by-channel
 router.get('/sales-by-channel', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
-        const { startDate, endDate } = parseDateRange(req.query);
+        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
 
-        const data = await analyticsService.getSalesByChannel(organizationId, startDate, endDate);
+        const data = await analyticsService.getSalesByChannel(org.organizationId, startDate, endDate);
         res.json(data);
     } catch (error) {
         console.error('Sales by channel error:', error);
@@ -150,13 +174,13 @@ router.get('/sales-by-channel', authenticate, async (req, res) => {
 // GET /api/dashboard/sales-by-region
 router.get('/sales-by-region', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
-        const { startDate, endDate } = parseDateRange(req.query);
+        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
         const limit = clampLimit(req.query.limit, 10, 50);
 
-        const data = await analyticsService.getSalesByRegion(organizationId, startDate, endDate, limit);
+        const data = await analyticsService.getSalesByRegion(org.organizationId, startDate, endDate, limit);
         res.json(data);
     } catch (error) {
         console.error('Sales by region error:', error);
@@ -167,11 +191,11 @@ router.get('/sales-by-region', authenticate, async (req, res) => {
 // GET /api/dashboard/recent-orders
 router.get('/recent-orders', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
         const limit = clampLimit(req.query.limit, 20, 100);
-        const data = await analyticsService.getRecentOrders(organizationId, limit);
+        const data = await analyticsService.getRecentOrders(org.organizationId, limit);
         res.json(data);
     } catch (error) {
         console.error('Recent orders error:', error);
@@ -182,10 +206,10 @@ router.get('/recent-orders', authenticate, async (req, res) => {
 // GET /api/dashboard/sync-status
 router.get('/sync-status', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
-        const status = await analyticsService.getSyncStatus(organizationId);
+        const status = await analyticsService.getSyncStatus(org.organizationId);
         res.json(status);
     } catch (error) {
         console.error('Sync status error:', error);
@@ -196,11 +220,11 @@ router.get('/sync-status', authenticate, async (req, res) => {
 // GET /api/dashboard/top-customers
 router.get('/top-customers', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
         const limit = clampLimit(req.query.limit, 10, 50);
-        const data = await analyticsService.getTopCustomers(organizationId, limit);
+        const data = await analyticsService.getTopCustomers(org.organizationId, limit);
         res.json(data);
     } catch (error) {
         console.error('Top customers error:', error);
@@ -211,12 +235,12 @@ router.get('/top-customers', authenticate, async (req, res) => {
 // GET /api/dashboard/sales-by-city
 router.get('/sales-by-city', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
-        const { startDate, endDate } = parseDateRange(req.query);
+        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
         const limit = clampLimit(req.query.limit, 15, 50);
-        const data = await analyticsService.getSalesByCity(organizationId, startDate, endDate, limit);
+        const data = await analyticsService.getSalesByCity(org.organizationId, startDate, endDate, limit);
         res.json(data);
     } catch (error) {
         console.error('Sales by city error:', error);
@@ -227,11 +251,11 @@ router.get('/sales-by-city', authenticate, async (req, res) => {
 // GET /api/dashboard/price-points
 router.get('/price-points', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
-        const { startDate, endDate } = parseDateRange(req.query);
-        const data = await analyticsService.getPricePoints(organizationId, startDate, endDate);
+        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
+        const data = await analyticsService.getPricePoints(org.organizationId, startDate, endDate);
         res.json(data);
     } catch (error) {
         console.error('Price points error:', error);
@@ -242,13 +266,13 @@ router.get('/price-points', authenticate, async (req, res) => {
 // GET /api/dashboard/search-orders
 router.get('/search-orders', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
         const q = (req.query.q || '').trim();
         if (!q || q.length < 2) return res.json({ orders: [] });
 
-        const data = await analyticsService.searchOrders(organizationId, q);
+        const data = await analyticsService.searchOrders(org.organizationId, q);
         res.json(data);
     } catch (error) {
         console.error('Order search error:', error);
@@ -259,11 +283,11 @@ router.get('/search-orders', authenticate, async (req, res) => {
 // GET /api/dashboard/ai-insights
 router.get('/ai-insights', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
 
-        const { startDate, endDate } = parseDateRange(req.query);
-        const data = await analyticsService.generateAIInsights(organizationId, startDate, endDate);
+        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
+        const data = await analyticsService.generateAIInsights(org.organizationId, startDate, endDate);
         res.json(data);
     } catch (error) {
         console.error('AI insights error:', error);
@@ -274,8 +298,9 @@ router.get('/ai-insights', authenticate, async (req, res) => {
 // POST /api/dashboard/sync — Trigger a manual sync
 router.post('/sync', authenticate, async (req, res) => {
     try {
-        const organizationId = await getOrgId(req.userId);
-        if (!organizationId) return res.status(403).json({ error: 'No organization found' });
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
+        const organizationId = org.organizationId;
 
         const syncStatus = await analyticsService.getSyncStatus(organizationId);
         if (!syncStatus.connected) {
