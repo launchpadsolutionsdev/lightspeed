@@ -8,6 +8,33 @@ const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
 /**
+ * Strip lone surrogates from a string to produce valid JSON.
+ * Orphaned high/low surrogates cause "no low surrogate in string" API errors.
+ */
+function stripLoneSurrogates(str) {
+    if (typeof str !== 'string') return str;
+    let result = '';
+    for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+        if (code >= 0xD800 && code <= 0xDBFF) {
+            // High surrogate — check for matching low surrogate
+            const next = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+            if (next >= 0xDC00 && next <= 0xDFFF) {
+                result += str[i] + str[i + 1];
+                i++; // skip the low surrogate
+            } else {
+                result += '\uFFFD'; // replace orphaned high surrogate
+            }
+        } else if (code >= 0xDC00 && code <= 0xDFFF) {
+            result += '\uFFFD'; // replace orphaned low surrogate
+        } else {
+            result += str[i];
+        }
+    }
+    return result;
+}
+
+/**
  * Generate a response using Claude API
  * @param {Object} options
  * @param {Array} options.messages - Conversation messages
@@ -22,15 +49,32 @@ async function generateResponse({ messages, system, max_tokens = 1024, tools, mo
         throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
+    // Sanitize system prompt and message content to strip lone surrogates
+    const sanitizedSystem = stripLoneSurrogates(system);
+    const sanitizedMessages = messages.map(m => {
+        if (typeof m.content === 'string') {
+            return { ...m, content: stripLoneSurrogates(m.content) };
+        }
+        if (Array.isArray(m.content)) {
+            return { ...m, content: m.content.map(block =>
+                block.type === 'text' ? { ...block, text: stripLoneSurrogates(block.text) }
+                : block.type === 'tool_result' && typeof block.content === 'string'
+                    ? { ...block, content: stripLoneSurrogates(block.content) }
+                    : block
+            )};
+        }
+        return m;
+    });
+
     const body = {
         model: model || ANTHROPIC_MODEL,
         max_tokens,
-        system: system ? [{
+        system: sanitizedSystem ? [{
             type: 'text',
-            text: system,
+            text: sanitizedSystem,
             cache_control: { type: 'ephemeral' }
         }] : '',
-        messages
+        messages: sanitizedMessages
     };
 
     if (tools && tools.length > 0) {
