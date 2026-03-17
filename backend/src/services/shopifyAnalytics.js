@@ -166,7 +166,8 @@ async function runFullSync(organizationId) {
             totalRecords += await syncSalesByCity(store, organizationId, 365);
         } else {
             // Fallback: fetch orders via GraphQL and compute all metrics
-            totalRecords += await syncViaGraphQLFallback(store, organizationId, 365);
+            // Cap at 90 days — paginating 365 days of individual orders is too slow
+            totalRecords += await syncViaGraphQLFallback(store, organizationId, 90);
         }
 
         // Fetch only 50 recent orders via GraphQL (not REST pagination)
@@ -351,9 +352,14 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
     let cursor = null;
     let totalFetched = 0;
     let pageNum = 0;
+    const MAX_PAGES = 40; // 40 pages × 250 orders = 10,000 orders max
 
     while (true) {
         pageNum++;
+        if (pageNum > MAX_PAGES) {
+            console.warn(`GraphQL fallback: hit max page limit (${MAX_PAGES}), stopping with ${totalFetched} orders`);
+            break;
+        }
         const afterClause = cursor ? `, after: "${cursor}"` : '';
         const query = `{
             orders(first: 250, sortKey: CREATED_AT, reverse: false${afterClause}, query: "created_at:>=${sinceISO}") {
@@ -434,8 +440,13 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
 
         totalFetched += edges.length;
 
-        if (pageNum % 50 === 0) {
+        if (pageNum % 10 === 0) {
             console.log(`GraphQL fallback: fetched ${totalFetched} orders so far (page ${pageNum})...`);
+            // Heartbeat: bump updated_at so stuck-sync detection knows we're still alive
+            await pool.query(
+                `UPDATE shopify_stores SET updated_at = NOW() WHERE organization_id = $1 AND analytics_sync_status = 'syncing'`,
+                [organizationId]
+            );
         }
 
         if (!data?.orders?.pageInfo?.hasNextPage || edges.length === 0) break;
