@@ -4091,7 +4091,13 @@ TOOLS & CAPABILITIES: You have agentic capabilities that activate for certain re
 IMPORTANT: If the user asks to add, create, or schedule events on Runway or the calendar, you CAN do that — use phrasing like "add to Runway" to activate the calendar tool. Never tell the user you cannot add events to Runway. If the tools don't activate, ask the user to try rephrasing with "add to Runway" or "add to calendar" so the calendar tool activates.
 IMPORTANT: If the user asks about Home Base, team posts, announcements, or internal updates, you CAN search Home Base. Never tell the user you cannot access Home Base.
 
-Keep responses concise but thorough. Use markdown formatting when helpful.`;
+FORMATTING RULES:
+- NEVER use emojis in your responses — no icons, symbols, or pictographs of any kind.
+- NEVER use italics (*text* or _text_) in your responses.
+- Respond in paragraph form. You may combine paragraphs with bulleted lists when listing multiple items, but always include at least one paragraph of context — never respond with only a bulleted list.
+- Use bold for emphasis when needed.
+
+Keep responses concise but thorough.`;
 
         const ratedExamples = await getRatedExamples('ask_lightspeed', null, message);
         const feedbackSection = buildRatedExamplesContext(ratedExamples);
