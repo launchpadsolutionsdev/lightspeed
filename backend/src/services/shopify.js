@@ -356,7 +356,7 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
     const prevEstRevenue = prev.scaleFactor > 1
         ? Math.round(prev.totalRevenue * prev.scaleFactor * 100) / 100 : prev.totalRevenue;
 
-    return {
+    const result = {
         summary: {
             total_orders: totalOrderCount,
             total_revenue: estRevenue.toFixed(2),
