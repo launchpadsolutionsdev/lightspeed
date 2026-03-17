@@ -1424,14 +1424,18 @@ async function generateAIInsights(organizationId, startDate, endDate) {
 async function syncAllStores() {
     try {
         const result = await pool.query(
-            `SELECT organization_id FROM shopify_stores WHERE is_active = TRUE AND last_full_sync_at IS NOT NULL`
+            `SELECT organization_id, last_full_sync_at FROM shopify_stores WHERE is_active = TRUE`
         );
 
         for (const row of result.rows) {
             try {
-                await runIncrementalSync(row.organization_id);
+                if (row.last_full_sync_at) {
+                    await runIncrementalSync(row.organization_id);
+                } else {
+                    await runFullSync(row.organization_id);
+                }
             } catch (error) {
-                console.error(`Incremental sync failed for org ${row.organization_id}:`, error.message);
+                console.error(`Sync failed for org ${row.organization_id}:`, error.message);
             }
         }
     } catch (error) {
