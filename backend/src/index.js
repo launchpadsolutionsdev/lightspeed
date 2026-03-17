@@ -34,6 +34,8 @@ const contentCalendarRoutes = require('./routes/contentCalendar');
 const homeBaseRoutes = require('./routes/homeBase');
 const askLightspeedRoutes = require('./routes/askLightspeed');
 const complianceRoutes = require('./routes/compliance');
+const dashboardRoutes = require('./routes/dashboard');
+const shopifyAnalytics = require('./services/shopifyAnalytics');
 const pool = require('../config/database');
 
 // Validate required environment variables
@@ -189,6 +191,7 @@ app.use('/api/content-calendar', contentCalendarRoutes);
 app.use('/api/home-base', homeBaseRoutes);
 app.use('/api/ask-lightspeed', askLightspeedRoutes);
 app.use('/api/compliance', complianceRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Start reminder checker (runs every 60 seconds)
 if (contentCalendarRoutes.checkReminders) {
@@ -207,6 +210,14 @@ if (homeBaseRoutes.sendDigestEmails) {
     setInterval(homeBaseRoutes.sendDigestEmails, 60 * 60 * 1000);
     console.log('Home Base digest email checker started (hourly)');
 }
+
+// Start Shopify analytics incremental sync (every 15 minutes)
+setInterval(() => {
+    shopifyAnalytics.syncAllStores().catch(err => {
+        console.error('Shopify analytics sync error:', err.message);
+    });
+}, 15 * 60 * 1000);
+console.log('Shopify analytics sync scheduler started (15min interval)');
 
 // 404 handler
 app.use((req, res) => {

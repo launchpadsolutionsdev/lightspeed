@@ -7165,6 +7165,10 @@ function switchPage(pageId) {
         if (typeof initComplianceAdmin === 'function') {
             initComplianceAdmin();
         }
+    } else if (pageId === "shopify-dashboard") {
+        if (typeof sdInitDashboard === 'function') {
+            sdInitDashboard();
+        }
     }
 }
 
@@ -15928,6 +15932,7 @@ const ROUTES = {
     '/compliance':                   { view: 'tool', tool: 'compliance' },
     '/compliance-admin':             { view: 'tool', tool: 'customer-response', page: 'compliance-admin' },
     '/home-base':                    { view: 'tool', tool: 'customer-response', page: 'home-base' },
+    '/shopify-dashboard':            { view: 'tool', tool: 'customer-response', page: 'shopify-dashboard' },
 };
 
 // Map tools/pages to URL paths (reverse lookup)
@@ -15949,6 +15954,7 @@ const PAGE_ROUTES = {
     'teams':     '/response-assistant/teams',
     'home-base': '/home-base',
     'compliance-admin': '/compliance-admin',
+    'shopify-dashboard': '/shopify-dashboard',
     'admin':     '/response-assistant/admin',
     'feedback':  '/response-assistant/feedback',
     'bulk':      '/response-assistant/bulk',
@@ -16957,6 +16963,7 @@ function skeletonRows(count) {
         { id: 'analytics', label: 'Analytics', desc: 'View usage analytics', icon: '📈', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('analytics'); } },
         { id: 'teams', label: 'Team Management', desc: 'Manage your team', icon: '👥', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('teams'); } },
         { id: 'bulk', label: 'Bulk Processing', desc: 'Process multiple inquiries at once', icon: '📦', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('bulk'); } },
+        { id: 'shopify-dashboard', label: 'Shopify Analytics', desc: 'View Shopify store analytics dashboard', icon: '💰', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('shopify-dashboard'); } },
     ];
 
     var overlay = null;

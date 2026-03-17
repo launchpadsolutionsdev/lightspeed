@@ -716,7 +716,13 @@ function formatCustomerContext(customer) {
 const WEBHOOK_TOPICS = [
     'products/create',
     'products/update',
-    'products/delete'
+    'products/delete',
+    'orders/create',
+    'orders/updated',
+    'orders/cancelled',
+    'refunds/create',
+    'fulfillments/create',
+    'fulfillments/update',
 ];
 
 async function registerWebhooks(organizationId, webhookBaseUrl) {
@@ -860,7 +866,7 @@ async function handleProductDelete(organizationId, payload) {
 }
 
 /**
- * Main webhook dispatcher — only handles product events now.
+ * Main webhook dispatcher — handles product and order events.
  */
 async function handleWebhookEvent(shopDomain, topic, payload) {
     const organizationId = await getOrgByShopDomain(shopDomain);
@@ -877,6 +883,22 @@ async function handleWebhookEvent(shopDomain, topic, payload) {
         case 'products/delete':
             await handleProductDelete(organizationId, payload);
             return { handled: true, topic, shopifyId: payload.id };
+
+        case 'orders/create':
+        case 'orders/updated':
+        case 'orders/cancelled':
+        case 'refunds/create':
+        case 'fulfillments/create':
+        case 'fulfillments/update': {
+            // Delegate to analytics service for dashboard updates
+            try {
+                const shopifyAnalytics = require('./shopifyAnalytics');
+                await shopifyAnalytics.handleOrderWebhook(organizationId, topic, payload);
+            } catch (err) {
+                console.error('Analytics webhook handler error:', err.message);
+            }
+            return { handled: true, topic, shopifyId: payload.id };
+        }
 
         default:
             return { handled: false, reason: 'unhandled_topic', topic };

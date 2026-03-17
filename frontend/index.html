@@ -25,6 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="admin-dashboard.css?v=20260301">
     <link rel="stylesheet" href="design-system.css?v=20260301">
+    <link rel="stylesheet" href="shopify-dashboard.css?v=20260317">
     <link rel="stylesheet" href="ls-micro.css?v=20260301">
     <link rel="stylesheet" href="landing.css?v=20260301">
     <link rel="stylesheet" href="rules-of-play.css?v=20260301">
@@ -13552,6 +13553,10 @@
                         <span class="sidebar-btn-icon">&#129302;</span>
                         <span class="sidebar-btn-label">Compliance Assistant</span>
                     </button>
+                    <button class="sidebar-btn" data-page="shopify-dashboard" id="shopifyDashNavBtn">
+                        <span class="sidebar-btn-icon">&#128176;</span>
+                        <span class="sidebar-btn-label">Shopify Analytics</span>
+                    </button>
                     <!-- Notification dropdown -->
                     <div class="cal-notif-dropdown" id="calNotifDropdown" style="display:none;">
                         <div class="cal-notif-header">
@@ -15047,6 +15052,83 @@
             </div>
 
             <!-- Admin Dashboard Page (Super Admin Only) -->
+            <!-- Shopify Analytics Dashboard -->
+            <div class="page" id="page-shopify-dashboard">
+                <div class="sd-dashboard" id="sdDashboardContent">
+                    <!-- Header -->
+                    <div class="sd-header">
+                        <h2>Shopify Analytics</h2>
+                        <div class="sd-header-actions">
+                            <div class="sd-sync-indicator" id="sdSyncIndicator">
+                                <span class="sd-sync-dot"></span> Loading...
+                            </div>
+                            <select class="sd-date-select" id="sdDatePreset">
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="last_7_days">Last 7 days</option>
+                                <option value="last_30_days" selected>Last 30 days</option>
+                                <option value="last_90_days">Last 90 days</option>
+                                <option value="this_month">This month</option>
+                                <option value="last_month">Last month</option>
+                                <option value="this_year">This year</option>
+                            </select>
+                            <label class="sd-compare-toggle">
+                                <input type="checkbox" id="sdCompareCheck">
+                                Compare to previous period
+                            </label>
+                            <button class="sd-btn" id="sdRefreshBtn">Refresh Data</button>
+                        </div>
+                    </div>
+
+                    <!-- Sync Error Banner -->
+                    <div class="sd-sync-banner" id="sdSyncBanner"></div>
+
+                    <!-- KPI Row -->
+                    <div class="sd-kpi-row" id="sdKpiRow"></div>
+
+                    <!-- Main Content -->
+                    <div class="sd-content">
+                        <!-- Left Column -->
+                        <div class="sd-left-col">
+                            <div class="sd-card" style="margin-bottom:20px">
+                                <div class="sd-card-title">
+                                    <span>Sales Over Time</span>
+                                    <div class="sd-toggle-group">
+                                        <button class="sd-toggle-btn sd-sales-metric-btn active" data-metric="net_sales">Net Sales</button>
+                                        <button class="sd-toggle-btn sd-sales-metric-btn" data-metric="gross_sales">Gross Sales</button>
+                                        <button class="sd-toggle-btn sd-sales-metric-btn" data-metric="orders">Orders</button>
+                                    </div>
+                                </div>
+                                <div class="sd-chart-container" id="sdSalesChartWrap"></div>
+                            </div>
+                            <div class="sd-card">
+                                <div class="sd-card-title">Top Products</div>
+                                <div id="sdProductsTableWrap"></div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="sd-right-col">
+                            <div class="sd-card" style="margin-bottom:20px">
+                                <div class="sd-card-title">Sales by Channel</div>
+                                <div class="sd-donut-container" id="sdChannelChartWrap"></div>
+                            </div>
+                            <div class="sd-card" style="margin-bottom:20px">
+                                <div class="sd-card-title">Sales by Region</div>
+                                <div id="sdRegionWrap"></div>
+                            </div>
+                            <div class="sd-card">
+                                <div class="sd-card-title">
+                                    <span>Live Orders</span>
+                                    <span class="sd-sync-indicator" style="font-size:11px">Auto-refreshes every 30s</span>
+                                </div>
+                                <div id="sdOrderFeedWrap"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="page" id="page-admin">
                 <div id="adminDashboard">
                     <!-- Admin dashboard content loaded dynamically -->
@@ -17637,6 +17719,7 @@ Answer to question 2..."></textarea>
     <script src="draft-knowledge-base.js?v=20260301"></script>
     <script src="admin-dashboard.js?v=20260301"></script>
     <script src="compliance.js?v=20260316f"></script>
+    <script src="shopify-dashboard.js?v=20260317"></script>
     <script src="app.js?v=20260316b"></script>
 
     <!-- Live Status Check -->
