@@ -227,8 +227,8 @@
                 datasets: [{
                     label,
                     data: values,
-                    borderColor: '#5C6AC4',
-                    backgroundColor: 'rgba(92, 106, 196, 0.08)',
+                    borderColor: '#635BFF',
+                    backgroundColor: 'rgba(99, 91, 255, 0.08)',
                     fill: true,
                     tension: 0.3,
                     pointRadius: 0,
@@ -254,13 +254,13 @@
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#6D7175' },
+                        ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#6B7C93' },
                     },
                     y: {
-                        grid: { color: '#F1F2F3' },
+                        grid: { color: '#E3E8EE' },
                         ticks: {
                             font: { size: 11 },
-                            color: '#6D7175',
+                            color: '#6B7C93',
                             callback: function (v) {
                                 if (sdSalesMetric === 'orders') return sdFormatNumber(v);
                                 return sdFormatCurrency(v);
@@ -279,7 +279,7 @@
         if (!wrap) return;
 
         if (!data.products || data.products.length === 0) {
-            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6D7175;font-size:13px;">No product data for this period</div>';
+            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No product data for this period</div>';
             return;
         }
 
@@ -312,14 +312,14 @@
         if (!wrap) return;
 
         if (!data.channels || data.channels.length === 0) {
-            wrap.innerHTML = '<div style="text-align:center;padding:40px;color:#6D7175;font-size:13px;">No channel data</div>';
+            wrap.innerHTML = '<div style="text-align:center;padding:40px;color:#6B7C93;font-size:13px;">No channel data</div>';
             return;
         }
 
         wrap.innerHTML = '<canvas id="sdChannelCanvas"></canvas>';
         const ctx = document.getElementById('sdChannelCanvas').getContext('2d');
 
-        const colors = ['#5C6AC4', '#9C6ADE', '#47C1BF', '#F49342', '#50B83C', '#EEC200', '#DE3618', '#8C9196'];
+        const colors = ['#635BFF', '#E91E8C', '#F47B3A', '#F5C623', '#30B130', '#47C1BF', '#0A2540', '#6B7C93'];
 
         if (sdCharts.channel) sdCharts.channel.destroy();
         sdCharts.channel = new Chart(ctx, {
@@ -358,7 +358,7 @@
         if (!wrap) return;
 
         if (!data.regions || data.regions.length === 0) {
-            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6D7175;font-size:13px;">No region data</div>';
+            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No region data</div>';
             return;
         }
 
@@ -382,7 +382,7 @@
         if (!wrap) return;
 
         if (!data.orders || data.orders.length === 0) {
-            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6D7175;font-size:13px;">No recent orders</div>';
+            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No recent orders</div>';
             return;
         }
 
@@ -488,7 +488,7 @@
                 <div class="sd-empty-icon">&#128202;</div>
                 <div class="sd-empty-title">Connect your Shopify store to see analytics</div>
                 <div class="sd-empty-desc">Once connected, your sales data will sync automatically and appear here.</div>
-                <button class="sd-btn sd-btn-primary" onclick="if(typeof switchPage==='function')switchPage('teams')">Go to Settings</button>
+                <button class="sd-btn-gradient" onclick="if(typeof switchPage==='function')switchPage('teams')">Go to Settings</button>
             </div>`;
     }
 
