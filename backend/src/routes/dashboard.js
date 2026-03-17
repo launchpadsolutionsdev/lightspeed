@@ -282,8 +282,22 @@ router.post('/sync', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'No Shopify store connected' });
         }
 
+        // If sync has been stuck at 'syncing' for more than 10 minutes, reset it
         if (syncStatus.sync_status === 'syncing') {
-            return res.json({ success: true, message: 'Sync already in progress' });
+            const stuckCheck = await pool.query(
+                `SELECT updated_at FROM shopify_stores WHERE organization_id = $1 AND analytics_sync_status = 'syncing' AND updated_at < NOW() - INTERVAL '10 minutes'`,
+                [organizationId]
+            );
+            if (stuckCheck.rows.length > 0) {
+                await pool.query(
+                    `UPDATE shopify_stores SET analytics_sync_status = 'error', analytics_sync_error = 'Previous sync timed out', updated_at = NOW() WHERE organization_id = $1`,
+                    [organizationId]
+                );
+                console.warn(`Reset stuck sync for org ${organizationId}`);
+                // Fall through to start a new sync
+            } else {
+                return res.json({ success: true, message: 'Sync already in progress' });
+            }
         }
 
         // Respond immediately, run sync in background
