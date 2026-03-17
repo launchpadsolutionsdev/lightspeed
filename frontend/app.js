@@ -8180,11 +8180,14 @@ async function loadTeamData() {
         document.getElementById('inviteSection').style.display = canManageOrg ? 'block' : 'none';
         document.getElementById('orgProfileSection').style.display = canManageOrg ? 'block' : 'none';
         document.getElementById('contentTemplatesSection').style.display = canManageOrg ? 'block' : 'none';
+        const shopifyCard = document.getElementById('shopifyIntegrationCard');
+        if (shopifyCard) shopifyCard.style.display = canManageOrg ? 'block' : 'none';
 
         // Populate org profile fields
         if (canManageOrg) {
             populateOrgProfile(org);
             renderOrgTemplates();
+            checkShopifyStatus();
         }
 
         // Load members
@@ -16107,7 +16110,7 @@ let shopifyConnected = false;
 
 /**
  * Check Shopify connection status and update UI accordingly.
- * Called when the settings modal is opened.
+ * Called when the Team page loads and when the settings modal is opened.
  */
 async function checkShopifyStatus() {
     try {
