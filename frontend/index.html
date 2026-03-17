@@ -1032,6 +1032,44 @@
             }
         }
 
+        /* ==================== FEED DATA TABLE ==================== */
+        .feed-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .feed-data-table th {
+            background: #F8FAFC;
+            color: #374151;
+            font-weight: 600;
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 2px solid #E5E7EB;
+            white-space: nowrap;
+        }
+        .feed-data-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #F1F5F9;
+            color: #4B5563;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .feed-data-table tr:hover td {
+            background: #F8FAFC;
+        }
+        .feed-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .feed-dash-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+        }
+
         /* ==================== ASK LIGHTSPEED ==================== */
         .ask-lightspeed {
             width: 100%;
@@ -13335,138 +13373,30 @@
                 <p class="tool-menu-subtitle">What would you like to work on?</p>
             </div>
 
-            <!-- Shopify Store Dashboard (real-time) -->
+            <!-- Feed Dashboard -->
             <div id="shopifyDashboardSection" style="display: none; width: 100%; margin-bottom: 32px;">
 
-                <!-- Connect Prompt (shown when no store connected) -->
-                <div id="shopifyConnectPrompt" style="display: none;">
-                    <div class="shopify-connect-card">
-                        <div class="shopify-connect-left">
-                            <div class="shopify-connect-icon">
-                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-                            </div>
-                            <div>
-                                <h3 class="shopify-connect-title">Connect your Shopify store</h3>
-                                <p class="shopify-connect-desc">See live sales, orders, and customer data right on your dashboard.</p>
-                            </div>
-                        </div>
-                        <button class="bento-cta" onclick="openSettingsShopify()" style="margin-top: 0;">
-                            Connect Store
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                        </button>
-                    </div>
-                </div>
+                <!-- Connect Prompt (hidden — feed is always available) -->
+                <div id="shopifyConnectPrompt" style="display: none;"></div>
 
-                <!-- Live Dashboard (shown when store connected) -->
+                <!-- Live Dashboard -->
                 <div id="shopifyLiveDashboard" style="display: none;">
-                    <!-- Store header -->
+                    <!-- Dashboard header -->
                     <div class="shopify-dash-header">
                         <div class="shopify-dash-header-left">
                             <span class="shopify-dash-live-dot"></span>
-                            <span class="shopify-dash-store-name" id="dashShopDomain">Store</span>
+                            <span class="shopify-dash-store-name">Dashboard</span>
                         </div>
                         <div class="shopify-dash-header-right">
-                            <select id="dashPeriodSelect" class="shopify-dash-period" onchange="refreshShopifyDashboard()">
-                                <option value="7">Last 7 days</option>
-                                <option value="30" selected>Last 30 days</option>
-                            </select>
+                            <button class="bento-cta" onclick="refreshFeedDashboard()" style="margin:0;padding:6px 16px;font-size:13px;">
+                                Refresh
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Row 1: Core KPIs -->
-                    <div class="shopify-kpi-grid">
-                        <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">Total Transactions</div>
-                            <div class="shopify-kpi-value" id="dashOrders">0</div>
-                            <div class="shopify-kpi-sub" id="dashOrdersChange">&nbsp;</div>
-                        </div>
-                        <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">Avg Transaction Value</div>
-                            <div class="shopify-kpi-value" id="dashAvgOrder">$0</div>
-                            <div class="shopify-kpi-sub" id="dashAvgChange">&nbsp;</div>
-                        </div>
-                        <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">Transactions / Customer</div>
-                            <div class="shopify-kpi-value" id="dashTxPerCustomer">0</div>
-                            <div class="shopify-kpi-sub" id="dashTotalCustomers">&nbsp;</div>
-                        </div>
-                        <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">Revenue</div>
-                            <div class="shopify-kpi-value" id="dashRevenue">$0</div>
-                            <div class="shopify-kpi-sub" id="dashRevenueChange">&nbsp;</div>
-                        </div>
-                    </div>
-
-                    <!-- Row 2: Customer KPIs -->
-                    <div class="shopify-kpi-grid">
-                        <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">New Customers</div>
-                            <div class="shopify-kpi-value" id="dashNewCustomers">0</div>
-                            <div class="shopify-kpi-sub" id="dashNewCustomersSub">&nbsp;</div>
-                        </div>
-                        <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">New vs Returning</div>
-                            <div class="shopify-kpi-value" id="dashNewVsReturn">-</div>
-                            <div class="shopify-kpi-sub" id="dashNewVsReturnSub">&nbsp;</div>
-                        </div>
-                        <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">Unique Buyers</div>
-                            <div class="shopify-kpi-value" id="dashUniqueBuyers">0</div>
-                            <div class="shopify-kpi-sub" id="dashUniqueBuyersSub">&nbsp;</div>
-                        </div>
-                        <div class="shopify-kpi-card">
-                            <div class="shopify-kpi-label">Repeat Rate</div>
-                            <div class="shopify-kpi-value" id="dashRepeatRate">0%</div>
-                            <div class="shopify-kpi-sub" id="dashRepeatRateSub">of buyers are returning</div>
-                        </div>
-                    </div>
-
-                    <!-- Row 3: Charts -->
-                    <div class="shopify-charts-row">
-                        <div class="shopify-chart-card shopify-chart-wide">
-                            <div class="shopify-chart-title">Daily Revenue</div>
-                            <div class="shopify-chart-wrap">
-                                <canvas id="dashRevenueChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="shopify-chart-card shopify-chart-narrow">
-                            <div class="shopify-chart-title">Top Products</div>
-                            <div class="shopify-top-products" id="dashTopProducts">
-                                <div class="shopify-kpi-sub">No data yet</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Row 4: Breakdowns -->
-                    <div class="shopify-charts-row">
-                        <div class="shopify-chart-card shopify-chart-half">
-                            <div class="shopify-chart-title">Customers by City</div>
-                            <div class="shopify-breakdown-list" id="dashCityBreakdown">
-                                <div class="shopify-kpi-sub">Loading...</div>
-                            </div>
-                        </div>
-                        <div class="shopify-chart-card shopify-chart-half">
-                            <div class="shopify-chart-title">Package Breakdown</div>
-                            <div class="shopify-breakdown-list" id="dashPackageBreakdown">
-                                <div class="shopify-kpi-sub">Loading...</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Row 5: Whales -->
-                    <div class="shopify-chart-card shopify-full-row">
-                        <div class="shopify-chart-title">Top 10 Customers by Spend</div>
-                        <div class="shopify-breakdown-list" id="dashWhales">
-                            <div class="shopify-kpi-sub">Loading...</div>
-                        </div>
-                    </div>
-
-                    <!-- Row 6: AI Insights -->
-                    <div class="shopify-chart-card shopify-full-row">
-                        <div class="shopify-chart-title">AI Insights</div>
-                        <div class="shopify-insights" id="dashInsights">
-                            <div class="shopify-kpi-sub">Generating insights...</div>
-                        </div>
+                    <!-- Dynamic feed content rendered by JS -->
+                    <div id="feedDashboardContent">
+                        <div class="shopify-kpi-sub">Loading feed data...</div>
                     </div>
                 </div>
             </div>

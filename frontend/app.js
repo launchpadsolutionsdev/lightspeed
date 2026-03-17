@@ -16277,319 +16277,242 @@ async function disconnectShopify() {
 
 // ==================== SHOPIFY LIVE DASHBOARD ====================
 
-let _shopifyDashChart = null;
-let _shopifyDashPollTimer = null;
-let _shopifyDashLastData = null;
+let _feedDashPollTimer = null;
+let _feedDashLastData = null;
 
 /**
- * Initialize the Shopify dashboard section on the tool menu page.
- * Checks connection status and shows either connect prompt or live dashboard.
+ * Initialize the Feed Dashboard section on the tool menu page.
+ * Fetches data from the XML feed proxy and renders the dashboard.
  */
 async function initShopifyDashboard() {
     const section = document.getElementById('shopifyDashboardSection');
-    const connectPrompt = document.getElementById('shopifyConnectPrompt');
-    const liveDash = document.getElementById('shopifyLiveDashboard');
     if (!section) return;
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/shopify/status`, {
-            headers: getAuthHeaders()
-        });
-        if (!response.ok) {
-            section.style.display = 'none';
-            return;
-        }
+    section.style.display = 'block';
 
-        const data = await response.json();
-        section.style.display = 'block';
+    // Hide the old connect prompt, show the live dashboard
+    const connectPrompt = document.getElementById('shopifyConnectPrompt');
+    const liveDash = document.getElementById('shopifyLiveDashboard');
+    if (connectPrompt) connectPrompt.style.display = 'none';
+    if (liveDash) liveDash.style.display = 'block';
 
-        if (data.connected) {
-            connectPrompt.style.display = 'none';
-            liveDash.style.display = 'block';
-            document.getElementById('dashShopDomain').textContent = data.shopDomain;
+    await refreshFeedDashboard();
 
-            // Load live data from Shopify API
-            await refreshShopifyDashboard();
-
-            // Auto-refresh every 60 seconds
-            stopShopifyDashPolling();
-            _shopifyDashPollTimer = setInterval(refreshShopifyDashboard, 60000);
-        } else {
-            connectPrompt.style.display = 'block';
-            liveDash.style.display = 'none';
-            stopShopifyDashPolling();
-        }
-    } catch (err) {
-        console.warn('Shopify dashboard init failed:', err.message);
-        section.style.display = 'none';
-    }
+    // Auto-refresh every 5 minutes (matches backend cache TTL)
+    stopShopifyDashPolling();
+    _feedDashPollTimer = setInterval(refreshFeedDashboard, 5 * 60 * 1000);
 }
 
 /**
  * Stop the dashboard auto-refresh polling.
  */
 function stopShopifyDashPolling() {
-    if (_shopifyDashPollTimer) {
-        clearInterval(_shopifyDashPollTimer);
-        _shopifyDashPollTimer = null;
+    if (_feedDashPollTimer) {
+        clearInterval(_feedDashPollTimer);
+        _feedDashPollTimer = null;
     }
 }
 
 /**
- * Fetch analytics data and re-render the dashboard.
+ * Fetch data from the XML feed proxy and render.
  */
-async function refreshShopifyDashboard() {
-    const days = parseInt(document.getElementById('dashPeriodSelect')?.value || '30');
+async function refreshFeedDashboard() {
+    const container = document.getElementById('feedDashboardContent');
+    if (!container) return;
 
     try {
-        const analyticsRes = await fetch(`${API_BASE_URL}/api/shopify/analytics?days=${days}`, {
+        container.innerHTML = '<div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading feed data...</div></div>';
+
+        const res = await fetch(`${API_BASE_URL}/api/feed-dashboard/data`, {
             headers: getAuthHeaders()
         });
 
-        if (!analyticsRes.ok) return;
-
-        const analytics = await analyticsRes.json();
-        _shopifyDashLastData = { analytics, days };
-        renderShopifyLiveDashboard(analytics);
-    } catch (err) {
-        console.warn('Dashboard refresh failed:', err.message);
-    }
-}
-
-/**
- * Render the full dashboard: KPIs, charts, breakdowns, whales, insights.
- */
-function renderShopifyLiveDashboard(analytics) {
-    const s = analytics.summary;
-    const prev = analytics.previousPeriod || {};
-
-    const totalOrders = parseInt(s.total_orders) || 0;
-    const totalRevenue = parseFloat(s.total_revenue) || 0;
-    const avgOrderValue = parseFloat(s.avg_order_value) || 0;
-    const txPerCustomer = parseFloat(s.transactions_per_customer) || 0;
-    const uniqueBuyers = parseInt(s.unique_customers) || 0;
-    const totalCustomers = parseInt(s.total_customers) || 0;
-    const newCustomers = parseInt(s.new_customers) || 0;
-    const newBuyers = parseInt(s.new_buyers) || 0;
-    const returningBuyers = parseInt(s.returning_buyers) || 0;
-    const repeatRate = parseInt(s.repeat_rate) || 0;
-
-    const prevOrders = parseInt(prev.total_orders) || 0;
-    const prevRevenue = parseFloat(prev.total_revenue) || 0;
-    const prevAvg = parseFloat(prev.avg_order_value) || 0;
-
-    // Row 1: Core KPIs
-    animateNumber(document.getElementById('dashOrders'), totalOrders);
-    animateCurrency(document.getElementById('dashAvgOrder'), avgOrderValue);
-    setText('dashTxPerCustomer', txPerCustomer.toFixed(2));
-    animateCurrency(document.getElementById('dashRevenue'), totalRevenue);
-
-    setText('dashOrdersChange', changeText(totalOrders, prevOrders, 'orders'));
-    setText('dashAvgChange', changeText(avgOrderValue, prevAvg, '', true));
-    setText('dashTotalCustomers', `${totalCustomers.toLocaleString()} total customers`);
-    setText('dashRevenueChange', changeText(totalRevenue, prevRevenue, '', true));
-
-    setChangeClass('dashOrdersChange', totalOrders, prevOrders);
-    setChangeClass('dashAvgChange', avgOrderValue, prevAvg);
-    setChangeClass('dashRevenueChange', totalRevenue, prevRevenue);
-
-    // Row 2: Customer KPIs
-    animateNumber(document.getElementById('dashNewCustomers'), newCustomers);
-    setText('dashNewCustomersSub', 'accounts created in period');
-
-    const newPct = (newBuyers + returningBuyers) > 0 ? Math.round((newBuyers / (newBuyers + returningBuyers)) * 100) : 0;
-    setText('dashNewVsReturn', `${newPct}% / ${100 - newPct}%`);
-    setText('dashNewVsReturnSub', `${newBuyers.toLocaleString()} new, ${returningBuyers.toLocaleString()} returning`);
-
-    animateNumber(document.getElementById('dashUniqueBuyers'), uniqueBuyers);
-    setText('dashUniqueBuyersSub', 'placed orders in period');
-
-    setText('dashRepeatRate', `${repeatRate}%`);
-    setText('dashRepeatRateSub', `${returningBuyers.toLocaleString()} of ${(newBuyers + returningBuyers).toLocaleString()} buyers are returning`);
-
-    // Charts
-    renderDashRevenueChart(analytics.daily || []);
-    renderDashTopProducts(analytics.topProducts || []);
-
-    // Breakdowns
-    renderCityBreakdown(analytics.cityBreakdown || []);
-    renderPackageBreakdown(analytics.packageBreakdown || []);
-    renderWhales(analytics.whales || []);
-
-    // AI Insights (async)
-    generateDashInsights(analytics);
-}
-
-function setText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-}
-
-function changeText(current, previous, suffix, isCurrency) {
-    if (!previous || previous === 0) return 'No prior data';
-    const pctChange = Math.round(((current - previous) / previous) * 100);
-    const dir = pctChange >= 0 ? '+' : '';
-    return `${dir}${pctChange}% vs prior period`;
-}
-
-function setChangeClass(id, current, previous) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.remove('shopify-change-up', 'shopify-change-down');
-    if (previous > 0) {
-        el.classList.add(current >= previous ? 'shopify-change-up' : 'shopify-change-down');
-    }
-}
-
-function renderDashRevenueChart(dailyData) {
-    const ctx = document.getElementById('dashRevenueChart');
-    if (!ctx) return;
-
-    if (_shopifyDashChart) { _shopifyDashChart.destroy(); _shopifyDashChart = null; }
-    if (dailyData.length === 0) return;
-
-    const labels = dailyData.map(d => {
-        const dt = new Date(d.date);
-        return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    });
-    const revenues = dailyData.map(d => parseFloat(d.revenue) || 0);
-
-    _shopifyDashChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Revenue',
-                data: revenues,
-                backgroundColor: '#635BFF',
-                borderRadius: 4,
-                maxBarThickness: 24
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 800, easing: 'easeOutQuart' },
-            plugins: {
-                legend: { display: false },
-                tooltip: { callbacks: { label: c => `$${c.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })}` } }
-            },
-            scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#6B7C93', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
-                y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 }, color: '#6B7C93', callback: v => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}` }, beginAtZero: true }
-            }
-        }
-    });
-}
-
-function renderDashTopProducts(products) {
-    const container = document.getElementById('dashTopProducts');
-    if (!container) return;
-    if (products.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No sales data yet</div>'; return; }
-
-    container.innerHTML = products.slice(0, 5).map(p => {
-        const rev = parseFloat(p.total_revenue) || 0;
-        const qty = parseInt(p.total_quantity) || 0;
-        return `<div class="shopify-top-product">
-            <span class="shopify-top-product-name">${escapeHtml(p.product_title)}</span>
-            <span class="shopify-top-product-rev">$${rev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            <span class="shopify-top-product-qty">${qty} sold</span>
-        </div>`;
-    }).join('');
-}
-
-function renderCityBreakdown(cities) {
-    const container = document.getElementById('dashCityBreakdown');
-    if (!container) return;
-    if (cities.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No location data</div>'; return; }
-
-    container.innerHTML = cities.map(c => `<div class="shopify-breakdown-row">
-        <span class="shopify-breakdown-label">${escapeHtml(c.city)}</span>
-        <span class="shopify-breakdown-value">${c.customers.toLocaleString()}</span>
-        <span class="shopify-breakdown-sub">orders</span>
-    </div>`).join('');
-}
-
-function renderPackageBreakdown(packages) {
-    const container = document.getElementById('dashPackageBreakdown');
-    if (!container) return;
-    if (packages.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No package data</div>'; return; }
-
-    container.innerHTML = packages.map(p => `<div class="shopify-breakdown-row">
-        <span class="shopify-breakdown-label">${escapeHtml(p.package)}</span>
-        <span class="shopify-breakdown-value">${p.count.toLocaleString()}</span>
-        <span class="shopify-breakdown-sub">$${p.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-    </div>`).join('');
-}
-
-function renderWhales(whales) {
-    const container = document.getElementById('dashWhales');
-    if (!container) return;
-    if (whales.length === 0) { container.innerHTML = '<div class="shopify-kpi-sub">No customer data</div>'; return; }
-
-    container.innerHTML = whales.map((w, i) => `<div class="shopify-breakdown-row">
-        <span class="shopify-whale-rank">#${i + 1}</span>
-        <span class="shopify-breakdown-label">${escapeHtml(w.name || w.email)}</span>
-        <span class="shopify-breakdown-value">$${w.total_spent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        <span class="shopify-breakdown-sub">${w.order_count} orders</span>
-    </div>`).join('');
-}
-
-/**
- * Generate AI insights by sending analytics to the /api/analyze endpoint.
- */
-async function generateDashInsights(analytics) {
-    const container = document.getElementById('dashInsights');
-    if (!container) return;
-
-    container.innerHTML = '<div class="shopify-kpi-sub">Generating insights...</div>';
-
-    const s = analytics.summary;
-    const prev = analytics.previousPeriod || {};
-    const days = parseInt(document.getElementById('dashPeriodSelect')?.value || '30');
-
-    const prompt = `You are a Shopify store analyst. Based on the following data for the last ${days} days, provide exactly 10 concise, actionable insights. Compare current period vs previous ${days} days where relevant. Be specific with numbers.
-
-CURRENT PERIOD (Last ${days} days):
-- Transactions: ${s.total_orders} | Revenue: $${s.total_revenue} | Avg Order: $${s.avg_order_value}
-- Unique Buyers: ${s.unique_customers} | Transactions/Customer: ${s.transactions_per_customer}
-- New Buyers: ${s.new_buyers} | Returning Buyers: ${s.returning_buyers}
-- New Customer Accounts: ${s.new_customers}
-- Repeat Rate: ${s.repeat_rate}%
-
-PREVIOUS PERIOD (Prior ${days} days):
-- Transactions: ${prev.total_orders || 0} | Revenue: $${prev.total_revenue || 0} | Avg Order: $${prev.avg_order_value || 0}
-
-TOP PRODUCTS: ${(analytics.topProducts || []).slice(0, 5).map(p => `${p.product_title}: ${p.total_quantity} sold, $${p.total_revenue}`).join('; ')}
-
-TOP CITIES: ${(analytics.cityBreakdown || []).slice(0, 5).map(c => `${c.city}: ${c.customers}`).join('; ')}
-
-TOP CUSTOMERS: ${(analytics.whales || []).slice(0, 5).map(w => `${w.name}: $${w.total_spent} (${w.order_count} orders)`).join('; ')}
-
-Format as a numbered list 1-10. Each insight should be 1-2 sentences. Focus on trends, opportunities, and concerns.`;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/analyze`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                data: { prompt },
-                reportType: 'shopify-insights',
-                additionalContext: prompt
-            })
-        });
-
-        if (!response.ok) {
-            container.innerHTML = '<div class="shopify-kpi-sub">Unable to generate insights at this time.</div>';
+        if (!res.ok) {
+            container.innerHTML = '<div class="shopify-kpi-sub">Unable to load feed data. Please try again later.</div>';
             return;
         }
 
-        const result = await response.json();
-        const text = result.content?.[0]?.text || result.text || 'No insights generated.';
-        container.innerHTML = renderSimpleMarkdown(text);
-    } catch {
-        container.innerHTML = '<div class="shopify-kpi-sub">Unable to generate insights at this time.</div>';
+        const data = await res.json();
+        _feedDashLastData = data;
+        renderFeedDashboard(data);
+    } catch (err) {
+        console.warn('Feed dashboard refresh failed:', err.message);
+        container.innerHTML = '<div class="shopify-kpi-sub">Unable to connect to data feed.</div>';
     }
+}
+
+/**
+ * Render the feed dashboard dynamically based on available data.
+ */
+function renderFeedDashboard(data) {
+    const container = document.getElementById('feedDashboardContent');
+    if (!container) return;
+
+    const items = data.items || [];
+    const summary = data.summary || {};
+    let html = '';
+
+    // Summary metrics cards (from scalar values in the feed)
+    const summaryKeys = Object.keys(summary).filter(k =>
+        typeof summary[k] === 'number' || (typeof summary[k] === 'string' && !isNaN(summary[k]) && summary[k].length < 20)
+    );
+
+    if (summaryKeys.length > 0) {
+        html += '<div class="shopify-kpi-grid">';
+        summaryKeys.slice(0, 8).forEach(key => {
+            const label = formatFieldLabel(key);
+            const value = summary[key];
+            const display = typeof value === 'number' ? value.toLocaleString() : value;
+            html += `<div class="shopify-kpi-card">
+                <div class="shopify-kpi-label">${escapeHtml(label)}</div>
+                <div class="shopify-kpi-value">${escapeHtml(String(display))}</div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
+    // Items table (from array data in the feed)
+    if (items.length > 0) {
+        html += renderFeedItemsTable(items, data.itemsKey || 'Items');
+    }
+
+    // If we have nested objects in the feed data, render them as sections
+    const feedData = data.feedData || {};
+    const nestedKeys = Object.keys(feedData).filter(k => {
+        const v = feedData[k];
+        return v && typeof v === 'object' && !Array.isArray(v);
+    });
+
+    nestedKeys.forEach(key => {
+        const section = feedData[key];
+        const sectionLabel = formatFieldLabel(key);
+        const sectionScalars = {};
+        const sectionArrays = {};
+
+        for (const [sk, sv] of Object.entries(section)) {
+            if (Array.isArray(sv)) {
+                sectionArrays[sk] = sv;
+            } else if (typeof sv !== 'object') {
+                sectionScalars[sk] = sv;
+            }
+        }
+
+        // Section metrics
+        const scalarKeys = Object.keys(sectionScalars);
+        if (scalarKeys.length > 0 && scalarKeys.length <= 12) {
+            html += `<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">`;
+            html += `<div class="shopify-chart-title">${escapeHtml(sectionLabel)}</div>`;
+            html += '<div class="shopify-kpi-grid">';
+            scalarKeys.forEach(sk => {
+                html += `<div class="shopify-kpi-card">
+                    <div class="shopify-kpi-label">${escapeHtml(formatFieldLabel(sk))}</div>
+                    <div class="shopify-kpi-value">${escapeHtml(String(sectionScalars[sk]))}</div>
+                </div>`;
+            });
+            html += '</div></div>';
+        }
+
+        // Section arrays as tables
+        for (const [ak, av] of Object.entries(sectionArrays)) {
+            if (av.length > 0) {
+                html += renderFeedItemsTable(av, formatFieldLabel(ak));
+            }
+        }
+    });
+
+    // Raw text summary for non-object/non-number values
+    const textKeys = Object.keys(summary).filter(k =>
+        typeof summary[k] === 'string' && (isNaN(summary[k]) || summary[k].length >= 20)
+    );
+
+    if (textKeys.length > 0) {
+        html += '<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">';
+        html += '<div class="shopify-chart-title">Feed Details</div>';
+        html += '<div class="feed-details-list">';
+        textKeys.forEach(key => {
+            html += `<div class="shopify-breakdown-row">
+                <span class="shopify-breakdown-label">${escapeHtml(formatFieldLabel(key))}</span>
+                <span class="shopify-breakdown-value">${escapeHtml(String(summary[key]))}</span>
+            </div>`;
+        });
+        html += '</div></div>';
+    }
+
+    if (!html) {
+        html = '<div class="shopify-kpi-sub">No data available from feed.</div>';
+    }
+
+    // Last updated timestamp
+    html += `<div class="feed-dash-updated" style="text-align:right;color:#6B7C93;font-size:12px;margin-top:12px;">
+        Last updated: ${new Date(data.lastUpdated || Date.now()).toLocaleTimeString()}
+    </div>`;
+
+    container.innerHTML = html;
+}
+
+/**
+ * Render an array of items as a responsive table.
+ */
+function renderFeedItemsTable(items, title) {
+    if (!items || items.length === 0) return '';
+
+    // Get all unique keys from items
+    const allKeys = new Set();
+    items.forEach(item => {
+        if (typeof item === 'object' && item !== null) {
+            Object.keys(item).forEach(k => {
+                if (typeof item[k] !== 'object') allKeys.add(k);
+            });
+        }
+    });
+
+    const columns = Array.from(allKeys).slice(0, 8); // Max 8 columns
+    if (columns.length === 0) return '';
+
+    let html = `<div class="shopify-chart-card shopify-full-row" style="margin-top:16px;">`;
+    html += `<div class="shopify-chart-title">${escapeHtml(title)} (${items.length})</div>`;
+    html += '<div class="feed-table-wrap" style="overflow-x:auto;">';
+    html += '<table class="feed-data-table">';
+
+    // Header
+    html += '<thead><tr>';
+    columns.forEach(col => {
+        html += `<th>${escapeHtml(formatFieldLabel(col))}</th>`;
+    });
+    html += '</tr></thead>';
+
+    // Body (max 50 rows)
+    html += '<tbody>';
+    items.slice(0, 50).forEach(item => {
+        html += '<tr>';
+        columns.forEach(col => {
+            const val = item[col];
+            const display = val !== null && val !== undefined ? String(val) : '';
+            html += `<td>${escapeHtml(display)}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+
+    if (items.length > 50) {
+        html += `<div class="shopify-kpi-sub" style="margin-top:8px;">Showing 50 of ${items.length} items</div>`;
+    }
+
+    html += '</div></div>';
+    return html;
+}
+
+/**
+ * Convert a camelCase/snake_case/kebab-case field name to a readable label.
+ */
+function formatFieldLabel(key) {
+    return key
+        .replace(/^_/, '')
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/[_-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // stopSyncPolling kept as no-op for backward compatibility with openTool()
