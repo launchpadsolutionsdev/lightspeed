@@ -240,50 +240,202 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
     const store = await getStoreConnection(organizationId);
     if (!store) throw new Error('No Shopify store connected');
 
-    const sinceDate = new Date();
+    const now = new Date();
+    const sinceDate = new Date(now);
     sinceDate.setDate(sinceDate.getDate() - days);
     const sinceISO = sinceDate.toISOString();
 
-    // Fetch counts and recent orders in parallel
-    const [orderCountData, totalCustomerData, orders] = await Promise.all([
+    // Previous period for comparison
+    const prevEnd = new Date(sinceDate);
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevStart.getDate() - days);
+    const prevStartISO = prevStart.toISOString();
+    const prevEndISO = prevEnd.toISOString();
+
+    // Fetch current + previous counts, total customers, new customers, and order samples
+    const [orderCountData, prevOrderCountData, totalCustomerData, newCustomerData, orders, prevOrders] = await Promise.all([
         shopifyFetch(store.shop_domain, store.access_token,
             `/orders/count.json?status=any&created_at_min=${sinceISO}`),
         shopifyFetch(store.shop_domain, store.access_token,
+            `/orders/count.json?status=any&created_at_min=${prevStartISO}&created_at_max=${prevEndISO}`),
+        shopifyFetch(store.shop_domain, store.access_token,
             `/customers/count.json`),
-        fetchRecentOrders(store, sinceISO, 10) // up to 10 pages = 2,500 orders for analytics
+        shopifyFetch(store.shop_domain, store.access_token,
+            `/customers/count.json?created_at_min=${sinceISO}`),
+        fetchRecentOrders(store, sinceISO, null, 10),
+        fetchRecentOrders(store, prevStartISO, prevEndISO, 4) // smaller sample for prev period
     ]);
 
     const totalOrderCount = orderCountData.count || 0;
+    const prevOrderCount = prevOrderCountData.count || 0;
     const totalCustomerCount = totalCustomerData.count || 0;
+    const newCustomerCount = newCustomerData.count || 0;
 
-    // Compute analytics from fetched orders
+    // Process current and previous period samples
+    const cur = processOrderSample(orders, totalOrderCount);
+    const prev = processOrderSample(prevOrders, prevOrderCount);
+
+    // Unique buyers in the period
+    const uniqueBuyers = cur.scaleFactor > 1
+        ? Math.round(cur.uniqueEmails.size * cur.scaleFactor)
+        : cur.uniqueEmails.size;
+
+    // Transactions per customer
+    const transactionsPerCustomer = uniqueBuyers > 0
+        ? Math.round((totalOrderCount / uniqueBuyers) * 100) / 100 : 0;
+
+    // City breakdown (scaled)
+    const cityBreakdown = Object.entries(cur.cityMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([city, count]) => ({
+            city: city || 'Unknown',
+            customers: cur.scaleFactor > 1 ? Math.round(count * cur.scaleFactor) : count
+        }));
+
+    // Package/price breakdown
+    const packageBreakdown = Object.entries(cur.packageMap)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 15)
+        .map(([pkg, data]) => ({
+            package: pkg,
+            count: cur.scaleFactor > 1 ? Math.round(data.count * cur.scaleFactor) : data.count,
+            revenue: Math.round((data.revenue * (cur.scaleFactor > 1 ? cur.scaleFactor : 1)) * 100) / 100
+        }));
+
+    // Top 10 whales (by dollar amount in sample — not scaled, these are real customers)
+    const whales = Object.values(cur.customerSpendMap)
+        .sort((a, b) => b.total_spent - a.total_spent)
+        .slice(0, 10)
+        .map(w => ({
+            name: w.name,
+            email: w.email,
+            total_spent: Math.round(w.total_spent * 100) / 100,
+            order_count: w.order_count
+        }));
+
+    // New vs returning buyers
+    const sampleBuyers = cur.newBuyerCount + cur.returningBuyerCount;
+    const newBuyersEst = sampleBuyers > 0
+        ? Math.round((cur.newBuyerCount / sampleBuyers) * uniqueBuyers)
+        : newCustomerCount;
+    const returningBuyersEst = Math.max(0, uniqueBuyers - newBuyersEst);
+
+    // Top products (scaled)
+    const topProducts = Object.values(cur.productMap)
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, 10);
+    if (cur.scaleFactor > 1) {
+        for (const p of topProducts) {
+            p.total_quantity = Math.round(p.total_quantity * cur.scaleFactor);
+            p.total_revenue = Math.round(p.total_revenue * cur.scaleFactor * 100) / 100;
+        }
+    }
+
+    // Daily revenue (scaled)
+    const daily = Object.values(cur.dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+    if (cur.scaleFactor > 1) {
+        for (const d of daily) {
+            d.orders = Math.round(d.orders * cur.scaleFactor);
+            d.revenue = Math.round(d.revenue * cur.scaleFactor * 100) / 100;
+        }
+    }
+
+    // Revenue estimates
+    const estRevenue = cur.scaleFactor > 1
+        ? Math.round(cur.totalRevenue * cur.scaleFactor * 100) / 100 : cur.totalRevenue;
+    const avgOrderValue = totalOrderCount > 0 ? estRevenue / totalOrderCount : 0;
+
+    // Previous period revenue estimate
+    const prevEstRevenue = prev.scaleFactor > 1
+        ? Math.round(prev.totalRevenue * prev.scaleFactor * 100) / 100 : prev.totalRevenue;
+
+    return {
+        summary: {
+            total_orders: totalOrderCount,
+            total_revenue: estRevenue.toFixed(2),
+            avg_order_value: avgOrderValue.toFixed(2),
+            unique_customers: uniqueBuyers,
+            total_customers: totalCustomerCount,
+            new_customers: newCustomerCount,
+            transactions_per_customer: transactionsPerCustomer,
+            new_buyers: newBuyersEst,
+            returning_buyers: returningBuyersEst,
+            fulfilled_orders: cur.scaleFactor > 1 ? Math.round(cur.fulfilledOrders * cur.scaleFactor) : cur.fulfilledOrders,
+            unfulfilled_orders: cur.scaleFactor > 1 ? Math.round(cur.unfulfilledOrders * cur.scaleFactor) : cur.unfulfilledOrders,
+            refunded_orders: cur.scaleFactor > 1 ? Math.round(cur.refundedOrders * cur.scaleFactor) : cur.refundedOrders,
+            refund_total: cur.scaleFactor > 1 ? Math.round(cur.refundTotal * cur.scaleFactor * 100) / 100 : cur.refundTotal,
+            sampled: cur.fetchedCount < totalOrderCount,
+            sample_size: cur.fetchedCount
+        },
+        previousPeriod: {
+            total_orders: prevOrderCount,
+            total_revenue: prevEstRevenue.toFixed(2),
+            avg_order_value: (prevOrderCount > 0 ? prevEstRevenue / prevOrderCount : 0).toFixed(2)
+        },
+        daily,
+        topProducts,
+        cityBreakdown,
+        packageBreakdown,
+        whales
+    };
+}
+
+/**
+ * Process an order sample and return computed statistics.
+ */
+function processOrderSample(orders, totalOrderCount) {
     let totalRevenue = 0;
     let fulfilledOrders = 0;
     let unfulfilledOrders = 0;
     let refundedOrders = 0;
     let refundTotal = 0;
+    let newBuyerCount = 0;
+    let returningBuyerCount = 0;
     const uniqueEmails = new Set();
     const dailyMap = {};
     const productMap = {};
+    const cityMap = {};
+    const packageMap = {};
+    const customerSpendMap = {};
 
     for (const order of orders) {
         const price = parseFloat(order.total_price) || 0;
         totalRevenue += price;
 
-        if (order.financial_status === 'refunded') {
-            refundedOrders++;
-            refundTotal += price;
+        if (order.financial_status === 'refunded') { refundedOrders++; refundTotal += price; }
+        if (order.fulfillment_status === 'fulfilled') { fulfilledOrders++; } else { unfulfilledOrders++; }
+
+        const email = order.email?.toLowerCase();
+        if (email) {
+            uniqueEmails.add(email);
+
+            // Whale tracking
+            if (!customerSpendMap[email]) {
+                customerSpendMap[email] = {
+                    email,
+                    name: order.customer
+                        ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim()
+                        : email,
+                    total_spent: 0,
+                    order_count: 0
+                };
+            }
+            customerSpendMap[email].total_spent += price;
+            customerSpendMap[email].order_count++;
+
+            // New vs returning (Shopify provides customer.orders_count)
+            if (order.customer?.orders_count !== undefined && !customerSpendMap[email]._counted) {
+                customerSpendMap[email]._counted = true;
+                if (order.customer.orders_count <= 1) { newBuyerCount++; } else { returningBuyerCount++; }
+            }
         }
 
-        if (order.fulfillment_status === 'fulfilled') {
-            fulfilledOrders++;
-        } else {
-            unfulfilledOrders++;
-        }
+        // City
+        const city = order.billing_address?.city || order.shipping_address?.city;
+        if (city) { cityMap[city.trim()] = (cityMap[city.trim()] || 0) + 1; }
 
-        if (order.email) uniqueEmails.add(order.email.toLowerCase());
-
-        // Daily breakdown
+        // Daily
         const day = order.created_at?.substring(0, 10);
         if (day) {
             if (!dailyMap[day]) dailyMap[day] = { date: day, orders: 0, revenue: 0 };
@@ -291,79 +443,42 @@ async function getLiveAnalytics(organizationId, { days = 30 } = {}) {
             dailyMap[day].revenue += price;
         }
 
-        // Top products
+        // Products + packages
         for (const item of (order.line_items || [])) {
             const title = item.title || 'Unknown';
+            const itemPrice = parseFloat(item.price) || 0;
+            const qty = item.quantity || 0;
+
             if (!productMap[title]) productMap[title] = { product_title: title, total_quantity: 0, total_revenue: 0 };
-            productMap[title].total_quantity += item.quantity || 0;
-            productMap[title].total_revenue += (parseFloat(item.price) || 0) * (item.quantity || 0);
+            productMap[title].total_quantity += qty;
+            productMap[title].total_revenue += itemPrice * qty;
+
+            const priceLabel = `$${itemPrice.toFixed(2)} - ${title}`;
+            if (!packageMap[priceLabel]) packageMap[priceLabel] = { count: 0, revenue: 0 };
+            packageMap[priceLabel].count += qty;
+            packageMap[priceLabel].revenue += itemPrice * qty;
         }
     }
 
-    // If we fetched fewer orders than total, scale revenue estimate
-    // But use actual count from Shopify for the order/customer counts
     const fetchedCount = orders.length;
     const scaleFactor = totalOrderCount > 0 && fetchedCount > 0 && fetchedCount < totalOrderCount
         ? totalOrderCount / fetchedCount : 1;
 
-    const daily = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
-
-    // Scale daily data if we only fetched a sample
-    if (scaleFactor > 1) {
-        for (const d of daily) {
-            d.orders = Math.round(d.orders * scaleFactor);
-            d.revenue = Math.round(d.revenue * scaleFactor * 100) / 100;
-        }
-    }
-
-    const topProducts = Object.values(productMap)
-        .sort((a, b) => b.total_revenue - a.total_revenue)
-        .slice(0, 10);
-
-    // Scale top products too
-    if (scaleFactor > 1) {
-        for (const p of topProducts) {
-            p.total_quantity = Math.round(p.total_quantity * scaleFactor);
-            p.total_revenue = Math.round(p.total_revenue * scaleFactor * 100) / 100;
-        }
-    }
-
-    const estimatedRevenue = scaleFactor > 1
-        ? Math.round(totalRevenue * scaleFactor * 100) / 100
-        : totalRevenue;
-
-    const avgOrderValue = totalOrderCount > 0 ? estimatedRevenue / totalOrderCount : 0;
-
-    // Unique buyers in the period: scale the sample's unique emails
-    const uniqueBuyers = scaleFactor > 1
-        ? Math.round(uniqueEmails.size * scaleFactor)
-        : uniqueEmails.size;
-
     return {
-        summary: {
-            total_orders: totalOrderCount,
-            total_revenue: estimatedRevenue.toFixed(2),
-            avg_order_value: avgOrderValue.toFixed(2),
-            unique_customers: uniqueBuyers,
-            total_customers: totalCustomerCount,
-            fulfilled_orders: scaleFactor > 1 ? Math.round(fulfilledOrders * scaleFactor) : fulfilledOrders,
-            unfulfilled_orders: scaleFactor > 1 ? Math.round(unfulfilledOrders * scaleFactor) : unfulfilledOrders,
-            refunded_orders: scaleFactor > 1 ? Math.round(refundedOrders * scaleFactor) : refundedOrders,
-            refund_total: scaleFactor > 1 ? Math.round(refundTotal * scaleFactor * 100) / 100 : refundTotal,
-            sampled: fetchedCount < totalOrderCount,
-            sample_size: fetchedCount
-        },
-        daily,
-        topProducts
+        totalRevenue, fulfilledOrders, unfulfilledOrders, refundedOrders, refundTotal,
+        newBuyerCount, returningBuyerCount, uniqueEmails, dailyMap, productMap,
+        cityMap, packageMap, customerSpendMap, fetchedCount, scaleFactor
     };
 }
 
 /**
  * Fetch recent orders directly from Shopify with a page cap.
+ * Optional untilISO limits the upper end of the date range.
  */
-async function fetchRecentOrders(store, sinceISO, maxPages = 10) {
+async function fetchRecentOrders(store, sinceISO, untilISO, maxPages = 10) {
     const orders = [];
     let url = `https://${store.shop_domain}/admin/api/${SHOPIFY_API_VERSION}/orders.json?limit=250&status=any&created_at_min=${sinceISO}`;
+    if (untilISO) url += `&created_at_max=${untilISO}`;
     let page = 0;
 
     while (url && page < maxPages) {
