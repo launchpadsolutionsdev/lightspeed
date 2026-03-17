@@ -13,6 +13,11 @@
     let sdCurrency = 'CAD';
     let sdRefreshTimer = null;
     let sdSalesMetric = 'net_sales'; // net_sales | gross_sales | orders
+    let sdCustomStartDate = '';
+    let sdCustomEndDate = '';
+    let sdSearchDebounce = null;
+    let sdAlsConversation = [];
+    let sdAlsStreaming = false;
 
     // ─── Helpers ────────────────────────────────────────────────────
 
@@ -62,6 +67,11 @@
     }
 
     function sdGetDateParams() {
+        if (sdCurrentPreset === 'custom' && sdCustomStartDate && sdCustomEndDate) {
+            const params = { start_date: sdCustomStartDate, end_date: sdCustomEndDate };
+            if (sdCompare) params.compare = 'previous_period';
+            return params;
+        }
         const params = { preset: sdCurrentPreset };
         if (sdCompare) params.compare = 'previous_period';
         return params;
@@ -85,34 +95,47 @@
         return `<span class="sd-order-badge ${cls}">${label}</span>`;
     }
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function sdGetInitials(name) {
+        if (!name) return '?';
+        return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    }
+
     // ─── Skeleton Loaders ───────────────────────────────────────────
 
     function sdShowSkeletons() {
-        // KPI skeletons
         const kpiRow = document.getElementById('sdKpiRow');
         if (kpiRow) {
             kpiRow.innerHTML = Array(4).fill('<div class="sd-kpi-card"><div class="sd-skeleton sd-skeleton-kpi"></div></div>').join('');
         }
 
-        // Chart skeleton
         const chartWrap = document.getElementById('sdSalesChartWrap');
         if (chartWrap) chartWrap.innerHTML = '<div class="sd-skeleton sd-skeleton-chart"></div>';
 
-        // Table skeleton
         const tableWrap = document.getElementById('sdProductsTableWrap');
         if (tableWrap) tableWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
 
-        // Channel skeleton
         const channelWrap = document.getElementById('sdChannelChartWrap');
         if (channelWrap) channelWrap.innerHTML = '<div class="sd-skeleton" style="height:220px"></div>';
 
-        // Region skeleton
         const regionWrap = document.getElementById('sdRegionWrap');
         if (regionWrap) regionWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
 
-        // Order feed skeleton
         const feedWrap = document.getElementById('sdOrderFeedWrap');
         if (feedWrap) feedWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
+
+        const custWrap = document.getElementById('sdTopCustomersWrap');
+        if (custWrap) custWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
+
+        const cityWrap = document.getElementById('sdCityWrap');
+        if (cityWrap) cityWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
+
+        const priceWrap = document.getElementById('sdPricePointsWrap');
+        if (priceWrap) priceWrap.innerHTML = '<div class="sd-skeleton" style="height:250px"></div>';
     }
 
     // ─── Data Loading ───────────────────────────────────────────────
@@ -141,13 +164,16 @@
 
         // Load all data in parallel
         const params = sdGetDateParams();
-        const [summary, salesTime, products, channels, regions, orders] = await Promise.allSettled([
+        const [summary, salesTime, products, channels, regions, orders, customers, cities, pricePoints] = await Promise.allSettled([
             sdFetch('summary', params),
             sdFetch('sales-over-time', params),
             sdFetch('top-products', params),
             sdFetch('sales-by-channel', params),
             sdFetch('sales-by-region', params),
             sdFetch('recent-orders', { limit: 20 }),
+            sdFetch('top-customers', { limit: 10 }),
+            sdFetch('sales-by-city', params),
+            sdFetch('price-points', params),
         ]);
 
         if (summary.status === 'fulfilled') sdRenderKPIs(summary.value);
@@ -156,6 +182,12 @@
         if (channels.status === 'fulfilled') sdRenderChannelChart(channels.value);
         if (regions.status === 'fulfilled') sdRenderRegionBars(regions.value);
         if (orders.status === 'fulfilled') sdRenderOrderFeed(orders.value);
+        if (customers.status === 'fulfilled') sdRenderTopCustomers(customers.value);
+        if (cities.status === 'fulfilled') sdRenderCityBreakdown(cities.value);
+        if (pricePoints.status === 'fulfilled') sdRenderPricePoints(pricePoints.value);
+
+        // Load AI insights (separate, slower call)
+        sdLoadInsights();
 
         // Auto-refresh orders every 30s
         if (sdRefreshTimer) clearInterval(sdRefreshTimer);
@@ -401,6 +433,345 @@
         `).join('') + '</div>';
     }
 
+    // ─── Render: Top Customers ──────────────────────────────────────
+
+    function sdRenderTopCustomers(data) {
+        const wrap = document.getElementById('sdTopCustomersWrap');
+        if (!wrap) return;
+
+        if (!data.customers || data.customers.length === 0) {
+            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No customer data yet</div>';
+            return;
+        }
+
+        wrap.innerHTML = data.customers.map(c => `
+            <div class="sd-customer-row">
+                <div class="sd-avatar">${sdGetInitials(c.customer_name)}</div>
+                <div class="sd-customer-info">
+                    <div class="sd-customer-name">${escapeHtml(c.customer_name || c.customer_email || 'Unknown')}</div>
+                    <div class="sd-customer-meta">${c.order_count} order${c.order_count !== 1 ? 's' : ''} &middot; Last: ${sdTimeAgo(c.last_order_at)}</div>
+                </div>
+                <div class="sd-customer-amount">${sdFormatCurrencyFull(c.total_spent)}</div>
+            </div>
+        `).join('');
+    }
+
+    // ─── Render: Sales by City ──────────────────────────────────────
+
+    function sdRenderCityBreakdown(data) {
+        const wrap = document.getElementById('sdCityWrap');
+        if (!wrap) return;
+
+        if (!data.cities || data.cities.length === 0) {
+            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No city data</div>';
+            return;
+        }
+
+        const maxRev = Math.max(...data.cities.map(c => c.revenue));
+
+        wrap.innerHTML = data.cities.map(c => {
+            const pct = maxRev > 0 ? (c.revenue / maxRev * 100) : 0;
+            const label = c.city + (c.province ? `, ${c.province}` : '');
+            return `<div class="sd-region-bar">
+                <div class="sd-region-label" title="${escapeHtml(label)}">${escapeHtml(c.city || 'Unknown')}</div>
+                <div class="sd-region-track"><div class="sd-region-fill" style="width:${pct}%"></div></div>
+                <div class="sd-region-value">${sdFormatCurrency(c.revenue)}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // ─── Render: Price Points ───────────────────────────────────────
+
+    function sdRenderPricePoints(data) {
+        const wrap = document.getElementById('sdPricePointsWrap');
+        if (!wrap) return;
+
+        if (!data.buckets || data.buckets.length === 0) {
+            wrap.innerHTML = '<div style="text-align:center;padding:40px;color:#6B7C93;font-size:13px;">No price point data</div>';
+            return;
+        }
+
+        wrap.innerHTML = '<canvas id="sdPriceCanvas"></canvas>';
+        const ctx = document.getElementById('sdPriceCanvas').getContext('2d');
+
+        const colors = ['#635BFF', '#E91E8C', '#F47B3A', '#F5C623', '#30B130', '#47C1BF'];
+
+        if (sdCharts.pricePoints) sdCharts.pricePoints.destroy();
+        sdCharts.pricePoints = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.buckets.map(b => b.bucket),
+                datasets: [{
+                    label: 'Revenue',
+                    data: data.buckets.map(b => b.revenue),
+                    backgroundColor: colors.slice(0, data.buckets.length),
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                return `Revenue: ${sdFormatCurrencyFull(ctx.parsed.y)}`;
+                            },
+                            afterLabel: function (ctx) {
+                                const b = data.buckets[ctx.dataIndex];
+                                return b ? `${b.units_sold} units sold` : '';
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11 }, color: '#6B7C93' },
+                    },
+                    y: {
+                        grid: { color: '#E3E8EE' },
+                        ticks: {
+                            font: { size: 11 },
+                            color: '#6B7C93',
+                            callback: function (v) { return sdFormatCurrency(v); },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    // ─── AI Insights ────────────────────────────────────────────────
+
+    async function sdLoadInsights() {
+        const wrap = document.getElementById('sdInsightsWrap');
+        if (!wrap) return;
+
+        wrap.innerHTML = '<div class="sd-insight-loading">Analyzing your data...</div>';
+
+        try {
+            const params = sdGetDateParams();
+            const data = await sdFetch('ai-insights', params);
+
+            if (!data.insights || data.insights.length === 0) {
+                wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No insights available for this period</div>';
+                return;
+            }
+
+            const iconMap = {
+                revenue: '&#128200;',
+                trend: '&#128200;',
+                aov: '&#128176;',
+                retention: '&#128101;',
+                product: '&#11088;',
+                region: '&#127758;',
+                whale: '&#128051;',
+                refund: '&#9888;&#65039;',
+            };
+
+            wrap.innerHTML = '<div class="sd-insights-list">' + data.insights.map(insight => {
+                const icon = iconMap[insight.type] || '&#128161;';
+                return `<div class="sd-insight-item">
+                    <div class="sd-insight-icon">${icon}</div>
+                    <div class="sd-insight-text">${insight.text}</div>
+                </div>`;
+            }).join('') + '</div>';
+        } catch {
+            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">Unable to generate insights</div>';
+        }
+    }
+
+    // ─── Order Search ───────────────────────────────────────────────
+
+    async function sdSearchOrders(query) {
+        const resultsPanel = document.getElementById('sdSearchResults');
+        const resultsWrap = document.getElementById('sdSearchResultsWrap');
+        if (!resultsPanel || !resultsWrap) return;
+
+        if (!query || query.length < 2) {
+            resultsPanel.style.display = 'none';
+            return;
+        }
+
+        resultsPanel.style.display = 'block';
+        resultsWrap.innerHTML = '<div class="sd-skeleton sd-skeleton-row"></div><div class="sd-skeleton sd-skeleton-row"></div>';
+
+        try {
+            const data = await sdFetch('search-orders', { q: query });
+
+            if (!data.orders || data.orders.length === 0) {
+                resultsWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No orders found</div>';
+                return;
+            }
+
+            resultsWrap.innerHTML = '<div class="sd-order-feed">' + data.orders.map(o => `
+                <div class="sd-order-item">
+                    <div class="sd-order-info">
+                        <div class="sd-order-number">${escapeHtml(o.order_number || '--')}</div>
+                        <div class="sd-order-customer">${escapeHtml(o.customer_name || 'Guest')} &middot; ${escapeHtml(o.customer_email || '')}</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div class="sd-order-amount">${sdFormatCurrencyFull(o.total_price)}</div>
+                        <div class="sd-order-time">${sdTimeAgo(o.created_at)}</div>
+                    </div>
+                    <div>${sdStatusBadge(o.financial_status, 'financial')}</div>
+                </div>
+            `).join('') + '</div>';
+        } catch {
+            resultsWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">Search failed</div>';
+        }
+    }
+
+    // ─── Export ──────────────────────────────────────────────────────
+
+    function sdExportCSV() {
+        // Gather all visible data from the DOM tables
+        const tables = document.querySelectorAll('#sdDashboardContent .sd-table');
+        let csv = '';
+
+        tables.forEach(table => {
+            const rows = table.querySelectorAll('tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('th, td');
+                const values = Array.from(cells).map(c => '"' + c.textContent.trim().replace(/"/g, '""') + '"');
+                csv += values.join(',') + '\n';
+            });
+            csv += '\n';
+        });
+
+        // Also export KPI values
+        const kpis = document.querySelectorAll('.sd-kpi-card');
+        if (kpis.length) {
+            csv += 'KPI,Value\n';
+            kpis.forEach(card => {
+                const label = card.querySelector('.sd-kpi-label');
+                const value = card.querySelector('.sd-kpi-value');
+                if (label && value) {
+                    csv += `"${label.textContent.trim()}","${value.textContent.trim()}"\n`;
+                }
+            });
+        }
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `shopify-analytics-${new Date().toISOString().substring(0, 10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+
+    function sdExportPDF() {
+        const content = document.getElementById('sdDashboardContent');
+        if (!content || typeof html2pdf === 'undefined') return;
+
+        html2pdf().set({
+            margin: 10,
+            filename: `shopify-analytics-${new Date().toISOString().substring(0, 10)}.pdf`,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' },
+        }).from(content).save();
+    }
+
+    // ─── Ask Lightspeed (Embedded) ──────────────────────────────────
+
+    async function sdAlsSendMessage() {
+        const input = document.getElementById('sdAlsInput');
+        const messagesEl = document.getElementById('sdAlsMessages');
+        const sendBtn = document.getElementById('sdAlsSend');
+        if (!input || !messagesEl || sdAlsStreaming) return;
+
+        const message = input.value.trim();
+        if (!message) return;
+
+        // Clear empty state
+        const emptyEl = messagesEl.querySelector('.sd-als-empty');
+        if (emptyEl) emptyEl.remove();
+
+        // Add user message
+        const userDiv = document.createElement('div');
+        userDiv.className = 'sd-als-msg user';
+        userDiv.textContent = message;
+        messagesEl.appendChild(userDiv);
+
+        input.value = '';
+        sdAlsStreaming = true;
+        if (sendBtn) sendBtn.disabled = true;
+
+        // Add conversation context
+        sdAlsConversation.push({ role: 'user', content: message });
+
+        // Add streaming response placeholder
+        const assistantDiv = document.createElement('div');
+        assistantDiv.className = 'sd-als-msg assistant';
+        assistantDiv.textContent = '';
+        messagesEl.appendChild(assistantDiv);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+
+        try {
+            const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+            const formData = new FormData();
+            formData.append('message', message);
+            formData.append('conversation', JSON.stringify(sdAlsConversation.slice(-10)));
+
+            const response = await fetch(`${API_BASE}/api/ask-lightspeed/agent`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData,
+            });
+
+            if (!response.ok) throw new Error('Request failed');
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText = '';
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const payload = JSON.parse(line.substring(6));
+                            if (payload.type === 'text') {
+                                fullText += payload.content;
+                                assistantDiv.textContent = fullText;
+                                messagesEl.scrollTop = messagesEl.scrollHeight;
+                            } else if (payload.type === 'status') {
+                                // Show status briefly
+                            } else if (payload.type === 'error') {
+                                assistantDiv.textContent = payload.content || 'An error occurred.';
+                            }
+                        } catch {
+                            // Skip malformed SSE lines
+                        }
+                    }
+                }
+            }
+
+            if (!fullText) {
+                assistantDiv.textContent = 'No response received.';
+            }
+
+            sdAlsConversation.push({ role: 'assistant', content: fullText });
+        } catch (e) {
+            assistantDiv.textContent = 'Failed to get a response. Please try again.';
+        }
+
+        sdAlsStreaming = false;
+        if (sendBtn) sendBtn.disabled = false;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
     // ─── Sync Controls ──────────────────────────────────────────────
 
     function sdUpdateSyncIndicator(status) {
@@ -417,7 +788,6 @@
         const timeStr = lastSync ? sdTimeAgo(lastSync) : 'Never';
         indicator.innerHTML = `<span class="sd-sync-dot ${syncClass}"></span> Last updated: ${timeStr}`;
 
-        // Show error banner if sync failed
         const banner = document.getElementById('sdSyncBanner');
         if (banner && status.sync_error) {
             banner.style.display = 'block';
@@ -449,8 +819,8 @@
     }
 
     function sdPollSyncStatus(attempt) {
-        if (attempt > 12) return; // Stop after ~2 minutes
-        var delay = attempt < 3 ? 5000 : 10000; // 5s for first 3 checks, then 10s
+        if (attempt > 12) return;
+        var delay = attempt < 3 ? 5000 : 10000;
         setTimeout(async () => {
             try {
                 var status = await sdFetch('sync-status');
@@ -500,7 +870,29 @@
         if (dateSelect) {
             dateSelect.addEventListener('change', function () {
                 sdCurrentPreset = this.value;
-                sdLoadDashboard();
+                const customDates = document.getElementById('sdCustomDates');
+                if (customDates) {
+                    if (this.value === 'custom') {
+                        customDates.classList.add('visible');
+                    } else {
+                        customDates.classList.remove('visible');
+                        sdLoadDashboard();
+                    }
+                }
+            });
+        }
+
+        // Custom date range apply
+        const applyDates = document.getElementById('sdApplyDates');
+        if (applyDates) {
+            applyDates.addEventListener('click', function () {
+                const startInput = document.getElementById('sdStartDate');
+                const endInput = document.getElementById('sdEndDate');
+                if (startInput && endInput && startInput.value && endInput.value) {
+                    sdCustomStartDate = startInput.value;
+                    sdCustomEndDate = endInput.value;
+                    sdLoadDashboard();
+                }
             });
         }
 
@@ -527,22 +919,81 @@
                 document.querySelectorAll('.sd-sales-metric-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 sdSalesMetric = this.dataset.metric;
-                // Re-fetch sales chart
                 sdFetch('sales-over-time', sdGetDateParams()).then(data => sdRenderSalesChart(data)).catch(() => {});
             });
         });
-    }
 
-    // ─── Escape HTML ────────────────────────────────────────────────
+        // Order search
+        const searchInput = document.getElementById('sdOrderSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                clearTimeout(sdSearchDebounce);
+                const q = this.value.trim();
+                sdSearchDebounce = setTimeout(() => sdSearchOrders(q), 400);
+            });
+        }
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        // Clear search
+        const clearSearch = document.getElementById('sdClearSearch');
+        if (clearSearch) {
+            clearSearch.addEventListener('click', function () {
+                const searchInput = document.getElementById('sdOrderSearch');
+                if (searchInput) searchInput.value = '';
+                const resultsPanel = document.getElementById('sdSearchResults');
+                if (resultsPanel) resultsPanel.style.display = 'none';
+            });
+        }
+
+        // Export button
+        const exportBtn = document.getElementById('sdExportBtn');
+        const exportMenu = document.getElementById('sdExportMenu');
+        if (exportBtn && exportMenu) {
+            exportBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                exportMenu.classList.toggle('open');
+            });
+            document.addEventListener('click', function () {
+                exportMenu.classList.remove('open');
+            });
+            exportMenu.querySelectorAll('.sd-export-option').forEach(opt => {
+                opt.addEventListener('click', function () {
+                    const format = this.dataset.format;
+                    exportMenu.classList.remove('open');
+                    if (format === 'csv') sdExportCSV();
+                    else if (format === 'pdf') sdExportPDF();
+                });
+            });
+        }
+
+        // Refresh insights
+        const refreshInsights = document.getElementById('sdRefreshInsights');
+        if (refreshInsights) {
+            refreshInsights.addEventListener('click', function () {
+                sdLoadInsights();
+            });
+        }
+
+        // Ask Lightspeed
+        const alsInput = document.getElementById('sdAlsInput');
+        const alsSend = document.getElementById('sdAlsSend');
+        if (alsSend) {
+            alsSend.addEventListener('click', sdAlsSendMessage);
+        }
+        if (alsInput) {
+            alsInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sdAlsSendMessage();
+                }
+            });
+        }
     }
 
     // ─── Public API ─────────────────────────────────────────────────
 
     window.sdInitDashboard = function () {
+        sdAlsConversation = [];
+        sdAlsStreaming = false;
         sdSetupEvents();
         sdLoadDashboard();
     };
@@ -552,8 +1003,14 @@
             clearInterval(sdRefreshTimer);
             sdRefreshTimer = null;
         }
+        if (sdSearchDebounce) {
+            clearTimeout(sdSearchDebounce);
+            sdSearchDebounce = null;
+        }
         Object.values(sdCharts).forEach(c => { try { c.destroy(); } catch {} });
         sdCharts = {};
+        sdAlsConversation = [];
+        sdAlsStreaming = false;
     };
 
 })();

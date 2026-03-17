@@ -132,6 +132,11 @@ async function runFullSync(organizationId) {
         // Sync recent orders via GraphQL
         totalRecords += await syncRecentOrders(store, organizationId);
 
+        // Sync extended analytics (customers, cities, price points)
+        totalRecords += await syncTopCustomers(store, organizationId, 365);
+        totalRecords += await syncSalesByCity(store, organizationId, 365);
+        totalRecords += await syncPricePoints(store, organizationId, 365);
+
         // Store currency from shop info
         await syncStoreCurrency(store, organizationId);
 
@@ -175,6 +180,9 @@ async function runIncrementalSync(organizationId) {
         totalRecords += await syncSalesByChannel(store, organizationId, 2);
         totalRecords += await syncSalesByRegion(store, organizationId, 2);
         totalRecords += await syncRecentOrders(store, organizationId);
+        totalRecords += await syncTopCustomers(store, organizationId, 2);
+        totalRecords += await syncSalesByCity(store, organizationId, 2);
+        totalRecords += await syncPricePoints(store, organizationId, 2);
 
         await pool.query(
             `UPDATE shopify_stores SET last_incremental_sync_at = NOW(), analytics_sync_status = 'synced', analytics_sync_error = NULL, updated_at = NOW() WHERE organization_id = $1`,
@@ -595,6 +603,171 @@ async function syncRecentOrders(store, organizationId) {
     return orders.length;
 }
 
+async function syncTopCustomers(store, organizationId, days) {
+    try {
+        const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=email,customer,total_price,created_at`;
+        const orders = await fetchAllPages(store, endpoint, 'orders');
+
+        const customerMap = {};
+        for (const order of orders) {
+            const email = (order.email || order.customer?.email || '').toLowerCase();
+            if (!email) continue;
+            if (!customerMap[email]) {
+                customerMap[email] = {
+                    email,
+                    name: order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : email,
+                    total_spent: 0, order_count: 0, last_order_at: order.created_at,
+                };
+            }
+            customerMap[email].total_spent += parseFloat(order.total_price) || 0;
+            customerMap[email].order_count++;
+            if (order.created_at > customerMap[email].last_order_at) customerMap[email].last_order_at = order.created_at;
+        }
+
+        // Upsert top 50 by spend
+        const sorted = Object.values(customerMap).sort((a, b) => b.total_spent - a.total_spent).slice(0, 50);
+        await pool.query('DELETE FROM shopify_top_customers WHERE organization_id = $1', [organizationId]);
+        for (const c of sorted) {
+            await pool.query(
+                `INSERT INTO shopify_top_customers (organization_id, customer_email, customer_name, total_spent_cents, order_count, last_order_at, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                 ON CONFLICT (organization_id, customer_email) DO UPDATE SET
+                    customer_name = EXCLUDED.customer_name, total_spent_cents = EXCLUDED.total_spent_cents,
+                    order_count = EXCLUDED.order_count, last_order_at = EXCLUDED.last_order_at, updated_at = NOW()`,
+                [organizationId, c.email, c.name, toCents(c.total_spent), c.order_count, c.last_order_at]
+            );
+        }
+        return sorted.length;
+    } catch (err) {
+        console.error('syncTopCustomers error:', err.message);
+        return 0;
+    }
+}
+
+async function syncSalesByCity(store, organizationId, days) {
+    try {
+        const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=created_at,total_price,shipping_address,billing_address,email`;
+        const orders = await fetchAllPages(store, endpoint, 'orders');
+
+        const cityMap = {};
+        const cityCustomers = {};
+        for (const order of orders) {
+            const date = order.created_at?.substring(0, 10);
+            if (!date) continue;
+            const addr = order.shipping_address || order.billing_address;
+            const city = addr?.city?.trim() || 'Unknown';
+            const province = addr?.province || '';
+            const country = addr?.country || addr?.country_code || 'Unknown';
+            const key = `${date}:${city}:${province}`;
+            if (!cityMap[key]) {
+                cityMap[key] = { date, city, province, country, revenue: 0, orders: 0, emails: new Set() };
+            }
+            cityMap[key].revenue += parseFloat(order.total_price) || 0;
+            cityMap[key].orders++;
+            if (order.email) cityMap[key].emails.add(order.email.toLowerCase());
+        }
+
+        for (const c of Object.values(cityMap)) {
+            await pool.query(
+                `INSERT INTO sales_by_city (organization_id, date, city, province, country, revenue_cents, order_count, customer_count)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 ON CONFLICT (organization_id, date, city, province) DO UPDATE SET
+                    country = EXCLUDED.country, revenue_cents = EXCLUDED.revenue_cents,
+                    order_count = EXCLUDED.order_count, customer_count = EXCLUDED.customer_count`,
+                [organizationId, c.date, c.city, c.province, c.country, toCents(c.revenue), c.orders, c.emails.size]
+            );
+        }
+        return Object.keys(cityMap).length;
+    } catch (err) {
+        console.error('syncSalesByCity error:', err.message);
+        return 0;
+    }
+}
+
+async function syncPricePoints(store, organizationId, days) {
+    try {
+        const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=created_at,line_items`;
+        const orders = await fetchAllPages(store, endpoint, 'orders');
+
+        const ppMap = {};
+        for (const order of orders) {
+            const date = order.created_at?.substring(0, 10);
+            if (!date) continue;
+            for (const item of (order.line_items || [])) {
+                const price = parseFloat(item.price) || 0;
+                const bucket = priceBucket(price);
+                const key = `${date}:${bucket}:${item.title || 'Unknown'}`;
+                if (!ppMap[key]) {
+                    ppMap[key] = { date, bucket, title: item.title || 'Unknown', price_cents: toCents(price), units: 0, revenue: 0 };
+                }
+                ppMap[key].units += item.quantity || 0;
+                ppMap[key].revenue += price * (item.quantity || 0);
+            }
+        }
+
+        for (const p of Object.values(ppMap)) {
+            await pool.query(
+                `INSERT INTO price_point_metrics (organization_id, date, price_bucket, product_title, unit_price_cents, units_sold, revenue_cents)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 ON CONFLICT (organization_id, date, price_bucket, product_title) DO UPDATE SET
+                    unit_price_cents = EXCLUDED.unit_price_cents, units_sold = EXCLUDED.units_sold,
+                    revenue_cents = EXCLUDED.revenue_cents`,
+                [organizationId, p.date, p.bucket, p.title, p.price_cents, p.units, toCents(p.revenue)]
+            );
+        }
+        return Object.keys(ppMap).length;
+    } catch (err) {
+        console.error('syncPricePoints error:', err.message);
+        return 0;
+    }
+}
+
+function priceBucket(price) {
+    if (price <= 0) return '$0';
+    if (price < 10) return '$1-9';
+    if (price < 25) return '$10-24';
+    if (price < 50) return '$25-49';
+    if (price < 100) return '$50-99';
+    if (price < 250) return '$100-249';
+    if (price < 500) return '$250-499';
+    return '$500+';
+}
+
+function daysAgoISO(days) {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    return d.toISOString();
+}
+
+async function fetchAllPages(store, endpoint, resourceKey) {
+    const records = [];
+    let url = `https://${store.shop_domain}/admin/api/${SHOPIFY_API_VERSION}${endpoint}`;
+    while (url) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000);
+        try {
+            const response = await fetch(url, {
+                headers: { 'X-Shopify-Access-Token': store.access_token, 'Content-Type': 'application/json' },
+                signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            if (!response.ok) break;
+            const data = await response.json();
+            if (data[resourceKey]) records.push(...data[resourceKey]);
+            const linkHeader = response.headers.get('link');
+            url = null;
+            if (linkHeader) {
+                const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+                if (nextMatch) url = nextMatch[1];
+            }
+        } catch {
+            clearTimeout(timeout);
+            break;
+        }
+    }
+    return records;
+}
+
 async function syncStoreCurrency(store, organizationId) {
     try {
         const query = `{ shop { currencyCode } }`;
@@ -997,6 +1170,161 @@ async function getSyncStatus(organizationId) {
     };
 }
 
+// ─── Extended Query Functions ────────────────────────────────────────
+
+async function getTopCustomers(organizationId, limit = 10) {
+    const result = await pool.query(
+        `SELECT customer_email, customer_name, total_spent_cents, order_count, last_order_at
+         FROM shopify_top_customers
+         WHERE organization_id = $1
+         ORDER BY total_spent_cents DESC
+         LIMIT $2`,
+        [organizationId, limit]
+    );
+    return {
+        customers: result.rows.map(r => ({
+            email: r.customer_email,
+            name: r.customer_name,
+            total_spent: (parseInt(r.total_spent_cents) || 0) / 100,
+            order_count: parseInt(r.order_count) || 0,
+            last_order: r.last_order_at,
+        })),
+    };
+}
+
+async function getSalesByCity(organizationId, startDate, endDate, limit = 15) {
+    const result = await pool.query(
+        `SELECT city, province, country,
+                SUM(revenue_cents) AS revenue_cents,
+                SUM(order_count) AS order_count,
+                SUM(customer_count) AS customer_count
+         FROM sales_by_city
+         WHERE organization_id = $1 AND date >= $2 AND date <= $3
+         GROUP BY city, province, country
+         ORDER BY revenue_cents DESC
+         LIMIT $4`,
+        [organizationId, startDate, endDate, limit]
+    );
+    return {
+        cities: result.rows.map(r => ({
+            city: r.city,
+            province: r.province,
+            country: r.country,
+            revenue: (parseInt(r.revenue_cents) || 0) / 100,
+            orders: parseInt(r.order_count) || 0,
+            customers: parseInt(r.customer_count) || 0,
+        })),
+    };
+}
+
+async function getPricePoints(organizationId, startDate, endDate) {
+    const result = await pool.query(
+        `SELECT price_bucket,
+                SUM(units_sold) AS units_sold,
+                SUM(revenue_cents) AS revenue_cents
+         FROM price_point_metrics
+         WHERE organization_id = $1 AND date >= $2 AND date <= $3
+         GROUP BY price_bucket
+         ORDER BY MIN(unit_price_cents) ASC`,
+        [organizationId, startDate, endDate]
+    );
+    return {
+        buckets: result.rows.map(r => ({
+            bucket: r.price_bucket,
+            units_sold: parseInt(r.units_sold) || 0,
+            revenue: (parseInt(r.revenue_cents) || 0) / 100,
+        })),
+    };
+}
+
+async function searchOrders(organizationId, query) {
+    const q = `%${query}%`;
+    const result = await pool.query(
+        `SELECT * FROM dashboard_recent_orders
+         WHERE organization_id = $1
+           AND (order_number ILIKE $2 OR customer_name ILIKE $2 OR customer_email ILIKE $2)
+         ORDER BY created_at DESC
+         LIMIT 20`,
+        [organizationId, q]
+    );
+    return {
+        orders: result.rows.map(r => ({
+            order_number: r.order_number,
+            created_at: r.created_at,
+            total_price: (parseInt(r.total_price_cents) || 0) / 100,
+            currency: r.currency_code || 'CAD',
+            financial_status: r.financial_status,
+            fulfillment_status: r.fulfillment_status,
+            customer_name: r.customer_name,
+            customer_email: r.customer_email,
+            province: r.province,
+            country: r.country,
+            line_items: r.line_items_summary,
+        })),
+    };
+}
+
+async function generateAIInsights(organizationId, startDate, endDate) {
+    const summary = await getDashboardSummary(organizationId, startDate, endDate, 'previous_period');
+    const topProducts = await getTopProducts(organizationId, startDate, endDate, 5);
+    const regions = await getSalesByRegion(organizationId, startDate, endDate, 5);
+    const topCustomers = await getTopCustomers(organizationId, 5);
+
+    const cp = summary.current_period;
+    const changes = summary.changes || {};
+
+    const insights = [];
+
+    // Revenue trend
+    if (changes.total_sales_pct > 5) {
+        insights.push({ type: 'positive', text: `Revenue is up ${changes.total_sales_pct.toFixed(1)}% compared to the previous period.` });
+    } else if (changes.total_sales_pct < -5) {
+        insights.push({ type: 'negative', text: `Revenue is down ${Math.abs(changes.total_sales_pct).toFixed(1)}% compared to the previous period.` });
+    } else {
+        insights.push({ type: 'neutral', text: `Revenue is stable compared to the previous period.` });
+    }
+
+    // AOV trend
+    if (changes.average_order_value_pct > 3) {
+        insights.push({ type: 'positive', text: `Average order value increased ${changes.average_order_value_pct.toFixed(1)}% — customers are spending more per order.` });
+    } else if (changes.average_order_value_pct < -3) {
+        insights.push({ type: 'negative', text: `Average order value dropped ${Math.abs(changes.average_order_value_pct).toFixed(1)}% — consider bundling or upsell strategies.` });
+    }
+
+    // Top product
+    if (topProducts.products.length > 0) {
+        const top = topProducts.products[0];
+        insights.push({ type: 'info', text: `Top seller: "${top.title}" driving ${top.pct_of_total}% of revenue with ${top.units_sold} units sold.` });
+    }
+
+    // Customer retention
+    if (cp.returning_customer_rate > 0.3) {
+        insights.push({ type: 'positive', text: `Strong retention — ${Math.round(cp.returning_customer_rate * 100)}% returning customer rate.` });
+    } else if (cp.returning_customer_rate < 0.15 && cp.total_orders > 10) {
+        insights.push({ type: 'negative', text: `Low returning customer rate (${Math.round(cp.returning_customer_rate * 100)}%). Consider loyalty programs or email follow-ups.` });
+    }
+
+    // Top region
+    if (regions.regions.length > 0) {
+        const topRegion = regions.regions[0];
+        const regionLabel = topRegion.province !== 'Unknown' ? topRegion.province : topRegion.country;
+        insights.push({ type: 'info', text: `Top market: ${regionLabel} with ${topRegion.orders} orders.` });
+    }
+
+    // Whale customer
+    if (topCustomers.customers.length > 0) {
+        const whale = topCustomers.customers[0];
+        insights.push({ type: 'info', text: `Top customer: ${whale.name} with ${whale.order_count} orders totaling $${whale.total_spent.toFixed(2)}.` });
+    }
+
+    // Refund rate
+    if (cp.refund_rate > 0.05) {
+        insights.push({ type: 'negative', text: `Refund rate is ${(cp.refund_rate * 100).toFixed(1)}% — investigate product quality or description accuracy.` });
+    }
+
+    return { insights };
+}
+
 // ─── Scheduled Sync ─────────────────────────────────────────────────
 
 /**
@@ -1062,6 +1390,11 @@ module.exports = {
     getSalesByRegion,
     getRecentOrders,
     getSyncStatus,
+    getTopCustomers,
+    getSalesByCity,
+    getPricePoints,
+    searchOrders,
+    generateAIInsights,
     shopifyGraphQL,
     runShopifyQL,
 };

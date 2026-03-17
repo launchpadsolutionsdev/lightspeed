@@ -15071,12 +15071,40 @@
                                 <option value="this_month">This month</option>
                                 <option value="last_month">Last month</option>
                                 <option value="this_year">This year</option>
+                                <option value="custom">Custom Range</option>
                             </select>
+                            <div class="sd-custom-dates" id="sdCustomDates">
+                                <input type="date" class="sd-date-input" id="sdStartDate">
+                                <span style="color:var(--text-muted,#6B7C93);font-size:0.8rem">to</span>
+                                <input type="date" class="sd-date-input" id="sdEndDate">
+                                <button class="sd-btn" id="sdApplyDates" style="padding:8px 12px;font-size:0.8rem">Apply</button>
+                            </div>
                             <label class="sd-compare-toggle">
                                 <input type="checkbox" id="sdCompareCheck">
                                 Compare to previous period
                             </label>
+                            <div class="sd-export-wrap">
+                                <button class="sd-btn" id="sdExportBtn">Export</button>
+                                <div class="sd-export-menu" id="sdExportMenu">
+                                    <button class="sd-export-option" data-format="csv">Export as CSV</button>
+                                    <button class="sd-export-option" data-format="pdf">Export as PDF</button>
+                                </div>
+                            </div>
                             <button class="sd-btn" id="sdRefreshBtn">Refresh Data</button>
+                        </div>
+                    </div>
+
+                    <!-- Order Search -->
+                    <div class="sd-search-bar" style="margin-bottom:20px">
+                        <input type="text" class="sd-search-input" id="sdOrderSearch" placeholder="Search orders by number, customer name, or email...">
+                    </div>
+                    <div id="sdSearchResults" style="display:none">
+                        <div class="sd-card" style="margin-bottom:20px">
+                            <div class="sd-card-title">
+                                <span>Search Results</span>
+                                <button class="sd-btn" id="sdClearSearch" style="padding:5px 12px;font-size:0.78rem">Clear</button>
+                            </div>
+                            <div id="sdSearchResultsWrap"></div>
                         </div>
                     </div>
 
@@ -15123,6 +15151,52 @@
                                     <span class="sd-sync-indicator" style="font-size:11px">Auto-refreshes every 30s</span>
                                 </div>
                                 <div id="sdOrderFeedWrap"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Extended Widgets Row -->
+                    <div class="sd-full-row">
+                        <div class="sd-card">
+                            <div class="sd-card-title">Top Customers</div>
+                            <div id="sdTopCustomersWrap"></div>
+                        </div>
+                        <div class="sd-card">
+                            <div class="sd-card-title">Sales by City</div>
+                            <div id="sdCityWrap"></div>
+                        </div>
+                        <div class="sd-card">
+                            <div class="sd-card-title">Price Point Performance</div>
+                            <div class="sd-price-chart-container" id="sdPricePointsWrap"></div>
+                        </div>
+                    </div>
+
+                    <!-- AI Insights -->
+                    <div class="sd-card" style="margin-top:20px">
+                        <div class="sd-card-title">
+                            <span>AI-Powered Insights</span>
+                            <button class="sd-btn" id="sdRefreshInsights" style="padding:5px 12px;font-size:0.78rem">Refresh Insights</button>
+                        </div>
+                        <div id="sdInsightsWrap">
+                            <div class="sd-insight-loading">Analyzing your data...</div>
+                        </div>
+                    </div>
+
+                    <!-- Ask Lightspeed Embed -->
+                    <div class="sd-als-panel">
+                        <div class="sd-card">
+                            <div class="sd-card-title">
+                                <span>Ask Lightspeed</span>
+                                <span style="font-size:0.75rem;color:var(--text-muted,#6B7C93)">Ask questions about your Shopify data</span>
+                            </div>
+                            <div class="sd-als-container">
+                                <div class="sd-als-messages" id="sdAlsMessages">
+                                    <div class="sd-als-empty">Ask a question about your Shopify analytics, sales trends, or customer behavior.</div>
+                                </div>
+                                <div class="sd-als-input-row">
+                                    <input type="text" class="sd-als-input" id="sdAlsInput" placeholder="e.g. What are my top selling products this month?">
+                                    <button class="sd-als-send" id="sdAlsSend">Send</button>
+                                </div>
                             </div>
                         </div>
                     </div>
