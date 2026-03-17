@@ -3161,7 +3161,10 @@ function alsNeedsAgenticMode(message) {
         'generate insights', 'data analysis',
         // Home Base
         'home base', 'homebase', 'team post', 'team posts', 'team announcement',
-        'team announcements', 'bulletin board', 'internal post', 'internal posts'
+        'team announcements', 'bulletin board', 'internal post', 'internal posts',
+        // Shopify / Orders / Customers
+        'order', 'orders', 'customer', 'customers', 'shopify', 'purchase', 'purchases',
+        'bought', 'buy', 'look up', 'lookup'
     ];
     if (patterns.some(p => lower.includes(p))) return true;
 
@@ -3178,6 +3181,12 @@ function alsNeedsAgenticMode(message) {
         /(?:create|add|save|make|write)\b.*\b(?:knowledge\s*base|kb)\b/,
         /(?:knowledge\s*base|kb)\b.*\b(?:entry|article|record|item)\b/,
         /(?:save|store|add)\b.*\bfor\s+future\s+reference\b/,
+        // Shopify — email lookups, order queries
+        /[\w.+-]+@[\w-]+\.[\w.]+/,  // any email address
+        /(?:any|find|search|check|look\s*up)\b.*\border/,
+        /\border[s]?\b.*\b(?:for|under|from|by)\b/,
+        /(?:has|have|had)\b.*\border/,
+        /(?:what|which)\b.*\b(?:order|purchase|bought)\b/,
     ];
     return regexPatterns.some(r => r.test(lower));
 }
