@@ -12,7 +12,7 @@
 const pool = require('../../config/database');
 const shopifyService = require('./shopify');
 
-const SHOPIFY_API_VERSION = '2024-01';
+const SHOPIFY_API_VERSION = '2025-10';
 
 // ─── ShopifyQL / GraphQL Helpers ────────────────────────────────────
 
