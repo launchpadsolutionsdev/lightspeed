@@ -132,10 +132,8 @@ async function runFullSync(organizationId) {
         // Sync recent orders via GraphQL
         totalRecords += await syncRecentOrders(store, organizationId);
 
-        // Sync extended analytics (customers, cities, price points)
-        totalRecords += await syncTopCustomers(store, organizationId, 365);
-        totalRecords += await syncSalesByCity(store, organizationId, 365);
-        totalRecords += await syncPricePoints(store, organizationId, 365);
+        // Sync extended analytics (customers, cities, price points) in a single pass
+        totalRecords += await syncExtendedMetrics(store, organizationId, 365);
 
         // Store currency from shop info
         await syncStoreCurrency(store, organizationId);
@@ -180,9 +178,7 @@ async function runIncrementalSync(organizationId) {
         totalRecords += await syncSalesByChannel(store, organizationId, 2);
         totalRecords += await syncSalesByRegion(store, organizationId, 2);
         totalRecords += await syncRecentOrders(store, organizationId);
-        totalRecords += await syncTopCustomers(store, organizationId, 2);
-        totalRecords += await syncSalesByCity(store, organizationId, 2);
-        totalRecords += await syncPricePoints(store, organizationId, 2);
+        totalRecords += await syncExtendedMetrics(store, organizationId, 2);
 
         await pool.query(
             `UPDATE shopify_stores SET last_incremental_sync_at = NOW(), analytics_sync_status = 'synced', analytics_sync_error = NULL, updated_at = NOW() WHERE organization_id = $1`,
@@ -284,7 +280,7 @@ async function syncDailySalesFromREST(store, organizationId, days) {
     const sinceDate = new Date(now);
     sinceDate.setDate(sinceDate.getDate() - days);
 
-    const endpoint = `/orders.json?limit=250&status=any&created_at_min=${sinceDate.toISOString()}&fields=id,created_at,total_price,subtotal_price,total_tax,total_discounts,financial_status,fulfillment_status,customer,line_items,shipping_lines`;
+    const endpoint = `/orders.json?limit=250&status=any&created_at_min=${sinceDate.toISOString()}&fields=id,created_at,total_price,subtotal_price,total_tax,total_discounts,financial_status,fulfillment_status,customer,line_items,shipping_lines,shipping_address,billing_address`;
 
     // Aggregate all three maps in a single streaming pass to avoid holding all orders in memory
     const dayMap = {};
@@ -573,31 +569,71 @@ async function syncRecentOrders(store, organizationId) {
     return orders.length;
 }
 
-async function syncTopCustomers(store, organizationId, days) {
+/**
+ * Combined sync for customers, cities, and price points in a SINGLE pass through orders.
+ * Previously these were 3 separate fetchAllPages calls, each fetching all orders — causing OOM.
+ */
+async function syncExtendedMetrics(store, organizationId, days) {
     try {
-        const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=email,customer,total_price,created_at`;
+        const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=created_at,total_price,email,customer,shipping_address,billing_address,line_items`;
 
         const customerMap = {};
+        const cityMap = {};
+        const ppMap = {};
+
         await fetchAllPages(store, endpoint, 'orders', {
             onPage(batch) {
                 for (const order of batch) {
+                    const date = order.created_at?.substring(0, 10);
+                    if (!date) continue;
+                    const totalPrice = parseFloat(order.total_price) || 0;
+
+                    // --- Customer aggregation ---
                     const email = (order.email || order.customer?.email || '').toLowerCase();
-                    if (!email) continue;
-                    if (!customerMap[email]) {
-                        customerMap[email] = {
-                            email,
-                            name: order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : email,
-                            total_spent: 0, order_count: 0, last_order_at: order.created_at,
-                        };
+                    if (email) {
+                        if (!customerMap[email]) {
+                            customerMap[email] = {
+                                email,
+                                name: order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : email,
+                                total_spent: 0, order_count: 0, last_order_at: order.created_at,
+                            };
+                        }
+                        customerMap[email].total_spent += totalPrice;
+                        customerMap[email].order_count++;
+                        if (order.created_at > customerMap[email].last_order_at) customerMap[email].last_order_at = order.created_at;
                     }
-                    customerMap[email].total_spent += parseFloat(order.total_price) || 0;
-                    customerMap[email].order_count++;
-                    if (order.created_at > customerMap[email].last_order_at) customerMap[email].last_order_at = order.created_at;
+
+                    // --- City aggregation ---
+                    const addr = order.shipping_address || order.billing_address;
+                    const city = addr?.city?.trim() || 'Unknown';
+                    const province = addr?.province || '';
+                    const country = addr?.country || addr?.country_code || 'Unknown';
+                    const cityKey = `${date}:${city}:${province}`;
+                    if (!cityMap[cityKey]) {
+                        cityMap[cityKey] = { date, city, province, country, revenue: 0, orders: 0, emails: new Set() };
+                    }
+                    cityMap[cityKey].revenue += totalPrice;
+                    cityMap[cityKey].orders++;
+                    if (order.email) cityMap[cityKey].emails.add(order.email.toLowerCase());
+
+                    // --- Price point aggregation ---
+                    for (const item of (order.line_items || [])) {
+                        const price = parseFloat(item.price) || 0;
+                        const bucket = priceBucket(price);
+                        const ppKey = `${date}:${bucket}:${item.title || 'Unknown'}`;
+                        if (!ppMap[ppKey]) {
+                            ppMap[ppKey] = { date, bucket, title: item.title || 'Unknown', price_cents: toCents(price), units: 0, revenue: 0 };
+                        }
+                        ppMap[ppKey].units += item.quantity || 0;
+                        ppMap[ppKey].revenue += price * (item.quantity || 0);
+                    }
                 }
             },
         });
 
-        // Upsert top 50 by spend
+        let totalRecords = 0;
+
+        // Write customer data
         const sorted = Object.values(customerMap).sort((a, b) => b.total_spent - a.total_spent).slice(0, 50);
         await pool.query('DELETE FROM shopify_top_customers WHERE organization_id = $1', [organizationId]);
         for (const c of sorted) {
@@ -610,38 +646,9 @@ async function syncTopCustomers(store, organizationId, days) {
                 [organizationId, c.email, c.name, toCents(c.total_spent), c.order_count, c.last_order_at]
             );
         }
-        return sorted.length;
-    } catch (err) {
-        console.error('syncTopCustomers error:', err.message);
-        return 0;
-    }
-}
+        totalRecords += sorted.length;
 
-async function syncSalesByCity(store, organizationId, days) {
-    try {
-        const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=created_at,total_price,shipping_address,billing_address,email`;
-
-        const cityMap = {};
-        await fetchAllPages(store, endpoint, 'orders', {
-            onPage(batch) {
-                for (const order of batch) {
-                    const date = order.created_at?.substring(0, 10);
-                    if (!date) continue;
-                    const addr = order.shipping_address || order.billing_address;
-                    const city = addr?.city?.trim() || 'Unknown';
-                    const province = addr?.province || '';
-                    const country = addr?.country || addr?.country_code || 'Unknown';
-                    const key = `${date}:${city}:${province}`;
-                    if (!cityMap[key]) {
-                        cityMap[key] = { date, city, province, country, revenue: 0, orders: 0, emails: new Set() };
-                    }
-                    cityMap[key].revenue += parseFloat(order.total_price) || 0;
-                    cityMap[key].orders++;
-                    if (order.email) cityMap[key].emails.add(order.email.toLowerCase());
-                }
-            },
-        });
-
+        // Write city data
         for (const c of Object.values(cityMap)) {
             await pool.query(
                 `INSERT INTO sales_by_city (organization_id, date, city, province, country, revenue_cents, order_count, customer_count)
@@ -652,37 +659,9 @@ async function syncSalesByCity(store, organizationId, days) {
                 [organizationId, c.date, c.city, c.province, c.country, toCents(c.revenue), c.orders, c.emails.size]
             );
         }
-        return Object.keys(cityMap).length;
-    } catch (err) {
-        console.error('syncSalesByCity error:', err.message);
-        return 0;
-    }
-}
+        totalRecords += Object.keys(cityMap).length;
 
-async function syncPricePoints(store, organizationId, days) {
-    try {
-        const endpoint = `/orders.json?limit=250&status=any&created_at_min=${daysAgoISO(days)}&fields=created_at,line_items`;
-
-        const ppMap = {};
-        await fetchAllPages(store, endpoint, 'orders', {
-            onPage(batch) {
-                for (const order of batch) {
-                    const date = order.created_at?.substring(0, 10);
-                    if (!date) continue;
-                    for (const item of (order.line_items || [])) {
-                        const price = parseFloat(item.price) || 0;
-                        const bucket = priceBucket(price);
-                        const key = `${date}:${bucket}:${item.title || 'Unknown'}`;
-                        if (!ppMap[key]) {
-                            ppMap[key] = { date, bucket, title: item.title || 'Unknown', price_cents: toCents(price), units: 0, revenue: 0 };
-                        }
-                        ppMap[key].units += item.quantity || 0;
-                        ppMap[key].revenue += price * (item.quantity || 0);
-                    }
-                }
-            },
-        });
-
+        // Write price point data
         for (const p of Object.values(ppMap)) {
             await pool.query(
                 `INSERT INTO price_point_metrics (organization_id, date, price_bucket, product_title, unit_price_cents, units_sold, revenue_cents)
@@ -693,9 +672,11 @@ async function syncPricePoints(store, organizationId, days) {
                 [organizationId, p.date, p.bucket, p.title, p.price_cents, p.units, toCents(p.revenue)]
             );
         }
-        return Object.keys(ppMap).length;
+        totalRecords += Object.keys(ppMap).length;
+
+        return totalRecords;
     } catch (err) {
-        console.error('syncPricePoints error:', err.message);
+        console.error('syncExtendedMetrics error:', err.message);
         return 0;
     }
 }
@@ -717,7 +698,7 @@ function daysAgoISO(days) {
     return d.toISOString();
 }
 
-const MAX_PAGES = 20; // Cap at 20 pages (5,000 orders max) to prevent OOM
+const MAX_PAGES = 10; // Cap at 10 pages (2,500 orders max) to prevent OOM on 512MB heap
 
 async function fetchAllPages(store, endpoint, resourceKey, { maxPages = MAX_PAGES, onPage } = {}) {
     const records = onPage ? null : [];

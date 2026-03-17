@@ -49,6 +49,9 @@ if (missing.length > 0) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust first proxy (Render, etc.) so express-rate-limit reads X-Forwarded-For correctly
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 
