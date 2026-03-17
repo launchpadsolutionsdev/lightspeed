@@ -130,6 +130,13 @@ async function runFullSync(organizationId) {
             [organizationId]
         );
 
+        // Pre-flight: verify GraphQL API is reachable before starting sync
+        try {
+            await shopifyGraphQL(store.shop_domain, store.access_token, '{ shop { name currencyCode } }');
+        } catch (preflight) {
+            throw new Error(`Cannot reach Shopify GraphQL API for ${cleanShopDomain(store.shop_domain)}: ${preflight.message}. Check that the access token has Admin API access and the store domain is correct (must be yourstore.myshopify.com).`);
+        }
+
         let totalRecords = 0;
 
         // All of these use ShopifyQL (server-side aggregation) — no individual order fetching

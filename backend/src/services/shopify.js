@@ -237,6 +237,22 @@ async function getProductCount(organizationId) {
     return parseInt(result.rows[0].count);
 }
 
+async function getOrderCount(organizationId) {
+    const result = await pool.query(
+        'SELECT COALESCE(SUM(total_orders), 0) AS total FROM daily_sales_metrics WHERE organization_id = $1',
+        [organizationId]
+    );
+    return parseInt(result.rows[0].total);
+}
+
+async function getCustomerCount(organizationId) {
+    const result = await pool.query(
+        'SELECT COUNT(DISTINCT customer_email) FROM dashboard_recent_orders WHERE organization_id = $1 AND customer_email IS NOT NULL',
+        [organizationId]
+    );
+    return parseInt(result.rows[0].count);
+}
+
 // ─── Live Analytics (direct Shopify API) ─────────────────────────────
 
 // In-memory cache: { key: { data, ts } }
@@ -805,6 +821,8 @@ module.exports = {
     syncProducts,
     getProducts,
     getProductCount,
+    getOrderCount,
+    getCustomerCount,
 
     // Live analytics (direct API)
     getLiveAnalytics,

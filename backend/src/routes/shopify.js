@@ -252,6 +252,8 @@ router.get('/status', authenticate, async (req, res) => {
         }
 
         const productCount = await shopifyService.getProductCount(organizationId);
+        const orderCount = await shopifyService.getOrderCount(organizationId);
+        const customerCount = await shopifyService.getCustomerCount(organizationId);
 
         res.json({
             connected: true,
@@ -259,7 +261,13 @@ router.get('/status', authenticate, async (req, res) => {
             shopDomain: store.shop_domain,
             webhooksRegistered: store.webhooks_registered || false,
             counts: {
-                products: productCount
+                products: productCount,
+                orders: orderCount,
+                customers: customerCount
+            },
+            lastSync: {
+                products: store.updated_at || null,
+                orders: store.last_incremental_sync_at || store.last_full_sync_at || null
             }
         });
 
@@ -316,8 +324,9 @@ router.post('/connect', authenticate, async (req, res) => {
             return res.status(403).json({ error: 'Only admins and owners can connect Shopify stores' });
         }
 
-        const normalizedDomain = shopDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        const normalizedDomain = shopDomain.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
 
+        // Test REST API connectivity
         const testResponse = await fetch(
             `https://${normalizedDomain}/admin/api/2025-04/shop.json`,
             {
@@ -334,8 +343,34 @@ router.post('/connect', authenticate, async (req, res) => {
 
         const shopData = await testResponse.json();
 
+        // Use the canonical .myshopify.com domain from the API response.
+        // Users may enter a custom domain (e.g. mystore.ca) but API calls
+        // only work on the .myshopify.com domain.
+        const myshopifyDomain = shopData.shop?.myshopify_domain || normalizedDomain;
+        console.log(`Shopify connect: user entered "${normalizedDomain}", using API domain "${myshopifyDomain}"`);
+
+        // Test GraphQL API connectivity (analytics dashboard needs this)
+        const graphqlTest = await fetch(
+            `https://${myshopifyDomain}/admin/api/2025-04/graphql.json`,
+            {
+                method: 'POST',
+                headers: {
+                    'X-Shopify-Access-Token': accessToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: '{ shop { name } }' })
+            }
+        );
+
+        if (!graphqlTest.ok) {
+            console.error(`GraphQL test failed for ${myshopifyDomain}: ${graphqlTest.status}`);
+            return res.status(400).json({
+                error: `Shopify REST API works but GraphQL returned ${graphqlTest.status}. Ensure your access token has Admin API (GraphQL) access and the store supports API version 2025-04.`
+            });
+        }
+
         await shopifyService.saveStoreConnection(organizationId, {
-            shopDomain: normalizedDomain,
+            shopDomain: myshopifyDomain,
             accessToken,
             scope: 'read_products,read_orders,read_customers'
         });
@@ -356,8 +391,8 @@ router.post('/connect', authenticate, async (req, res) => {
 
         res.json({
             success: true,
-            shopDomain: normalizedDomain,
-            shopName: shopData.shop?.name || normalizedDomain,
+            shopDomain: myshopifyDomain,
+            shopName: shopData.shop?.name || myshopifyDomain,
             webhooksRegistered,
             message: 'Shopify store connected successfully'
         });
