@@ -49,37 +49,24 @@ async function generateResponse({ messages, system, max_tokens = 1024, tools, mo
         throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
-    // Sanitize system prompt and message content to strip lone surrogates
-    const sanitizedSystem = stripLoneSurrogates(system);
-    const sanitizedMessages = messages.map(m => {
-        if (typeof m.content === 'string') {
-            return { ...m, content: stripLoneSurrogates(m.content) };
-        }
-        if (Array.isArray(m.content)) {
-            return { ...m, content: m.content.map(block =>
-                block.type === 'text' ? { ...block, text: stripLoneSurrogates(block.text) }
-                : block.type === 'tool_result' && typeof block.content === 'string'
-                    ? { ...block, content: stripLoneSurrogates(block.content) }
-                    : block
-            )};
-        }
-        return m;
-    });
-
     const body = {
         model: model || ANTHROPIC_MODEL,
         max_tokens,
-        system: sanitizedSystem ? [{
+        system: system ? [{
             type: 'text',
-            text: sanitizedSystem,
+            text: system,
             cache_control: { type: 'ephemeral' }
         }] : '',
-        messages: sanitizedMessages
+        messages
     };
 
     if (tools && tools.length > 0) {
         body.tools = tools;
     }
+
+    // Sanitize the final JSON to strip any lone surrogates from all fields
+    // (system prompt, messages, KB entries, org profile, conversation history, etc.)
+    const jsonBody = stripLoneSurrogates(JSON.stringify(body));
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -88,7 +75,7 @@ async function generateResponse({ messages, system, max_tokens = 1024, tools, mo
             'x-api-key': ANTHROPIC_API_KEY,
             'anthropic-version': '2023-06-01'
         },
-        body: JSON.stringify(body)
+        body: jsonBody
     });
 
     if (!response.ok) {
@@ -238,7 +225,7 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
                 'x-api-key': ANTHROPIC_API_KEY,
                 'anthropic-version': '2023-06-01'
             },
-            body: JSON.stringify({
+            body: stripLoneSurrogates(JSON.stringify({
                 model: HAIKU_MODEL,
                 max_tokens: 200,
                 system: `You are a relevance picker. Given a customer inquiry and a numbered list of knowledge base entries, return ONLY the index numbers of the most relevant entries as a JSON array. Pick up to ${maxEntries} entries. Return ONLY the JSON array, nothing else. Example: [0, 3, 7]`,
@@ -246,7 +233,7 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
                     role: 'user',
                     content: `Customer inquiry: ${inquiry}\n\nKnowledge base entries:\n${catalogue}`
                 }]
-            })
+            }))
         });
 
         if (!response.ok) {
@@ -320,7 +307,7 @@ async function pickRelevantRatedExamples(inquiry, positiveExamples, negativeExam
                 'x-api-key': ANTHROPIC_API_KEY,
                 'anthropic-version': '2023-06-01'
             },
-            body: JSON.stringify({
+            body: stripLoneSurrogates(JSON.stringify({
                 model: HAIKU_MODEL,
                 max_tokens: 200,
                 system: `You are a relevance picker. Given a new customer inquiry and a numbered list of past customer inquiries (each marked positive or negative), return ONLY the index numbers of past inquiries that are on a SIMILAR TOPIC to the new inquiry. Only pick examples where the subject matter is clearly related. Return ONLY a JSON array of index numbers. If none are relevant, return an empty array []. Example: [0, 3, 7]`,
@@ -328,7 +315,7 @@ async function pickRelevantRatedExamples(inquiry, positiveExamples, negativeExam
                     role: 'user',
                     content: `New customer inquiry: ${inquiry}\n\nPast rated inquiries:\n${catalogue}`
                 }]
-            })
+            }))
         });
 
         if (!response.ok) {
@@ -430,13 +417,13 @@ async function streamResponse({ messages, system, staticSystem, dynamicSystem, m
             'x-api-key': ANTHROPIC_API_KEY,
             'anthropic-version': '2023-06-01'
         },
-        body: JSON.stringify({
+        body: stripLoneSurrogates(JSON.stringify({
             model: model || ANTHROPIC_MODEL,
             max_tokens,
             system: systemBlocks.length > 0 ? systemBlocks : '',
             messages,
             stream: true
-        })
+        }))
     });
 
     if (!response.ok) {
