@@ -25,6 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="admin-dashboard.css?v=20260301">
     <link rel="stylesheet" href="design-system.css?v=20260301">
+    <link rel="stylesheet" href="shopify-dashboard.css?v=20260317">
     <link rel="stylesheet" href="ls-micro.css?v=20260301">
     <link rel="stylesheet" href="landing.css?v=20260301">
     <link rel="stylesheet" href="rules-of-play.css?v=20260301">
@@ -13552,6 +13553,10 @@
                         <span class="sidebar-btn-icon">&#129302;</span>
                         <span class="sidebar-btn-label">Compliance Assistant</span>
                     </button>
+                    <button class="sidebar-btn" data-page="shopify-dashboard" id="shopifyDashNavBtn">
+                        <span class="sidebar-btn-icon">&#128176;</span>
+                        <span class="sidebar-btn-label">Shopify Analytics</span>
+                    </button>
                     <!-- Notification dropdown -->
                     <div class="cal-notif-dropdown" id="calNotifDropdown" style="display:none;">
                         <div class="cal-notif-header">
@@ -15047,6 +15052,157 @@
             </div>
 
             <!-- Admin Dashboard Page (Super Admin Only) -->
+            <!-- Shopify Analytics Dashboard -->
+            <div class="page" id="page-shopify-dashboard">
+                <div class="sd-dashboard" id="sdDashboardContent">
+                    <!-- Header -->
+                    <div class="sd-header">
+                        <h2>Shopify Analytics</h2>
+                        <div class="sd-header-actions">
+                            <div class="sd-sync-indicator" id="sdSyncIndicator">
+                                <span class="sd-sync-dot"></span> Loading...
+                            </div>
+                            <select class="sd-date-select" id="sdDatePreset">
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="last_7_days">Last 7 days</option>
+                                <option value="last_30_days" selected>Last 30 days</option>
+                                <option value="last_90_days">Last 90 days</option>
+                                <option value="this_month">This month</option>
+                                <option value="last_month">Last month</option>
+                                <option value="this_year">This year</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                            <div class="sd-custom-dates" id="sdCustomDates">
+                                <input type="date" class="sd-date-input" id="sdStartDate">
+                                <span style="color:var(--text-muted,#6B7C93);font-size:0.8rem">to</span>
+                                <input type="date" class="sd-date-input" id="sdEndDate">
+                                <button class="sd-btn" id="sdApplyDates" style="padding:8px 12px;font-size:0.8rem">Apply</button>
+                            </div>
+                            <label class="sd-compare-toggle">
+                                <input type="checkbox" id="sdCompareCheck">
+                                Compare to previous period
+                            </label>
+                            <div class="sd-export-wrap">
+                                <button class="sd-btn" id="sdExportBtn">Export</button>
+                                <div class="sd-export-menu" id="sdExportMenu">
+                                    <button class="sd-export-option" data-format="csv">Export as CSV</button>
+                                    <button class="sd-export-option" data-format="pdf">Export as PDF</button>
+                                </div>
+                            </div>
+                            <button class="sd-btn" id="sdRefreshBtn">Refresh Data</button>
+                        </div>
+                    </div>
+
+                    <!-- Order Search -->
+                    <div class="sd-search-bar" style="margin-bottom:20px">
+                        <input type="text" class="sd-search-input" id="sdOrderSearch" placeholder="Search orders by number, customer name, or email...">
+                    </div>
+                    <div id="sdSearchResults" style="display:none">
+                        <div class="sd-card" style="margin-bottom:20px">
+                            <div class="sd-card-title">
+                                <span>Search Results</span>
+                                <button class="sd-btn" id="sdClearSearch" style="padding:5px 12px;font-size:0.78rem">Clear</button>
+                            </div>
+                            <div id="sdSearchResultsWrap"></div>
+                        </div>
+                    </div>
+
+                    <!-- Sync Error Banner -->
+                    <div class="sd-sync-banner" id="sdSyncBanner"></div>
+
+                    <!-- KPI Row -->
+                    <div class="sd-kpi-row" id="sdKpiRow"></div>
+
+                    <!-- Main Content -->
+                    <div class="sd-content">
+                        <!-- Left Column -->
+                        <div class="sd-left-col">
+                            <div class="sd-card" style="margin-bottom:20px">
+                                <div class="sd-card-title">
+                                    <span>Sales Over Time</span>
+                                    <div class="sd-toggle-group">
+                                        <button class="sd-toggle-btn sd-sales-metric-btn active" data-metric="net_sales">Net Sales</button>
+                                        <button class="sd-toggle-btn sd-sales-metric-btn" data-metric="gross_sales">Gross Sales</button>
+                                        <button class="sd-toggle-btn sd-sales-metric-btn" data-metric="orders">Orders</button>
+                                    </div>
+                                </div>
+                                <div class="sd-chart-container" id="sdSalesChartWrap"></div>
+                            </div>
+                            <div class="sd-card">
+                                <div class="sd-card-title">Top Products</div>
+                                <div id="sdProductsTableWrap"></div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="sd-right-col">
+                            <div class="sd-card" style="margin-bottom:20px">
+                                <div class="sd-card-title">Sales by Channel</div>
+                                <div class="sd-donut-container" id="sdChannelChartWrap"></div>
+                            </div>
+                            <div class="sd-card" style="margin-bottom:20px">
+                                <div class="sd-card-title">Sales by Region</div>
+                                <div id="sdRegionWrap"></div>
+                            </div>
+                            <div class="sd-card">
+                                <div class="sd-card-title">
+                                    <span>Live Orders</span>
+                                    <span class="sd-sync-indicator" style="font-size:11px">Auto-refreshes every 30s</span>
+                                </div>
+                                <div id="sdOrderFeedWrap"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Extended Widgets Row -->
+                    <div class="sd-full-row">
+                        <div class="sd-card">
+                            <div class="sd-card-title">Top Customers</div>
+                            <div id="sdTopCustomersWrap"></div>
+                        </div>
+                        <div class="sd-card">
+                            <div class="sd-card-title">Sales by City</div>
+                            <div id="sdCityWrap"></div>
+                        </div>
+                        <div class="sd-card">
+                            <div class="sd-card-title">Price Point Performance</div>
+                            <div class="sd-price-chart-container" id="sdPricePointsWrap"></div>
+                        </div>
+                    </div>
+
+                    <!-- AI Insights -->
+                    <div class="sd-card" style="margin-top:20px">
+                        <div class="sd-card-title">
+                            <span>AI-Powered Insights</span>
+                            <button class="sd-btn" id="sdRefreshInsights" style="padding:5px 12px;font-size:0.78rem">Refresh Insights</button>
+                        </div>
+                        <div id="sdInsightsWrap">
+                            <div class="sd-insight-loading">Analyzing your data...</div>
+                        </div>
+                    </div>
+
+                    <!-- Ask Lightspeed Embed -->
+                    <div class="sd-als-panel">
+                        <div class="sd-card">
+                            <div class="sd-card-title">
+                                <span>Ask Lightspeed</span>
+                                <span style="font-size:0.75rem;color:var(--text-muted,#6B7C93)">Ask questions about your Shopify data</span>
+                            </div>
+                            <div class="sd-als-container">
+                                <div class="sd-als-messages" id="sdAlsMessages">
+                                    <div class="sd-als-empty">Ask a question about your Shopify analytics, sales trends, or customer behavior.</div>
+                                </div>
+                                <div class="sd-als-input-row">
+                                    <input type="text" class="sd-als-input" id="sdAlsInput" placeholder="e.g. What are my top selling products this month?">
+                                    <button class="sd-als-send" id="sdAlsSend">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="page" id="page-admin">
                 <div id="adminDashboard">
                     <!-- Admin dashboard content loaded dynamically -->
@@ -17637,6 +17793,7 @@ Answer to question 2..."></textarea>
     <script src="draft-knowledge-base.js?v=20260301"></script>
     <script src="admin-dashboard.js?v=20260301"></script>
     <script src="compliance.js?v=20260316f"></script>
+    <script src="shopify-dashboard.js?v=20260317"></script>
     <script src="app.js?v=20260316b"></script>
 
     <!-- Live Status Check -->
