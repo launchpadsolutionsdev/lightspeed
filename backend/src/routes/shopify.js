@@ -384,16 +384,33 @@ router.post('/connect', authenticate, async (req, res) => {
             console.error('Failed to register webhooks after manual connect (non-fatal):', webhookError.message);
         }
 
+        // Test ShopifyQL availability (requires read_reports scope)
+        let shopifyqlAvailable = false;
+        try {
+            const { runShopifyQL } = require('../services/shopifyAnalytics');
+            await runShopifyQL(myshopifyDomain, accessToken, 'FROM orders SHOW sum(orders) AS c SINCE -1d UNTIL today');
+            shopifyqlAvailable = true;
+        } catch (sqlErr) {
+            console.warn(`ShopifyQL not available for ${myshopifyDomain}: ${sqlErr.message}`);
+        }
+
         // Sync products in background (small catalog)
         shopifyService.syncProducts(organizationId).catch(err => {
             console.error('Product sync after connect failed (non-fatal):', err.message);
         });
+
+        const warnings = [];
+        if (!shopifyqlAvailable) {
+            warnings.push('Your access token is missing the read_reports scope. Analytics will work but with limited data (based on recent orders). For full analytics, recreate the token with the read_reports scope in Shopify Admin → Settings → Apps and sales channels → Develop apps.');
+        }
 
         res.json({
             success: true,
             shopDomain: myshopifyDomain,
             shopName: shopData.shop?.name || myshopifyDomain,
             webhooksRegistered,
+            shopifyqlAvailable,
+            warnings,
             message: 'Shopify store connected successfully'
         });
 
