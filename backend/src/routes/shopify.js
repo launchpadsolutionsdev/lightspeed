@@ -14,7 +14,7 @@ const shopifyService = require('../services/shopify');
 
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
-const SHOPIFY_SCOPES = 'read_products,read_orders,read_customers,read_inventory';
+const SHOPIFY_SCOPES = 'read_products,read_orders,read_customers,read_inventory,read_reports,read_analytics';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 async function getOrgId(userId) {
