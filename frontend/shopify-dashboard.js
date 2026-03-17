@@ -163,7 +163,7 @@
             sdFetch('summary', params),
             sdFetch('sales-over-time', params),
             sdFetch('top-products', params),
-            sdFetch('recent-orders', { limit: 20 }),
+            sdFetch('recent-orders', { limit: 10 }),
             sdFetch('top-customers', { limit: 10 }),
             sdFetch('sales-by-city', params),
         ]);
