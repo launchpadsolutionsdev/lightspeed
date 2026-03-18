@@ -1501,6 +1501,130 @@
             color: #30B130;
         }
 
+        /* Milestone progress bar */
+        .raffle-milestone {
+            margin-bottom: 20px;
+        }
+        .raffle-milestone-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+        .raffle-milestone-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary, #425466);
+        }
+        .raffle-milestone-pct {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary, #0A2540);
+        }
+        .raffle-milestone-track {
+            height: 10px;
+            background: var(--bg-alt, #F6F9FC);
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+        .raffle-milestone-fill {
+            height: 100%;
+            border-radius: 5px;
+            background: linear-gradient(90deg, #635BFF, #E91E8C);
+            transition: width 0.8s ease;
+        }
+        .raffle-milestone-markers {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+        }
+        .raffle-milestone-mark {
+            font-size: 11px;
+            color: var(--text-muted, #6B7C93);
+        }
+
+        /* Surge indicator */
+        .raffle-surge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: var(--radius-pill, 24px);
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .raffle-surge-up {
+            background: rgba(48, 177, 48, 0.1);
+            color: #30B130;
+        }
+        .raffle-surge-down {
+            background: rgba(244, 123, 58, 0.1);
+            color: #D35400;
+        }
+        .raffle-surge-flat {
+            background: var(--bg-alt, #F6F9FC);
+            color: var(--text-muted, #6B7C93);
+        }
+
+        /* Sparkline */
+        .raffle-sparkline-card {
+            background: var(--bg-card, #ffffff);
+            border: 1px solid var(--border, #E3E8EE);
+            border-radius: var(--radius-lg, 12px);
+            padding: 20px;
+            box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));
+        }
+        .raffle-sparkline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .raffle-sparkline-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted, #6B7C93);
+        }
+        .raffle-sparkline-svg {
+            width: 100%;
+            height: 60px;
+        }
+        .raffle-sparkline-summary {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+        .raffle-sparkline-stat {
+            font-size: 12px;
+            color: var(--text-secondary, #425466);
+        }
+        .raffle-sparkline-stat strong {
+            font-weight: 700;
+            color: var(--text-primary, #0A2540);
+        }
+
+        /* Claim badge for early bird prizes */
+        .raffle-prize-claim {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: var(--radius-pill, 24px);
+            margin-left: 6px;
+        }
+        .raffle-claim-claimed {
+            background: rgba(48, 177, 48, 0.1);
+            color: #30B130;
+        }
+        .raffle-claim-unclaimed {
+            background: rgba(244, 123, 58, 0.12);
+            color: #D35400;
+        }
+
         /* Utilities */
         .feed-dash-loading {
             display: flex;

@@ -25,6 +25,11 @@ const FEED_CACHE_TTL = 2 * 60 * 1000; // 2-minute cache for near-real-time pool 
 let _feedCache = null;
 let _feedCacheTime = 0;
 
+// Sales velocity snapshots — stores { timestamp, totalSales, totalTickets } samples
+// Used for sparkline and surge indicator on the frontend
+const VELOCITY_MAX_SAMPLES = 180; // 6 hours at 2-min intervals
+let _salesSnapshots = [];
+
 const xmlParser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '_',
@@ -98,6 +103,24 @@ async function fetchFeed() {
 
         const data = extractRaffleData(mainContent, winnersContent, salesContent);
 
+        // Record sales snapshot for velocity tracking
+        if (data.salesBreakdown) {
+            const snap = {
+                ts: now,
+                totalSales: data.salesBreakdown.totalSales,
+                totalTickets: data.salesBreakdown.totalTickets
+            };
+            // Only add if value changed or first sample
+            const last = _salesSnapshots[_salesSnapshots.length - 1];
+            if (!last || last.totalSales !== snap.totalSales || last.totalTickets !== snap.totalTickets) {
+                _salesSnapshots.push(snap);
+                if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
+                    _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
+                }
+            }
+            data.salesVelocity = buildVelocityData(_salesSnapshots);
+        }
+
         _feedCache = data;
         _feedCacheTime = now;
         return data;
@@ -114,14 +137,31 @@ async function fetchFeed() {
  * Extract structured raffle data from the parsed XML feeds.
  */
 function extractRaffleData(content, winnersContent, salesContent) {
+    // Build claim status lookup from winners feed (keyed by winning number)
+    const claimLookup = new Map();
+    if (winnersContent) {
+        const winnerNodes = winnersContent.winners?.node || [];
+        const allWinners = Array.isArray(winnerNodes) ? winnerNodes : [winnerNodes];
+        allWinners.forEach(w => {
+            if (w.number) {
+                claimLookup.set(String(w.number).trim(), w.claimed === 1 || w.claimed === '1');
+            }
+        });
+    }
+
     // Parse secondary prizes into drawn and upcoming
     const nodes = content.secondary_prizes?.node || [];
-    const prizes = (Array.isArray(nodes) ? nodes : [nodes]).map(n => ({
-        name: n.prize || '',
-        winningNumber: n.winning_no || null,
-        drawDate: n.draw_date || null,
-        drawn: !!(n.winning_no && String(n.winning_no).trim())
-    }));
+    const prizes = (Array.isArray(nodes) ? nodes : [nodes]).map(n => {
+        const winNum = n.winning_no ? String(n.winning_no).trim() : null;
+        const drawn = !!(winNum);
+        return {
+            name: n.prize || '',
+            winningNumber: winNum || null,
+            drawDate: n.draw_date || null,
+            drawn,
+            claimed: drawn && claimLookup.has(winNum) ? claimLookup.get(winNum) : null
+        };
+    });
 
     const drawnPrizes = prizes.filter(p => p.drawn);
     const upcomingPrizes = prizes.filter(p => !p.drawn);
@@ -218,7 +258,9 @@ function extractSalesBreakdown(salesContent) {
         // Computed percentages
         creditPercent: totalSales > 0 ? ((creditSales / totalSales) * 100).toFixed(1) : '0',
         cashPercent: totalSales > 0 ? ((cashSales / totalSales) * 100).toFixed(1) : '0',
-        debitPercent: totalSales > 0 ? ((debitSales / totalSales) * 100).toFixed(1) : '0'
+        debitPercent: totalSales > 0 ? ((debitSales / totalSales) * 100).toFixed(1) : '0',
+        // Average ticket value
+        averageTicketValue: totalTickets > 0 ? parseFloat((totalSales / totalTickets).toFixed(2)) : 0
     };
 }
 
@@ -285,6 +327,47 @@ function extractWinnersHistory(winnersContent) {
         totalDraws,
         unclaimedGrandPrizes: unclaimedCount,
         eventSummaries: Array.from(eventMap.values()).sort((a, b) => b.eventId - a.eventId)
+    };
+}
+
+/**
+ * Build velocity data from sales snapshots for the frontend sparkline and surge indicator.
+ */
+function buildVelocityData(snapshots) {
+    if (snapshots.length < 2) return { samples: [], surge: null };
+
+    // Build time-bucketed samples (one per snapshot)
+    const samples = snapshots.map(s => ({
+        ts: s.ts,
+        sales: s.totalSales,
+        tickets: s.totalTickets
+    }));
+
+    // Surge: compare last hour vs the hour before that
+    const now = snapshots[snapshots.length - 1].ts;
+    const oneHourAgo = now - 60 * 60 * 1000;
+    const twoHoursAgo = now - 2 * 60 * 60 * 1000;
+
+    const currentSnap = snapshots[snapshots.length - 1];
+    const hourAgoSnap = snapshots.find(s => s.ts >= oneHourAgo) || snapshots[0];
+    const twoHourSnap = snapshots.find(s => s.ts >= twoHoursAgo) || snapshots[0];
+
+    const recentDelta = currentSnap.totalSales - hourAgoSnap.totalSales;
+    const priorDelta = hourAgoSnap.totalSales - twoHourSnap.totalSales;
+
+    let surgePercent = null;
+    if (priorDelta > 0) {
+        surgePercent = Math.round(((recentDelta - priorDelta) / priorDelta) * 100);
+    }
+
+    return {
+        samples,
+        surge: {
+            recentSales: recentDelta,
+            priorSales: priorDelta,
+            percent: surgePercent,
+            periodMinutes: 60
+        }
     };
 }
 

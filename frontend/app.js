@@ -16517,6 +16517,11 @@ function renderRaffleDashboard(data) {
         <div class="raffle-hero-sub">Gross Sales / Jackpot: ${escapeHtml(data.poolFormatted)}</div>
     </div>`;
 
+    // Milestone progress bar
+    if (data.pool > 0) {
+        html += renderMilestoneBar(data.pool);
+    }
+
     // KPI cards row
     html += '<div class="raffle-kpi-grid">';
 
@@ -16572,6 +16577,14 @@ function renderRaffleDashboard(data) {
             <div class="raffle-kpi-value">$${data.salesBreakdown.totalSales.toLocaleString()}</div>
             <div class="raffle-kpi-sub">${data.salesBreakdown.creditPercent}% credit card</div>
         </div>`;
+
+        if (data.salesBreakdown.averageTicketValue) {
+            html += `<div class="raffle-kpi-card">
+                <div class="raffle-kpi-label">Avg. Ticket Value</div>
+                <div class="raffle-kpi-value">$${data.salesBreakdown.averageTicketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div class="raffle-kpi-sub">per ticket sold</div>
+            </div>`;
+        }
     }
 
     html += '</div>';
@@ -16603,6 +16616,11 @@ function renderRaffleDashboard(data) {
     // Sales breakdown metrics (from Sales feed)
     if (data.salesBreakdown) {
         html += renderSalesMetrics(data.salesBreakdown);
+    }
+
+    // Sales velocity sparkline + surge indicator
+    if (data.salesVelocity && data.salesVelocity.samples.length >= 2) {
+        html += renderVelocityCard(data.salesVelocity);
     }
 
     // Jackpot history (from Winners feed)
@@ -16702,6 +16720,113 @@ function renderSalesMetrics(sales) {
     });
 
     html += '</div></div>';
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Render milestone progress bar showing pool progress toward goal tiers.
+ */
+function renderMilestoneBar(pool) {
+    // Dynamic milestones based on current pool size
+    const milestones = [100000, 250000, 500000, 750000, 1000000, 2000000, 5000000];
+    // Find the next milestone above current pool
+    let goal = milestones.find(m => m > pool) || milestones[milestones.length - 1];
+    // Find the previous milestone (or 0)
+    const prevIdx = milestones.indexOf(goal) - 1;
+    const prevMilestone = prevIdx >= 0 ? milestones[prevIdx] : 0;
+
+    const pct = Math.min(((pool / goal) * 100), 100).toFixed(1);
+
+    const fmtShort = (v) => {
+        if (v >= 1000000) return '$' + (v / 1000000).toFixed(v % 1000000 === 0 ? 0 : 1) + 'M';
+        if (v >= 1000) return '$' + (v / 1000).toFixed(0) + 'K';
+        return '$' + v.toLocaleString();
+    };
+
+    let html = '<div class="raffle-milestone">';
+    html += '<div class="raffle-milestone-header">';
+    html += `<span class="raffle-milestone-label">Progress to ${fmtShort(goal)} Pool</span>`;
+    html += `<span class="raffle-milestone-pct">${pct}%</span>`;
+    html += '</div>';
+    html += '<div class="raffle-milestone-track">';
+    html += `<div class="raffle-milestone-fill" style="width:${pct}%"></div>`;
+    html += '</div>';
+    html += '<div class="raffle-milestone-markers">';
+    html += `<span class="raffle-milestone-mark">${fmtShort(prevMilestone)}</span>`;
+    html += `<span class="raffle-milestone-mark">${fmtShort(goal)}</span>`;
+    html += '</div>';
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Render the sales velocity sparkline card with surge indicator.
+ */
+function renderVelocityCard(velocity) {
+    const samples = velocity.samples;
+    const surge = velocity.surge;
+
+    let html = '<div class="raffle-sparkline-card" style="margin-top:16px;">';
+    html += '<div class="raffle-sparkline-header">';
+    html += '<span class="raffle-sparkline-title">Sales Velocity</span>';
+
+    // Surge badge
+    if (surge && surge.percent !== null) {
+        const isUp = surge.percent > 0;
+        const isFlat = surge.percent === 0;
+        const cls = isFlat ? 'raffle-surge-flat' : (isUp ? 'raffle-surge-up' : 'raffle-surge-down');
+        const arrow = isFlat ? '&mdash;' : (isUp ? '&#9650;' : '&#9660;');
+        const label = isFlat ? 'Steady' : `${arrow} ${Math.abs(surge.percent)}% vs prior hour`;
+        html += `<span class="raffle-surge ${cls}">${label}</span>`;
+    }
+
+    html += '</div>';
+
+    // SVG sparkline
+    if (samples.length >= 2) {
+        const salesValues = samples.map(s => s.sales);
+        const minVal = Math.min(...salesValues);
+        const maxVal = Math.max(...salesValues);
+        const range = maxVal - minVal || 1;
+        const w = 400;
+        const h = 60;
+        const padding = 2;
+
+        const points = samples.map((s, i) => {
+            const x = padding + (i / (samples.length - 1)) * (w - 2 * padding);
+            const y = h - padding - ((s.sales - minVal) / range) * (h - 2 * padding);
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        });
+
+        // Build area fill path
+        const firstX = padding.toFixed(1);
+        const lastX = (padding + ((samples.length - 1) / (samples.length - 1)) * (w - 2 * padding)).toFixed(1);
+
+        html += `<svg class="raffle-sparkline-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">`;
+        // Gradient fill under the line
+        html += `<defs><linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#635BFF" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#635BFF" stop-opacity="0.02"/>
+        </linearGradient></defs>`;
+        html += `<polygon points="${firstX},${h} ${points.join(' ')} ${lastX},${h}" fill="url(#sparkGrad)"/>`;
+        html += `<polyline points="${points.join(' ')}" fill="none" stroke="#635BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        html += '</svg>';
+    }
+
+    // Summary stats
+    const firstSample = samples[0];
+    const lastSample = samples[samples.length - 1];
+    const totalGain = lastSample.sales - firstSample.sales;
+    const ticketGain = lastSample.tickets - firstSample.tickets;
+    const elapsedMin = Math.round((lastSample.ts - firstSample.ts) / 60000);
+    const periodLabel = elapsedMin >= 60 ? `${(elapsedMin / 60).toFixed(1)}h` : `${elapsedMin}m`;
+
+    html += '<div class="raffle-sparkline-summary">';
+    html += `<span class="raffle-sparkline-stat"><strong>+$${totalGain.toLocaleString()}</strong> in sales (${periodLabel})</span>`;
+    html += `<span class="raffle-sparkline-stat"><strong>+${ticketGain.toLocaleString()}</strong> tickets</span>`;
+    html += '</div>';
+
     html += '</div>';
     return html;
 }
@@ -16842,9 +16967,15 @@ function renderCollapsiblePrizeList(prizes, title, type, previewCount) {
         const drawDate = p.drawDate ? new Date(p.drawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
 
         if (isDrawn) {
+            let claimBadge = '';
+            if (p.claimed === true) {
+                claimBadge = '<span class="raffle-prize-claim raffle-claim-claimed">Claimed</span>';
+            } else if (p.claimed === false) {
+                claimBadge = '<span class="raffle-prize-claim raffle-claim-unclaimed">Unclaimed</span>';
+            }
             html += `<div class="raffle-prize-row raffle-prize-drawn${hidden}" data-list="${listId}"${collapsible}>
                 <span class="raffle-prize-status">&#10003;</span>
-                <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
+                <span class="raffle-prize-name">${escapeHtml(p.name)}${claimBadge}</span>
                 <span class="raffle-prize-winner">${escapeHtml(p.winningNumber)}</span>
                 <span class="raffle-prize-date">${escapeHtml(drawDate)}</span>
             </div>`;
