@@ -3913,6 +3913,15 @@
             animation: fadeIn 0.3s ease;
         }
 
+        /* ==================== REUSABLE NESTED CARD ==================== */
+        /* Shared card-inside-page wrapper used by Draft Assistant, Calendar, etc. */
+        .nested-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+        }
+
         /* ==================== CARDS ==================== */
         .card {
             background: white;
@@ -7235,10 +7244,6 @@
 
         /* Sidebar */
         .draft-studio-sidebar {
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -7311,10 +7316,6 @@
 
         /* Main Content Area */
         .draft-studio-main {
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--border);
             padding: 24px;
             overflow-y: auto;
             display: flex;
@@ -7718,9 +7719,9 @@
 
         /* ==================== Content Calendar (Google Calendar Style) ==================== */
 
-        /* Calendar needs zero padding on container */
+        /* Calendar container padding — matches Draft Assistant container spacing */
         .container.cal-fullscreen {
-            padding: 0 !important;
+            padding: 16px 24px !important;
         }
         #page-content-calendar.active {
             display: flex;
@@ -7735,6 +7736,7 @@
             flex: 1;
             min-height: 0;
             width: 100%;
+            overflow: hidden;
         }
 
         /* Toolbar */
@@ -8625,6 +8627,9 @@
             }
             .cal-wrapper {
                 overflow: visible !important;
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
             }
             .cal-grid-wrapper, .cal-days {
                 overflow: visible !important;
@@ -14929,7 +14934,7 @@
             <!-- Teams Management Page -->
             <!-- Content Calendar Page -->
             <div class="page" id="page-content-calendar">
-                <div class="cal-wrapper">
+                <div class="cal-wrapper nested-card">
                     <!-- Toolbar -->
                     <div class="cal-toolbar">
                         <div class="cal-toolbar-left">
@@ -16652,7 +16657,7 @@
         <div class="container">
             <div class="draft-studio">
                 <!-- Left Sidebar -->
-                <div class="draft-studio-sidebar">
+                <div class="draft-studio-sidebar nested-card">
                     <div class="draft-studio-tabs">
                         <button class="draft-tab active" data-draft-tab="email">📧 Email</button>
                         <button class="draft-tab" data-draft-tab="social">📱 Social</button>
@@ -16940,7 +16945,7 @@
                 </div>
 
                 <!-- Right Main Area -->
-                <div class="draft-studio-main">
+                <div class="draft-studio-main nested-card">
                     <!-- Empty State -->
                     <div class="draft-studio-empty" id="draftStudioEmpty">
                         <div class="draft-empty-icon" id="draftEmptyIcon">📧</div>
