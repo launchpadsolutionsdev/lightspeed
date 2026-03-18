@@ -16648,13 +16648,15 @@ function renderJackpotHistory(history) {
     html += '<div class="raffle-history-list">';
 
     winners.forEach((w, i) => {
-        const hidden = hasMore && i >= previewCount ? ' raffle-prize-hidden' : '';
+        const isOverflow = hasMore && i >= previewCount;
+        const hidden = isOverflow ? ' raffle-prize-hidden' : '';
+        const collapsible = isOverflow ? ' data-collapsible="true"' : '';
         const eventName = w.eventTitle.replace(/^TBRHSF\s+/, '').replace(/^TB\s+/, '');
         const dateStr = w.date ? new Date(w.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
         const statusClass = w.claimed ? 'raffle-status-claimed' : 'raffle-status-unclaimed';
         const statusText = w.claimed ? 'Claimed' : 'Unclaimed';
 
-        html += `<div class="raffle-history-row${hidden}" data-list="${listId}">
+        html += `<div class="raffle-history-row${hidden}" data-list="${listId}"${collapsible}>
             <div>
                 <div class="raffle-history-event">${escapeHtml(eventName)}</div>
                 <div class="raffle-metric-sub">${escapeHtml(dateStr)}</div>
@@ -16696,18 +16698,20 @@ function renderCollapsiblePrizeList(prizes, title, type, previewCount) {
     html += `<div class="raffle-prizes-list">`;
 
     prizes.forEach((p, i) => {
-        const hidden = hasMore && i >= previewCount ? ' raffle-prize-hidden' : '';
+        const isOverflow = hasMore && i >= previewCount;
+        const hidden = isOverflow ? ' raffle-prize-hidden' : '';
+        const collapsible = isOverflow ? ' data-collapsible="true"' : '';
         const drawDate = p.drawDate ? new Date(p.drawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
 
         if (isDrawn) {
-            html += `<div class="raffle-prize-row raffle-prize-drawn${hidden}" data-list="${listId}">
+            html += `<div class="raffle-prize-row raffle-prize-drawn${hidden}" data-list="${listId}"${collapsible}>
                 <span class="raffle-prize-status">&#10003;</span>
                 <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
                 <span class="raffle-prize-winner">${escapeHtml(p.winningNumber)}</span>
                 <span class="raffle-prize-date">${escapeHtml(drawDate)}</span>
             </div>`;
         } else {
-            html += `<div class="raffle-prize-row raffle-prize-upcoming${hidden}" data-list="${listId}">
+            html += `<div class="raffle-prize-row raffle-prize-upcoming${hidden}" data-list="${listId}"${collapsible}>
                 <span class="raffle-prize-status raffle-pending">&#9679;</span>
                 <span class="raffle-prize-name">${escapeHtml(p.name)}</span>
                 <span class="raffle-prize-winner raffle-tbd">TBD</span>
@@ -16734,14 +16738,19 @@ function renderCollapsiblePrizeList(prizes, title, type, previewCount) {
  * Toggle visibility of hidden prize rows.
  */
 function toggleRafflePrizeList(listId, btnId, hiddenCount) {
-    const rows = document.querySelectorAll(`[data-list="${listId}"].raffle-prize-hidden`);
+    // Only target the collapsible (overflow) rows, not the always-visible preview rows
+    const rows = document.querySelectorAll(`[data-list="${listId}"][data-collapsible]`);
     const btn = document.getElementById(btnId);
     if (!btn) return;
 
     const isExpanded = btn.classList.contains('raffle-expanded');
 
     rows.forEach(row => {
-        row.style.display = isExpanded ? 'none' : '';
+        if (isExpanded) {
+            row.classList.add('raffle-prize-hidden');
+        } else {
+            row.classList.remove('raffle-prize-hidden');
+        }
     });
 
     if (isExpanded) {
