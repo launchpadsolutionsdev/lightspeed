@@ -1608,6 +1608,219 @@
             color: var(--text-primary, #0A2540);
         }
 
+        /* ── Sales Velocity Stock Ticker ── */
+        .velocity-ticker {
+            background: var(--bg-card, #ffffff);
+            border: 1px solid var(--border, #E3E8EE);
+            border-radius: var(--radius-lg, 12px);
+            padding: 20px 24px;
+            box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));
+        }
+        .velocity-ticker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .velocity-ticker-title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .velocity-ticker-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted, #6B7C93);
+        }
+        .velocity-ticker-live {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            color: #00C853;
+            background: rgba(0, 200, 83, 0.08);
+            padding: 2px 8px;
+            border-radius: var(--radius-pill, 24px);
+        }
+        .velocity-pulse {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #00C853;
+            animation: velocityPulse 2s ease-in-out infinite;
+        }
+        @keyframes velocityPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        /* Time-window pills */
+        .velocity-ticker-pills {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .velocity-pill {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: var(--radius-pill, 24px);
+            border: 1px solid var(--border, #E3E8EE);
+            background: transparent;
+            color: var(--text-muted, #6B7C93);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+        .velocity-pill:hover {
+            background: var(--bg-hover, #F6F8FA);
+            color: var(--text-primary, #0A2540);
+        }
+        .velocity-pill-active {
+            background: var(--text-primary, #0A2540);
+            color: #fff;
+            border-color: var(--text-primary, #0A2540);
+        }
+        .velocity-pill-active:hover {
+            background: var(--text-primary, #0A2540);
+            color: #fff;
+        }
+
+        /* Big price / delta block */
+        .velocity-ticker-price-block {
+            margin-bottom: 12px;
+        }
+        .velocity-ticker-current {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-primary, #0A2540);
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+            font-variant-numeric: tabular-nums;
+        }
+        .velocity-ticker-delta {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            margin-top: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .velocity-delta-up { color: #00C853; }
+        .velocity-delta-down { color: #FF1744; }
+        .velocity-delta-flat { color: var(--text-muted, #6B7C93); }
+        .velocity-delta-amount { font-weight: 700; }
+        .velocity-delta-pct {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .velocity-delta-label {
+            font-weight: 400;
+            font-size: 12px;
+            color: var(--text-muted, #6B7C93);
+        }
+        .velocity-ticker-tickets {
+            font-size: 12px;
+            color: var(--text-secondary, #425466);
+            margin-top: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Chart area */
+        .velocity-ticker-chart {
+            margin: 8px 0;
+        }
+        .velocity-ticker-svg {
+            width: 100%;
+            height: 80px;
+            display: block;
+        }
+        .velocity-ticker-chart-placeholder {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Live dot pulse at the end of the sparkline */
+        .velocity-live-dot {
+            filter: drop-shadow(0 0 3px currentColor);
+        }
+        .velocity-live-dot-ping {
+            animation: velocityDotPing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        @keyframes velocityDotPing {
+            0% { r: 4; opacity: 0.8; }
+            75%, 100% { r: 14; opacity: 0; }
+        }
+
+        /* Mini stats row */
+        .velocity-mini-stats {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+        .velocity-mini-stat {
+            flex: 1;
+            min-width: 60px;
+            text-align: center;
+            padding: 8px 4px;
+            border-radius: var(--radius-md, 8px);
+            background: var(--bg-hover, #F6F8FA);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .velocity-mini-stat:hover {
+            border-color: var(--border, #E3E8EE);
+        }
+        .velocity-mini-active {
+            border-color: var(--text-primary, #0A2540) !important;
+            background: var(--bg-card, #ffffff);
+        }
+        .velocity-mini-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            color: var(--text-muted, #6B7C93);
+            margin-bottom: 2px;
+        }
+        .velocity-mini-value {
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .velocity-mini-pct {
+            font-size: 10px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .velocity-mini-up .velocity-mini-value,
+        .velocity-mini-up .velocity-mini-pct { color: #00C853; }
+        .velocity-mini-down .velocity-mini-value,
+        .velocity-mini-down .velocity-mini-pct { color: #FF1744; }
+        .velocity-mini-flat .velocity-mini-value,
+        .velocity-mini-flat .velocity-mini-pct { color: var(--text-muted, #6B7C93); }
+
+        /* Ticker footer */
+        .velocity-ticker-footer {
+            margin-top: 10px;
+            text-align: right;
+        }
+        .velocity-ticker-ago {
+            font-size: 11px;
+            color: var(--text-muted, #6B7C93);
+        }
+
         /* Claim badge for early bird prizes */
         .raffle-prize-claim {
             font-size: 10px;
@@ -1659,6 +1872,19 @@
             .raffle-prize-winner, .raffle-prize-date {
                 grid-column: 2;
                 text-align: left;
+            }
+            .velocity-ticker-header {
+                flex-direction: column;
+            }
+            .velocity-ticker-current {
+                font-size: 1.5rem;
+            }
+            .velocity-mini-stats {
+                gap: 4px;
+            }
+            .velocity-mini-stat {
+                min-width: 48px;
+                padding: 6px 2px;
             }
         }
 

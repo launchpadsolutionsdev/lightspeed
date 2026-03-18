@@ -16461,6 +16461,12 @@ let _feedDashPollTimer = null;
 let _feedDashLastData = null;
 let _feedDashCountdown = null;
 
+// Stock-ticker velocity polling (5-second interval, separate from main 2-min refresh)
+let _velocityPollTimer = null;
+let _velocitySelectedWindow = '1h'; // default time window
+let _velocityLastData = null;
+let _velocityLastTick = 0;
+
 /**
  * Initialize the 50/50 Raffle Dashboard on the tool menu page.
  */
@@ -16480,6 +16486,9 @@ async function initShopifyDashboard() {
     // Auto-refresh every 2 minutes (matches backend cache TTL)
     stopShopifyDashPolling();
     _feedDashPollTimer = setInterval(refreshFeedDashboard, 2 * 60 * 1000);
+
+    // Start velocity ticker polling (every 5 seconds for real-time feel)
+    startVelocityTicker();
 }
 
 /**
@@ -16493,6 +16502,43 @@ function stopShopifyDashPolling() {
     if (_feedDashCountdown) {
         clearInterval(_feedDashCountdown);
         _feedDashCountdown = null;
+    }
+    if (_velocityPollTimer) {
+        clearInterval(_velocityPollTimer);
+        _velocityPollTimer = null;
+    }
+}
+
+/**
+ * Start the 5-second velocity ticker poll for the stock-ticker card.
+ */
+function startVelocityTicker() {
+    if (_velocityPollTimer) clearInterval(_velocityPollTimer);
+    _velocityPollTimer = setInterval(refreshVelocityTicker, 5000);
+}
+
+/**
+ * Fetch velocity data and update only the ticker card (lightweight refresh).
+ */
+async function refreshVelocityTicker() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/feed-dashboard/data`, {
+            headers: getAuthHeaders()
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        _velocityLastTick = Date.now();
+
+        if (data.salesVelocity) {
+            _velocityLastData = data.salesVelocity;
+            const card = document.getElementById('velocityTickerCard');
+            if (card) {
+                updateVelocityTickerCard(card, data.salesVelocity);
+            }
+        }
+    } catch (err) {
+        // Silent fail — ticker keeps running with last known data
     }
 }
 
@@ -16656,9 +16702,10 @@ function renderRaffleDashboard(data) {
         html += renderSalesMetrics(data.salesBreakdown);
     }
 
-    // Sales velocity sparkline + surge indicator
+    // Sales velocity — stock ticker card
     if (data.salesVelocity) {
-        html += renderVelocityCard(data.salesVelocity);
+        _velocityLastData = data.salesVelocity;
+        html += renderVelocityTickerCard(data.salesVelocity);
     }
 
     // Jackpot history (from Winners feed)
@@ -16672,7 +16719,7 @@ function renderRaffleDashboard(data) {
     // Last updated
     html += `<div class="feed-dash-updated">
         Last updated: ${new Date(data.lastUpdated || Date.now()).toLocaleTimeString()}
-        &middot; Auto-refreshes every 2 minutes
+        &middot; Dashboard refreshes every 2 min &middot; Velocity ticker live every 5s
     </div>`;
 
     container.innerHTML = html;
@@ -16799,81 +16846,220 @@ function renderMilestoneBar(pool) {
 }
 
 /**
- * Render the sales velocity sparkline card with surge indicator.
+ * Render the sales velocity stock-ticker card with multi-window support.
+ * Produces the full initial HTML with id="velocityTickerCard".
  */
-function renderVelocityCard(velocity) {
-    const samples = velocity.samples || [];
-    const surge = velocity.surge;
+function renderVelocityTickerCard(velocity) {
+    const windows = velocity.windows || {};
+    const win = windows[_velocitySelectedWindow] || null;
+    const samples = win ? win.samples : (velocity.samples || []);
 
-    let html = '<div class="raffle-sparkline-card" style="margin-top:16px;">';
-    html += '<div class="raffle-sparkline-header">';
-    html += '<span class="raffle-sparkline-title">Sales Velocity</span>';
+    let html = '<div class="velocity-ticker" id="velocityTickerCard" style="margin-top:16px;">';
 
-    // Surge badge
-    if (surge && surge.percent !== null) {
-        const isUp = surge.percent > 0;
-        const isFlat = surge.percent === 0;
-        const cls = isFlat ? 'raffle-surge-flat' : (isUp ? 'raffle-surge-up' : 'raffle-surge-down');
-        const arrow = isFlat ? '&mdash;' : (isUp ? '&#9650;' : '&#9660;');
-        const label = isFlat ? 'Steady' : `${arrow} ${Math.abs(surge.percent)}% vs prior hour`;
-        html += `<span class="raffle-surge ${cls}">${label}</span>`;
-    } else if (samples.length < 2) {
-        html += '<span class="raffle-surge raffle-surge-flat">Collecting data&hellip;</span>';
-    } else {
-        html += '<span class="raffle-surge raffle-surge-flat">Steady</span>';
-    }
-
+    // Header row: title + live pulse
+    html += '<div class="velocity-ticker-header">';
+    html += '<div class="velocity-ticker-title-row">';
+    html += '<span class="velocity-ticker-title">Sales Velocity</span>';
+    html += '<span class="velocity-ticker-live"><span class="velocity-pulse"></span> LIVE</span>';
     html += '</div>';
 
-    // SVG sparkline
+    // Time-window pill selector
+    html += '<div class="velocity-ticker-pills">';
+    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
+    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
+    windowKeys.forEach(key => {
+        const active = key === _velocitySelectedWindow ? ' velocity-pill-active' : '';
+        html += `<button class="velocity-pill${active}" data-window="${key}" onclick="selectVelocityWindow('${key}')">${windowLabels[key]}</button>`;
+    });
+    html += '</div>';
+    html += '</div>';
+
+    // Big number + delta
+    html += renderTickerPriceBlock(win, samples);
+
+    // Sparkline chart
+    html += renderTickerSparkline(samples, win);
+
+    // Mini stats row — all windows at a glance
+    html += renderTickerMiniStats(windows);
+
+    // Ticker footer
+    html += '<div class="velocity-ticker-footer">';
+    html += `<span class="velocity-ticker-ago" id="velocityTickerAgo">Last tick: just now</span>`;
+    html += '</div>';
+
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Render the large price/delta block inside the ticker.
+ */
+function renderTickerPriceBlock(win, samples) {
+    let html = '<div class="velocity-ticker-price-block">';
+
     if (samples.length >= 2) {
-        const salesValues = samples.map(s => s.sales);
-        const minVal = Math.min(...salesValues);
-        const maxVal = Math.max(...salesValues);
-        const range = maxVal - minVal || 1;
-        const w = 400;
-        const h = 60;
-        const padding = 2;
-
-        const points = samples.map((s, i) => {
-            const x = padding + (i / (samples.length - 1)) * (w - 2 * padding);
-            const y = h - padding - ((s.sales - minVal) / range) * (h - 2 * padding);
-            return `${x.toFixed(1)},${y.toFixed(1)}`;
-        });
-
-        const firstX = padding.toFixed(1);
-        const lastX = (padding + ((samples.length - 1) / (samples.length - 1)) * (w - 2 * padding)).toFixed(1);
-
-        html += `<svg class="raffle-sparkline-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">`;
-        html += `<defs><linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#635BFF" stop-opacity="0.2"/>
-            <stop offset="100%" stop-color="#635BFF" stop-opacity="0.02"/>
-        </linearGradient></defs>`;
-        html += `<polygon points="${firstX},${h} ${points.join(' ')} ${lastX},${h}" fill="url(#sparkGrad)"/>`;
-        html += `<polyline points="${points.join(' ')}" fill="none" stroke="#635BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
-        html += '</svg>';
-
-        // Summary stats
-        const firstSample = samples[0];
         const lastSample = samples[samples.length - 1];
-        const totalGain = lastSample.sales - firstSample.sales;
-        const ticketGain = lastSample.tickets - firstSample.tickets;
-        const elapsedMin = Math.round((lastSample.ts - firstSample.ts) / 60000);
-        const periodLabel = elapsedMin >= 60 ? `${(elapsedMin / 60).toFixed(1)}h` : `${elapsedMin}m`;
+        const currentSales = lastSample.sales;
+        const salesDelta = win ? win.salesDelta : (lastSample.sales - samples[0].sales);
+        const ticketsDelta = win ? win.ticketsDelta : (lastSample.tickets - samples[0].tickets);
+        const pctChange = win ? win.percentChange : null;
+        const isUp = salesDelta > 0;
+        const isDown = salesDelta < 0;
 
-        html += '<div class="raffle-sparkline-summary">';
-        html += `<span class="raffle-sparkline-stat"><strong>+$${totalGain.toLocaleString()}</strong> in sales (${periodLabel})</span>`;
-        html += `<span class="raffle-sparkline-stat"><strong>+${ticketGain.toLocaleString()}</strong> tickets</span>`;
+        html += `<div class="velocity-ticker-current">$${currentSales.toLocaleString()}</div>`;
+
+        const deltaClass = isUp ? 'velocity-delta-up' : (isDown ? 'velocity-delta-down' : 'velocity-delta-flat');
+        const arrow = isUp ? '&#9650;' : (isDown ? '&#9660;' : '');
+        const sign = isUp ? '+' : '';
+        html += `<div class="velocity-ticker-delta ${deltaClass}">`;
+        html += `<span class="velocity-delta-amount">${arrow} ${sign}$${Math.abs(salesDelta).toLocaleString()}</span>`;
+        if (pctChange !== null) {
+            html += `<span class="velocity-delta-pct">(${pctChange > 0 ? '+' : ''}${pctChange}%)</span>`;
+        }
+        html += `<span class="velocity-delta-label"> vs prior period</span>`;
         html += '</div>';
+
+        html += `<div class="velocity-ticker-tickets">${sign}${ticketsDelta.toLocaleString()} tickets</div>`;
     } else {
-        // Placeholder when still collecting initial data
-        html += '<div style="height:60px;display:flex;align-items:center;justify-content:center;">';
-        html += '<span class="raffle-metric-sub">Sparkline will appear as sales data accumulates over the next few minutes</span>';
-        html += '</div>';
+        html += '<div class="velocity-ticker-current">Collecting data&hellip;</div>';
+        html += '<div class="velocity-ticker-delta velocity-delta-flat">Waiting for sales samples</div>';
     }
 
     html += '</div>';
     return html;
+}
+
+/**
+ * Render SVG sparkline for the ticker card with green/red coloring.
+ */
+function renderTickerSparkline(samples, win) {
+    if (samples.length < 2) {
+        let html = '<div class="velocity-ticker-chart-placeholder">';
+        html += '<span class="raffle-metric-sub">Chart will appear as data accumulates</span>';
+        html += '</div>';
+        return html;
+    }
+
+    const salesValues = samples.map(s => s.sales);
+    const minVal = Math.min(...salesValues);
+    const maxVal = Math.max(...salesValues);
+    const range = maxVal - minVal || 1;
+    const w = 500;
+    const h = 80;
+    const pad = 4;
+
+    const points = samples.map((s, i) => {
+        const x = pad + (i / (samples.length - 1)) * (w - 2 * pad);
+        const y = h - pad - ((s.sales - minVal) / range) * (h - 2 * pad);
+        return { x: parseFloat(x.toFixed(1)), y: parseFloat(y.toFixed(1)) };
+    });
+
+    const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ');
+    const isUp = salesValues[salesValues.length - 1] >= salesValues[0];
+    const strokeColor = isUp ? '#00C853' : '#FF1744';
+    const gradId = 'tickerGrad_' + _velocitySelectedWindow;
+
+    let html = `<div class="velocity-ticker-chart">`;
+    html += `<svg class="velocity-ticker-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">`;
+    html += `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">`;
+    html += `<stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.25"/>`;
+    html += `<stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.02"/>`;
+    html += `</linearGradient></defs>`;
+    html += `<polygon points="${pad},${h} ${pointsStr} ${points[points.length - 1].x},${h}" fill="url(#${gradId})"/>`;
+    html += `<polyline points="${pointsStr}" fill="none" stroke="${strokeColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+    // Live dot at the last point
+    const last = points[points.length - 1];
+    html += `<circle cx="${last.x}" cy="${last.y}" r="4" fill="${strokeColor}" class="velocity-live-dot"/>`;
+    html += `<circle cx="${last.x}" cy="${last.y}" r="4" fill="${strokeColor}" class="velocity-live-dot-ping"/>`;
+
+    html += '</svg>';
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Render mini stats row showing all time windows at a glance.
+ */
+function renderTickerMiniStats(windows) {
+    const keys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
+    const labels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
+
+    let html = '<div class="velocity-mini-stats">';
+    keys.forEach(key => {
+        const w = windows[key];
+        if (!w) return;
+        const isUp = w.salesDelta > 0;
+        const isDown = w.salesDelta < 0;
+        const cls = isUp ? 'velocity-mini-up' : (isDown ? 'velocity-mini-down' : 'velocity-mini-flat');
+        const sign = isUp ? '+' : '';
+        const active = key === _velocitySelectedWindow ? ' velocity-mini-active' : '';
+        html += `<div class="velocity-mini-stat ${cls}${active}" onclick="selectVelocityWindow('${key}')">`;
+        html += `<div class="velocity-mini-label">${labels[key]}</div>`;
+        html += `<div class="velocity-mini-value">${sign}$${Math.abs(w.salesDelta).toLocaleString()}</div>`;
+        if (w.percentChange !== null) {
+            html += `<div class="velocity-mini-pct">${w.percentChange > 0 ? '+' : ''}${w.percentChange}%</div>`;
+        }
+        html += '</div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Switch the velocity ticker to a different time window.
+ */
+function selectVelocityWindow(key) {
+    _velocitySelectedWindow = key;
+    const card = document.getElementById('velocityTickerCard');
+    if (card && _velocityLastData) {
+        updateVelocityTickerCard(card, _velocityLastData);
+    }
+}
+
+/**
+ * Update the ticker card in-place (called on every 5s tick and on window switch).
+ */
+function updateVelocityTickerCard(card, velocity) {
+    _velocityLastData = velocity;
+
+    // Re-render interior
+    const windows = velocity.windows || {};
+    const win = windows[_velocitySelectedWindow] || null;
+    const samples = win ? win.samples : (velocity.samples || []);
+
+    let inner = '';
+
+    // Header
+    inner += '<div class="velocity-ticker-header">';
+    inner += '<div class="velocity-ticker-title-row">';
+    inner += '<span class="velocity-ticker-title">Sales Velocity</span>';
+    inner += '<span class="velocity-ticker-live"><span class="velocity-pulse"></span> LIVE</span>';
+    inner += '</div>';
+
+    inner += '<div class="velocity-ticker-pills">';
+    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
+    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
+    windowKeys.forEach(key => {
+        const active = key === _velocitySelectedWindow ? ' velocity-pill-active' : '';
+        inner += `<button class="velocity-pill${active}" data-window="${key}" onclick="selectVelocityWindow('${key}')">${windowLabels[key]}</button>`;
+    });
+    inner += '</div>';
+    inner += '</div>';
+
+    inner += renderTickerPriceBlock(win, samples);
+    inner += renderTickerSparkline(samples, win);
+    inner += renderTickerMiniStats(windows);
+
+    // Footer
+    const agoSec = _velocityLastTick ? Math.round((Date.now() - _velocityLastTick) / 1000) : 0;
+    const agoText = agoSec < 3 ? 'just now' : `${agoSec}s ago`;
+    inner += '<div class="velocity-ticker-footer">';
+    inner += `<span class="velocity-ticker-ago" id="velocityTickerAgo">Last tick: ${agoText}</span>`;
+    inner += '</div>';
+
+    card.innerHTML = inner;
 }
 
 /**
