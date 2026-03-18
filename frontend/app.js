@@ -17325,19 +17325,32 @@ function renderHbLiveOrders(orders) {
         return html;
     }
 
-    html += '<div class="hb-orders-scroll">';
-    orders.forEach(o => {
+    // Split orders into 3 columns for side-by-side display
+    const colCount = 3;
+    const perCol = Math.ceil(orders.length / colCount);
+    const cols = [[], [], []];
+    orders.forEach((o, i) => cols[Math.min(Math.floor(i / perCol), 2)].push(o));
+
+    function renderOrderItem(o) {
         const amount = typeof o.total_price === 'number'
             ? '$' + o.total_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
             : '$' + (parseFloat(o.total_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-        html += '<div class="hb-order-item">';
-        html += '<div class="hb-order-info">';
-        html += `<div class="hb-order-number">${escapeHtml(String(o.order_number || '--'))}</div>`;
-        html += `<div class="hb-order-customer">${escapeHtml(o.customer_name || 'Guest')}</div>`;
-        html += '</div>';
-        html += `<div style="text-align:right;"><div class="hb-order-amount">${amount}</div><div class="hb-order-time">${hbTimeAgo(o.created_at)}</div></div>`;
-        html += `<div>${hbStatusBadge(o.financial_status)}</div>`;
+        let h = '<div class="hb-order-item">';
+        h += '<div class="hb-order-info">';
+        h += `<div class="hb-order-number">${escapeHtml(String(o.order_number || '--'))}</div>`;
+        h += `<div class="hb-order-customer">${escapeHtml(o.customer_name || 'Guest')}</div>`;
+        h += '</div>';
+        h += `<div style="text-align:right;"><div class="hb-order-amount">${amount}</div><div class="hb-order-time">${hbTimeAgo(o.created_at)}</div></div>`;
+        h += `<div>${hbStatusBadge(o.financial_status)}</div>`;
+        h += '</div>';
+        return h;
+    }
+
+    html += '<div class="hb-orders-scroll">';
+    cols.forEach(col => {
+        html += '<div class="hb-orders-col">';
+        col.forEach(o => { html += renderOrderItem(o); });
         html += '</div>';
     });
     html += '</div></div>';

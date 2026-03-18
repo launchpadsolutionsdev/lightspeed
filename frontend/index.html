@@ -18460,10 +18460,15 @@
             color: var(--text-muted, #6B7C93);
         }
         .hb-orders-scroll {
-            max-height: 320px;
+            max-height: 420px;
             overflow-y: auto;
-            column-count: 3;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
             column-gap: 24px;
+        }
+        .hb-orders-col {
+            display: flex;
+            flex-direction: column;
         }
         .hb-order-item {
             display: flex;
@@ -18472,7 +18477,6 @@
             padding: 10px 0;
             border-bottom: 1px solid var(--border, #E3E8EE);
             gap: 12px;
-            break-inside: avoid;
         }
         .hb-order-item:last-child { border-bottom: none; }
         .hb-order-info {
@@ -18532,7 +18536,7 @@
                 grid-template-columns: 1fr !important;
             }
             .hb-orders-scroll {
-                column-count: 1;
+                grid-template-columns: 1fr;
             }
         }
     </style>
