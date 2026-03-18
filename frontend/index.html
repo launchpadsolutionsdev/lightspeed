@@ -18428,6 +18428,12 @@
             color: var(--text-primary, #0A2540);
             font-variant-numeric: tabular-nums;
         }
+        .hb-compare-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            column-gap: 24px;
+        }
+        .hb-compare-col .hb-compare-row:last-child { margin-bottom: 0; }
 
         /* ── Live Orders Feed ── */
         .hb-orders-card {

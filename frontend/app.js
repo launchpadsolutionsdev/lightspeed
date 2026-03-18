@@ -17885,8 +17885,13 @@ function renderHbJackpotComparison(data) {
     html += `<div class="hb-compare-val">$${currentPool.toLocaleString()}</div>`;
     html += '</div>';
 
-    // Past event bars
-    pastEvents.slice(0, 6).forEach(evt => {
+    // Past event bars — 15 total, 3 columns of 5
+    const shown = pastEvents.slice(0, 15);
+    const perCol = 5;
+    const cols = [[], [], []];
+    shown.forEach((evt, i) => cols[Math.min(Math.floor(i / perCol), 2)].push(evt));
+
+    function renderCompareItem(evt) {
         const pct = (evt.jackpot / maxVal * 100).toFixed(1);
         const diff = currentPool - evt.jackpot;
         const diffPct = evt.jackpot > 0 ? ((diff / evt.jackpot) * 100).toFixed(0) : '—';
@@ -17894,12 +17899,21 @@ function renderHbJackpotComparison(data) {
         const diffSign = diff > 0 ? '+' : '';
         const dateStr = evt.date ? new Date(evt.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
 
-        html += '<div class="hb-compare-row">';
-        html += `<div class="hb-compare-label">${escapeHtml(evt.title)} <span class="hb-compare-date">${dateStr}</span></div>`;
-        html += `<div class="raffle-milestone-track"><div style="height:100%;border-radius:5px;width:${pct}%;background:var(--border,#E3E8EE);"></div></div>`;
-        html += `<div class="hb-compare-val">$${evt.jackpot.toLocaleString()} <span style="color:${diffColor};">(${diffSign}${diffPct}%)</span></div>`;
+        let h = '<div class="hb-compare-row">';
+        h += `<div class="hb-compare-label">${escapeHtml(evt.title)} <span class="hb-compare-date">${dateStr}</span></div>`;
+        h += `<div class="raffle-milestone-track"><div style="height:100%;border-radius:5px;width:${pct}%;background:var(--border,#E3E8EE);"></div></div>`;
+        h += `<div class="hb-compare-val">$${evt.jackpot.toLocaleString()} <span style="color:${diffColor};">(${diffSign}${diffPct}%)</span></div>`;
+        h += '</div>';
+        return h;
+    }
+
+    html += '<div class="hb-compare-grid">';
+    cols.forEach(col => {
+        html += '<div class="hb-compare-col">';
+        col.forEach(evt => { html += renderCompareItem(evt); });
         html += '</div>';
     });
+    html += '</div>';
 
     html += '</div>';
     return html;
