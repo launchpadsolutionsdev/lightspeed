@@ -14360,6 +14360,10 @@
                         <span class="sidebar-btn-icon">&#129302;</span>
                         <span class="sidebar-btn-label">Compliance Assistant</span>
                     </button>
+                    <button class="sidebar-btn" data-tool="heartbeat">
+                        <span class="sidebar-btn-icon">&#128147;</span>
+                        <span class="sidebar-btn-label">Heartbeat</span>
+                    </button>
                     <button class="sidebar-btn" data-page="shopify-dashboard" id="shopifyDashNavBtn">
                         <span class="sidebar-btn-icon">&#128176;</span>
                         <span class="sidebar-btn-label">Shopify Analytics</span>
@@ -18240,6 +18244,47 @@
             </div>
         </div>
     </div><!-- /#complianceApp -->
+
+    <!-- ==================== HEARTBEAT ==================== -->
+    <style>
+        .heartbeat-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 0;
+        }
+        .heartbeat-container .data-page-header {
+            margin-bottom: 24px;
+        }
+    </style>
+    <div class="app" id="heartbeatApp">
+        <header class="header">
+            <div class="header-inner">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="sidebar-toggle" id="heartbeatSidebarToggle" title="Toggle menu">
+                        <span>&#9776;</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="container">
+            <div class="heartbeat-container">
+                <!-- Page Header -->
+                <div class="data-page-header">
+                    <div class="data-page-header-icon">&#128147;</div>
+                    <div class="data-page-header-text">
+                        <h1>Heartbeat</h1>
+                        <p>Live sales velocity, real-time metrics, and pulse monitoring for your raffle.</p>
+                    </div>
+                </div>
+
+                <!-- Velocity ticker card rendered here by JS -->
+                <div id="heartbeatContent">
+                    <div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading Heartbeat data...</div></div>
+                </div>
+            </div>
+        </div>
+    </div><!-- /#heartbeatApp -->
 
     </div><!-- /.app-tools-area -->
     </div><!-- /#appWrapper -->

@@ -2284,9 +2284,10 @@ function openTool(toolId) {
     currentTool = toolId;
     document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
 
-    // Stop Shopify dashboard polling when leaving dashboard
+    // Stop polling when leaving tools
     if (typeof stopShopifyDashPolling === 'function') stopShopifyDashPolling();
     if (typeof stopSyncPolling === 'function') stopSyncPolling();
+    if (typeof stopHeartbeatPolling === 'function') stopHeartbeatPolling();
 
     // Update URL
     pushRoute(TOOL_ROUTES[toolId] || '/dashboard');
@@ -2302,6 +2303,7 @@ function openTool(toolId) {
     document.getElementById("askLightspeedApp").classList.remove("visible");
     document.getElementById("rulesOfPlayApp").classList.remove("visible");
     document.getElementById("complianceApp").classList.remove("visible");
+    document.getElementById("heartbeatApp").classList.remove("visible");
 
     if (toolId === 'customer-response') {
         document.getElementById("mainApp").classList.add("visible");
@@ -2324,6 +2326,9 @@ function openTool(toolId) {
     } else if (toolId === 'compliance') {
         document.getElementById("complianceApp").classList.add("visible");
         if (window.initComplianceTool) window.initComplianceTool();
+    } else if (toolId === 'heartbeat') {
+        document.getElementById("heartbeatApp").classList.add("visible");
+        initHeartbeat();
     }
 
     // Update sidebar active states
@@ -16106,6 +16111,7 @@ const ROUTES = {
     '/ask-lightspeed':               { view: 'tool', tool: 'ask-lightspeed' },
     '/rules-of-play':                { view: 'tool', tool: 'rules-of-play' },
     '/compliance':                   { view: 'tool', tool: 'compliance' },
+    '/heartbeat':                    { view: 'tool', tool: 'heartbeat' },
     '/compliance-admin':             { view: 'tool', tool: 'customer-response', page: 'compliance-admin' },
     '/home-base':                    { view: 'tool', tool: 'customer-response', page: 'home-base' },
     '/shopify-dashboard':            { view: 'tool', tool: 'customer-response', page: 'shopify-dashboard' },
@@ -16120,6 +16126,7 @@ const TOOL_ROUTES = {
     'ask-lightspeed':    '/ask-lightspeed',
     'rules-of-play':     '/rules-of-play',
     'compliance':        '/compliance',
+    'heartbeat':         '/heartbeat',
 };
 
 const PAGE_ROUTES = {
@@ -16993,7 +17000,9 @@ function renderTickerSparkline(samples, win) {
 /**
  * Render mini stats row showing all time windows at a glance.
  */
-function renderTickerMiniStats(windows) {
+function renderTickerMiniStats(windows, selectedWindow, selectFn) {
+    const selWin = selectedWindow || _velocitySelectedWindow;
+    const selFnName = selectFn || 'selectVelocityWindow';
     const keys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
     const labels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
 
@@ -17005,8 +17014,8 @@ function renderTickerMiniStats(windows) {
         const isDown = w.salesDelta < 0;
         const cls = isUp ? 'velocity-mini-up' : (isDown ? 'velocity-mini-down' : 'velocity-mini-flat');
         const sign = isUp ? '+' : '';
-        const active = key === _velocitySelectedWindow ? ' velocity-mini-active' : '';
-        html += `<div class="velocity-mini-stat ${cls}${active}" onclick="selectVelocityWindow('${key}')">`;
+        const active = key === selWin ? ' velocity-mini-active' : '';
+        html += `<div class="velocity-mini-stat ${cls}${active}" onclick="${selFnName}('${key}')">`;
         html += `<div class="velocity-mini-label">${labels[key]}</div>`;
         html += `<div class="velocity-mini-value">${sign}$${Math.abs(w.salesDelta).toLocaleString()}</div>`;
         if (w.percentChange !== null) {
@@ -17071,6 +17080,180 @@ function updateVelocityTickerCard(card, velocity) {
     inner += '</div>';
 
     card.innerHTML = inner;
+}
+
+// ==================== HEARTBEAT TOOL ====================
+
+let _heartbeatInitialized = false;
+let _heartbeatPollTimer = null;
+let _heartbeatSelectedWindow = '1h';
+let _heartbeatLastData = null;
+let _heartbeatLastTick = 0;
+
+/**
+ * Initialize the Heartbeat tool page.
+ */
+function initHeartbeat() {
+    const content = document.getElementById('heartbeatContent');
+    if (!content) return;
+
+    // Wire up sidebar toggle
+    const toggle = document.getElementById('heartbeatSidebarToggle');
+    if (toggle && !toggle._hbBound) {
+        toggle._hbBound = true;
+        toggle.addEventListener('click', () => {
+            const sidebar = document.getElementById('appSidebar');
+            if (sidebar) sidebar.classList.toggle('open');
+        });
+    }
+
+    // Start fetching immediately
+    refreshHeartbeat();
+
+    // Poll every 5 seconds for real-time feel
+    stopHeartbeatPolling();
+    _heartbeatPollTimer = setInterval(refreshHeartbeat, 5000);
+}
+
+/**
+ * Stop Heartbeat polling (called when navigating away).
+ */
+function stopHeartbeatPolling() {
+    if (_heartbeatPollTimer) {
+        clearInterval(_heartbeatPollTimer);
+        _heartbeatPollTimer = null;
+    }
+}
+
+/**
+ * Fetch data and render the Heartbeat velocity ticker.
+ */
+async function refreshHeartbeat() {
+    const content = document.getElementById('heartbeatContent');
+    if (!content) return;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/feed-dashboard/data`, {
+            headers: getAuthHeaders()
+        });
+        if (!res.ok) {
+            if (!_heartbeatLastData) {
+                content.innerHTML = '<div class="shopify-kpi-sub">Unable to load Heartbeat data. Please try again later.</div>';
+            }
+            return;
+        }
+
+        const data = await res.json();
+        _heartbeatLastTick = Date.now();
+
+        if (data.salesVelocity) {
+            _heartbeatLastData = data.salesVelocity;
+            const card = document.getElementById('heartbeatTickerCard');
+            if (card) {
+                updateHeartbeatTickerCard(card, data.salesVelocity);
+            } else {
+                // First render
+                content.innerHTML = renderHeartbeatTickerCard(data.salesVelocity);
+            }
+        } else if (!_heartbeatLastData) {
+            content.innerHTML = '<div class="shopify-kpi-sub">Waiting for sales data...</div>';
+        }
+    } catch (err) {
+        console.warn('Heartbeat refresh failed:', err.message);
+        if (!_heartbeatLastData) {
+            content.innerHTML = '<div class="shopify-kpi-sub">Unable to connect to data feed.</div>';
+        }
+    }
+}
+
+/**
+ * Render the full Heartbeat ticker card (initial render).
+ */
+function renderHeartbeatTickerCard(velocity) {
+    const windows = velocity.windows || {};
+    const win = windows[_heartbeatSelectedWindow] || null;
+    const samples = win ? win.samples : (velocity.samples || []);
+
+    let html = '<div class="velocity-ticker" id="heartbeatTickerCard">';
+
+    html += '<div class="velocity-ticker-header">';
+    html += '<div class="velocity-ticker-title-row">';
+    html += '<span class="velocity-ticker-title">Sales Velocity</span>';
+    html += '<span class="velocity-ticker-live"><span class="velocity-pulse"></span> LIVE</span>';
+    html += '</div>';
+
+    html += '<div class="velocity-ticker-pills">';
+    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
+    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
+    windowKeys.forEach(key => {
+        const active = key === _heartbeatSelectedWindow ? ' velocity-pill-active' : '';
+        html += `<button class="velocity-pill${active}" data-window="${key}" onclick="selectHeartbeatWindow('${key}')">${windowLabels[key]}</button>`;
+    });
+    html += '</div>';
+    html += '</div>';
+
+    html += renderTickerPriceBlock(win, samples);
+    html += renderTickerSparkline(samples, win);
+    html += renderTickerMiniStats(windows, _heartbeatSelectedWindow, 'selectHeartbeatWindow');
+
+    html += '<div class="velocity-ticker-footer">';
+    html += `<span class="velocity-ticker-ago">Last tick: Just now &middot; ${formatEasternTime()}</span>`;
+    html += '</div>';
+
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Update the Heartbeat ticker card in-place (every 5s tick or window switch).
+ */
+function updateHeartbeatTickerCard(card, velocity) {
+    _heartbeatLastData = velocity;
+
+    const windows = velocity.windows || {};
+    const win = windows[_heartbeatSelectedWindow] || null;
+    const samples = win ? win.samples : (velocity.samples || []);
+
+    let inner = '';
+
+    inner += '<div class="velocity-ticker-header">';
+    inner += '<div class="velocity-ticker-title-row">';
+    inner += '<span class="velocity-ticker-title">Sales Velocity</span>';
+    inner += '<span class="velocity-ticker-live"><span class="velocity-pulse"></span> LIVE</span>';
+    inner += '</div>';
+
+    inner += '<div class="velocity-ticker-pills">';
+    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
+    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
+    windowKeys.forEach(key => {
+        const active = key === _heartbeatSelectedWindow ? ' velocity-pill-active' : '';
+        inner += `<button class="velocity-pill${active}" data-window="${key}" onclick="selectHeartbeatWindow('${key}')">${windowLabels[key]}</button>`;
+    });
+    inner += '</div>';
+    inner += '</div>';
+
+    inner += renderTickerPriceBlock(win, samples);
+    inner += renderTickerSparkline(samples, win);
+    inner += renderTickerMiniStats(windows, _heartbeatSelectedWindow, 'selectHeartbeatWindow');
+
+    const agoSec = _heartbeatLastTick ? Math.round((Date.now() - _heartbeatLastTick) / 1000) : 0;
+    const agoText = agoSec < 3 ? 'Just now' : `${agoSec}s ago`;
+    inner += '<div class="velocity-ticker-footer">';
+    inner += `<span class="velocity-ticker-ago">Last tick: ${agoText} &middot; ${formatEasternTime()}</span>`;
+    inner += '</div>';
+
+    card.innerHTML = inner;
+}
+
+/**
+ * Switch the Heartbeat ticker to a different time window.
+ */
+function selectHeartbeatWindow(key) {
+    _heartbeatSelectedWindow = key;
+    const card = document.getElementById('heartbeatTickerCard');
+    if (card && _heartbeatLastData) {
+        updateHeartbeatTickerCard(card, _heartbeatLastData);
+    }
 }
 
 /**
