@@ -1427,37 +1427,35 @@
             align-items: center;
             padding: 8px 10px;
             border-radius: var(--radius-md, 8px);
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--bg-alt, #F6F9FC);
             font-size: 13px;
             gap: 8px;
         }
         .raffle-tier-price {
             font-weight: 700;
-            color: #FFFFFF;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            color: var(--text-primary, #0A2540);
         }
         .raffle-tier-bar-track {
             height: 6px;
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--border, #E3E8EE);
             border-radius: 3px;
             overflow: hidden;
         }
         .raffle-tier-bar-fill {
             height: 100%;
             border-radius: 3px;
-            background: rgba(255, 255, 255, 0.85);
+            background: linear-gradient(90deg, #635BFF, #E91E8C);
             transition: width 0.5s ease;
         }
         .raffle-tier-sales {
             font-size: 12px;
             font-weight: 600;
-            color: rgba(255, 255, 255, 0.85);
+            color: var(--text-secondary, #425466);
             text-align: right;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         .raffle-tier-detail {
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.65);
+            color: var(--text-muted, #6B7C93);
             grid-column: 2 / 4;
             margin-top: -2px;
         }
