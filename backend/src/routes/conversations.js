@@ -9,6 +9,7 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const claudeService = require('../services/claude');
+const log = require('../services/logger');
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -62,7 +63,7 @@ router.get('/', authenticate, async (req, res) => {
         const result = await pool.query(sql, params);
         res.json({ conversations: result.rows });
     } catch (error) {
-        console.error('List conversations error:', error);
+        log.error('List conversations error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to list conversations' });
     }
 });
@@ -109,7 +110,7 @@ router.post('/', authenticate, [
 
         res.status(201).json({ conversation: result.rows[0] });
     } catch (error) {
-        console.error('Create conversation error:', error);
+        log.error('Create conversation error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to create conversation' });
     }
 });
@@ -140,7 +141,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
         res.json({ conversation: result.rows[0] });
     } catch (error) {
-        console.error('Get conversation error:', error);
+        log.error('Get conversation error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get conversation' });
     }
 });
@@ -204,7 +205,7 @@ router.put('/:id', authenticate, async (req, res) => {
 
         res.json({ conversation: result.rows[0] });
     } catch (error) {
-        console.error('Update conversation error:', error);
+        log.error('Update conversation error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update conversation' });
     }
 });
@@ -232,7 +233,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 
         res.json({ deleted: true });
     } catch (error) {
-        console.error('Delete conversation error:', error);
+        log.error('Delete conversation error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete conversation' });
     }
 });
@@ -330,7 +331,7 @@ router.post('/:id/summarize', authenticate, async (req, res) => {
 
         res.json({ summary: summaryText, runningSummary, messages: recentMessages, summarized: true });
     } catch (error) {
-        console.error('Summarize conversation error:', error);
+        log.error('Summarize conversation error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to summarize conversation' });
     }
 });
@@ -371,7 +372,7 @@ router.post('/:id/title', authenticate, async (req, res) => {
 
         res.json({ title });
     } catch (error) {
-        console.error('Generate title error:', error);
+        log.error('Generate title error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to generate title' });
     }
 });

@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const multer = require('multer');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 const DEFAULT_CATEGORIES = [
     { slug: 'general', label: 'General', color: '#6B7280', sort_order: 0, is_default: true },
@@ -89,7 +90,7 @@ router.get('/categories', authenticate, async (req, res) => {
         const cats = await getOrgCategories(req.organizationId);
         res.json({ categories: cats });
     } catch (error) {
-        console.error('Failed to get categories:', error.message);
+        log.error('Failed to get categories', { error: error.message });
         res.status(500).json({ error: 'Failed to get categories' });
     }
 });
@@ -124,7 +125,7 @@ router.post('/categories', authenticate, [
         res.status(201).json({ category: result.rows[0] });
     } catch (error) {
         if (error.code === '23505') return res.status(409).json({ error: 'Category slug already exists' });
-        console.error('Failed to create category:', error.message);
+        log.error('Failed to create category', { error: error.message });
         res.status(500).json({ error: 'Failed to create category' });
     }
 });
@@ -158,7 +159,7 @@ router.patch('/categories/:id', authenticate, async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'Category not found' });
         res.json({ category: result.rows[0] });
     } catch (error) {
-        console.error('Failed to update category:', error.message);
+        log.error('Failed to update category', { error: error.message });
         res.status(500).json({ error: 'Failed to update category' });
     }
 });
@@ -194,7 +195,7 @@ router.delete('/categories/:id', authenticate, async (req, res) => {
 
         res.json({ message: 'Category deleted' });
     } catch (error) {
-        console.error('Failed to delete category:', error.message);
+        log.error('Failed to delete category', { error: error.message });
         res.status(500).json({ error: 'Failed to delete category' });
     }
 });
@@ -306,7 +307,7 @@ router.post('/link-preview', authenticate, async (req, res) => {
         if (error.name === 'AbortError') {
             return res.json({ preview: null });
         }
-        console.error('Link preview error:', error.message);
+        log.error('Link preview error', { error: error.message });
         res.json({ preview: null });
     }
 });
@@ -474,7 +475,7 @@ router.get('/posts', authenticate, async (req, res) => {
 
         res.json({ posts });
     } catch (error) {
-        console.error('Failed to get home base posts:', error.message);
+        log.error('Failed to get home base posts', { error: error.message });
         res.status(500).json({ error: 'Failed to get posts' });
     }
 });
@@ -555,7 +556,7 @@ router.post('/posts', authenticate, [
 
         res.status(201).json({ post });
     } catch (error) {
-        console.error('Failed to create home base post:', error.message);
+        log.error('Failed to create home base post', { error: error.message });
         res.status(500).json({ error: 'Failed to create post' });
     }
 });
@@ -591,7 +592,7 @@ router.delete('/posts/:id', authenticate, async (req, res) => {
 
         res.json({ message: 'Post deleted' });
     } catch (error) {
-        console.error('Failed to delete home base post:', error.message);
+        log.error('Failed to delete home base post', { error: error.message });
         res.status(500).json({ error: 'Failed to delete post' });
     }
 });
@@ -654,7 +655,7 @@ router.patch('/posts/:id/pin', authenticate, async (req, res) => {
 
         res.json({ pinned: true, pin_order: maxOrder.rows[0].next });
     } catch (error) {
-        console.error('Failed to toggle pin:', error.message);
+        log.error('Failed to toggle pin', { error: error.message });
         res.status(500).json({ error: 'Failed to toggle pin' });
     }
 });
@@ -683,7 +684,7 @@ router.put('/posts/reorder-pins', authenticate, async (req, res) => {
 
         res.json({ message: 'Pin order updated' });
     } catch (error) {
-        console.error('Failed to reorder pins:', error.message);
+        log.error('Failed to reorder pins', { error: error.message });
         res.status(500).json({ error: 'Failed to reorder pins' });
     }
 });
@@ -740,7 +741,7 @@ router.patch('/posts/:id', authenticate, [
 
         res.json({ post: result.rows[0] });
     } catch (error) {
-        console.error('Failed to edit post:', error.message);
+        log.error('Failed to edit post', { error: error.message });
         res.status(500).json({ error: 'Failed to edit post' });
     }
 });
@@ -772,7 +773,7 @@ router.patch('/posts/:id/restore', authenticate, async (req, res) => {
 
         res.json({ message: 'Post restored' });
     } catch (error) {
-        console.error('Failed to restore post:', error.message);
+        log.error('Failed to restore post', { error: error.message });
         res.status(500).json({ error: 'Failed to restore post' });
     }
 });
@@ -803,7 +804,7 @@ router.get('/posts/archived', authenticate, async (req, res) => {
 
         res.json({ posts: result.rows });
     } catch (error) {
-        console.error('Failed to get archived posts:', error.message);
+        log.error('Failed to get archived posts', { error: error.message });
         res.status(500).json({ error: 'Failed to get archived posts' });
     }
 });
@@ -852,7 +853,7 @@ router.post('/posts/:id/attachments', authenticate, upload.single('file'), async
 
         res.status(201).json({ attachment: result.rows[0] });
     } catch (error) {
-        console.error('Failed to upload attachment:', error.message);
+        log.error('Failed to upload attachment', { error: error.message });
         if (error.message && error.message.includes('File type not allowed')) {
             return res.status(400).json({ error: error.message });
         }
@@ -884,7 +885,7 @@ router.get('/attachments/:id', authenticate, async (req, res) => {
         res.setHeader('Content-Length', att.file_size);
         res.send(att.file_data);
     } catch (error) {
-        console.error('Failed to get attachment:', error.message);
+        log.error('Failed to get attachment', { error: error.message });
         res.status(500).json({ error: 'Failed to get attachment' });
     }
 });
@@ -909,7 +910,7 @@ router.delete('/attachments/:id', authenticate, async (req, res) => {
 
         res.json({ message: 'Attachment deleted' });
     } catch (error) {
-        console.error('Failed to delete attachment:', error.message);
+        log.error('Failed to delete attachment', { error: error.message });
         res.status(500).json({ error: 'Failed to delete attachment' });
     }
 });
@@ -978,7 +979,7 @@ router.get('/posts/:id/comments', authenticate, async (req, res) => {
 
         res.json({ comments });
     } catch (error) {
-        console.error('Failed to get comments:', error.message);
+        log.error('Failed to get comments', { error: error.message });
         res.status(500).json({ error: 'Failed to get comments' });
     }
 });
@@ -1039,7 +1040,7 @@ router.post('/posts/:id/comments', authenticate, [
 
         res.status(201).json({ comment });
     } catch (error) {
-        console.error('Failed to create comment:', error.message);
+        log.error('Failed to create comment', { error: error.message });
         res.status(500).json({ error: 'Failed to create comment' });
     }
 });
@@ -1061,7 +1062,7 @@ router.delete('/comments/:id', authenticate, async (req, res) => {
 
         res.json({ message: 'Comment deleted' });
     } catch (error) {
-        console.error('Failed to delete comment:', error.message);
+        log.error('Failed to delete comment', { error: error.message });
         res.status(500).json({ error: 'Failed to delete comment' });
     }
 });
@@ -1085,7 +1086,7 @@ router.get('/posts/:id/reactions', authenticate, async (req, res) => {
         );
         res.json({ reactions: result.rows });
     } catch (error) {
-        console.error('Failed to get reactions:', error.message);
+        log.error('Failed to get reactions', { error: error.message });
         res.status(500).json({ error: 'Failed to get reactions' });
     }
 });
@@ -1128,7 +1129,7 @@ router.post('/posts/:id/reactions', authenticate, [
 
         res.status(201).json({ toggled: true, emoji });
     } catch (error) {
-        console.error('Failed to toggle reaction:', error.message);
+        log.error('Failed to toggle reaction', { error: error.message });
         res.status(500).json({ error: 'Failed to toggle reaction' });
     }
 });
@@ -1170,7 +1171,7 @@ router.post('/comments/:id/reactions', authenticate, [
 
         res.status(201).json({ toggled: true, emoji });
     } catch (error) {
-        console.error('Failed to toggle comment reaction:', error.message);
+        log.error('Failed to toggle comment reaction', { error: error.message });
         res.status(500).json({ error: 'Failed to toggle comment reaction' });
     }
 });
@@ -1236,7 +1237,7 @@ async function createMentionNotifications(recipientIds, actorId, organizationId,
             `INSERT INTO home_base_notifications (recipient_id, actor_id, organization_id, type, post_id, comment_id)
              VALUES ($1, $2, $3, 'mention', $4, $5)`,
             [recipientId, actorId, organizationId, postId, commentId || null]
-        ).catch(err => console.error('Failed to create mention notification:', err.message));
+        ).catch(err => log.error('Failed to create mention notification', { error: err.message }));
     }
 }
 
@@ -1249,7 +1250,7 @@ async function createReplyNotification(postAuthorId, commenterId, organizationId
         `INSERT INTO home_base_notifications (recipient_id, actor_id, organization_id, type, post_id, comment_id)
          VALUES ($1, $2, $3, 'reply', $4, $5)`,
         [postAuthorId, commenterId, organizationId, postId, commentId]
-    ).catch(err => console.error('Failed to create reply notification:', err.message));
+    ).catch(err => log.error('Failed to create reply notification', { error: err.message }));
 }
 
 /**
@@ -1273,7 +1274,7 @@ router.get('/notifications', authenticate, async (req, res) => {
 
         res.json({ notifications: result.rows });
     } catch (error) {
-        console.error('Failed to get notifications:', error.message);
+        log.error('Failed to get notifications', { error: error.message });
         res.status(500).json({ error: 'Failed to get notifications' });
     }
 });
@@ -1292,7 +1293,7 @@ router.get('/notifications/unread-count', authenticate, async (req, res) => {
         );
         res.json({ count: result.rows[0].count });
     } catch (error) {
-        console.error('Failed to get unread count:', error.message);
+        log.error('Failed to get unread count', { error: error.message });
         res.status(500).json({ error: 'Failed to get unread count' });
     }
 });
@@ -1318,7 +1319,7 @@ router.patch('/notifications/read', authenticate, async (req, res) => {
         }
         res.json({ message: 'Notifications marked as read' });
     } catch (error) {
-        console.error('Failed to mark notifications read:', error.message);
+        log.error('Failed to mark notifications read', { error: error.message });
         res.status(500).json({ error: 'Failed to update notifications' });
     }
 });
@@ -1364,7 +1365,7 @@ router.get('/search', authenticate, async (req, res) => {
 
         res.json({ posts: result.rows });
     } catch (error) {
-        console.error('Failed to search posts:', error.message);
+        log.error('Failed to search posts', { error: error.message });
         res.status(500).json({ error: 'Failed to search posts' });
     }
 });
@@ -1387,7 +1388,7 @@ router.get('/members', authenticate, async (req, res) => {
         );
         res.json({ members: result.rows });
     } catch (error) {
-        console.error('Failed to get members:', error.message);
+        log.error('Failed to get members', { error: error.message });
         res.status(500).json({ error: 'Failed to get members' });
     }
 });
@@ -1431,7 +1432,7 @@ router.post('/posts/:id/ack', authenticate, async (req, res) => {
 
         res.status(201).json({ acked: true });
     } catch (error) {
-        console.error('Failed to toggle ack:', error.message);
+        log.error('Failed to toggle ack', { error: error.message });
         res.status(500).json({ error: 'Failed to acknowledge post' });
     }
 });
@@ -1462,7 +1463,7 @@ router.get('/posts/:id/acks', authenticate, async (req, res) => {
             total_members: memCount.rows[0].count
         });
     } catch (error) {
-        console.error('Failed to get acks:', error.message);
+        log.error('Failed to get acks', { error: error.message });
         res.status(500).json({ error: 'Failed to get acknowledgments' });
     }
 });
@@ -1486,7 +1487,7 @@ router.get('/templates', authenticate, async (req, res) => {
         );
         res.json({ templates: result.rows });
     } catch (error) {
-        console.error('Failed to get templates:', error.message);
+        log.error('Failed to get templates', { error: error.message });
         res.status(500).json({ error: 'Failed to get templates' });
     }
 });
@@ -1515,7 +1516,7 @@ router.post('/templates', authenticate, [
 
         res.status(201).json({ template: result.rows[0] });
     } catch (error) {
-        console.error('Failed to create template:', error.message);
+        log.error('Failed to create template', { error: error.message });
         res.status(500).json({ error: 'Failed to create template' });
     }
 });
@@ -1548,7 +1549,7 @@ router.put('/templates/:id', authenticate, [
 
         res.json({ template: result.rows[0] });
     } catch (error) {
-        console.error('Failed to update template:', error.message);
+        log.error('Failed to update template', { error: error.message });
         res.status(500).json({ error: 'Failed to update template' });
     }
 });
@@ -1570,7 +1571,7 @@ router.delete('/templates/:id', authenticate, async (req, res) => {
 
         res.json({ message: 'Template deleted' });
     } catch (error) {
-        console.error('Failed to delete template:', error.message);
+        log.error('Failed to delete template', { error: error.message });
         res.status(500).json({ error: 'Failed to delete template' });
     }
 });
@@ -1595,7 +1596,7 @@ router.get('/posts/scheduled', authenticate, async (req, res) => {
         );
         res.json({ posts: result.rows });
     } catch (error) {
-        console.error('Failed to get scheduled posts:', error.message);
+        log.error('Failed to get scheduled posts', { error: error.message });
         res.status(500).json({ error: 'Failed to get scheduled posts' });
     }
 });
@@ -1617,7 +1618,7 @@ router.delete('/posts/:id/schedule', authenticate, async (req, res) => {
 
         res.json({ message: 'Scheduled post cancelled' });
     } catch (error) {
-        console.error('Failed to cancel scheduled post:', error.message);
+        log.error('Failed to cancel scheduled post', { error: error.message });
         res.status(500).json({ error: 'Failed to cancel scheduled post' });
     }
 });
@@ -1671,7 +1672,7 @@ router.patch('/posts/:id/draft', authenticate, [
 
         res.json({ post: result.rows[0] });
     } catch (error) {
-        console.error('Failed to update draft:', error.message);
+        log.error('Failed to update draft', { error: error.message });
         res.status(500).json({ error: 'Failed to update draft' });
     }
 });
@@ -1717,7 +1718,7 @@ router.post('/posts/:id/publish', authenticate, async (req, res) => {
 
         res.json({ post });
     } catch (error) {
-        console.error('Failed to publish draft:', error.message);
+        log.error('Failed to publish draft', { error: error.message });
         res.status(500).json({ error: 'Failed to publish draft' });
     }
 });
@@ -1743,7 +1744,7 @@ router.post('/posts/:id/view', authenticate, async (req, res) => {
         }
         res.json({ viewed: true });
     } catch (error) {
-        console.error('Failed to record view:', error.message);
+        log.error('Failed to record view', { error: error.message });
         res.status(500).json({ error: 'Failed to record view' });
     }
 });
@@ -1774,7 +1775,7 @@ router.get('/posts/:id/views', authenticate, async (req, res) => {
             total_members: total.rows[0].count
         });
     } catch (error) {
-        console.error('Failed to get views:', error.message);
+        log.error('Failed to get views', { error: error.message });
         res.status(500).json({ error: 'Failed to get views' });
     }
 });
@@ -1806,7 +1807,7 @@ router.post('/posts/:id/bookmark', authenticate, async (req, res) => {
 
         res.status(201).json({ bookmarked: true });
     } catch (error) {
-        console.error('Failed to toggle bookmark:', error.message);
+        log.error('Failed to toggle bookmark', { error: error.message });
         res.status(500).json({ error: 'Failed to toggle bookmark' });
     }
 });
@@ -1869,7 +1870,7 @@ router.get('/bookmarks', authenticate, async (req, res) => {
 
         res.json({ posts });
     } catch (error) {
-        console.error('Failed to get bookmarks:', error.message);
+        log.error('Failed to get bookmarks', { error: error.message });
         res.status(500).json({ error: 'Failed to get bookmarks' });
     }
 });
@@ -1972,7 +1973,7 @@ router.get('/activity', authenticate, async (req, res) => {
             active_users: activeUsers.rows[0].count
         });
     } catch (error) {
-        console.error('Failed to get activity feed:', error.message);
+        log.error('Failed to get activity feed', { error: error.message });
         res.status(500).json({ error: 'Failed to get activity feed' });
     }
 });
@@ -1991,7 +1992,7 @@ router.get('/digest', authenticate, async (req, res) => {
         );
         res.json({ frequency: result.rows[0]?.frequency || 'off' });
     } catch (error) {
-        console.error('Failed to get digest pref:', error.message);
+        log.error('Failed to get digest pref', { error: error.message });
         res.status(500).json({ error: 'Failed to get digest preference' });
     }
 });
@@ -2019,7 +2020,7 @@ router.put('/digest', authenticate, [
 
         res.json({ frequency: req.body.frequency });
     } catch (error) {
-        console.error('Failed to update digest pref:', error.message);
+        log.error('Failed to update digest pref', { error: error.message });
         res.status(500).json({ error: 'Failed to update digest preference' });
     }
 });
@@ -2041,10 +2042,10 @@ async function publishScheduledPosts() {
         );
 
         if (result.rows.length > 0) {
-            console.log(`[HOME BASE] Published ${result.rows.length} scheduled post(s)`);
+            log.info(`[HOME BASE] Published ${result.rows.length} scheduled post(s)`);
         }
     } catch (error) {
-        console.error('[HOME BASE] Failed to publish scheduled posts:', error.message);
+        log.error('[HOME BASE] Failed to publish scheduled posts', { error: error.message });
     }
 }
 
@@ -2164,15 +2165,15 @@ async function sendDigestEmails() {
                     [sub.user_id, sub.organization_id]
                 );
             } catch (subErr) {
-                console.error(`[HOME BASE DIGEST] Failed for user ${sub.user_id}:`, subErr.message);
+                log.error(`[HOME BASE DIGEST] Failed for user ${sub.user_id}:`, subErr.message);
             }
         }
 
         if (allSubs.length > 0) {
-            console.log(`[HOME BASE DIGEST] Processed ${allSubs.length} digest subscriber(s)`);
+            log.info(`[HOME BASE DIGEST] Processed ${allSubs.length} digest subscriber(s)`);
         }
     } catch (error) {
-        console.error('[HOME BASE DIGEST] Failed:', error.message);
+        log.error('[HOME BASE DIGEST] Failed', { error: error.message });
     }
 }
 

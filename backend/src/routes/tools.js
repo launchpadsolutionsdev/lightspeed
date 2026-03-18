@@ -13,6 +13,7 @@ const shopifyService = require('../services/shopify');
 const { buildEnhancedPrompt } = require('../services/promptBuilder');
 const { buildResponseAssistantPrompt, buildCalendarContext } = require('../services/systemPromptBuilder');
 const { validateOutput, validateFormatCompliance } = require('../services/outputValidator');
+const log = require('../services/logger');
 
 /**
  * POST /api/response-assistant/generate
@@ -101,7 +102,7 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
                 `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
                  VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, $4, TRUE, NOW())`,
                 [organizationId, req.userId, totalTokens, responseTimeMs]
-            ).catch(err => console.warn('Usage logging failed:', err.message));
+            ).catch(err => log.warn('Usage logging failed', { error: err.message }));
         }
 
         // Validate output for safety + format compliance
@@ -112,7 +113,7 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
         });
         warnings.push(...formatViolations);
         if (warnings.length > 0) {
-            console.warn('[OUTPUT VALIDATION]', warnings);
+            log.warn('[OUTPUT VALIDATION]', { warnings });
         }
 
         sendEvent({
@@ -130,7 +131,7 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
         res.end();
 
     } catch (error) {
-        console.error('Response assistant generate error:', error);
+        log.error('Response assistant generate error', { error: error.message || error });
         sendEvent({
             type: 'error',
             error: error.message || 'Failed to generate response',
@@ -195,7 +196,7 @@ router.post('/generate', authenticate, checkUsageLimit, async (req, res) => {
         res.json(response);
 
     } catch (error) {
-        console.error('Generate error:', error);
+        log.error('Generate error', { error: error.message || error });
         res.status(500).json({ error: error.message || 'Failed to generate response' });
     }
 });
@@ -291,14 +292,14 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
                 `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
                  VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, TRUE, NOW())`,
                 [organizationId, req.userId, tool || 'response_assistant', totalTokens, responseTimeMs]
-            ).catch(_e => console.warn('Usage logging failed:', _e.message));
+            ).catch(_e => log.warn('Usage logging failed', { error: _e.message }));
         }
 
         sendEvent({ type: 'done', usage: usage || {}, contextSummary });
         res.end();
 
     } catch (error) {
-        console.error('Generate-stream error:', error);
+        log.error('Generate-stream error', { error: error.message || error });
         sendEvent({ type: 'error', error: error.message || 'Failed to generate response' });
         res.end();
     }
@@ -322,7 +323,7 @@ router.post('/voice-profile/generate', authenticate, async (req, res) => {
 
         res.json({ success: true, profile });
     } catch (error) {
-        console.error('Voice profile generation error:', error);
+        log.error('Voice profile generation error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to generate voice profile' });
     }
 });
@@ -337,7 +338,7 @@ router.get('/voice-profile', authenticate, async (req, res) => {
         const profile = await getVoiceProfile(req.organizationId);
         res.json({ profile });
     } catch (error) {
-        console.error('Voice profile retrieval error:', error);
+        log.error('Voice profile retrieval error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to retrieve voice profile' });
     }
 });
@@ -472,7 +473,7 @@ ${JSON.stringify(data, null, 2)}`;
                     reportType || 'data_analysis',
                     JSON.stringify(contextSummary)
                 ]
-            ).catch(_e => console.warn('Insights history save failed:', _e.message));
+            ).catch(_e => log.warn('Insights history save failed', { error: _e.message }));
         }
 
         // Include context summary in response
@@ -480,7 +481,7 @@ ${JSON.stringify(data, null, 2)}`;
         res.json(response);
 
     } catch (error) {
-        console.error('Analyze error:', error);
+        log.error('Analyze error', { error: error.message || error });
         res.status(500).json({ error: error.message || 'Failed to analyze data' });
     }
 });
@@ -569,7 +570,7 @@ Return ONLY the JavaScript function body. No explanation, no markdown, no \`\`\`
         res.json(response);
 
     } catch (error) {
-        console.error('Normalize error:', error);
+        log.error('Normalize error', { error: error.message || error });
         res.status(500).json({ error: error.message || 'Failed to normalize data' });
     }
 });
@@ -594,15 +595,10 @@ router.post('/normalize/log', authenticate, async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Normalize log error:', error);
+        log.error('Normalize log error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to log usage' });
     }
 });
-
-// NOTE: The legacy POST /api/draft endpoint has been removed.
-// Draft Assistant now uses /api/generate-stream exclusively, which provides
-// streaming, semantic search, corrections, voice fingerprint, and all other
-// context injection via buildEnhancedPrompt().
 
 /**
  * GET /api/tools/shopify-analytics
@@ -640,7 +636,7 @@ router.get('/shopify-analytics', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Shopify analytics fetch error:', error);
+        log.error('Shopify analytics fetch error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch Shopify analytics' });
     }
 });
@@ -655,7 +651,7 @@ router.get('/calendar-context', authenticate, async (req, res) => {
         const context = await buildCalendarContext(req.organizationId);
         res.json({ context });
     } catch (error) {
-        console.error('Calendar context error:', error);
+        log.error('Calendar context error', { error: error.message || error });
         res.json({ context: '' });
     }
 });

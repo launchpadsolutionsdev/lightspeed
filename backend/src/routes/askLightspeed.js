@@ -18,6 +18,7 @@ const claudeService = require('../services/claude');
 const { buildEnhancedPrompt } = require('../services/promptBuilder');
 const { DRAFT_STATIC_PROMPT, buildDraftDynamicPrompt, buildDraftUserPrompt, getMaxTokensForContentType } = require('../services/draftPromptBuilder');
 const shopifyService = require('../services/shopify');
+const log = require('../services/logger');
 
 // Multer config: in-memory storage, 10MB limit
 const upload = multer({
@@ -276,7 +277,7 @@ async function parseUploadedFile(file) {
             const data = await pdfParse(file.buffer);
             return { type: 'pdf', content: data.text, filename: file.originalname, pages: data.numpages };
         } catch (err) {
-            console.warn('PDF parse failed, using basic extraction:', err.message);
+            log.warn('PDF parse failed, using basic extraction', { error: err.message });
             return { type: 'pdf', content: file.buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' '), filename: file.originalname };
         }
     }
@@ -884,7 +885,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
                 }
             } catch (err) {
                 sendEvent({ type: 'status', message: 'File parsing failed, continuing without file data' });
-                console.warn('File parse error:', err.message);
+                log.warn('File parse error', { error: err.message });
             }
         }
 
@@ -965,7 +966,7 @@ When the user asks about a specific customer, email address, order, or purchase,
         res.end();
 
     } catch (error) {
-        console.error('Agentic Ask Lightspeed error:', error);
+        log.error('Agentic Ask Lightspeed error', { error: error.message || error });
         sendEvent({ type: 'error', error: error.message || 'Failed to process request' });
         res.end();
     }
@@ -1253,7 +1254,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     ? `Found ${orders.length} order(s):\n\n${JSON.stringify(orders, null, 2)}`
                     : 'No orders found matching your search criteria.';
             } catch (err) {
-                console.error('Shopify order search error:', err);
+                log.error('Shopify order search error', { error: err.message || err });
                 toolResult = `Order search failed: ${err.message}`;
             }
 
@@ -1286,7 +1287,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     ? `Found ${customers.length} customer(s):\n\n${JSON.stringify(customers, null, 2)}`
                     : 'No customers found matching your search.';
             } catch (err) {
-                console.error('Shopify customer search error:', err);
+                log.error('Shopify customer search error', { error: err.message || err });
                 toolResult = `Customer search failed: ${err.message}`;
             }
 
@@ -1395,7 +1396,7 @@ router.post('/confirm-action', authenticate, async (req, res) => {
         res.end();
 
     } catch (error) {
-        console.error('Confirm action error:', error);
+        log.error('Confirm action error', { error: error.message || error });
         sendEvent({ type: 'error', error: error.message || 'Failed to execute action' });
         res.end();
     }

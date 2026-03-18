@@ -8,6 +8,8 @@
  * which is optimized for retrieval tasks.
  */
 
+const log = require('./logger');
+
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
 const VOYAGE_MODEL = 'voyage-3-lite';
 const VOYAGE_API_URL = 'https://api.voyageai.com/v1/embeddings';
@@ -21,7 +23,7 @@ const VOYAGE_API_URL = 'https://api.voyageai.com/v1/embeddings';
  */
 async function generateEmbeddings(texts, inputType = 'document') {
     if (!VOYAGE_API_KEY) {
-        console.warn('[EMBEDDING] VOYAGE_API_KEY not configured, skipping embedding generation');
+        log.warn('VOYAGE_API_KEY not configured, skipping embedding generation');
         return null;
     }
 
@@ -49,7 +51,7 @@ async function generateEmbeddings(texts, inputType = 'document') {
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            console.warn('[EMBEDDING] Voyage API error:', response.status, errData);
+            log.warn('Voyage API error', { status: response.status, error: errData });
             return null;
         }
 

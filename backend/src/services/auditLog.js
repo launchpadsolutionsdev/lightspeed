@@ -4,6 +4,7 @@
  */
 
 const pool = require('../../config/database');
+const log = require('./logger');
 
 /**
  * Log a sensitive action to the audit_logs table.
@@ -26,7 +27,7 @@ function logAction({ orgId, userId, action, resourceType, resourceId, changes, r
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [orgId || null, userId || null, action, resourceType, resourceId || null, changes ? JSON.stringify(changes) : null, ip]
     ).catch(err => {
-        console.error('[AUDIT] Failed to write audit log:', err.message);
+        log.error('[AUDIT] Failed to write audit log', { error: err.message });
     });
 }
 

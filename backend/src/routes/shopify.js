@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const shopifyService = require('../services/shopify');
+const log = require('../services/logger');
 
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
@@ -73,7 +74,7 @@ router.get('/install', authenticate, async (req, res) => {
         res.json({ installUrl, shopDomain });
 
     } catch (error) {
-        console.error('Shopify install error:', error);
+        log.error('Shopify install error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to initiate Shopify installation' });
     }
 });
@@ -121,7 +122,7 @@ router.get('/callback', async (req, res) => {
 
         if (!tokenResponse.ok) {
             const errText = await tokenResponse.text();
-            console.error('Shopify token exchange failed:', errText);
+            log.error('Shopify token exchange failed', { error: errText });
             return res.status(500).send('Failed to get access token from Shopify');
         }
 
@@ -137,19 +138,19 @@ router.get('/callback', async (req, res) => {
         try {
             await shopifyService.registerWebhooks(organizationId, BACKEND_URL);
         } catch (webhookError) {
-            console.error('Failed to register webhooks after OAuth (non-fatal):', webhookError.message);
+            log.error('Failed to register webhooks after OAuth (non-fatal)', { error: webhookError.message });
         }
 
         // Sync products in background (small catalog)
         shopifyService.syncProducts(organizationId).catch(err => {
-            console.error('Product sync after OAuth failed (non-fatal):', err.message);
+            log.error('Product sync after OAuth failed (non-fatal)', { error: err.message });
         });
 
         const frontendUrl = process.env.FRONTEND_URL || 'https://www.lightspeedutility.ca';
         res.redirect(`${frontendUrl}/#shopify-connected`);
 
     } catch (error) {
-        console.error('Shopify callback error:', error);
+        log.error('Shopify callback error', { error: error.message || error });
         res.status(500).send('Failed to complete Shopify installation');
     }
 });
@@ -177,7 +178,7 @@ router.post('/webhook', async (req, res) => {
             .digest('base64');
 
         if (generatedHmac !== hmac) {
-            console.error('Shopify webhook HMAC verification failed', { topic, shopDomain });
+            log.error('Shopify webhook HMAC verification failed', { topic, shopDomain });
             return res.status(401).send('HMAC verification failed');
         }
 
@@ -187,15 +188,15 @@ router.post('/webhook', async (req, res) => {
         shopifyService.handleWebhookEvent(shopDomain, topic, payload)
             .then(result => {
                 if (result.handled) {
-                    console.log(`Shopify webhook processed: ${topic} for ${shopDomain}`, { shopifyId: result.shopifyId });
+                    log.info(`Shopify webhook processed: ${topic} for ${shopDomain}`, { shopifyId: result.shopifyId });
                 }
             })
             .catch(error => {
-                console.error('Shopify webhook processing error:', error.message, { topic, shopDomain });
+                log.error('Shopify webhook processing error', { error: error.message, topic, shopDomain });
             });
 
     } catch (error) {
-        console.error('Shopify webhook error:', error);
+        log.error('Shopify webhook error', { error: error.message || error });
         if (!res.headersSent) {
             res.status(500).send('Webhook processing error');
         }
@@ -228,7 +229,7 @@ router.post('/webhooks/register', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Shopify webhook registration error:', error);
+        log.error('Shopify webhook registration error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to register webhooks' });
     }
 });
@@ -272,7 +273,7 @@ router.get('/status', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Shopify status error:', error);
+        log.error('Shopify status error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to check Shopify status' });
     }
 });
@@ -292,14 +293,14 @@ router.post('/disconnect', authenticate, async (req, res) => {
         try {
             await shopifyService.unregisterWebhooks(organizationId);
         } catch (webhookError) {
-            console.error('Failed to unregister webhooks (non-fatal):', webhookError.message);
+            log.error('Failed to unregister webhooks (non-fatal)', { error: webhookError.message });
         }
 
         await shopifyService.disconnectStore(organizationId);
         res.json({ success: true, message: 'Shopify store disconnected' });
 
     } catch (error) {
-        console.error('Shopify disconnect error:', error);
+        log.error('Shopify disconnect error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to disconnect Shopify store' });
     }
 });
@@ -347,7 +348,7 @@ router.post('/connect', authenticate, async (req, res) => {
         // Users may enter a custom domain (e.g. mystore.ca) but API calls
         // only work on the .myshopify.com domain.
         const myshopifyDomain = shopData.shop?.myshopify_domain || normalizedDomain;
-        console.log(`Shopify connect: user entered "${normalizedDomain}", using API domain "${myshopifyDomain}"`);
+        log.info('Shopify connect: resolving domain', { normalizedDomain, myshopifyDomain });
 
         // Test GraphQL API connectivity (analytics dashboard needs this)
         const graphqlTest = await fetch(
@@ -363,7 +364,7 @@ router.post('/connect', authenticate, async (req, res) => {
         );
 
         if (!graphqlTest.ok) {
-            console.error(`GraphQL test failed for ${myshopifyDomain}: ${graphqlTest.status}`);
+            log.error('GraphQL test failed', { shopDomain: myshopifyDomain, status: graphqlTest.status });
             return res.status(400).json({
                 error: `Shopify REST API works but GraphQL returned ${graphqlTest.status}. Ensure your access token has Admin API (GraphQL) access and the store supports API version 2025-04.`
             });
@@ -381,7 +382,7 @@ router.post('/connect', authenticate, async (req, res) => {
             await shopifyService.registerWebhooks(organizationId, BACKEND_URL);
             webhooksRegistered = true;
         } catch (webhookError) {
-            console.error('Failed to register webhooks after manual connect (non-fatal):', webhookError.message);
+            log.error('Failed to register webhooks after manual connect (non-fatal)', { error: webhookError.message });
         }
 
         // Test ShopifyQL availability (requires read_reports scope)
@@ -391,12 +392,12 @@ router.post('/connect', authenticate, async (req, res) => {
             await runShopifyQL(myshopifyDomain, accessToken, 'FROM orders SHOW sum(orders) AS c SINCE -1d UNTIL today');
             shopifyqlAvailable = true;
         } catch (sqlErr) {
-            console.warn(`ShopifyQL not available for ${myshopifyDomain}: ${sqlErr.message}`);
+            log.warn('ShopifyQL not available', { shopDomain: myshopifyDomain, error: sqlErr.message });
         }
 
         // Sync products in background (small catalog)
         shopifyService.syncProducts(organizationId).catch(err => {
-            console.error('Product sync after connect failed (non-fatal):', err.message);
+            log.error('Product sync after connect failed (non-fatal)', { error: err.message });
         });
 
         const warnings = [];
@@ -415,7 +416,7 @@ router.post('/connect', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Shopify connect error:', error);
+        log.error('Shopify connect error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to connect Shopify store' });
     }
 });
@@ -449,7 +450,7 @@ router.post('/sync', authenticate, async (req, res) => {
                 ? shopifyAnalytics.runIncrementalSync
                 : shopifyAnalytics.runFullSync;
             syncFn(organizationId).catch(error => {
-                console.error('Analytics sync error (from product sync):', error.message);
+                log.error('Analytics sync error (from product sync)', { error: error.message });
             });
         }
 
@@ -460,7 +461,7 @@ router.post('/sync', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Shopify sync error:', error);
+        log.error('Shopify sync error', { error: error.message || error });
         res.status(500).json({ error: error.message || 'Sync failed' });
     }
 });
@@ -482,7 +483,7 @@ router.get('/analytics', authenticate, async (req, res) => {
         res.json(analytics);
 
     } catch (error) {
-        console.error('Shopify analytics error:', error);
+        log.error('Shopify analytics error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch analytics' });
     }
 });
@@ -506,7 +507,7 @@ router.get('/products', authenticate, async (req, res) => {
         res.json({ products, total });
 
     } catch (error) {
-        console.error('Shopify products error:', error);
+        log.error('Shopify products error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch products' });
     }
 });
@@ -524,7 +525,7 @@ router.get('/orders/lookup', authenticate, async (req, res) => {
         res.json({ orders });
 
     } catch (error) {
-        console.error('Shopify order lookup error:', error);
+        log.error('Shopify order lookup error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to look up order' });
     }
 });

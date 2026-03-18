@@ -14,6 +14,7 @@ const mammoth = require('mammoth');
 const auditLog = require('../services/auditLog');
 const { cache } = require('../services/cache');
 const { chunkAndStore, rechunkAllEntries } = require('../services/chunkingService');
+const log = require('../services/logger');
 
 // Helper to invalidate KB cache for an org after any write operation
 function invalidateKbCache(organizationId) {
@@ -82,7 +83,7 @@ router.get('/', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get knowledge base error:', error);
+        log.error('Get knowledge base error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get knowledge base' });
     }
 });
@@ -145,7 +146,7 @@ router.get('/search', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Search knowledge base error:', error);
+        log.error('Search knowledge base error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to search knowledge base' });
     }
 });
@@ -195,13 +196,13 @@ router.post('/', authenticate, [
 
         // Auto-chunk the new entry in the background (non-blocking)
         chunkAndStore(result.rows[0]).catch(err =>
-            console.warn('Auto-chunking failed for new entry:', err.message)
+            log.warn('Auto-chunking failed for new entry', { error: err.message })
         );
 
         res.status(201).json({ entry: result.rows[0] });
 
     } catch (error) {
-        console.error('Create knowledge entry error:', error);
+        log.error('Create knowledge entry error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to create entry' });
     }
 });
@@ -284,7 +285,7 @@ router.get('/duplicates', authenticate, async (req, res) => {
         res.json({ groups: responseGroups });
 
     } catch (error) {
-        console.error('Find duplicates error:', error);
+        log.error('Find duplicates error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to find duplicates' });
     }
 });
@@ -355,7 +356,7 @@ router.post('/merge', authenticate, async (req, res) => {
         res.json({ entry: updated.rows[0], deletedId: deleteId });
 
     } catch (error) {
-        console.error('Merge KB entries error:', error);
+        log.error('Merge KB entries error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to merge entries' });
     }
 });
@@ -385,7 +386,7 @@ router.get('/:id', authenticate, async (req, res) => {
         res.json({ entry: result.rows[0] });
 
     } catch (error) {
-        console.error('Get knowledge entry error:', error);
+        log.error('Get knowledge entry error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get entry' });
     }
 });
@@ -467,13 +468,13 @@ router.put('/:id', authenticate, [
 
         // Re-chunk the updated entry in the background (non-blocking)
         chunkAndStore(result.rows[0]).catch(err =>
-            console.warn('Re-chunking failed for updated entry:', err.message)
+            log.warn('Re-chunking failed for updated entry', { error: err.message })
         );
 
         res.json({ entry: result.rows[0] });
 
     } catch (error) {
-        console.error('Update knowledge entry error:', error);
+        log.error('Update knowledge entry error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update entry' });
     }
 });
@@ -505,7 +506,7 @@ router.delete('/:id', authenticate, async (req, res) => {
         res.json({ message: 'Entry deleted' });
 
     } catch (error) {
-        console.error('Delete knowledge entry error:', error);
+        log.error('Delete knowledge entry error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete entry' });
     }
 });
@@ -570,7 +571,7 @@ router.post('/from-feedback', authenticate, async (req, res) => {
 
         // Auto-chunk the feedback-sourced entry in the background
         chunkAndStore(result.rows[0]).catch(err =>
-            console.warn('Auto-chunking failed for feedback entry:', err.message)
+            log.warn('Auto-chunking failed for feedback entry', { error: err.message })
         );
 
         // Link the response_history record back to this KB entry via proper FK
@@ -582,14 +583,14 @@ router.post('/from-feedback', authenticate, async (req, res) => {
                     [entryId, responseHistoryId, organizationId]
                 );
             } catch (linkErr) {
-                console.warn('Could not link KB entry to response history:', linkErr);
+                log.warn('Could not link KB entry to response history', { error: linkErr.message || linkErr });
             }
         }
 
         res.status(201).json({ entry: result.rows[0] });
 
     } catch (error) {
-        console.error('Create KB from feedback error:', error);
+        log.error('Create KB from feedback error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to create knowledge base entry' });
     }
 });
@@ -640,7 +641,7 @@ router.post('/import', authenticate, async (req, res) => {
         // Auto-chunk all imported entries in the background
         Promise.all(imported.map(entry =>
             chunkAndStore(entry).catch(err =>
-                console.warn('Auto-chunking failed for imported entry:', err.message)
+                log.warn('Auto-chunking failed for imported entry', { error: err.message })
             )
         )).catch(() => {});
 
@@ -651,7 +652,7 @@ router.post('/import', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Import knowledge base error:', error);
+        log.error('Import knowledge base error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to import entries' });
     }
 });
@@ -683,7 +684,7 @@ router.get('/export/all', authenticate, async (req, res) => {
         res.json({ entries: result.rows });
 
     } catch (error) {
-        console.error('Export knowledge base error:', error);
+        log.error('Export knowledge base error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to export entries' });
     }
 });
@@ -765,7 +766,7 @@ router.post('/upload-doc', authenticate, upload.single('document'), async (req, 
         // Auto-chunk all doc-uploaded entries in the background
         Promise.all(imported.map(entry =>
             chunkAndStore(entry).catch(err =>
-                console.warn('Auto-chunking failed for doc entry:', err.message)
+                log.warn('Auto-chunking failed for doc entry', { error: err.message })
             )
         )).catch(() => {});
 
@@ -776,7 +777,7 @@ router.post('/upload-doc', authenticate, upload.single('document'), async (req, 
         });
 
     } catch (error) {
-        console.error('Upload document error:', error);
+        log.error('Upload document error', { error: error.message || error });
         res.status(500).json({ error: error.message || 'Failed to process document' });
     }
 });
@@ -800,7 +801,7 @@ router.post('/rechunk', authenticate, async (req, res) => {
             ...result
         });
     } catch (error) {
-        console.error('Rechunk error:', error);
+        log.error('Rechunk error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to rechunk entries' });
     }
 });

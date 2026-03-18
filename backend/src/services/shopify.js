@@ -5,6 +5,7 @@
  */
 
 const pool = require('../../config/database');
+const log = require('./logger');
 
 const SHOPIFY_API_VERSION = '2025-04';
 
@@ -508,7 +509,7 @@ async function buildContextForInquiry(organizationId, inquiry) {
                 contextParts.push(`No orders found matching order number "${orderNumber}" in Shopify.`);
             }
         } catch (err) {
-            console.error('Shopify order lookup error:', err.message);
+            log.error('Shopify order lookup error', { error: err.message });
             contextParts.push(`Order lookup for "${orderNumber}" failed: ${err.message}`);
         }
     }
@@ -526,7 +527,7 @@ async function buildContextForInquiry(organizationId, inquiry) {
                 contextParts.push(`No orders found for email "${email}" in Shopify.`);
             }
         } catch (err) {
-            console.error('Shopify order lookup by email error:', err.message);
+            log.error('Shopify order lookup by email error', { error: err.message });
             contextParts.push(`Order lookup for "${email}" failed: ${err.message}`);
         }
 
@@ -538,7 +539,7 @@ async function buildContextForInquiry(organizationId, inquiry) {
                 contextParts.push(`No customer profile found for "${email}" in Shopify.`);
             }
         } catch (err) {
-            console.error('Shopify customer lookup error:', err.message);
+            log.error('Shopify customer lookup error', { error: err.message });
             contextParts.push(`Customer lookup for "${email}" failed: ${err.message}`);
         }
     }
@@ -694,7 +695,7 @@ async function registerWebhooks(organizationId, webhookBaseUrl) {
             });
             registered.push(topic);
         } catch (error) {
-            console.error(`Failed to register webhook ${topic}:`, error.message);
+            log.error(`Failed to register webhook ${topic}`, { error: error.message });
             failed.push(topic);
         }
     }
@@ -827,7 +828,7 @@ async function handleWebhookEvent(shopDomain, topic, payload) {
                 const shopifyAnalytics = require('./shopifyAnalytics');
                 await shopifyAnalytics.handleOrderWebhook(organizationId, topic, payload);
             } catch (err) {
-                console.error('Analytics webhook handler error:', err.message);
+                log.error('Analytics webhook handler error', { error: err.message });
             }
             return { handled: true, topic, shopifyId: payload.id };
         }

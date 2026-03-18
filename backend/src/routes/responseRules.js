@@ -9,6 +9,7 @@ const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const auditLog = require('../services/auditLog');
 const { cache } = require('../services/cache');
+const log = require('../services/logger');
 
 function invalidateRulesCache(organizationId) {
     if (organizationId) cache.del(`rules:${organizationId}`);
@@ -36,7 +37,7 @@ router.get('/', authenticate, async (req, res) => {
         res.json({ rules: result.rows });
 
     } catch (error) {
-        console.error('Get response rules error:', error);
+        log.error('Get response rules error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get response rules' });
     }
 });
@@ -87,7 +88,7 @@ router.post('/', authenticate, async (req, res) => {
         res.status(201).json({ rule: result.rows[0] });
 
     } catch (error) {
-        console.error('Create response rule error:', error);
+        log.error('Create response rule error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to create response rule' });
     }
 });
@@ -132,7 +133,7 @@ router.put('/reorder', authenticate, async (req, res) => {
         res.json({ message: 'Order updated' });
 
     } catch (error) {
-        console.error('Reorder response rules error:', error);
+        log.error('Reorder response rules error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to reorder rules' });
     }
 });
@@ -207,7 +208,7 @@ router.put('/:id', authenticate, async (req, res) => {
         res.json({ rule: result.rows[0] });
 
     } catch (error) {
-        console.error('Update response rule error:', error);
+        log.error('Update response rule error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update rule' });
     }
 });
@@ -246,7 +247,7 @@ router.delete('/:id', authenticate, async (req, res) => {
         res.json({ message: 'Rule deleted' });
 
     } catch (error) {
-        console.error('Delete response rule error:', error);
+        log.error('Delete response rule error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete rule' });
     }
 });

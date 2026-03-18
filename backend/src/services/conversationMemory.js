@@ -6,6 +6,7 @@
  */
 
 const pool = require('../../config/database');
+const log = require('./logger');
 
 let embedQuery, formatForPgvector;
 try {
@@ -107,7 +108,7 @@ async function getConversationMemory(inquiry, organizationId, userId) {
 
         return memoryContext;
     } catch (err) {
-        console.warn('Conversation memory retrieval failed, continuing without:', err.message);
+        log.warn('Conversation memory retrieval failed, continuing without', { error: err.message });
         return '';
     }
 }
@@ -182,7 +183,7 @@ async function getCrossToolContext(organizationId, userId, options = {}) {
 
         return context;
     } catch (err) {
-        console.warn('Cross-tool context retrieval failed, continuing without:', err.message);
+        log.warn('Cross-tool context retrieval failed, continuing without', { error: err.message });
         return '';
     }
 }

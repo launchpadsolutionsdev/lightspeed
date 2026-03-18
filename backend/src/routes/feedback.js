@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 /**
  * POST /api/feedback
@@ -37,7 +38,7 @@ router.post('/', authenticate, async (req, res) => {
         res.status(201).json({ entry: result.rows[0] });
 
     } catch (error) {
-        console.error('Submit feedback error:', error);
+        log.error('Submit feedback error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to submit feedback' });
     }
 });
@@ -65,7 +66,7 @@ router.get('/', authenticate, async (req, res) => {
         res.json({ entries: result.rows });
 
     } catch (error) {
-        console.error('Get feedback error:', error);
+        log.error('Get feedback error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get feedback' });
     }
 });
