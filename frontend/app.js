@@ -2344,9 +2344,8 @@ function updateSidebarForTool(toolId) {
         btn.classList.toggle("active", btn.dataset.tool === toolId);
     });
 
-    // Deactivate standalone page buttons (e.g., Runway) when switching tools
-    const runwayBtn = document.querySelector('.sidebar-btn[data-page="content-calendar"]');
-    if (runwayBtn) runwayBtn.classList.remove("active");
+    // Deactivate all page buttons when switching tools (Runway, Manage pages, RA sub-pages)
+    document.querySelectorAll(".sidebar-btn[data-page]").forEach(b => b.classList.remove("active"));
 
     // Expand/collapse Response Assistant sub-menu
     const responsePages = document.getElementById("sidebarResponsePages");
@@ -2361,23 +2360,17 @@ function updateSidebarForTool(toolId) {
         }
     }
 
-    // If switching to Response Assistant, make sure Generator is active by default
+    // If switching to Response Assistant, activate Generator by default
     if (toolId === 'customer-response') {
-        // Check if a Response Assistant sub-page is active (not Runway)
-        const hasActiveSubPage = document.querySelector('.sidebar-btn[data-page="response"].active, .sidebar-btn[data-page="thread"].active, .sidebar-btn[data-page="templates"].active, .sidebar-btn[data-page="analytics"].active');
-        if (!hasActiveSubPage) {
-            // Deactivate any non-RA pages (like Runway's content-calendar)
-            document.querySelectorAll(".sidebar-btn[data-page]").forEach(b => b.classList.remove("active"));
-            document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-            // Activate Generator
-            const genBtn = document.querySelector('.sidebar-btn[data-page="response"]');
-            if (genBtn) genBtn.classList.add("active");
-            const genPage = document.getElementById('page-response');
-            if (genPage) genPage.classList.add("active");
-            // Remove calendar zero-padding
-            const container = document.querySelector('.container.cal-fullscreen');
-            if (container) container.classList.remove('cal-fullscreen');
-        }
+        document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+        // Activate Generator
+        const genBtn = document.querySelector('.sidebar-btn[data-page="response"]');
+        if (genBtn) genBtn.classList.add("active");
+        const genPage = document.getElementById('page-response');
+        if (genPage) genPage.classList.add("active");
+        // Remove calendar zero-padding
+        const container = document.querySelector('.container.cal-fullscreen');
+        if (container) container.classList.remove('cal-fullscreen');
     }
 }
 
@@ -5299,26 +5292,52 @@ function setupEventListeners() {
     });
 
     // Navigation - page switching buttons in sidebar
+    const raSubPages = ['response', 'thread', 'templates', 'analytics'];
     document.querySelectorAll(".sidebar-btn[data-page]").forEach(btn => {
         btn.addEventListener("click", () => {
+            const pageId = btn.dataset.page;
+
             // Runway (content-calendar) is a standalone page inside #mainApp
-            if (btn.dataset.page === 'content-calendar') {
+            if (pageId === 'content-calendar') {
                 // Deactivate all tool buttons so only Runway is highlighted
                 document.querySelectorAll(".sidebar-btn[data-tool]").forEach(b => b.classList.remove("active"));
+                // Collapse RA sub-menu
+                const subMenu = document.getElementById("sidebarResponsePages");
+                const arrow = document.querySelector('.sidebar-btn[data-tool="customer-response"] .sidebar-btn-expand');
+                if (subMenu) subMenu.classList.remove('expanded');
+                if (arrow) arrow.classList.remove('rotated');
                 // Make sure mainApp is visible (Runway lives inside it)
                 currentTool = 'customer-response';
                 document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
                 document.getElementById("appWrapper").classList.add("visible");
                 document.querySelectorAll(".app").forEach(a => a.classList.remove("visible"));
                 document.getElementById("mainApp").classList.add("visible");
-                switchPage(btn.dataset.page);
+                switchPage(pageId);
                 return;
             }
-            // All other data-page buttons are Response Assistant sub-pages
-            if (currentTool !== 'customer-response') {
-                openTool('customer-response');
+
+            // Response Assistant sub-pages
+            if (raSubPages.includes(pageId)) {
+                if (currentTool !== 'customer-response') {
+                    openTool('customer-response');
+                }
+                switchPage(pageId);
+                return;
             }
-            switchPage(btn.dataset.page);
+
+            // Standalone pages (Manage group, Shopify, etc.) — deactivate all tool buttons
+            document.querySelectorAll(".sidebar-btn[data-tool]").forEach(b => b.classList.remove("active"));
+            // Collapse RA sub-menu
+            const subMenu = document.getElementById("sidebarResponsePages");
+            const arrow = document.querySelector('.sidebar-btn[data-tool="customer-response"] .sidebar-btn-expand');
+            if (subMenu) subMenu.classList.remove('expanded');
+            if (arrow) arrow.classList.remove('rotated');
+            // Ensure appWrapper and mainApp are visible (Manage pages live in mainApp)
+            document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
+            document.getElementById("appWrapper").classList.add("visible");
+            document.querySelectorAll(".app").forEach(a => a.classList.remove("visible"));
+            document.getElementById("mainApp").classList.add("visible");
+            switchPage(pageId);
         });
     });
 
