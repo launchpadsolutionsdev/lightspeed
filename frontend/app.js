@@ -17051,6 +17051,9 @@ function updateVelocityTickerCard(card, velocity) {
 // ==================== HEARTBEAT TOOL ====================
 
 let _heartbeatPollTimer = null;
+let _hbOrdersPollTimer = null;
+let _hbOrdersData = null;
+let _hbOrdersLastFetch = 0;
 let _heartbeatSelectedWindow = '1h';
 let _heartbeatLastData = null;   // salesVelocity object (for ticker compat)
 let _heartbeatFullData = null;   // full API response
@@ -17080,15 +17083,21 @@ function initHeartbeat() {
     _heartbeatRendered = false;
 
     refreshHeartbeat();
+    refreshHbOrders(); // Initial orders fetch
 
     stopHeartbeatPolling();
     _heartbeatPollTimer = setInterval(refreshHeartbeat, 5000);
+    _hbOrdersPollTimer = setInterval(refreshHbOrders, 120000); // Every 2 minutes
 }
 
 function stopHeartbeatPolling() {
     if (_heartbeatPollTimer) {
         clearInterval(_heartbeatPollTimer);
         _heartbeatPollTimer = null;
+    }
+    if (_hbOrdersPollTimer) {
+        clearInterval(_hbOrdersPollTimer);
+        _hbOrdersPollTimer = null;
     }
 }
 
@@ -17153,6 +17162,9 @@ function renderHeartbeatPage(data) {
 
     // 3 — Sales velocity ticker
     html += renderHbVelocityTicker(v);
+
+    // 3.5 — Live orders feed (async-filled placeholder)
+    html += '<div id="hbLiveOrdersFeed"></div>';
 
     // 4 — Goal tracker
     html += renderHbGoalTracker(data);
@@ -17221,6 +17233,94 @@ function updateHeartbeatQuick(data) {
     // Update footer
     const footer = document.querySelector('#heartbeatContent > .feed-dash-updated');
     if (footer) footer.innerHTML = `Last tick: Just now &middot; ${formatEasternTime()} &middot; Velocity ticker live every 5s`;
+}
+
+// ---------------------------------------------------------------------------
+// Live Orders Feed — fetches independently every 2 minutes
+// ---------------------------------------------------------------------------
+
+function hbTimeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+}
+
+function hbStatusBadge(status) {
+    if (!status) return '';
+    const s = status.toLowerCase().replace(/_/g, '');
+    let cls = 'hb-badge-pending';
+    if (s === 'paid' || s === 'authorized') cls = 'hb-badge-paid';
+    else if (s.includes('refund')) cls = 'hb-badge-refunded';
+    const label = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `<span class="hb-order-badge ${cls}">${label}</span>`;
+}
+
+function renderHbLiveOrders(orders) {
+    const count = orders ? orders.length : 0;
+    const updatedStr = _hbOrdersLastFetch > 0
+        ? `Updated ${hbTimeAgo(new Date(_hbOrdersLastFetch).toISOString())}`
+        : 'Updating...';
+
+    let html = '<div class="raffle-card hb-orders-card">';
+    html += '<div class="hb-orders-header">';
+    html += '<div class="hb-orders-header-left">';
+    html += '<div class="raffle-card-title">Live Orders</div>';
+    html += `<span class="hb-orders-count">${count}</span>`;
+    html += '</div>';
+    html += `<span class="hb-orders-updated">${updatedStr}</span>`;
+    html += '</div>';
+
+    if (!orders || orders.length === 0) {
+        html += '<div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">No recent orders found.</div>';
+        html += '</div>';
+        return html;
+    }
+
+    html += '<div class="hb-orders-scroll">';
+    orders.forEach(o => {
+        const amount = typeof o.total_price === 'number'
+            ? '$' + o.total_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : '$' + (parseFloat(o.total_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        html += '<div class="hb-order-item">';
+        html += '<div class="hb-order-info">';
+        html += `<div class="hb-order-number">${escapeHtml(String(o.order_number || '--'))}</div>`;
+        html += `<div class="hb-order-customer">${escapeHtml(o.customer_name || 'Guest')}</div>`;
+        html += '</div>';
+        html += `<div style="text-align:right;"><div class="hb-order-amount">${amount}</div><div class="hb-order-time">${hbTimeAgo(o.created_at)}</div></div>`;
+        html += `<div>${hbStatusBadge(o.financial_status)}</div>`;
+        html += '</div>';
+    });
+    html += '</div></div>';
+    return html;
+}
+
+async function refreshHbOrders() {
+    const container = document.getElementById('hbLiveOrdersFeed');
+    if (!container) return;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/dashboard/recent-orders?limit=50`, {
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+
+        const data = await resp.json();
+        _hbOrdersData = data.orders || [];
+        _hbOrdersLastFetch = Date.now();
+        container.innerHTML = renderHbLiveOrders(_hbOrdersData);
+    } catch (err) {
+        console.warn('Heartbeat orders fetch failed:', err.message);
+        if (!_hbOrdersData) {
+            container.innerHTML = '<div class="raffle-card hb-orders-card"><div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">Unable to load orders.</div></div>';
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
