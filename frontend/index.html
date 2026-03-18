@@ -14224,21 +14224,6 @@
     <!-- ==================== TOOL MENU PAGE ==================== -->
     <div class="tool-menu-page" id="toolMenuPage">
         <div class="tool-menu-bg"></div>
-        <header class="tool-menu-header">
-            <div class="tool-menu-logo">
-                <button class="sidebar-toggle" id="dashboardSidebarToggle" title="Toggle menu">
-                    <span>&#9776;</span>
-                </button>
-            </div>
-            <div class="tool-menu-user">
-                <div class="tool-menu-user-info">
-                    <div class="tool-menu-user-name" id="menuUserName">User</div>
-                    <div class="tool-menu-user-email" id="menuUserEmail">user@example.com</div>
-                </div>
-                <button class="tool-menu-billing" id="menuBillingBtn" style="display:none;" onclick="openBillingPortal()">Manage Subscription</button>
-                <button class="tool-menu-logout" id="menuLogoutBtn">Sign Out</button>
-            </div>
-        </header>
 
         <div class="tool-menu-content nested-card">
             <div class="tool-menu-greeting">
@@ -14426,6 +14411,9 @@
                         <button class="user-dropdown-item" id="sidebarAccountBtn">
                             <span>&#128100;</span> My Account
                         </button>
+                        <button class="user-dropdown-item" id="sidebarBillingBtn" style="display:none;" onclick="openBillingPortal()">
+                            <span>&#128179;</span> Manage Subscription
+                        </button>
                         <div class="user-dropdown-divider"></div>
                         <button class="user-dropdown-item danger" id="sidebarLogoutBtn">
                             <span>&#128682;</span> Sign Out
@@ -14460,6 +14448,9 @@
                     <div class="user-dropdown" id="userDropdown">
                         <button class="user-dropdown-item" id="accountBtn">
                             <span>&#128100;</span> My Account
+                        </button>
+                        <button class="user-dropdown-item" id="headerBillingBtn" style="display:none;" onclick="openBillingPortal()">
+                            <span>&#128179;</span> Manage Subscription
                         </button>
                         <div class="user-dropdown-divider"></div>
                         <button class="user-dropdown-item danger" id="logoutBtn">
