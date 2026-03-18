@@ -16849,6 +16849,21 @@ function renderMilestoneBar(pool) {
  * Render the sales velocity stock-ticker card with multi-window support.
  * Produces the full initial HTML with id="velocityTickerCard".
  */
+/**
+ * Format the current time in Eastern Time as h:mm:ssPM ET.
+ */
+function formatEasternTime() {
+    const now = new Date();
+    const eastern = now.toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+    return eastern.replace(' ', '') + ' ET';
+}
+
 function renderVelocityTickerCard(velocity) {
     const windows = velocity.windows || {};
     const win = windows[_velocitySelectedWindow] || null;
@@ -16885,7 +16900,7 @@ function renderVelocityTickerCard(velocity) {
 
     // Ticker footer
     html += '<div class="velocity-ticker-footer">';
-    html += `<span class="velocity-ticker-ago" id="velocityTickerAgo">Last tick: just now</span>`;
+    html += `<span class="velocity-ticker-ago" id="velocityTickerAgo">Last tick: Just now &middot; ${formatEasternTime()}</span>`;
     html += '</div>';
 
     html += '</div>';
@@ -17054,9 +17069,9 @@ function updateVelocityTickerCard(card, velocity) {
 
     // Footer
     const agoSec = _velocityLastTick ? Math.round((Date.now() - _velocityLastTick) / 1000) : 0;
-    const agoText = agoSec < 3 ? 'just now' : `${agoSec}s ago`;
+    const agoText = agoSec < 3 ? 'Just now' : `${agoSec}s ago`;
     inner += '<div class="velocity-ticker-footer">';
-    inner += `<span class="velocity-ticker-ago" id="velocityTickerAgo">Last tick: ${agoText}</span>`;
+    inner += `<span class="velocity-ticker-ago" id="velocityTickerAgo">Last tick: ${agoText} &middot; ${formatEasternTime()}</span>`;
     inner += '</div>';
 
     card.innerHTML = inner;
