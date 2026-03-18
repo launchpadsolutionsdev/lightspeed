@@ -18460,8 +18460,10 @@
             color: var(--text-muted, #6B7C93);
         }
         .hb-orders-scroll {
-            max-height: 420px;
+            max-height: 320px;
             overflow-y: auto;
+            column-count: 3;
+            column-gap: 24px;
         }
         .hb-order-item {
             display: flex;
@@ -18470,6 +18472,7 @@
             padding: 10px 0;
             border-bottom: 1px solid var(--border, #E3E8EE);
             gap: 12px;
+            break-inside: avoid;
         }
         .hb-order-item:last-child { border-bottom: none; }
         .hb-order-info {
@@ -18527,6 +18530,9 @@
             .hb-heatmap { grid-template-columns: repeat(6, 1fr); }
             .heartbeat-container .raffle-metrics-grid[style] {
                 grid-template-columns: 1fr !important;
+            }
+            .hb-orders-scroll {
+                column-count: 1;
             }
         }
     </style>
