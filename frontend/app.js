@@ -16488,6 +16488,21 @@ function renderRaffleDashboard(data) {
         <div class="raffle-kpi-sub">Half the pool</div>
     </div>`;
 
+    // Additional KPI cards from sales feed
+    if (data.salesBreakdown) {
+        html += `<div class="raffle-kpi-card">
+            <div class="raffle-kpi-label">Tickets Sold</div>
+            <div class="raffle-kpi-value">${data.salesBreakdown.totalTickets.toLocaleString()}</div>
+            <div class="raffle-kpi-sub">${data.salesBreakdown.totalNumbers.toLocaleString()} numbers</div>
+        </div>`;
+
+        html += `<div class="raffle-kpi-card">
+            <div class="raffle-kpi-label">Total Revenue</div>
+            <div class="raffle-kpi-value">$${data.salesBreakdown.totalSales.toLocaleString()}</div>
+            <div class="raffle-kpi-sub">${data.salesBreakdown.creditPercent}% credit card</div>
+        </div>`;
+    }
+
     html += '</div>';
 
     // Early Bird Prizes — Drawn (collapsible, show 3)
@@ -16510,6 +16525,16 @@ function renderRaffleDashboard(data) {
         );
     }
 
+    // Sales breakdown metrics (from Feed 3)
+    if (data.salesBreakdown) {
+        html += renderSalesMetrics(data.salesBreakdown);
+    }
+
+    // Jackpot history (from Feed 2)
+    if (data.winnersHistory && data.winnersHistory.grandPrizeWinners.length > 0) {
+        html += renderJackpotHistory(data.winnersHistory);
+    }
+
     // Last updated
     html += `<div class="feed-dash-updated">
         Last updated: ${new Date(data.lastUpdated || Date.now()).toLocaleTimeString()}
@@ -16520,6 +16545,132 @@ function renderRaffleDashboard(data) {
 
     // Start live countdown timer
     startRaffleCountdown(data.endDate);
+}
+
+/**
+ * Render sales breakdown metrics: tickets sold, payment methods, and package tiers.
+ */
+function renderSalesMetrics(sales) {
+    let html = '<div class="raffle-metrics-grid">';
+
+    // Card 1: Tickets & Numbers
+    const ticketsFormatted = sales.totalTickets.toLocaleString();
+    const numbersFormatted = sales.totalNumbers.toLocaleString();
+    const totalSalesFormatted = '$' + sales.totalSales.toLocaleString();
+    html += `<div class="raffle-metric-card">
+        <div class="raffle-metric-title">Tickets Sold</div>
+        <div class="raffle-metric-big">${ticketsFormatted}</div>
+        <div class="raffle-metric-sub">${numbersFormatted} total numbers</div>
+        <div class="raffle-metric-sub" style="margin-top:8px; font-weight:600; color:var(--text-secondary,#425466);">
+            Total Sales: ${totalSalesFormatted}
+        </div>
+    </div>`;
+
+    // Card 2: Payment Methods
+    const creditFormatted = '$' + sales.creditSales.toLocaleString();
+    const debitFormatted = '$' + sales.debitSales.toLocaleString();
+    const cashFormatted = '$' + sales.cashSales.toLocaleString();
+    html += `<div class="raffle-metric-card">
+        <div class="raffle-metric-title">Payment Methods</div>
+        <div class="raffle-payment-bars">
+            <div class="raffle-pay-row">
+                <span class="raffle-pay-label">Credit</span>
+                <div class="raffle-pay-bar-track">
+                    <div class="raffle-pay-bar-fill raffle-pay-bar-credit" style="width:${sales.creditPercent}%"></div>
+                </div>
+                <span class="raffle-pay-pct">${sales.creditPercent}%</span>
+            </div>
+            <div class="raffle-pay-row">
+                <span class="raffle-pay-label">Debit</span>
+                <div class="raffle-pay-bar-track">
+                    <div class="raffle-pay-bar-fill raffle-pay-bar-debit" style="width:${sales.debitPercent}%"></div>
+                </div>
+                <span class="raffle-pay-pct">${sales.debitPercent}%</span>
+            </div>
+            <div class="raffle-pay-row">
+                <span class="raffle-pay-label">Cash</span>
+                <div class="raffle-pay-bar-track">
+                    <div class="raffle-pay-bar-fill raffle-pay-bar-cash" style="width:${sales.cashPercent}%"></div>
+                </div>
+                <span class="raffle-pay-pct">${sales.cashPercent}%</span>
+            </div>
+        </div>
+        <div class="raffle-metric-sub" style="margin-top:10px;">
+            ${creditFormatted} credit &middot; ${debitFormatted} debit &middot; ${cashFormatted} cash
+        </div>
+    </div>`;
+
+    // Card 3: Package Tiers
+    const maxTierSales = Math.max(...sales.tiers.map(t => t.sales), 1);
+    html += `<div class="raffle-metric-card">
+        <div class="raffle-metric-title">Package Breakdown</div>
+        <div class="raffle-tier-list">`;
+
+    sales.tiers.forEach(tier => {
+        const pct = ((tier.sales / maxTierSales) * 100).toFixed(0);
+        const tierSalesFormatted = '$' + tier.sales.toLocaleString();
+        const tierTicketsFormatted = tier.tickets.toLocaleString();
+        html += `<div class="raffle-tier-row">
+            <span class="raffle-tier-price">$${tier.price}</span>
+            <div class="raffle-tier-bar-track">
+                <div class="raffle-tier-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <span class="raffle-tier-sales">${tierSalesFormatted}</span>
+            <span class="raffle-tier-detail">${tierTicketsFormatted} tickets &middot; ${tier.numbersPerTicket} numbers each</span>
+        </div>`;
+    });
+
+    html += '</div></div>';
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Render jackpot history from past grand prize draws.
+ */
+function renderJackpotHistory(history) {
+    const winners = history.grandPrizeWinners;
+    const previewCount = 5;
+    const hasMore = winners.length > previewCount;
+    const listId = 'raffleList_history';
+    const btnId = 'raffleToggle_history';
+
+    let html = '<div class="raffle-card">';
+    html += `<div class="raffle-card-header">
+        <div class="raffle-card-title">Jackpot History <span class="raffle-card-count">${winners.length}</span></div>
+    </div>`;
+
+    html += '<div class="raffle-history-list">';
+
+    winners.forEach((w, i) => {
+        const hidden = hasMore && i >= previewCount ? ' raffle-prize-hidden' : '';
+        const eventName = w.eventTitle.replace(/^TBRHSF\s+/, '').replace(/^TB\s+/, '');
+        const dateStr = w.date ? new Date(w.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        const statusClass = w.claimed ? 'raffle-status-claimed' : 'raffle-status-unclaimed';
+        const statusText = w.claimed ? 'Claimed' : 'Unclaimed';
+
+        html += `<div class="raffle-history-row${hidden}" data-list="${listId}">
+            <div>
+                <div class="raffle-history-event">${escapeHtml(eventName)}</div>
+                <div class="raffle-metric-sub">${escapeHtml(dateStr)}</div>
+            </div>
+            <div class="raffle-history-amount">${escapeHtml(w.jackpot || w.prize)}</div>
+            <span class="raffle-history-status ${statusClass}">${statusText}</span>
+        </div>`;
+    });
+
+    html += '</div>';
+
+    if (hasMore) {
+        const remaining = winners.length - previewCount;
+        html += `<button class="raffle-expand-btn" id="${btnId}" onclick="toggleRafflePrizeList('${listId}', '${btnId}', ${remaining})">
+            Show all ${winners.length} &middot; ${remaining} more
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>`;
+    }
+
+    html += '</div>';
+    return html;
 }
 
 /**

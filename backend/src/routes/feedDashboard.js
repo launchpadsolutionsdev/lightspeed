@@ -1,6 +1,10 @@
 /**
  * Feed Dashboard Routes
- * Proxies and parses the 50/50 raffle XML feed for the main Dashboard tab.
+ * Proxies and parses the 50/50 raffle XML feeds for the main Dashboard tab.
+ * Fetches data from three BUMP API feeds:
+ *   1. Main raffle feed (pool, prizes, secondary prizes)
+ *   2. Winners feed (historical draw results, claim status)
+ *   3. Sales breakdown feed (tickets, revenue, payment methods, package tiers)
  * Separate from the Shopify Analytics dashboard (dashboard.js).
  */
 
@@ -10,6 +14,8 @@ const { XMLParser } = require('fast-xml-parser');
 const { authenticate } = require('../middleware/auth');
 
 const FEED_URL = process.env.DASHBOARD_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/dak';
+const WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/winners';
+const SALES_FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/sales';
 const FEED_CACHE_TTL = 2 * 60 * 1000; // 2-minute cache for near-real-time pool updates
 
 let _feedCache = null;
@@ -24,19 +30,14 @@ const xmlParser = new XMLParser({
 });
 
 /**
- * Fetch the XML feed, parse to JSON, and cache.
+ * Fetch a single XML feed with timeout and parse it.
  */
-async function fetchFeed() {
-    const now = Date.now();
-    if (_feedCache && (now - _feedCacheTime) < FEED_CACHE_TTL) {
-        return _feedCache;
-    }
-
+async function fetchXmlFeed(url) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
-        const response = await fetch(FEED_URL, {
+        const response = await fetch(url, {
             signal: controller.signal,
             headers: { 'Accept': 'application/xml, text/xml, */*' }
         });
@@ -47,17 +48,48 @@ async function fetchFeed() {
         }
 
         const xml = await response.text();
-        const parsed = xmlParser.parse(xml);
+        return xmlParser.parse(xml);
+    } catch (error) {
+        clearTimeout(timeout);
+        throw error;
+    }
+}
 
-        // Extract root <content> element
-        const content = parsed.content || parsed;
-        const data = extractRaffleData(content);
+/**
+ * Fetch all three feeds in parallel, parse, and cache.
+ */
+async function fetchFeed() {
+    const now = Date.now();
+    if (_feedCache && (now - _feedCacheTime) < FEED_CACHE_TTL) {
+        return _feedCache;
+    }
+
+    try {
+        // Fetch all three feeds in parallel — secondary feeds are optional
+        const [mainResult, winnersResult, salesResult] = await Promise.allSettled([
+            fetchXmlFeed(FEED_URL),
+            fetchXmlFeed(WINNERS_FEED_URL),
+            fetchXmlFeed(SALES_FEED_URL)
+        ]);
+
+        if (mainResult.status === 'rejected') {
+            throw mainResult.reason;
+        }
+
+        const mainContent = mainResult.value.content || mainResult.value;
+        const winnersContent = winnersResult.status === 'fulfilled'
+            ? (winnersResult.value.content || winnersResult.value)
+            : null;
+        const salesContent = salesResult.status === 'fulfilled'
+            ? (salesResult.value.content || salesResult.value)
+            : null;
+
+        const data = extractRaffleData(mainContent, winnersContent, salesContent);
 
         _feedCache = data;
         _feedCacheTime = now;
         return data;
     } catch (error) {
-        clearTimeout(timeout);
         if (_feedCache) {
             console.warn('Feed fetch failed, returning stale cache:', error.message);
             return _feedCache;
@@ -67,9 +99,9 @@ async function fetchFeed() {
 }
 
 /**
- * Extract structured raffle data from the parsed XML.
+ * Extract structured raffle data from the parsed XML feeds.
  */
-function extractRaffleData(content) {
+function extractRaffleData(content, winnersContent, salesContent) {
     // Parse secondary prizes into drawn and upcoming
     const nodes = content.secondary_prizes?.node || [];
     const prizes = (Array.isArray(nodes) ? nodes : [nodes]).map(n => ({
@@ -92,6 +124,12 @@ function extractRaffleData(content) {
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         timeRemaining = { days, hours, totalMs: diff };
     }
+
+    // Extract sales breakdown data (Feed 3)
+    const salesBreakdown = extractSalesBreakdown(salesContent);
+
+    // Extract winners history (Feed 2)
+    const winnersHistory = extractWinnersHistory(winnersContent);
 
     return {
         event: content.event || 'Raffle',
@@ -119,9 +157,115 @@ function extractRaffleData(content) {
         totalSecondaryPrizes: prizes.length,
         totalDrawn: drawnPrizes.length,
 
+        // Sales breakdown (from Feed 3)
+        salesBreakdown,
+
+        // Winners history (from Feed 2)
+        winnersHistory,
+
         // Metadata
         lastUpdated: new Date().toISOString(),
         feedTimestamp: content.timestamp || null
+    };
+}
+
+/**
+ * Extract sales breakdown metrics from the sales feed (Feed 3).
+ */
+function extractSalesBreakdown(salesContent) {
+    if (!salesContent) return null;
+
+    const totalSales = parseFloat(String(salesContent.total_sales).replace(/,/g, '')) || 0;
+    const cashSales = parseFloat(String(salesContent.cash_sales).replace(/,/g, '')) || 0;
+    const creditSales = parseFloat(String(salesContent.credit_sales).replace(/,/g, '')) || 0;
+    const debitSales = parseFloat(String(salesContent.debit_sales).replace(/,/g, '')) || 0;
+    const totalTickets = parseInt(String(salesContent.tickets).replace(/,/g, ''), 10) || 0;
+    const totalNumbers = parseInt(String(salesContent.numbers).replace(/,/g, ''), 10) || 0;
+
+    // Package tier breakdown
+    const breakdownNodes = salesContent.breakdown?.node || [];
+    const tiers = (Array.isArray(breakdownNodes) ? breakdownNodes : [breakdownNodes]).map(n => ({
+        numbersPerTicket: parseInt(n.quantity) || 0,
+        price: parseFloat(n.price) || 0,
+        tickets: parseInt(String(n.total_tickets).replace(/,/g, '')) || 0,
+        numbers: parseInt(String(n.total_numbers).replace(/,/g, '')) || 0,
+        sales: parseFloat(String(n.total_sales).replace(/,/g, '')) || 0,
+        cashSales: parseFloat(String(n.total_sales_cash).replace(/,/g, '')) || 0,
+        creditSales: parseFloat(String(n.total_sales_credit).replace(/,/g, '')) || 0,
+        debitSales: parseFloat(String(n.total_sales_debit).replace(/,/g, '')) || 0
+    }));
+
+    return {
+        totalSales,
+        cashSales,
+        creditSales,
+        debitSales,
+        totalTickets,
+        totalNumbers,
+        tiers,
+        // Computed percentages
+        creditPercent: totalSales > 0 ? ((creditSales / totalSales) * 100).toFixed(1) : '0',
+        cashPercent: totalSales > 0 ? ((cashSales / totalSales) * 100).toFixed(1) : '0',
+        debitPercent: totalSales > 0 ? ((debitSales / totalSales) * 100).toFixed(1) : '0'
+    };
+}
+
+/**
+ * Extract winners history from the winners feed (Feed 2).
+ * Groups by event and identifies grand prize winners vs early bird draws.
+ */
+function extractWinnersHistory(winnersContent) {
+    if (!winnersContent) return null;
+
+    const winnerNodes = winnersContent.winners?.node || [];
+    const winners = (Array.isArray(winnerNodes) ? winnerNodes : [winnerNodes]);
+
+    // Grand prize winners (game_id = 1, have jackpot values)
+    const grandPrizeWinners = winners
+        .filter(w => w.game_id === 1 || (w.jackpot && String(w.jackpot).trim()))
+        .map(w => ({
+            eventId: w.event_id,
+            eventTitle: w.eventtitle || '',
+            number: w.number || '',
+            claimed: w.claimed === 1 || w.claimed === '1',
+            datePicked: w.time_picked || '',
+            jackpot: w.jackpot || '',
+            prize: w.prize || w.amount || '',
+            date: w.date || ''
+        }))
+        .sort((a, b) => new Date(b.datePicked) - new Date(a.datePicked));
+
+    // Count total draws and unclaimed prizes
+    const totalDraws = winners.length;
+    const unclaimedCount = winners.filter(w =>
+        (w.claimed === 0 || w.claimed === '0') &&
+        (w.game_id === 1 || (w.jackpot && String(w.jackpot).trim()))
+    ).length;
+
+    // Group by event for summary stats
+    const eventMap = new Map();
+    winners.forEach(w => {
+        const eventId = w.event_id;
+        if (!eventMap.has(eventId)) {
+            eventMap.set(eventId, {
+                eventId,
+                eventTitle: w.eventtitle || '',
+                drawCount: 0,
+                grandPrize: null
+            });
+        }
+        const entry = eventMap.get(eventId);
+        entry.drawCount++;
+        if (w.game_id === 1 || (w.jackpot && String(w.jackpot).trim())) {
+            entry.grandPrize = w.jackpot || w.prize || null;
+        }
+    });
+
+    return {
+        grandPrizeWinners,
+        totalDraws,
+        unclaimedGrandPrizes: unclaimedCount,
+        eventSummaries: Array.from(eventMap.values()).sort((a, b) => b.eventId - a.eventId)
     };
 }
 
