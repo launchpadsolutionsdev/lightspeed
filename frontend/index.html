@@ -1265,6 +1265,66 @@
             transition: transform 0.2s;
         }
 
+        /* What's New in Dashboard */
+        .raffle-card-link {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--cta, #635BFF);
+            text-decoration: none;
+        }
+        .raffle-card-link:hover {
+            text-decoration: underline;
+        }
+        .wn-dash-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .wn-dash-item {
+            display: block;
+            padding: 12px;
+            border-radius: var(--radius-md, 8px);
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.15s;
+        }
+        .wn-dash-item:hover {
+            background: var(--bg-alt, #F6F9FC);
+        }
+        .wn-dash-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .wn-dash-date {
+            font-size: 11px;
+            color: var(--text-muted, #8898AA);
+        }
+        .wn-dash-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .wn-dash-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary, #1A1F36);
+            margin-bottom: 2px;
+        }
+        .wn-dash-summary {
+            font-size: 12px;
+            color: var(--text-secondary, #425466);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
         /* Sales Metrics Grid — 3 columns for tickets/payment/tiers */
         .raffle-metrics-grid {
             display: grid;

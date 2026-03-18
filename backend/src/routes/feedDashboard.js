@@ -10,6 +10,8 @@
 
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const { XMLParser } = require('fast-xml-parser');
 const { authenticate } = require('../middleware/auth');
 
@@ -318,6 +320,77 @@ router.post('/refresh', authenticate, async (req, res) => {
         console.error('Feed dashboard refresh error:', error.message);
         res.status(502).json({ error: 'Unable to refresh feed data' });
     }
+});
+
+// ---------------------------------------------------------------------------
+// What's New articles — parsed from the static What's New index page
+// ---------------------------------------------------------------------------
+const WHATS_NEW_HTML_PATH = path.resolve(__dirname, '../../../frontend/whats-new/index.html');
+const WHATS_NEW_CACHE_TTL = 5 * 60 * 1000; // 5-minute cache
+let _whatsNewCache = null;
+let _whatsNewCacheTime = 0;
+
+/**
+ * Parse the What's New index.html to extract article cards.
+ * Returns the most recent `count` articles.
+ */
+function parseWhatsNewArticles(count = 3) {
+    let html;
+    try {
+        html = fs.readFileSync(WHATS_NEW_HTML_PATH, 'utf8');
+    } catch (err) {
+        console.warn('Could not read What\'s New page:', err.message);
+        return [];
+    }
+
+    const articles = [];
+    // Match each <a href="..." class="wn-card"> block
+    const cardRegex = /<a\s+href="([^"]*)"[^>]*class="wn-card"[^>]*>([\s\S]*?)<\/a>/g;
+    let match;
+
+    while ((match = cardRegex.exec(html)) !== null) {
+        const href = match[1];
+        const cardHtml = match[2];
+
+        // Extract date
+        const dateMatch = cardHtml.match(/<span class="wn-card-date">([^<]+)<\/span>/);
+        const date = dateMatch ? dateMatch[1].trim() : '';
+
+        // Extract badges
+        const badges = [];
+        const badgeRegex = /<span class="wn-card-badge[^"]*">([^<]+)<\/span>/g;
+        let badgeMatch;
+        while ((badgeMatch = badgeRegex.exec(cardHtml)) !== null) {
+            badges.push(badgeMatch[1].trim());
+        }
+
+        // Extract title
+        const titleMatch = cardHtml.match(/<h2 class="wn-card-title">([^<]+)<\/h2>/);
+        const title = titleMatch ? titleMatch[1].trim().replace(/&amp;/g, '&').replace(/&mdash;/g, '—') : '';
+
+        // Extract summary
+        const summaryMatch = cardHtml.match(/<p class="wn-card-summary">([^<]+)<\/p>/);
+        const summary = summaryMatch ? summaryMatch[1].trim().replace(/&amp;/g, '&').replace(/&mdash;/g, '—') : '';
+
+        if (title) {
+            articles.push({ href, date, badges, title, summary });
+        }
+    }
+
+    return articles.slice(0, count);
+}
+
+// GET /api/feed-dashboard/whats-new — latest articles from the What's New page
+router.get('/whats-new', authenticate, (req, res) => {
+    const now = Date.now();
+    if (_whatsNewCache && (now - _whatsNewCacheTime) < WHATS_NEW_CACHE_TTL) {
+        return res.json(_whatsNewCache);
+    }
+
+    const articles = parseWhatsNewArticles(3);
+    _whatsNewCache = { articles, lastUpdated: new Date().toISOString() };
+    _whatsNewCacheTime = now;
+    res.json(_whatsNewCache);
 });
 
 module.exports = router;
