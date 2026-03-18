@@ -16693,8 +16693,8 @@ async function fetchWhatsNewArticles() {
     if (!container) return;
 
     try {
-        const resp = await fetch('/api/feed-dashboard/whats-new', {
-            headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
+        const resp = await fetch(`${API_BASE_URL}/api/feed-dashboard/whats-new`, {
+            headers: getAuthHeaders()
         });
         if (!resp.ok) return;
         const data = await resp.json();
