@@ -3542,6 +3542,45 @@
             white-space: nowrap;
         }
 
+        /* Collapsible Response Assistant sub-menu */
+        .sidebar-sub-menu {
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.25s ease;
+        }
+
+        .sidebar-sub-menu.expanded {
+            max-height: 250px;
+        }
+
+        .sidebar-sub-menu .sidebar-btn {
+            padding: 7px 12px 7px 42px;
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: rgba(0,0,0,0.45);
+        }
+
+        .sidebar-sub-menu .sidebar-btn:hover {
+            color: #0A2540;
+        }
+
+        .sidebar-sub-menu .sidebar-btn.active {
+            color: #E91E8C;
+            font-weight: 500;
+            background: rgba(233, 30, 140, 0.06);
+        }
+
+        .sidebar-btn-expand {
+            margin-left: auto;
+            font-size: 0.6rem;
+            transition: transform 0.25s ease;
+            color: rgba(0,0,0,0.3);
+        }
+
+        .sidebar-btn-expand.rotated {
+            transform: rotate(90deg);
+        }
+
         .sidebar-footer {
             padding: 10px 10px;
             border-top: 1px solid var(--border);
@@ -14049,7 +14088,26 @@
                     <button class="sidebar-btn active" data-tool="customer-response">
                         <span class="sidebar-btn-icon">&#9889;</span>
                         <span class="sidebar-btn-label">Response Assistant</span>
+                        <span class="sidebar-btn-expand rotated">&#9654;</span>
                     </button>
+                    <div class="sidebar-sub-menu expanded" id="sidebarResponsePages">
+                        <button class="sidebar-btn active" data-page="response">
+                            <span class="sidebar-btn-icon">&#128172;</span>
+                            <span class="sidebar-btn-label">Generator</span>
+                        </button>
+                        <button class="sidebar-btn" data-page="thread">
+                            <span class="sidebar-btn-icon">&#128231;</span>
+                            <span class="sidebar-btn-label">Thread</span>
+                        </button>
+                        <button class="sidebar-btn" data-page="templates">
+                            <span class="sidebar-btn-icon">&#128203;</span>
+                            <span class="sidebar-btn-label">Quick Replies</span>
+                        </button>
+                        <button class="sidebar-btn" data-page="analytics">
+                            <span class="sidebar-btn-icon">&#128202;</span>
+                            <span class="sidebar-btn-label">Analytics</span>
+                        </button>
+                    </div>
                     <button class="sidebar-btn" data-tool="draft-assistant">
                         <span class="sidebar-btn-icon">&#9997;&#65039;</span>
                         <span class="sidebar-btn-label">Draft Assistant</span>
@@ -14092,26 +14150,6 @@
                 </div>
 
                 <div class="sidebar-divider"></div>
-
-                <div class="sidebar-group" id="sidebarResponsePages">
-                    <div class="sidebar-group-label">Response Assistant</div>
-                    <button class="sidebar-btn" data-page="response">
-                        <span class="sidebar-btn-icon">&#128172;</span>
-                        <span class="sidebar-btn-label">Generator</span>
-                    </button>
-                    <button class="sidebar-btn" data-page="thread">
-                        <span class="sidebar-btn-icon">&#128231;</span>
-                        <span class="sidebar-btn-label">Thread</span>
-                    </button>
-                    <button class="sidebar-btn" data-page="templates">
-                        <span class="sidebar-btn-icon">&#128203;</span>
-                        <span class="sidebar-btn-label">Quick Replies</span>
-                    </button>
-                    <button class="sidebar-btn" data-page="analytics">
-                        <span class="sidebar-btn-icon">&#128202;</span>
-                        <span class="sidebar-btn-label">Analytics</span>
-                    </button>
-                </div>
 
                 <div class="sidebar-group">
                     <div class="sidebar-group-label">Manage</div>

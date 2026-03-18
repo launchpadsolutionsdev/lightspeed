@@ -2348,10 +2348,17 @@ function updateSidebarForTool(toolId) {
     const runwayBtn = document.querySelector('.sidebar-btn[data-page="content-calendar"]');
     if (runwayBtn) runwayBtn.classList.remove("active");
 
-    // Show/hide Response Assistant sub-pages group
+    // Expand/collapse Response Assistant sub-menu
     const responsePages = document.getElementById("sidebarResponsePages");
+    const expandArrow = document.querySelector('.sidebar-btn[data-tool="customer-response"] .sidebar-btn-expand');
     if (responsePages) {
-        responsePages.style.display = toolId === 'customer-response' ? 'block' : 'none';
+        if (toolId === 'customer-response') {
+            responsePages.classList.add('expanded');
+            if (expandArrow) expandArrow.classList.add('rotated');
+        } else {
+            responsePages.classList.remove('expanded');
+            if (expandArrow) expandArrow.classList.remove('rotated');
+        }
     }
 
     // If switching to Response Assistant, make sure Generator is active by default
@@ -5278,6 +5285,14 @@ function setupEventListeners() {
     document.querySelectorAll(".sidebar-btn[data-tool]").forEach(btn => {
         if (btn.dataset.tool === 'dashboard') return;
         btn.addEventListener("click", () => {
+            // Toggle sub-menu if Response Assistant is already active
+            if (btn.dataset.tool === 'customer-response' && currentTool === 'customer-response') {
+                const subMenu = document.getElementById("sidebarResponsePages");
+                const arrow = btn.querySelector('.sidebar-btn-expand');
+                if (subMenu) subMenu.classList.toggle('expanded');
+                if (arrow) arrow.classList.toggle('rotated');
+                return;
+            }
             openTool(btn.dataset.tool);
             closeSidebar(); // Close mobile sidebar after tool switch
         });
