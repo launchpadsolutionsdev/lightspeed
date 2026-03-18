@@ -2171,19 +2171,90 @@ function showToolMenu() {
     if (responsePages) responsePages.style.display = 'none';
     closeSidebar();
 
-    // Update greeting based on time of day (uses org timezone)
+    // Update greeting — picks from 50 variations, some time-aware
     const tz = getOrgTimezone();
     let hour;
     try {
         hour = parseInt(new Date().toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', hour12: false }));
     } catch { hour = new Date().getHours(); }
-    const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
     const greetingEl = document.getElementById("menuGreeting");
-    if (greetingEl && currentUser) {
-        const firstName = currentUser.name ? currentUser.name.split(' ')[0] : '';
-        greetingEl.textContent = firstName ? `${timeGreeting}, ${firstName}.` : `${timeGreeting}.`;
-    } else if (greetingEl) {
-        greetingEl.textContent = `${timeGreeting}.`;
+    if (greetingEl) {
+        const firstName = currentUser ? (currentUser.name ? currentUser.name.split(' ')[0] : '') : '';
+
+        // Time-specific greetings
+        const morningGreetings = [
+            'Good morning',
+            'Rise and shine',
+            'Top of the morning',
+            'Morning',
+            'Bright and early',
+            'Fresh start today',
+        ];
+        const afternoonGreetings = [
+            'Good afternoon',
+            'Hope your day is going well',
+            'Afternoon',
+            'Halfway through the day',
+            'Keeping the momentum going',
+        ];
+        const eveningGreetings = [
+            'Good evening',
+            'Burning the midnight oil',
+            'Evening',
+            'Winding down',
+            'Still going strong',
+        ];
+
+        // Anytime greetings (work regardless of time)
+        const anytimeGreetings = [
+            'Back at it',
+            'Welcome back',
+            'Look who\'s here',
+            'Great to see you',
+            'Hey there',
+            'What\'s the play today',
+            'Ready to roll',
+            'Let\'s get to work',
+            'Let\'s crush it today',
+            'Here we go',
+            'The dashboard awaits',
+            'Let\'s make it happen',
+            'Ready when you are',
+            'Let\'s see those numbers',
+            'Another day, another draw',
+            'Let\'s make someone\'s day',
+            'The numbers are looking good',
+            'Let\'s do this',
+            'Alright, let\'s go',
+            'Time to check in',
+            'What are we working on today',
+            'Nice to see you',
+            'Happy to have you back',
+            'Let\'s see what\'s new',
+            'Glad you\'re here',
+            'Tickets won\'t sell themselves',
+            'Let\'s check the pulse',
+            'Ready to make moves',
+            'Reporting for duty',
+            'At your service',
+            'What\'s on the agenda',
+            'Let\'s get after it',
+            'All systems go',
+            'Fired up and ready',
+        ];
+
+        // Pick a time-specific or anytime greeting (50/50 chance)
+        let greeting;
+        const useTimeBased = Math.random() < 0.5;
+        if (useTimeBased) {
+            const timePool = hour < 12 ? morningGreetings : hour < 17 ? afternoonGreetings : eveningGreetings;
+            greeting = timePool[Math.floor(Math.random() * timePool.length)];
+        } else {
+            greeting = anytimeGreetings[Math.floor(Math.random() * anytimeGreetings.length)];
+        }
+
+        greetingEl.textContent = firstName ? `${greeting}, ${firstName}.` : `${greeting}.`;
     }
 
     // Update user info in menu
