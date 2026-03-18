@@ -558,4 +558,15 @@ router.get('/whats-new', authenticate, (req, res) => {
     res.json(_whatsNewCache);
 });
 
+// Background snapshot collection — fetches every 2 minutes regardless of page visits
+// so velocity data accumulates continuously while the server is running.
+const VELOCITY_BG_INTERVAL = 2 * 60 * 1000;
+setInterval(() => {
+    fetchFeed().catch(err => console.warn('Background velocity fetch failed:', err.message));
+}, VELOCITY_BG_INTERVAL);
+// Run once on startup after a short delay to seed the first snapshot
+setTimeout(() => {
+    fetchFeed().catch(err => console.warn('Initial velocity fetch failed:', err.message));
+}, 5000);
+
 module.exports = router;
