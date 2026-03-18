@@ -1142,11 +1142,15 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
     const totalRefunds = parseInt(c.total_refunds_cents) || 0;
     const newCust = parseInt(c.new_customers) || 0;
     const retCust = parseInt(c.returning_customers) || 0;
-    const totalSessions = parseInt(c.sessions) || (newCust + retCust) || 0;
+    const totalCustomers = newCust + retCust;
+    const totalSessions = parseInt(c.sessions) || totalCustomers || 0;
     const aov = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
-    const returningRate = (newCust + retCust) > 0 ? retCust / (newCust + retCust) : 0;
+    const returningRate = totalCustomers > 0 ? retCust / totalCustomers : 0;
     const refundRate = totalSales > 0 ? totalRefunds / totalSales : 0;
-    const conversionRate = totalSessions > 0 ? totalOrders / totalSessions : 0;
+    // Use sessions if available, otherwise derive from orders vs customers
+    const conversionRate = totalSessions > 0
+        ? totalOrders / totalSessions
+        : (totalCustomers > 0 ? totalOrders / totalCustomers : (totalOrders > 0 ? 1 : 0));
 
     const result = {
         current_period: {
@@ -1200,10 +1204,13 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
         const prevAov = prevOrders > 0 ? Math.round(prevSales / prevOrders) : 0;
         const prevNewCust = parseInt(p.new_customers) || 0;
         const prevRetCust = parseInt(p.returning_customers) || 0;
-        const prevRetRate = (prevNewCust + prevRetCust) > 0 ? prevRetCust / (prevNewCust + prevRetCust) : 0;
-        const prevSessions = parseInt(p.sessions) || (prevNewCust + prevRetCust) || 0;
+        const prevTotalCustomers = prevNewCust + prevRetCust;
+        const prevRetRate = prevTotalCustomers > 0 ? prevRetCust / prevTotalCustomers : 0;
+        const prevSessions = parseInt(p.sessions) || prevTotalCustomers || 0;
 
-        const prevConvRate = prevSessions > 0 ? prevOrders / prevSessions : 0;
+        const prevConvRate = prevSessions > 0
+            ? prevOrders / prevSessions
+            : (prevTotalCustomers > 0 ? prevOrders / prevTotalCustomers : (prevOrders > 0 ? 1 : 0));
 
         result.comparison_period = {
             total_sales: prevSales / 100,
