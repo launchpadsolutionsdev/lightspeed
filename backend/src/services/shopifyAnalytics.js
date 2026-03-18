@@ -1146,6 +1146,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
     const aov = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
     const returningRate = (newCust + retCust) > 0 ? retCust / (newCust + retCust) : 0;
     const refundRate = totalSales > 0 ? totalRefunds / totalSales : 0;
+    const conversionRate = totalSessions > 0 ? totalOrders / totalSessions : 0;
 
     const result = {
         current_period: {
@@ -1156,6 +1157,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
             total_units_sold: totalUnits,
             refund_rate: Math.round(refundRate * 100) / 100,
             sessions: totalSessions,
+            conversion_rate: Math.round(conversionRate * 10000) / 100,
         },
     };
 
@@ -1201,6 +1203,8 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
         const prevRetRate = (prevNewCust + prevRetCust) > 0 ? prevRetCust / (prevNewCust + prevRetCust) : 0;
         const prevSessions = parseInt(p.sessions) || (prevNewCust + prevRetCust) || 0;
 
+        const prevConvRate = prevSessions > 0 ? prevOrders / prevSessions : 0;
+
         result.comparison_period = {
             total_sales: prevSales / 100,
             total_orders: prevOrders,
@@ -1208,13 +1212,14 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
             returning_customer_rate: Math.round(prevRetRate * 100) / 100,
             total_units_sold: parseInt(p.total_units_sold) || 0,
             sessions: prevSessions,
+            conversion_rate: Math.round(prevConvRate * 10000) / 100,
         };
 
         result.changes = {
             total_sales_pct: pctChange(totalSales, prevSales),
             total_orders_pct: pctChange(totalOrders, prevOrders),
             average_order_value_pct: pctChange(aov, prevAov),
-            sessions_pct: pctChange(totalSessions, prevSessions),
+            conversion_rate_pct: pctChange(conversionRate, prevConvRate),
         };
     }
 

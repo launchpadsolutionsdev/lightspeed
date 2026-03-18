@@ -19,8 +19,6 @@
     let sdCustomStartDate = '';
     let sdCustomEndDate = '';
     let sdSearchDebounce = null;
-    let sdAlsConversation = [];
-    let sdAlsStreaming = false;
 
     // ─── Helpers ────────────────────────────────────────────────────
 
@@ -125,12 +123,6 @@
         const feedWrap = document.getElementById('sdOrderFeedWrap');
         if (feedWrap) feedWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
 
-        const custWrap = document.getElementById('sdTopCustomersWrap');
-        if (custWrap) custWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
-
-        const cityWrap = document.getElementById('sdCityWrap');
-        if (cityWrap) cityWrap.innerHTML = Array(5).fill('<div class="sd-skeleton sd-skeleton-row"></div>').join('');
-
     }
 
     // ─── Data Loading ───────────────────────────────────────────────
@@ -159,24 +151,17 @@
 
         // Load all data in parallel
         const params = sdGetDateParams();
-        const [summary, salesTime, products, orders, customers, cities] = await Promise.allSettled([
+        const [summary, salesTime, products, orders] = await Promise.allSettled([
             sdFetch('summary', params),
             sdFetch('sales-over-time', params),
             sdFetch('top-products', params),
             sdFetch('recent-orders', { limit: 10 }),
-            sdFetch('top-customers', { limit: 10 }),
-            sdFetch('sales-by-city', params),
         ]);
 
         if (summary.status === 'fulfilled') sdRenderKPIs(summary.value);
         if (salesTime.status === 'fulfilled') sdRenderSalesChart(salesTime.value);
         if (products.status === 'fulfilled') sdRenderProductsTable(products.value);
         if (orders.status === 'fulfilled') sdRenderOrderFeed(orders.value);
-        if (customers.status === 'fulfilled') sdRenderTopCustomers(customers.value);
-        if (cities.status === 'fulfilled') sdRenderCityBreakdown(cities.value);
-
-        // Load AI insights (separate, slower call)
-        sdLoadInsights();
     }
 
     // ─── Render: KPI Cards ──────────────────────────────────────────
@@ -192,7 +177,7 @@
             { label: 'Total Sales', value: sdFormatCurrency(cp.total_sales), change: changes.total_sales_pct },
             { label: 'Total Orders', value: sdFormatNumber(cp.total_orders), change: changes.total_orders_pct },
             { label: 'Avg Order Value', value: sdFormatCurrencyFull(cp.average_order_value), change: changes.average_order_value_pct },
-            { label: 'Sessions', value: sdFormatNumber(cp.sessions || 0), change: changes.sessions_pct },
+            { label: 'Conversion Rate', value: (cp.conversion_rate != null ? cp.conversion_rate.toFixed(1) : '0.0') + '%', change: changes.conversion_rate_pct },
         ];
 
         kpiRow.innerHTML = cards.map(card => {
@@ -973,35 +958,11 @@
             });
         }
 
-        // Refresh insights
-        const refreshInsights = document.getElementById('sdRefreshInsights');
-        if (refreshInsights) {
-            refreshInsights.addEventListener('click', function () {
-                sdLoadInsights();
-            });
-        }
-
-        // Ask Lightspeed
-        const alsInput = document.getElementById('sdAlsInput');
-        const alsSend = document.getElementById('sdAlsSend');
-        if (alsSend) {
-            alsSend.addEventListener('click', sdAlsSendMessage);
-        }
-        if (alsInput) {
-            alsInput.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sdAlsSendMessage();
-                }
-            });
-        }
     }
 
     // ─── Public API ─────────────────────────────────────────────────
 
     window.sdInitDashboard = function () {
-        sdAlsConversation = [];
-        sdAlsStreaming = false;
         sdSetupEvents();
         sdLoadDashboard();
     };
@@ -1013,8 +974,6 @@
         }
         Object.values(sdCharts).forEach(c => { try { c.destroy(); } catch {} });
         sdCharts = {};
-        sdAlsConversation = [];
-        sdAlsStreaming = false;
     };
 
 })();
