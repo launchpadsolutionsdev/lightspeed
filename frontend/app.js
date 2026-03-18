@@ -5780,6 +5780,9 @@ function processNamedDataFile() {
     const reportName = document.getElementById("dataReportNameInput").value.trim() || "Untitled Report";
     document.getElementById("dataNamingSection").style.display = "none";
     document.getElementById("dataHeaderActions").style.display = "flex";
+    // Show the header bar (hidden by default until data loaded)
+    const dataHeader = document.querySelector("#dataAnalysisApp > .header");
+    if (dataHeader) dataHeader.style.display = "block";
 
     // Route to the correct dashboard based on report type
     if (currentReportType === 'customers') {
@@ -6429,6 +6432,9 @@ function resetDataAnalysis() {
     document.getElementById("dataCombinedUploadSection").style.display = "block";
     document.getElementById("dataNavTabs").style.display = "none";
     document.getElementById("dataHeaderActions").style.display = "none";
+    // Hide the header bar on reset
+    const dataHeaderReset = document.querySelector("#dataAnalysisApp > .header");
+    if (dataHeaderReset) dataHeaderReset.style.display = "none";
     document.getElementById("dataFileInput").value = '';
     document.getElementById("dataReportNameInput").value = '';
 
