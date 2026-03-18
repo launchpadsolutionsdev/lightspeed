@@ -16539,18 +16539,6 @@ function renderRaffleDashboard(data) {
         html += renderJackpotHistory(data.winnersHistory);
     }
 
-    // Feed status hint — show if secondary feeds are not configured
-    if (!data.salesBreakdown && !data.winnersHistory) {
-        html += `<div class="raffle-card" style="text-align:center; padding:24px; color:var(--text-muted,#6B7C93); font-size:13px;">
-            <strong>Additional metrics available</strong><br>
-            Configure <code>DASHBOARD_WINNERS_FEED_URL</code> and <code>DASHBOARD_SALES_FEED_URL</code>
-            environment variables to enable Jackpot History, Tickets Sold, Payment Methods, and Package Breakdown.
-        </div>`;
-    } else if (!data.salesBreakdown) {
-        html += `<div class="raffle-card" style="text-align:center; padding:16px; color:var(--text-muted,#6B7C93); font-size:12px;">
-            Set <code>DASHBOARD_SALES_FEED_URL</code> to enable Tickets Sold, Payment Methods, and Package Breakdown.
-        </div>`;
-    }
 
     // Last updated
     html += `<div class="feed-dash-updated">

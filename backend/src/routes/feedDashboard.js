@@ -13,12 +13,10 @@ const router = express.Router();
 const { XMLParser } = require('fast-xml-parser');
 const { authenticate } = require('../middleware/auth');
 
-// Feed URLs — configure via environment variables.
-// The main feed URL is required; winners and sales feeds are optional enhancements.
-// Set DASHBOARD_WINNERS_FEED_URL and DASHBOARD_SALES_FEED_URL to enable those sections.
+// Feed URLs — configure via environment variables or use BUMP API defaults.
 const FEED_URL = process.env.DASHBOARD_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/dak';
-const WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || '';
-const SALES_FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || '';
+const WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/winners';
+const SALES_FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/event-details';
 const FEED_CACHE_TTL = 2 * 60 * 1000; // 2-minute cache for near-real-time pool updates
 
 let _feedCache = null;
