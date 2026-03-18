@@ -13,12 +13,8 @@
     );
     let sdCharts = {};
     let sdCurrentPreset = 'last_30_days';
-    let sdCompare = false;
     let sdCurrency = 'CAD';
     let sdSalesMetric = 'net_sales'; // net_sales | gross_sales | orders
-    let sdCustomStartDate = '';
-    let sdCustomEndDate = '';
-    let sdSearchDebounce = null;
 
     // ─── Helpers ────────────────────────────────────────────────────
 
@@ -68,14 +64,7 @@
     }
 
     function sdGetDateParams() {
-        if (sdCurrentPreset === 'custom' && sdCustomStartDate && sdCustomEndDate) {
-            const params = { start_date: sdCustomStartDate, end_date: sdCustomEndDate };
-            if (sdCompare) params.compare = 'previous_period';
-            return params;
-        }
-        const params = { preset: sdCurrentPreset };
-        if (sdCompare) params.compare = 'previous_period';
-        return params;
+        return { preset: sdCurrentPreset };
     }
 
     function sdStatusBadge(status, type) {
@@ -171,28 +160,18 @@
         if (!kpiRow) return;
 
         const cp = data.current_period;
-        const changes = data.changes || {};
 
         const cards = [
-            { label: 'Total Sales', value: sdFormatCurrency(cp.total_sales), change: changes.total_sales_pct },
-            { label: 'Total Orders', value: sdFormatNumber(cp.total_orders), change: changes.total_orders_pct },
-            { label: 'Avg Order Value', value: sdFormatCurrencyFull(cp.average_order_value), change: changes.average_order_value_pct },
-            { label: 'Conversion Rate', value: (cp.conversion_rate != null ? cp.conversion_rate.toFixed(1) : '0.0') + '%', change: changes.conversion_rate_pct },
+            { label: 'Total Sales', value: sdFormatCurrency(cp.total_sales) },
+            { label: 'Total Orders', value: sdFormatNumber(cp.total_orders) },
+            { label: 'Avg Order Value', value: sdFormatCurrencyFull(cp.average_order_value) },
+            { label: 'Conversion Rate', value: (cp.conversion_rate != null ? cp.conversion_rate.toFixed(1) : '0.0') + '%' },
         ];
 
-        kpiRow.innerHTML = cards.map(card => {
-            let changeHtml = '';
-            if (card.change !== undefined && card.change !== null && sdCompare) {
-                const cls = card.change > 0 ? 'positive' : card.change < 0 ? 'negative' : 'neutral';
-                const arrow = card.change > 0 ? '&#9650;' : card.change < 0 ? '&#9660;' : '';
-                changeHtml = `<div class="sd-kpi-change ${cls}">${arrow} ${sdFormatPct(card.change)} vs prev period</div>`;
-            }
-            return `<div class="sd-kpi-card">
+        kpiRow.innerHTML = cards.map(card => `<div class="sd-kpi-card">
                 <div class="sd-kpi-label">${card.label}</div>
                 <div class="sd-kpi-value">${card.value}</div>
-                ${changeHtml}
-            </div>`;
-        }).join('');
+            </div>`).join('');
     }
 
     // ─── Render: Sales Over Time Chart ──────────────────────────────
@@ -863,37 +842,6 @@
         if (dateSelect) {
             dateSelect.addEventListener('change', function () {
                 sdCurrentPreset = this.value;
-                const customDates = document.getElementById('sdCustomDates');
-                if (customDates) {
-                    if (this.value === 'custom') {
-                        customDates.classList.add('visible');
-                    } else {
-                        customDates.classList.remove('visible');
-                        sdLoadDashboard();
-                    }
-                }
-            });
-        }
-
-        // Custom date range apply
-        const applyDates = document.getElementById('sdApplyDates');
-        if (applyDates) {
-            applyDates.addEventListener('click', function () {
-                const startInput = document.getElementById('sdStartDate');
-                const endInput = document.getElementById('sdEndDate');
-                if (startInput && endInput && startInput.value && endInput.value) {
-                    sdCustomStartDate = startInput.value;
-                    sdCustomEndDate = endInput.value;
-                    sdLoadDashboard();
-                }
-            });
-        }
-
-        // Compare toggle
-        const compareCheck = document.getElementById('sdCompareCheck');
-        if (compareCheck) {
-            compareCheck.addEventListener('change', function () {
-                sdCompare = this.checked;
                 sdLoadDashboard();
             });
         }
@@ -915,27 +863,6 @@
                 sdFetch('sales-over-time', sdGetDateParams()).then(data => sdRenderSalesChart(data)).catch(() => {});
             });
         });
-
-        // Order search
-        const searchInput = document.getElementById('sdOrderSearch');
-        if (searchInput) {
-            searchInput.addEventListener('input', function () {
-                clearTimeout(sdSearchDebounce);
-                const q = this.value.trim();
-                sdSearchDebounce = setTimeout(() => sdSearchOrders(q), 400);
-            });
-        }
-
-        // Clear search
-        const clearSearch = document.getElementById('sdClearSearch');
-        if (clearSearch) {
-            clearSearch.addEventListener('click', function () {
-                const searchInput = document.getElementById('sdOrderSearch');
-                if (searchInput) searchInput.value = '';
-                const resultsPanel = document.getElementById('sdSearchResults');
-                if (resultsPanel) resultsPanel.style.display = 'none';
-            });
-        }
 
         // Export button
         const exportBtn = document.getElementById('sdExportBtn');
@@ -968,10 +895,6 @@
     };
 
     window.sdCleanup = function () {
-        if (sdSearchDebounce) {
-            clearTimeout(sdSearchDebounce);
-            sdSearchDebounce = null;
-        }
         Object.values(sdCharts).forEach(c => { try { c.destroy(); } catch {} });
         sdCharts = {};
     };
