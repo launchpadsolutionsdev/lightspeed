@@ -16441,9 +16441,9 @@ function renderRaffleDashboard(data) {
 
     // Main jackpot hero
     html += `<div class="raffle-hero">
-        <div class="raffle-hero-label">Current Jackpot</div>
+        <div class="raffle-hero-label">Current Grand Prize</div>
         <div class="raffle-hero-prize">${escapeHtml(data.prizeFormatted)}</div>
-        <div class="raffle-hero-sub">Total Pool: ${escapeHtml(data.poolFormatted)}</div>
+        <div class="raffle-hero-sub">Gross Sales / Jackpot: ${escapeHtml(data.poolFormatted)}</div>
     </div>`;
 
     // KPI cards row
