@@ -1387,53 +1387,6 @@ async function getSyncStatus(organizationId) {
     };
 }
 
-// ─── Extended Query Functions ────────────────────────────────────────
-
-async function getTopCustomers(organizationId, limit = 10) {
-    const result = await pool.query(
-        `SELECT customer_email, customer_name, total_spent_cents, order_count, last_order_at
-         FROM shopify_top_customers
-         WHERE organization_id = $1
-         ORDER BY total_spent_cents DESC
-         LIMIT $2`,
-        [organizationId, limit]
-    );
-    return {
-        customers: result.rows.map(r => ({
-            customer_email: r.customer_email,
-            customer_name: r.customer_name,
-            total_spent: (parseInt(r.total_spent_cents) || 0) / 100,
-            order_count: parseInt(r.order_count) || 0,
-            last_order_at: r.last_order_at,
-        })),
-    };
-}
-
-async function getSalesByCity(organizationId, startDate, endDate, limit = 15) {
-    const result = await pool.query(
-        `SELECT city, province, country,
-                SUM(revenue_cents) AS revenue_cents,
-                SUM(order_count) AS order_count,
-                SUM(customer_count) AS customer_count
-         FROM sales_by_city
-         WHERE organization_id = $1 AND date >= $2 AND date <= $3
-         GROUP BY city, province, country
-         ORDER BY revenue_cents DESC
-         LIMIT $4`,
-        [organizationId, startDate, endDate, limit]
-    );
-    return {
-        cities: result.rows.map(r => ({
-            city: r.city,
-            province: r.province,
-            country: r.country,
-            revenue: (parseInt(r.revenue_cents) || 0) / 100,
-            orders: parseInt(r.order_count) || 0,
-            customers: parseInt(r.customer_count) || 0,
-        })),
-    };
-}
-
 async function getPricePoints(organizationId, startDate, endDate) {
     const result = await pool.query(
         `SELECT price_bucket,
@@ -1452,94 +1405,6 @@ async function getPricePoints(organizationId, startDate, endDate) {
             revenue: (parseInt(r.revenue_cents) || 0) / 100,
         })),
     };
-}
-
-async function searchOrders(organizationId, query) {
-    const q = `%${query}%`;
-    const result = await pool.query(
-        `SELECT * FROM dashboard_recent_orders
-         WHERE organization_id = $1
-           AND (order_number ILIKE $2 OR customer_name ILIKE $2 OR customer_email ILIKE $2)
-         ORDER BY created_at DESC
-         LIMIT 20`,
-        [organizationId, q]
-    );
-    return {
-        orders: result.rows.map(r => ({
-            order_number: r.order_number,
-            created_at: r.created_at,
-            total_price: (parseInt(r.total_price_cents) || 0) / 100,
-            currency: r.currency_code || 'CAD',
-            financial_status: r.financial_status,
-            fulfillment_status: r.fulfillment_status,
-            customer_name: r.customer_name,
-            customer_email: r.customer_email,
-            province: r.province,
-            country: r.country,
-            line_items: r.line_items_summary,
-        })),
-    };
-}
-
-async function generateAIInsights(organizationId, startDate, endDate) {
-    const summary = await getDashboardSummary(organizationId, startDate, endDate, 'previous_period');
-    const topProducts = await getTopProducts(organizationId, startDate, endDate, 5);
-    const regions = await getSalesByRegion(organizationId, startDate, endDate, 5);
-    const topCustomers = await getTopCustomers(organizationId, 5);
-
-    const cp = summary.current_period;
-    const changes = summary.changes || {};
-
-    const insights = [];
-
-    // Revenue trend
-    if (changes.total_sales_pct > 5) {
-        insights.push({ type: 'positive', text: `Revenue is up ${changes.total_sales_pct.toFixed(1)}% compared to the previous period.` });
-    } else if (changes.total_sales_pct < -5) {
-        insights.push({ type: 'negative', text: `Revenue is down ${Math.abs(changes.total_sales_pct).toFixed(1)}% compared to the previous period.` });
-    } else {
-        insights.push({ type: 'neutral', text: `Revenue is stable compared to the previous period.` });
-    }
-
-    // AOV trend
-    if (changes.average_order_value_pct > 3) {
-        insights.push({ type: 'positive', text: `Average order value increased ${changes.average_order_value_pct.toFixed(1)}% — customers are spending more per order.` });
-    } else if (changes.average_order_value_pct < -3) {
-        insights.push({ type: 'negative', text: `Average order value dropped ${Math.abs(changes.average_order_value_pct).toFixed(1)}% — consider bundling or upsell strategies.` });
-    }
-
-    // Top product
-    if (topProducts.products.length > 0) {
-        const top = topProducts.products[0];
-        insights.push({ type: 'info', text: `Top seller: "${top.title}" driving ${top.pct_of_total}% of revenue with ${top.units_sold} units sold.` });
-    }
-
-    // Customer retention
-    if (cp.returning_customer_rate > 0.3) {
-        insights.push({ type: 'positive', text: `Strong retention — ${Math.round(cp.returning_customer_rate * 100)}% returning customer rate.` });
-    } else if (cp.returning_customer_rate < 0.15 && cp.total_orders > 10) {
-        insights.push({ type: 'negative', text: `Low returning customer rate (${Math.round(cp.returning_customer_rate * 100)}%). Consider loyalty programs or email follow-ups.` });
-    }
-
-    // Top region
-    if (regions.regions.length > 0) {
-        const topRegion = regions.regions[0];
-        const regionLabel = topRegion.province !== 'Unknown' ? topRegion.province : topRegion.country;
-        insights.push({ type: 'info', text: `Top market: ${regionLabel} with ${topRegion.orders} orders.` });
-    }
-
-    // Whale customer
-    if (topCustomers.customers.length > 0) {
-        const whale = topCustomers.customers[0];
-        insights.push({ type: 'info', text: `Top customer: ${whale.name} with ${whale.order_count} orders totaling $${whale.total_spent.toFixed(2)}.` });
-    }
-
-    // Refund rate
-    if (cp.refund_rate > 0.05) {
-        insights.push({ type: 'negative', text: `Refund rate is ${(cp.refund_rate * 100).toFixed(1)}% — investigate product quality or description accuracy.` });
-    }
-
-    return { insights };
 }
 
 // ─── Scheduled Sync ─────────────────────────────────────────────────
@@ -1611,11 +1476,7 @@ module.exports = {
     getSalesByRegion,
     getRecentOrders,
     getSyncStatus,
-    getTopCustomers,
-    getSalesByCity,
     getPricePoints,
-    searchOrders,
-    generateAIInsights,
     shopifyGraphQL,
     runShopifyQL,
 };

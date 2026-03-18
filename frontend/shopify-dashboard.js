@@ -90,11 +90,6 @@
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function sdGetInitials(name) {
-        if (!name) return '?';
-        return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    }
-
     // ─── Skeleton Loaders ───────────────────────────────────────────
 
     function sdShowSkeletons() {
@@ -144,7 +139,7 @@
             sdFetch('summary', params),
             sdFetch('sales-over-time', params),
             sdFetch('top-products', params),
-            sdFetch('recent-orders', { limit: 10 }),
+            sdFetch('recent-orders', { limit: 12 }),
         ]);
 
         if (summary.status === 'fulfilled') sdRenderKPIs(summary.value);
@@ -396,53 +391,6 @@
         `).join('') + '</div>';
     }
 
-    // ─── Render: Top Customers ──────────────────────────────────────
-
-    function sdRenderTopCustomers(data) {
-        const wrap = document.getElementById('sdTopCustomersWrap');
-        if (!wrap) return;
-
-        if (!data.customers || data.customers.length === 0) {
-            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No customer data yet</div>';
-            return;
-        }
-
-        wrap.innerHTML = data.customers.map(c => `
-            <div class="sd-customer-row">
-                <div class="sd-avatar">${sdGetInitials(c.customer_name)}</div>
-                <div class="sd-customer-info">
-                    <div class="sd-customer-name">${escapeHtml(c.customer_name || c.customer_email || 'Unknown')}</div>
-                    <div class="sd-customer-meta">${c.order_count} order${c.order_count !== 1 ? 's' : ''} &middot; Last: ${sdTimeAgo(c.last_order_at)}</div>
-                </div>
-                <div class="sd-customer-amount">${sdFormatCurrencyFull(c.total_spent)}</div>
-            </div>
-        `).join('');
-    }
-
-    // ─── Render: Sales by City ──────────────────────────────────────
-
-    function sdRenderCityBreakdown(data) {
-        const wrap = document.getElementById('sdCityWrap');
-        if (!wrap) return;
-
-        if (!data.cities || data.cities.length === 0) {
-            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No city data</div>';
-            return;
-        }
-
-        const maxRev = Math.max(...data.cities.map(c => c.revenue));
-
-        wrap.innerHTML = data.cities.map(c => {
-            const pct = maxRev > 0 ? (c.revenue / maxRev * 100) : 0;
-            const label = c.city + (c.province ? `, ${c.province}` : '');
-            return `<div class="sd-region-bar">
-                <div class="sd-region-label" title="${escapeHtml(label)}">${escapeHtml(c.city || 'Unknown')}</div>
-                <div class="sd-region-track"><div class="sd-region-fill" style="width:${pct}%"></div></div>
-                <div class="sd-region-value">${sdFormatCurrency(c.revenue)}</div>
-            </div>`;
-        }).join('');
-    }
-
     // ─── Render: Price Points ───────────────────────────────────────
 
     function sdRenderPricePoints(data) {
@@ -507,87 +455,6 @@
         });
     }
 
-    // ─── AI Insights ────────────────────────────────────────────────
-
-    async function sdLoadInsights() {
-        const wrap = document.getElementById('sdInsightsWrap');
-        if (!wrap) return;
-
-        wrap.innerHTML = '<div class="sd-insight-loading">Analyzing your data...</div>';
-
-        try {
-            const params = sdGetDateParams();
-            const data = await sdFetch('ai-insights', params);
-
-            if (!data.insights || data.insights.length === 0) {
-                wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No insights available for this period</div>';
-                return;
-            }
-
-            const iconMap = {
-                revenue: '&#128200;',
-                trend: '&#128200;',
-                aov: '&#128176;',
-                retention: '&#128101;',
-                product: '&#11088;',
-                region: '&#127758;',
-                whale: '&#128051;',
-                refund: '&#9888;&#65039;',
-            };
-
-            wrap.innerHTML = '<div class="sd-insights-list">' + data.insights.map(insight => {
-                const icon = iconMap[insight.type] || '&#128161;';
-                return `<div class="sd-insight-item">
-                    <div class="sd-insight-icon">${icon}</div>
-                    <div class="sd-insight-text">${insight.text}</div>
-                </div>`;
-            }).join('') + '</div>';
-        } catch {
-            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">Unable to generate insights</div>';
-        }
-    }
-
-    // ─── Order Search ───────────────────────────────────────────────
-
-    async function sdSearchOrders(query) {
-        const resultsPanel = document.getElementById('sdSearchResults');
-        const resultsWrap = document.getElementById('sdSearchResultsWrap');
-        if (!resultsPanel || !resultsWrap) return;
-
-        if (!query || query.length < 2) {
-            resultsPanel.style.display = 'none';
-            return;
-        }
-
-        resultsPanel.style.display = 'block';
-        resultsWrap.innerHTML = '<div class="sd-skeleton sd-skeleton-row"></div><div class="sd-skeleton sd-skeleton-row"></div>';
-
-        try {
-            const data = await sdFetch('search-orders', { q: query });
-
-            if (!data.orders || data.orders.length === 0) {
-                resultsWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">No orders found</div>';
-                return;
-            }
-
-            resultsWrap.innerHTML = '<div class="sd-order-feed">' + data.orders.map(o => `
-                <div class="sd-order-item">
-                    <div class="sd-order-info">
-                        <div class="sd-order-number">${escapeHtml(o.order_number || '--')}</div>
-                        <div class="sd-order-customer">${escapeHtml(o.customer_name || 'Guest')} &middot; ${escapeHtml(o.customer_email || '')}</div>
-                    </div>
-                    <div style="text-align:right">
-                        <div class="sd-order-amount">${sdFormatCurrencyFull(o.total_price)}</div>
-                        <div class="sd-order-time">${sdTimeAgo(o.created_at)}</div>
-                    </div>
-                    <div>${sdStatusBadge(o.financial_status, 'financial')}</div>
-                </div>
-            `).join('') + '</div>';
-        } catch {
-            resultsWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7C93;font-size:13px;">Search failed</div>';
-        }
-    }
-
     // ─── Export ──────────────────────────────────────────────────────
 
     function sdExportCSV() {
@@ -637,102 +504,6 @@
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' },
         }).from(content).save();
-    }
-
-    // ─── Ask Lightspeed (Embedded) ──────────────────────────────────
-
-    async function sdAlsSendMessage() {
-        const input = document.getElementById('sdAlsInput');
-        const messagesEl = document.getElementById('sdAlsMessages');
-        const sendBtn = document.getElementById('sdAlsSend');
-        if (!input || !messagesEl || sdAlsStreaming) return;
-
-        const message = input.value.trim();
-        if (!message) return;
-
-        // Clear empty state
-        const emptyEl = messagesEl.querySelector('.sd-als-empty');
-        if (emptyEl) emptyEl.remove();
-
-        // Add user message
-        const userDiv = document.createElement('div');
-        userDiv.className = 'sd-als-msg user';
-        userDiv.textContent = message;
-        messagesEl.appendChild(userDiv);
-
-        input.value = '';
-        sdAlsStreaming = true;
-        if (sendBtn) sendBtn.disabled = true;
-
-        // Add conversation context
-        sdAlsConversation.push({ role: 'user', content: message });
-
-        // Add streaming response placeholder
-        const assistantDiv = document.createElement('div');
-        assistantDiv.className = 'sd-als-msg assistant';
-        assistantDiv.textContent = '';
-        messagesEl.appendChild(assistantDiv);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-
-        try {
-            const token = localStorage.getItem('authToken') || localStorage.getItem('token');
-            const formData = new FormData();
-            formData.append('message', message);
-            formData.append('conversation', JSON.stringify(sdAlsConversation.slice(-10)));
-
-            const response = await fetch(`${API_BASE}/api/ask-lightspeed/agent`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData,
-            });
-
-            if (!response.ok) throw new Error('Request failed');
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let fullText = '';
-            let buffer = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const payload = JSON.parse(line.substring(6));
-                            if (payload.type === 'text') {
-                                fullText += payload.content;
-                                assistantDiv.textContent = fullText;
-                                messagesEl.scrollTop = messagesEl.scrollHeight;
-                            } else if (payload.type === 'status') {
-                                // Show status briefly
-                            } else if (payload.type === 'error') {
-                                assistantDiv.textContent = payload.content || 'An error occurred.';
-                            }
-                        } catch {
-                            // Skip malformed SSE lines
-                        }
-                    }
-                }
-            }
-
-            if (!fullText) {
-                assistantDiv.textContent = 'No response received.';
-            }
-
-            sdAlsConversation.push({ role: 'assistant', content: fullText });
-        } catch (e) {
-            assistantDiv.textContent = 'Failed to get a response. Please try again.';
-        }
-
-        sdAlsStreaming = false;
-        if (sendBtn) sendBtn.disabled = false;
-        messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
     // ─── Sync Controls ──────────────────────────────────────────────

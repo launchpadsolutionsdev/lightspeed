@@ -217,37 +217,6 @@ router.get('/sync-status', authenticate, async (req, res) => {
     }
 });
 
-// GET /api/dashboard/top-customers
-router.get('/top-customers', authenticate, async (req, res) => {
-    try {
-        const org = await getOrgId(req.userId);
-        if (!org) return res.status(403).json({ error: 'No organization found' });
-
-        const limit = clampLimit(req.query.limit, 10, 50);
-        const data = await analyticsService.getTopCustomers(org.organizationId, limit);
-        res.json(data);
-    } catch (error) {
-        console.error('Top customers error:', error);
-        res.status(500).json({ error: 'Failed to fetch top customers' });
-    }
-});
-
-// GET /api/dashboard/sales-by-city
-router.get('/sales-by-city', authenticate, async (req, res) => {
-    try {
-        const org = await getOrgId(req.userId);
-        if (!org) return res.status(403).json({ error: 'No organization found' });
-
-        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
-        const limit = clampLimit(req.query.limit, 15, 50);
-        const data = await analyticsService.getSalesByCity(org.organizationId, startDate, endDate, limit);
-        res.json(data);
-    } catch (error) {
-        console.error('Sales by city error:', error);
-        res.status(500).json({ error: 'Failed to fetch city data' });
-    }
-});
-
 // GET /api/dashboard/price-points
 router.get('/price-points', authenticate, async (req, res) => {
     try {
@@ -260,38 +229,6 @@ router.get('/price-points', authenticate, async (req, res) => {
     } catch (error) {
         console.error('Price points error:', error);
         res.status(500).json({ error: 'Failed to fetch price point data' });
-    }
-});
-
-// GET /api/dashboard/search-orders
-router.get('/search-orders', authenticate, async (req, res) => {
-    try {
-        const org = await getOrgId(req.userId);
-        if (!org) return res.status(403).json({ error: 'No organization found' });
-
-        const q = (req.query.q || '').trim();
-        if (!q || q.length < 2) return res.json({ orders: [] });
-
-        const data = await analyticsService.searchOrders(org.organizationId, q);
-        res.json(data);
-    } catch (error) {
-        console.error('Order search error:', error);
-        res.status(500).json({ error: 'Failed to search orders' });
-    }
-});
-
-// GET /api/dashboard/ai-insights
-router.get('/ai-insights', authenticate, async (req, res) => {
-    try {
-        const org = await getOrgId(req.userId);
-        if (!org) return res.status(403).json({ error: 'No organization found' });
-
-        const { startDate, endDate } = parseDateRange(req.query, org.timezone);
-        const data = await analyticsService.generateAIInsights(org.organizationId, startDate, endDate);
-        res.json(data);
-    } catch (error) {
-        console.error('AI insights error:', error);
-        res.status(500).json({ error: 'Failed to generate insights' });
     }
 });
 
