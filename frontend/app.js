@@ -936,9 +936,6 @@ function setupAuthEventListeners() {
         document.getElementById("settingsModal").classList.add("show");
     });
 
-    // Tool Menu logout
-    document.getElementById("menuLogoutBtn").addEventListener("click", handleLogout);
-
     // Close dropdown when clicking outside
     document.addEventListener("click", (e) => {
         const userMenu = document.getElementById("userMenuBtn");
@@ -2259,25 +2256,18 @@ function showToolMenu() {
         greetingEl.textContent = firstName ? `${greeting}, ${firstName}.` : `${greeting}.`;
     }
 
-    // Update user info in menu
-    if (currentUser) {
-        document.getElementById("menuUserName").textContent = currentUser.name;
-        document.getElementById("menuUserEmail").textContent = currentUser.email;
-
-    }
-
-    // Fetch subscription status and show billing button if subscribed
-    const billingBtn = document.getElementById('menuBillingBtn');
-    if (billingBtn) {
-        fetch(`${API_BASE_URL}/api/billing/subscription`, { headers: getAuthHeaders() })
-            .then(r => r.ok ? r.json() : null)
-            .then(sub => {
-                if (sub && sub.hasPaymentMethod) {
-                    billingBtn.style.display = '';
-                }
-            })
-            .catch(() => {}); // Silently ignore — not critical
-    }
+    // Fetch subscription status and show billing buttons in user dropdowns
+    fetch(`${API_BASE_URL}/api/billing/subscription`, { headers: getAuthHeaders() })
+        .then(r => r.ok ? r.json() : null)
+        .then(sub => {
+            if (sub && sub.hasPaymentMethod) {
+                const sidebarBtn = document.getElementById('sidebarBillingBtn');
+                const headerBtn = document.getElementById('headerBillingBtn');
+                if (sidebarBtn) sidebarBtn.style.display = '';
+                if (headerBtn) headerBtn.style.display = '';
+            }
+        })
+        .catch(() => {}); // Silently ignore — not critical
 
     // Update Home Base notification badge on login
     if (typeof hbUpdateNotifBadge === 'function') {
