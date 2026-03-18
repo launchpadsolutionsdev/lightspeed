@@ -246,6 +246,8 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+    align-self: start;
+    max-height: 480px;
 }
 
 .sd-right-col > .sd-card {
