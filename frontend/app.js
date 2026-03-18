@@ -16591,15 +16591,15 @@ function renderRaffleDashboard(data) {
     </div>`;
 
     html += `<div class="raffle-kpi-card">
-        <div class="raffle-kpi-label">Total Pool</div>
+        <div class="raffle-kpi-label">Total Jackpot</div>
         <div class="raffle-kpi-value">${escapeHtml(data.poolFormatted)}</div>
-        <div class="raffle-kpi-sub">50/50 split</div>
+        <div class="raffle-kpi-sub">50/50 jackpot</div>
     </div>`;
 
     html += `<div class="raffle-kpi-card">
         <div class="raffle-kpi-label">Winner Takes</div>
         <div class="raffle-kpi-value">${escapeHtml(data.prizeFormatted)}</div>
-        <div class="raffle-kpi-sub">Half the pool</div>
+        <div class="raffle-kpi-sub">Half the jackpot</div>
     </div>`;
 
     // Additional KPI cards from sales feed
@@ -16763,12 +16763,12 @@ function renderSalesMetrics(sales) {
 }
 
 /**
- * Render milestone progress bar showing pool progress toward goal tiers.
+ * Render milestone progress bar showing jackpot progress toward goal tiers.
  */
 function renderMilestoneBar(pool) {
-    // Dynamic milestones based on current pool size
+    // Dynamic milestones based on current jackpot size
     const milestones = [100000, 250000, 500000, 750000, 1000000, 2000000, 5000000];
-    // Find the next milestone above current pool
+    // Find the next milestone above current jackpot
     let goal = milestones.find(m => m > pool) || milestones[milestones.length - 1];
     // Find the previous milestone (or 0)
     const prevIdx = milestones.indexOf(goal) - 1;
@@ -16784,7 +16784,7 @@ function renderMilestoneBar(pool) {
 
     let html = '<div class="raffle-milestone">';
     html += '<div class="raffle-milestone-header">';
-    html += `<span class="raffle-milestone-label">Progress to ${fmtShort(goal)} Pool</span>`;
+    html += `<span class="raffle-milestone-label">Progress to ${fmtShort(goal)} Jackpot</span>`;
     html += `<span class="raffle-milestone-pct">${pct}%</span>`;
     html += '</div>';
     html += '<div class="raffle-milestone-track">';
