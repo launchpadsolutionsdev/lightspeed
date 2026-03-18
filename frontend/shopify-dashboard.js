@@ -160,7 +160,7 @@
             { label: 'Total Sales', value: sdFormatCurrency(cp.total_sales) },
             { label: 'Total Orders', value: sdFormatNumber(cp.total_orders) },
             { label: 'Avg Order Value', value: sdFormatCurrencyFull(cp.average_order_value) },
-            { label: 'Units / Order', value: cp.units_per_order != null ? cp.units_per_order.toFixed(1) : '0.0' },
+            { label: 'Units / Order', value: cp.units_per_order != null ? cp.units_per_order.toFixed(2) : '0.00' },
         ];
 
         kpiRow.innerHTML = cards.map(card => `<div class="sd-kpi-card">

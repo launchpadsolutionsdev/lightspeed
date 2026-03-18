@@ -1148,7 +1148,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
     const aov = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
     const returningRate = totalCustomers > 0 ? retCust / totalCustomers : 0;
     const refundRate = totalSales > 0 ? totalRefunds / totalSales : 0;
-    const unitsPerOrder = totalOrders > 0 ? Math.round((totalUnits / totalOrders) * 10) / 10 : 0;
+    const unitsPerOrder = totalOrders > 0 ? Math.round((totalUnits / totalOrders) * 100) / 100 : 0;
 
     const result = {
         current_period: {
@@ -1204,7 +1204,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
         const prevTotalCustomers = prevNewCust + prevRetCust;
         const prevRetRate = prevTotalCustomers > 0 ? prevRetCust / prevTotalCustomers : 0;
         const prevUnits = parseInt(p.total_units_sold) || 0;
-        const prevUnitsPerOrder = prevOrders > 0 ? Math.round((prevUnits / prevOrders) * 10) / 10 : 0;
+        const prevUnitsPerOrder = prevOrders > 0 ? Math.round((prevUnits / prevOrders) * 100) / 100 : 0;
 
         result.comparison_period = {
             total_sales: prevSales / 100,
