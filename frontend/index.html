@@ -6296,6 +6296,14 @@
         }
 
         /* ==================== LIST NORMALIZER TOOL STYLES ==================== */
+        /* Wrapper for all normalizer views */
+        .normalizer-content {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
         /* Hub Landing */
         .normalizer-hub {
             padding: 12px 0 0 0;
@@ -8765,6 +8773,7 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            padding: 24px;
         }
 
         /* Page header */
@@ -10793,6 +10802,7 @@
             flex-direction: column;
             flex: 1;
             min-height: 0;
+            overflow: hidden;
         }
 
         /* Top bar */
@@ -14724,7 +14734,7 @@
 
             <!-- Knowledge Page -->
             <div class="page" id="page-knowledge">
-                <div class="kb-page">
+                <div class="kb-page nested-card">
                     <!-- Header with tabs -->
                     <div class="kb-page-header">
                         <div class="kb-page-title-row">
@@ -15127,7 +15137,7 @@
 
             <!-- ==================== HOME BASE ==================== -->
             <div class="page" id="page-home-base">
-                <div class="hb-container">
+                <div class="hb-container nested-card">
                     <!-- Top bar -->
                     <div class="hb-header">
                         <div class="hb-header-row">
@@ -15678,7 +15688,7 @@
             <!-- Admin Dashboard Page (Super Admin Only) -->
             <!-- Shopify Analytics Dashboard -->
             <div class="page" id="page-shopify-dashboard">
-                <div class="sd-dashboard" id="sdDashboardContent">
+                <div class="sd-dashboard nested-card" id="sdDashboardContent">
                     <!-- Header -->
                     <div class="sd-header">
                         <h2>💰 Shopify Analytics</h2>
@@ -15744,7 +15754,7 @@
                 </div>
             </div>
 
-            <div class="page" id="page-admin">
+            <div class="page nested-card" id="page-admin">
                 <div id="adminDashboard">
                     <!-- Admin dashboard content loaded dynamically -->
                 </div>
@@ -15814,7 +15824,7 @@
         </header>
 
         <div class="container">
-            <div class="data-analysis-container">
+            <div class="data-analysis-container nested-card">
                 <!-- Page Header -->
                 <div class="data-page-header">
                     <div class="data-page-header-icon">📊</div>
@@ -17041,6 +17051,7 @@
         </header>
 
         <div class="container">
+            <div class="normalizer-content nested-card">
             <!-- ===== HUB LANDING (tool selection) ===== -->
             <div class="normalizer-hub" id="normalizerHub">
                 <div class="normalizer-hub-hero">
@@ -17625,6 +17636,7 @@
                     </div>
                 </div>
             </div>
+            </div><!-- /.normalizer-content -->
         </div>
 
         <footer class="site-footer">
@@ -17798,7 +17810,7 @@
         </header>
 
         <div class="container">
-            <div class="rop-container">
+            <div class="rop-container nested-card">
 
                 <!-- LIST VIEW -->
                 <div id="ropListView" class="rop-view">
@@ -17945,7 +17957,8 @@
 
     <!-- ==================== COMPLIANCE TOOL ==================== -->
     <div class="app" id="complianceApp">
-        <div class="compliance-container">
+        <div class="container">
+        <div class="compliance-container nested-card">
             <!-- Header -->
             <div class="compliance-header">
                 <div class="compliance-header-left">
@@ -17995,6 +18008,7 @@
                 </div>
             </div>
         </div>
+        </div><!-- /.container -->
 
         <!-- Conversation History Overlay -->
         <div class="compliance-history-overlay" id="complianceHistoryOverlay">
