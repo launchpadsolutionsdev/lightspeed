@@ -1053,14 +1053,11 @@
             0% { transform: translateX(-100%) skewX(-15deg); }
             100% { transform: translateX(200%) skewX(-15deg); }
         }
-        @keyframes heroPulseGlow {
-            0%, 100% { box-shadow: 0 0 20px rgba(233, 30, 140, 0.3), 0 0 40px rgba(244, 123, 58, 0.15), 0 8px 32px rgba(0,0,0,0.3); }
-            50% { box-shadow: 0 0 30px rgba(233, 30, 140, 0.5), 0 0 60px rgba(244, 123, 58, 0.25), 0 8px 32px rgba(0,0,0,0.3); }
-        }
         .raffle-hero {
-            background: linear-gradient(135deg, #0a0a2e 0%, #1a0a3e 15%, #5B1A6E 30%, #E91E8C 50%, #F47B3A 75%, #F5C623 90%, #F47B3A 100%);
+            background: linear-gradient(135deg, #5B1A6E 0%, #E91E8C 25%, #F47B3A 50%, #F5C623 75%, #F47B3A 100%);
             background-size: 200% 200%;
-            animation: heroGradientShift 8s ease infinite, heroPulseGlow 3s ease-in-out infinite;
+            animation: heroGradientShift 8s ease infinite;
+            box-shadow: 0 0 25px rgba(233, 30, 140, 0.35), 0 0 50px rgba(244, 123, 58, 0.2), 0 8px 32px rgba(0,0,0,0.3);
             border-radius: var(--radius-lg, 12px);
             padding: 48px 24px;
             text-align: center;
