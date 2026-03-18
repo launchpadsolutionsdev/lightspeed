@@ -2168,7 +2168,9 @@ function showToolMenu() {
         btn.classList.toggle("active", btn.dataset.tool === "dashboard");
     });
     const responsePages = document.getElementById("sidebarResponsePages");
-    if (responsePages) responsePages.style.display = 'none';
+    if (responsePages) responsePages.classList.remove('expanded');
+    const expandArrow = document.querySelector('.sidebar-btn[data-tool="customer-response"] .sidebar-btn-expand');
+    if (expandArrow) expandArrow.classList.remove('rotated');
     closeSidebar();
 
     // Update greeting — picks from 50 variations, some time-aware
@@ -2351,6 +2353,8 @@ function updateSidebarForTool(toolId) {
     const responsePages = document.getElementById("sidebarResponsePages");
     const expandArrow = document.querySelector('.sidebar-btn[data-tool="customer-response"] .sidebar-btn-expand');
     if (responsePages) {
+        // Clear any stale inline display style so class-based animation works
+        responsePages.style.display = '';
         if (toolId === 'customer-response') {
             responsePages.classList.add('expanded');
             if (expandArrow) expandArrow.classList.add('rotated');
