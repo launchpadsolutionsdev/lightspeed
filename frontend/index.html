@@ -18199,8 +18199,11 @@
     <!-- ==================== HEARTBEAT ==================== -->
     <style>
         .heartbeat-container {
-            max-width: 960px;
-            margin: 0 auto;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
             padding: 24px 0;
         }
         .heartbeat-container .data-page-header {
