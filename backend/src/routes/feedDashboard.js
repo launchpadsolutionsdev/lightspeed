@@ -243,7 +243,14 @@ function extractWinnersHistory(winnersContent) {
             prize: w.prize || w.amount || '',
             date: w.date || ''
         }))
-        .sort((a, b) => new Date(b.datePicked) - new Date(a.datePicked));
+        .sort((a, b) => new Date(b.datePicked) - new Date(a.datePicked))
+        .filter(w => {
+            // Only include draws from the last 5 months
+            const cutoff = new Date();
+            cutoff.setMonth(cutoff.getMonth() - 5);
+            const drawDate = new Date(w.datePicked || w.date);
+            return !isNaN(drawDate.getTime()) && drawDate >= cutoff;
+        });
 
     // Count total draws and unclaimed prizes
     const totalDraws = winners.length;
