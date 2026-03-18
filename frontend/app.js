@@ -17167,6 +17167,15 @@ async function refreshHeartbeat() {
         if (!_heartbeatRendered || majorChange) {
             content.innerHTML = renderHeartbeatPage(data);
             _heartbeatRendered = true;
+            // Re-inject cached orders into the fresh placeholder
+            const ordersFeed = document.getElementById('hbLiveOrdersFeed');
+            if (ordersFeed) {
+                if (_hbOrdersData) {
+                    ordersFeed.innerHTML = renderHbLiveOrders(_hbOrdersData);
+                } else {
+                    refreshHbOrders();
+                }
+            }
         } else {
             updateHeartbeatQuick(data);
         }
