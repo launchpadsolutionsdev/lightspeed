@@ -1148,10 +1148,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
     const aov = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
     const returningRate = totalCustomers > 0 ? retCust / totalCustomers : 0;
     const refundRate = totalSales > 0 ? totalRefunds / totalSales : 0;
-    // Use sessions if available, otherwise derive from orders vs customers
-    const conversionRate = totalSessions > 0
-        ? totalOrders / totalSessions
-        : (totalCustomers > 0 ? totalOrders / totalCustomers : (totalOrders > 0 ? 1 : 0));
+    const unitsPerOrder = totalOrders > 0 ? Math.round((totalUnits / totalOrders) * 10) / 10 : 0;
 
     const result = {
         current_period: {
@@ -1161,8 +1158,7 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
             returning_customer_rate: Math.round(returningRate * 100) / 100,
             total_units_sold: totalUnits,
             refund_rate: Math.round(refundRate * 100) / 100,
-            sessions: totalSessions,
-            conversion_rate: Math.round(conversionRate * 10000) / 100,
+            units_per_order: unitsPerOrder,
         },
     };
 
@@ -1207,27 +1203,23 @@ async function getDashboardSummary(organizationId, startDate, endDate, compare) 
         const prevRetCust = parseInt(p.returning_customers) || 0;
         const prevTotalCustomers = prevNewCust + prevRetCust;
         const prevRetRate = prevTotalCustomers > 0 ? prevRetCust / prevTotalCustomers : 0;
-        const prevSessions = parseInt(p.sessions) || prevTotalCustomers || 0;
-
-        const prevConvRate = prevSessions > 0
-            ? prevOrders / prevSessions
-            : (prevTotalCustomers > 0 ? prevOrders / prevTotalCustomers : (prevOrders > 0 ? 1 : 0));
+        const prevUnits = parseInt(p.total_units_sold) || 0;
+        const prevUnitsPerOrder = prevOrders > 0 ? Math.round((prevUnits / prevOrders) * 10) / 10 : 0;
 
         result.comparison_period = {
             total_sales: prevSales / 100,
             total_orders: prevOrders,
             average_order_value: prevAov / 100,
             returning_customer_rate: Math.round(prevRetRate * 100) / 100,
-            total_units_sold: parseInt(p.total_units_sold) || 0,
-            sessions: prevSessions,
-            conversion_rate: Math.round(prevConvRate * 10000) / 100,
+            total_units_sold: prevUnits,
+            units_per_order: prevUnitsPerOrder,
         };
 
         result.changes = {
             total_sales_pct: pctChange(totalSales, prevSales),
             total_orders_pct: pctChange(totalOrders, prevOrders),
             average_order_value_pct: pctChange(aov, prevAov),
-            conversion_rate_pct: pctChange(conversionRate, prevConvRate),
+            units_per_order_pct: pctChange(unitsPerOrder, prevUnitsPerOrder),
         };
     }
 
