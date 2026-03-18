@@ -16539,6 +16539,8 @@ function renderRaffleDashboard(data) {
         html += renderJackpotHistory(data.winnersHistory);
     }
 
+    // What's New placeholder — filled async after main render
+    html += '<div id="dashWhatsNew"></div>';
 
     // Last updated
     html += `<div class="feed-dash-updated">
@@ -16550,6 +16552,9 @@ function renderRaffleDashboard(data) {
 
     // Start live countdown timer
     startRaffleCountdown(data.endDate);
+
+    // Fetch What's New articles
+    fetchWhatsNewArticles();
 }
 
 /**
@@ -16677,6 +16682,68 @@ function renderJackpotHistory(history) {
     }
 
     html += '</div>';
+    return html;
+}
+
+/**
+ * Fetch and render What's New articles into the dashboard.
+ */
+async function fetchWhatsNewArticles() {
+    const container = document.getElementById('dashWhatsNew');
+    if (!container) return;
+
+    try {
+        const resp = await fetch('/api/feed-dashboard/whats-new', {
+            headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!data.articles || data.articles.length === 0) return;
+
+        container.innerHTML = renderWhatsNew(data.articles);
+    } catch (e) {
+        // Silently fail — this section is non-critical
+    }
+}
+
+/**
+ * Render the What's New in Lightspeed card.
+ */
+function renderWhatsNew(articles) {
+    const badgeColors = {
+        'AI': '#7c3aed',
+        'Tools': '#db2777',
+        'Feature': '#059669',
+        'Features': '#059669',
+        'Platform': '#0891b2',
+        'Integrations': '#ea580c'
+    };
+
+    let html = '<div class="raffle-card">';
+    html += `<div class="raffle-card-header">
+        <div class="raffle-card-title">What's New in Lightspeed</div>
+        <a href="/whats-new/" class="raffle-card-link" target="_blank">View all &rarr;</a>
+    </div>`;
+
+    html += '<div class="wn-dash-list">';
+
+    articles.forEach(a => {
+        const badges = a.badges.map(b => {
+            const color = badgeColors[b] || '#64748b';
+            return `<span class="wn-dash-badge" style="background:${color}15;color:${color}">${escapeHtml(b)}</span>`;
+        }).join('');
+
+        html += `<a href="${escapeHtml(a.href)}" class="wn-dash-item" target="_blank">
+            <div class="wn-dash-meta">
+                <span class="wn-dash-date">${escapeHtml(a.date)}</span>
+                ${badges}
+            </div>
+            <div class="wn-dash-title">${escapeHtml(a.title)}</div>
+            <div class="wn-dash-summary">${escapeHtml(a.summary)}</div>
+        </a>`;
+    });
+
+    html += '</div></div>';
     return html;
 }
 
