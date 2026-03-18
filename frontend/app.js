@@ -17084,11 +17084,14 @@ function updateVelocityTickerCard(card, velocity) {
 
 // ==================== HEARTBEAT TOOL ====================
 
-let _heartbeatInitialized = false;
 let _heartbeatPollTimer = null;
 let _heartbeatSelectedWindow = '1h';
-let _heartbeatLastData = null;
+let _heartbeatLastData = null;   // salesVelocity object (for ticker compat)
+let _heartbeatFullData = null;   // full API response
 let _heartbeatLastTick = 0;
+let _heartbeatRendered = false;
+let _heartbeatLastTotalSales = 0;
+let _heartbeatGoal = parseInt(localStorage.getItem('heartbeat_goal')) || 0;
 
 /**
  * Initialize the Heartbeat tool page.
@@ -17107,17 +17110,15 @@ function initHeartbeat() {
         });
     }
 
-    // Start fetching immediately
+    // Reset render state so full page builds on each tool open
+    _heartbeatRendered = false;
+
     refreshHeartbeat();
 
-    // Poll every 5 seconds for real-time feel
     stopHeartbeatPolling();
     _heartbeatPollTimer = setInterval(refreshHeartbeat, 5000);
 }
 
-/**
- * Stop Heartbeat polling (called when navigating away).
- */
 function stopHeartbeatPolling() {
     if (_heartbeatPollTimer) {
         clearInterval(_heartbeatPollTimer);
@@ -17126,7 +17127,9 @@ function stopHeartbeatPolling() {
 }
 
 /**
- * Fetch data and render the Heartbeat velocity ticker.
+ * Fetch data and render the full Heartbeat page.
+ * Full re-render on first load or when underlying feed data changes (2-min cache).
+ * Quick targeted updates on intermediate 5s ticks.
  */
 async function refreshHeartbeat() {
     const content = document.getElementById('heartbeatContent');
@@ -17137,123 +17140,679 @@ async function refreshHeartbeat() {
             headers: getAuthHeaders()
         });
         if (!res.ok) {
-            if (!_heartbeatLastData) {
+            if (!_heartbeatFullData) {
                 content.innerHTML = '<div class="shopify-kpi-sub">Unable to load Heartbeat data. Please try again later.</div>';
             }
             return;
         }
 
         const data = await res.json();
+        _heartbeatFullData = data;
         _heartbeatLastTick = Date.now();
+        if (data.salesVelocity) _heartbeatLastData = data.salesVelocity;
 
-        if (data.salesVelocity) {
-            _heartbeatLastData = data.salesVelocity;
-            const card = document.getElementById('heartbeatTickerCard');
-            if (card) {
-                updateHeartbeatTickerCard(card, data.salesVelocity);
-            } else {
-                // First render
-                content.innerHTML = renderHeartbeatTickerCard(data.salesVelocity);
-            }
-        } else if (!_heartbeatLastData) {
-            content.innerHTML = '<div class="shopify-kpi-sub">Waiting for sales data...</div>';
+        const currentTotal = data.salesBreakdown?.totalSales || 0;
+        const majorChange = currentTotal !== _heartbeatLastTotalSales;
+        _heartbeatLastTotalSales = currentTotal;
+
+        if (!_heartbeatRendered || majorChange) {
+            content.innerHTML = renderHeartbeatPage(data);
+            _heartbeatRendered = true;
+        } else {
+            updateHeartbeatQuick(data);
         }
     } catch (err) {
         console.warn('Heartbeat refresh failed:', err.message);
-        if (!_heartbeatLastData) {
+        if (!_heartbeatFullData) {
             content.innerHTML = '<div class="shopify-kpi-sub">Unable to connect to data feed.</div>';
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// Main page composition
+// ---------------------------------------------------------------------------
+
+function renderHeartbeatPage(data) {
+    const v = data.salesVelocity || {};
+    const sb = data.salesBreakdown || null;
+    const wh = data.winnersHistory || null;
+    let html = '';
+
+    // 1 — Vital signs row
+    html += renderHbVitals(data);
+
+    // 2 — Surge alerts banner
+    html += renderHbSurgeAlerts(v);
+
+    // 3 — Sales velocity ticker (reuse existing shared renderers)
+    html += renderHbVelocityTicker(v);
+
+    // 4 — Goal tracker
+    html += renderHbGoalTracker(data);
+
+    // 5 — Payment donut + Sales waterfall (side by side)
+    if (sb) {
+        html += '<div class="hb-two-col">';
+        html += renderHbPaymentDonut(sb);
+        html += renderHbWaterfall(sb);
+        html += '</div>';
+    }
+
+    // 6 — Package tier performance
+    if (sb && sb.tiers && sb.tiers.length > 0) {
+        html += renderHbTierPerformance(sb);
+    }
+
+    // 7 — Hourly heatmap + Peak hours (side by side)
+    if (v.samples && v.samples.length >= 4) {
+        html += '<div class="hb-two-col">';
+        html += renderHbHeatmap(v.samples);
+        html += renderHbPeakHours(v.samples);
+        html += '</div>';
+    }
+
+    // 8 — Jackpot comparison to previous events
+    if (wh && wh.grandPrizeWinners && wh.grandPrizeWinners.length > 0) {
+        html += renderHbJackpotComparison(data);
+    }
+
+    // Footer
+    html += `<div class="feed-dash-updated">Last tick: Just now &middot; ${formatEasternTime()} &middot; Velocity ticker live every 5s</div>`;
+
+    return html;
+}
+
 /**
- * Render the full Heartbeat ticker card (initial render).
+ * Quick update — only touch dynamic elements on intermediate 5s ticks.
  */
-function renderHeartbeatTickerCard(velocity) {
-    const windows = velocity.windows || {};
-    const win = windows[_heartbeatSelectedWindow] || null;
-    const samples = win ? win.samples : (velocity.samples || []);
+function updateHeartbeatQuick(data) {
+    const v = data.salesVelocity || {};
 
-    let html = '<div class="velocity-ticker" id="heartbeatTickerCard">';
+    // Update vital signs numbers
+    const rateEl = document.getElementById('hbVitalRate');
+    if (rateEl) {
+        const rate = hbComputeTicketsPerMin(v);
+        rateEl.textContent = rate !== null ? rate.toFixed(1) : '--';
+    }
 
-    html += '<div class="velocity-ticker-header">';
-    html += '<div class="velocity-ticker-title-row">';
-    html += '<span class="velocity-ticker-title">Sales Velocity</span>';
-    html += '<span class="velocity-ticker-live"><span class="velocity-pulse"></span> LIVE</span>';
-    html += '</div>';
+    // Update velocity ticker card
+    const tickerCard = document.getElementById('heartbeatTickerCard');
+    if (tickerCard && v) {
+        updateHbVelocityTicker(tickerCard, v);
+    }
 
-    html += '<div class="velocity-ticker-pills">';
-    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
-    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
-    windowKeys.forEach(key => {
-        const active = key === _heartbeatSelectedWindow ? ' velocity-pill-active' : '';
-        html += `<button class="velocity-pill${active}" data-window="${key}" onclick="selectHeartbeatWindow('${key}')">${windowLabels[key]}</button>`;
-    });
-    html += '</div>';
-    html += '</div>';
+    // Update surge alerts
+    const surgeEl = document.getElementById('hbSurgeAlerts');
+    if (surgeEl) surgeEl.innerHTML = renderHbSurgeAlertsInner(v);
 
-    html += renderTickerPriceBlock(win, samples);
-    html += renderTickerSparkline(samples, win);
-    html += renderTickerMiniStats(windows, _heartbeatSelectedWindow, 'selectHeartbeatWindow');
+    // Update goal ETA
+    const etaEl = document.getElementById('hbGoalEta');
+    if (etaEl && _heartbeatGoal > 0) {
+        etaEl.innerHTML = hbComputeEtaText(data.pool, v);
+    }
 
-    html += '<div class="velocity-ticker-footer">';
-    html += `<span class="velocity-ticker-ago">Last tick: Just now &middot; ${formatEasternTime()}</span>`;
-    html += '</div>';
+    // Update footer
+    const footer = document.querySelector('#heartbeatContent > .feed-dash-updated');
+    if (footer) footer.innerHTML = `Last tick: Just now &middot; ${formatEasternTime()} &middot; Velocity ticker live every 5s`;
+}
+
+// ---------------------------------------------------------------------------
+// 1. Vital Signs Row
+// ---------------------------------------------------------------------------
+
+function hbComputeTicketsPerMin(velocity) {
+    const w = velocity.windows;
+    if (!w) return null;
+    // Prefer 5m window for a stable-but-responsive rate
+    const win = w['5m'] || w['10m'] || w['1h'];
+    if (!win || !win.durationMs) return null;
+    const minutes = win.durationMs / 60000;
+    return minutes > 0 ? win.ticketsDelta / minutes : 0;
+}
+
+function renderHbVitals(data) {
+    const v = data.salesVelocity || {};
+    const rate = hbComputeTicketsPerMin(v);
+    const pool = data.pool || 0;
+    const prize = data.prize || 0;
+    const orgKeeps = pool - prize;
+
+    // Determine surge class for the rate card
+    const w1h = v.windows?.['1h'];
+    const pct = w1h?.percentChange;
+    let ratePulseClass = '';
+    if (pct !== null && pct !== undefined) {
+        if (pct > 50) ratePulseClass = ' hb-vital-surge';
+        else if (pct < -30) ratePulseClass = ' hb-vital-slow';
+    }
+
+    let html = '<div class="hb-vitals">';
+
+    // Tickets / min
+    html += `<div class="hb-vital-card${ratePulseClass}">
+        <div class="hb-vital-icon"><span class="hb-heartbeat-icon">&#128147;</span></div>
+        <div class="hb-vital-label">Tickets / Min</div>
+        <div class="hb-vital-value" id="hbVitalRate">${rate !== null ? rate.toFixed(1) : '--'}</div>
+        <div class="hb-vital-sub">5-min avg rate</div>
+    </div>`;
+
+    // Total revenue
+    html += `<div class="hb-vital-card">
+        <div class="hb-vital-label">Gross Revenue</div>
+        <div class="hb-vital-value">$${pool.toLocaleString()}</div>
+        <div class="hb-vital-sub">Total jackpot pool</div>
+    </div>`;
+
+    // Winner takes
+    html += `<div class="hb-vital-card">
+        <div class="hb-vital-label">Winner Takes</div>
+        <div class="hb-vital-value hb-val-green">$${prize.toLocaleString()}</div>
+        <div class="hb-vital-sub">50% of pool</div>
+    </div>`;
+
+    // Organization keeps
+    html += `<div class="hb-vital-card">
+        <div class="hb-vital-label">Organization Keeps</div>
+        <div class="hb-vital-value">$${orgKeeps.toLocaleString()}</div>
+        <div class="hb-vital-sub">50% net revenue</div>
+    </div>`;
 
     html += '</div>';
     return html;
 }
 
-/**
- * Update the Heartbeat ticker card in-place (every 5s tick or window switch).
- */
-function updateHeartbeatTickerCard(card, velocity) {
-    _heartbeatLastData = velocity;
+// ---------------------------------------------------------------------------
+// 2. Surge Alerts Banner
+// ---------------------------------------------------------------------------
 
+function renderHbSurgeAlerts(velocity) {
+    return `<div id="hbSurgeAlerts">${renderHbSurgeAlertsInner(velocity)}</div>`;
+}
+
+function renderHbSurgeAlertsInner(velocity) {
+    const windows = velocity.windows;
+    if (!windows) return '';
+
+    const alerts = [];
+
+    // Check each window for significant deviations
+    const checks = [
+        { key: '5m', label: '5 minutes' },
+        { key: '10m', label: '10 minutes' },
+        { key: '30m', label: '30 minutes' },
+        { key: '1h', label: '1 hour' }
+    ];
+
+    for (const c of checks) {
+        const w = windows[c.key];
+        if (!w || w.percentChange === null) continue;
+
+        if (w.percentChange > 100) {
+            alerts.push({ type: 'surge', pct: w.percentChange, label: c.label, delta: w.salesDelta });
+        } else if (w.percentChange > 50) {
+            alerts.push({ type: 'hot', pct: w.percentChange, label: c.label, delta: w.salesDelta });
+        } else if (w.percentChange < -50) {
+            alerts.push({ type: 'cold', pct: w.percentChange, label: c.label, delta: w.salesDelta });
+        }
+    }
+
+    if (alerts.length === 0) return '';
+
+    // Show the most significant alert
+    alerts.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+    const top = alerts[0];
+
+    if (top.type === 'surge') {
+        return `<div class="hb-alert hb-alert-surge">
+            <span class="hb-alert-icon">&#9650;</span>
+            <span class="hb-alert-text"><strong>Sales Surging!</strong> +${top.pct}% vs prior ${top.label} &middot; +$${top.delta.toLocaleString()} in revenue</span>
+        </div>`;
+    } else if (top.type === 'hot') {
+        return `<div class="hb-alert hb-alert-hot">
+            <span class="hb-alert-icon">&#128293;</span>
+            <span class="hb-alert-text"><strong>Above Average</strong> +${top.pct}% vs prior ${top.label} &middot; +$${top.delta.toLocaleString()}</span>
+        </div>`;
+    } else {
+        return `<div class="hb-alert hb-alert-cold">
+            <span class="hb-alert-icon">&#9660;</span>
+            <span class="hb-alert-text"><strong>Sales Slowing</strong> ${top.pct}% vs prior ${top.label}</span>
+        </div>`;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 3. Velocity Ticker (wraps shared renderers for Heartbeat context)
+// ---------------------------------------------------------------------------
+
+function renderHbVelocityTicker(velocity) {
     const windows = velocity.windows || {};
     const win = windows[_heartbeatSelectedWindow] || null;
     const samples = win ? win.samples : (velocity.samples || []);
 
-    let inner = '';
-
-    inner += '<div class="velocity-ticker-header">';
-    inner += '<div class="velocity-ticker-title-row">';
-    inner += '<span class="velocity-ticker-title">Sales Velocity</span>';
-    inner += '<span class="velocity-ticker-live"><span class="velocity-pulse"></span> LIVE</span>';
-    inner += '</div>';
-
-    inner += '<div class="velocity-ticker-pills">';
-    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
-    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
-    windowKeys.forEach(key => {
-        const active = key === _heartbeatSelectedWindow ? ' velocity-pill-active' : '';
-        inner += `<button class="velocity-pill${active}" data-window="${key}" onclick="selectHeartbeatWindow('${key}')">${windowLabels[key]}</button>`;
-    });
-    inner += '</div>';
-    inner += '</div>';
-
-    inner += renderTickerPriceBlock(win, samples);
-    inner += renderTickerSparkline(samples, win);
-    inner += renderTickerMiniStats(windows, _heartbeatSelectedWindow, 'selectHeartbeatWindow');
-
-    const agoSec = _heartbeatLastTick ? Math.round((Date.now() - _heartbeatLastTick) / 1000) : 0;
-    const agoText = agoSec < 3 ? 'Just now' : `${agoSec}s ago`;
-    inner += '<div class="velocity-ticker-footer">';
-    inner += `<span class="velocity-ticker-ago">Last tick: ${agoText} &middot; ${formatEasternTime()}</span>`;
-    inner += '</div>';
-
-    card.innerHTML = inner;
+    let html = '<div class="velocity-ticker" id="heartbeatTickerCard">';
+    html += hbTickerInner(velocity, win, samples, 'Just now');
+    html += '</div>';
+    return html;
 }
 
-/**
- * Switch the Heartbeat ticker to a different time window.
- */
+function updateHbVelocityTicker(card, velocity) {
+    _heartbeatLastData = velocity;
+    const windows = velocity.windows || {};
+    const win = windows[_heartbeatSelectedWindow] || null;
+    const samples = win ? win.samples : (velocity.samples || []);
+    const agoSec = _heartbeatLastTick ? Math.round((Date.now() - _heartbeatLastTick) / 1000) : 0;
+    const agoText = agoSec < 3 ? 'Just now' : `${agoSec}s ago`;
+    card.innerHTML = hbTickerInner(velocity, win, samples, agoText);
+}
+
+function hbTickerInner(velocity, win, samples, agoText) {
+    const windows = velocity.windows || {};
+    let h = '';
+    h += '<div class="velocity-ticker-header">';
+    h += '<div class="velocity-ticker-title-row">';
+    h += '<span class="velocity-ticker-title">Sales Velocity</span>';
+    h += '<span class="velocity-ticker-live"><span class="velocity-pulse"></span> LIVE</span>';
+    h += '</div>';
+    h += '<div class="velocity-ticker-pills">';
+    ['1m','5m','10m','30m','1h','3h','1d'].forEach(key => {
+        const active = key === _heartbeatSelectedWindow ? ' velocity-pill-active' : '';
+        h += `<button class="velocity-pill${active}" onclick="selectHeartbeatWindow('${key}')">${key.toUpperCase()}</button>`;
+    });
+    h += '</div></div>';
+    h += renderTickerPriceBlock(win, samples);
+    h += renderTickerSparkline(samples, win);
+    h += renderTickerMiniStats(windows, _heartbeatSelectedWindow, 'selectHeartbeatWindow');
+    h += `<div class="velocity-ticker-footer"><span class="velocity-ticker-ago">Last tick: ${agoText} &middot; ${formatEasternTime()}</span></div>`;
+    return h;
+}
+
 function selectHeartbeatWindow(key) {
     _heartbeatSelectedWindow = key;
     const card = document.getElementById('heartbeatTickerCard');
     if (card && _heartbeatLastData) {
-        updateHeartbeatTickerCard(card, _heartbeatLastData);
+        updateHbVelocityTicker(card, _heartbeatLastData);
     }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Goal Tracker with ETA Projection
+// ---------------------------------------------------------------------------
+
+function renderHbGoalTracker(data) {
+    const pool = data.pool || 0;
+    const goal = _heartbeatGoal;
+    const v = data.salesVelocity || {};
+
+    let html = '<div class="hb-card">';
+    html += '<div class="hb-card-header">';
+    html += '<span class="hb-card-title">Goal Tracker</span>';
+    html += '<div class="hb-goal-input-row">';
+    html += `<span class="hb-goal-label">Target:</span>`;
+    html += `<input type="text" class="hb-goal-input" id="hbGoalInput" value="${goal > 0 ? '$' + goal.toLocaleString() : ''}" placeholder="e.g. $500,000" onkeydown="if(event.key==='Enter')hbSetGoal()">`;
+    html += `<button class="hb-goal-set-btn" onclick="hbSetGoal()">Set</button>`;
+    html += '</div></div>';
+
+    if (goal > 0) {
+        const pct = Math.min((pool / goal) * 100, 100);
+        const remaining = Math.max(goal - pool, 0);
+        const reached = pool >= goal;
+
+        html += '<div class="hb-goal-bar-wrap">';
+        html += `<div class="hb-goal-bar-track"><div class="hb-goal-bar-fill${reached ? ' hb-goal-reached' : ''}" style="width:${pct.toFixed(1)}%"></div></div>`;
+        html += '<div class="hb-goal-bar-labels">';
+        html += `<span>$${pool.toLocaleString()}</span>`;
+        html += `<span class="hb-goal-pct">${pct.toFixed(1)}%</span>`;
+        html += `<span>$${goal.toLocaleString()}</span>`;
+        html += '</div></div>';
+
+        // ETA projection
+        html += `<div class="hb-goal-eta" id="hbGoalEta">${hbComputeEtaText(pool, v)}</div>`;
+    } else {
+        html += '<div class="hb-goal-empty">Set a jackpot target above to see progress and projected ETA.</div>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+function hbComputeEtaText(pool, velocity) {
+    if (_heartbeatGoal <= 0 || pool >= _heartbeatGoal) {
+        return pool >= _heartbeatGoal ? '<span class="hb-val-green"><strong>Goal reached!</strong></span>' : '';
+    }
+
+    const remaining = _heartbeatGoal - pool;
+    // Use 1h window for ETA — most stable for projection
+    const w1h = velocity.windows?.['1h'];
+    if (!w1h || w1h.salesDelta <= 0) {
+        return `<strong>$${remaining.toLocaleString()}</strong> remaining &middot; ETA: calculating&hellip;`;
+    }
+
+    const ratePerMs = w1h.salesDelta / w1h.durationMs;
+    const msToGoal = remaining / ratePerMs;
+    const hoursToGoal = msToGoal / (1000 * 60 * 60);
+
+    let etaLabel = '';
+    if (hoursToGoal < 1) {
+        etaLabel = `${Math.round(hoursToGoal * 60)}m`;
+    } else if (hoursToGoal < 48) {
+        const h = Math.floor(hoursToGoal);
+        const m = Math.round((hoursToGoal - h) * 60);
+        etaLabel = `${h}h ${m}m`;
+    } else {
+        const d = Math.floor(hoursToGoal / 24);
+        const h = Math.round(hoursToGoal % 24);
+        etaLabel = `${d}d ${h}h`;
+    }
+
+    const etaDate = new Date(Date.now() + msToGoal);
+    const etaFormatted = etaDate.toLocaleString('en-US', {
+        timeZone: 'America/New_York', month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', hour12: true
+    });
+
+    return `<strong>$${remaining.toLocaleString()}</strong> remaining &middot; ETA: <strong>${etaLabel}</strong> (${etaFormatted} ET) at current pace`;
+}
+
+function hbSetGoal() {
+    const input = document.getElementById('hbGoalInput');
+    if (!input) return;
+    const raw = input.value.replace(/[^0-9]/g, '');
+    const val = parseInt(raw) || 0;
+    _heartbeatGoal = val;
+    localStorage.setItem('heartbeat_goal', val);
+    // Re-render full page to update goal section
+    if (_heartbeatFullData) {
+        const content = document.getElementById('heartbeatContent');
+        if (content) {
+            content.innerHTML = renderHeartbeatPage(_heartbeatFullData);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 5. Payment Method Donut Chart
+// ---------------------------------------------------------------------------
+
+function renderHbPaymentDonut(sb) {
+    const total = sb.totalSales || 1;
+    const creditPct = (sb.creditSales / total) * 100;
+    const debitPct = (sb.debitSales / total) * 100;
+    const cashPct = (sb.cashSales / total) * 100;
+
+    // Conic gradient angles
+    const creditEnd = creditPct;
+    const debitEnd = creditEnd + debitPct;
+
+    let html = '<div class="hb-card hb-card-half">';
+    html += '<div class="hb-card-title">Payment Methods</div>';
+    html += '<div class="hb-donut-wrap">';
+    html += `<div class="hb-donut" style="background:conic-gradient(#635BFF 0% ${creditEnd.toFixed(1)}%, #00C853 ${creditEnd.toFixed(1)}% ${debitEnd.toFixed(1)}%, #FF9800 ${debitEnd.toFixed(1)}% 100%);"></div>`;
+    html += `<div class="hb-donut-center">$${total.toLocaleString()}</div>`;
+    html += '</div>';
+
+    // Legend
+    html += '<div class="hb-donut-legend">';
+    html += `<div class="hb-legend-row"><span class="hb-legend-dot" style="background:#635BFF"></span> Credit <strong>${sb.creditPercent}%</strong> &middot; $${sb.creditSales.toLocaleString()}</div>`;
+    html += `<div class="hb-legend-row"><span class="hb-legend-dot" style="background:#00C853"></span> Debit <strong>${sb.debitPercent}%</strong> &middot; $${sb.debitSales.toLocaleString()}</div>`;
+    html += `<div class="hb-legend-row"><span class="hb-legend-dot" style="background:#FF9800"></span> Cash <strong>${sb.cashPercent}%</strong> &middot; $${sb.cashSales.toLocaleString()}</div>`;
+    html += '</div></div>';
+    return html;
+}
+
+// ---------------------------------------------------------------------------
+// 6. Sales Composition Waterfall
+// ---------------------------------------------------------------------------
+
+function renderHbWaterfall(sb) {
+    const total = sb.totalSales || 1;
+    const segments = [
+        { label: 'Credit', value: sb.creditSales, color: '#635BFF' },
+        { label: 'Debit', value: sb.debitSales, color: '#00C853' },
+        { label: 'Cash', value: sb.cashSales, color: '#FF9800' }
+    ];
+
+    let html = '<div class="hb-card hb-card-half">';
+    html += '<div class="hb-card-title">Revenue Breakdown</div>';
+
+    // Total bar
+    html += '<div class="hb-wf-row">';
+    html += '<span class="hb-wf-label">Total</span>';
+    html += '<div class="hb-wf-bar-track"><div class="hb-wf-bar" style="width:100%;background:var(--text-primary,#0A2540);"></div></div>';
+    html += `<span class="hb-wf-val">$${total.toLocaleString()}</span>`;
+    html += '</div>';
+
+    // Segment bars (proportional to total)
+    let cumOffset = 0;
+    segments.forEach(seg => {
+        const pct = (seg.value / total) * 100;
+        html += '<div class="hb-wf-row">';
+        html += `<span class="hb-wf-label">${seg.label}</span>`;
+        html += `<div class="hb-wf-bar-track"><div class="hb-wf-bar" style="width:${pct.toFixed(1)}%;margin-left:${cumOffset.toFixed(1)}%;background:${seg.color};"></div></div>`;
+        html += `<span class="hb-wf-val">$${seg.value.toLocaleString()}</span>`;
+        html += '</div>';
+        cumOffset += pct;
+    });
+
+    html += '</div>';
+    return html;
+}
+
+// ---------------------------------------------------------------------------
+// 7. Package Tier Performance Dashboard
+// ---------------------------------------------------------------------------
+
+function renderHbTierPerformance(sb) {
+    const tiers = sb.tiers;
+    const maxSales = Math.max(...tiers.map(t => t.sales), 1);
+    const maxTickets = Math.max(...tiers.map(t => t.tickets), 1);
+
+    let html = '<div class="hb-card">';
+    html += '<div class="hb-card-title">Package Tier Performance</div>';
+    html += '<div class="hb-tier-grid">';
+
+    tiers.forEach(tier => {
+        const salesPct = (tier.sales / maxSales * 100).toFixed(0);
+        const ticketsPct = (tier.tickets / maxTickets * 100).toFixed(0);
+        const revenueShare = ((tier.sales / sb.totalSales) * 100).toFixed(1);
+
+        html += '<div class="hb-tier-row">';
+        html += `<div class="hb-tier-price">$${tier.price}</div>`;
+        html += '<div class="hb-tier-details">';
+        html += `<div class="hb-tier-bar-group">`;
+        html += `<div class="hb-tier-bar-row"><span class="hb-tier-bar-label">Revenue</span><div class="hb-tier-bar-track"><div class="hb-tier-bar-fill" style="width:${salesPct}%;background:#635BFF;"></div></div><span class="hb-tier-bar-val">$${tier.sales.toLocaleString()}</span></div>`;
+        html += `<div class="hb-tier-bar-row"><span class="hb-tier-bar-label">Tickets</span><div class="hb-tier-bar-track"><div class="hb-tier-bar-fill" style="width:${ticketsPct}%;background:#00C853;"></div></div><span class="hb-tier-bar-val">${tier.tickets.toLocaleString()}</span></div>`;
+        html += '</div>';
+        html += `<div class="hb-tier-meta">${tier.numbersPerTicket} numbers/ticket &middot; ${revenueShare}% of total revenue</div>`;
+        html += '</div></div>';
+    });
+
+    html += '</div></div>';
+    return html;
+}
+
+// ---------------------------------------------------------------------------
+// 8. Hourly Sales Heatmap
+// ---------------------------------------------------------------------------
+
+function hbComputeHourlySales(samples) {
+    if (!samples || samples.length < 2) return [];
+
+    // Group samples by hour-of-day
+    const buckets = {};
+    samples.forEach(s => {
+        const h = new Date(s.ts).getHours();
+        if (!buckets[h]) buckets[h] = [];
+        buckets[h].push(s);
+    });
+
+    const hourly = [];
+    for (let h = 0; h < 24; h++) {
+        const b = buckets[h];
+        if (b && b.length >= 2) {
+            b.sort((a, c) => a.ts - c.ts);
+            hourly.push({ hour: h, delta: b[b.length - 1].sales - b[0].sales, count: b.length });
+        } else {
+            hourly.push({ hour: h, delta: 0, count: b ? b.length : 0 });
+        }
+    }
+    return hourly;
+}
+
+function renderHbHeatmap(samples) {
+    const hourly = hbComputeHourlySales(samples);
+    const maxDelta = Math.max(...hourly.map(h => h.delta), 1);
+
+    let html = '<div class="hb-card hb-card-half">';
+    html += '<div class="hb-card-title">Hourly Sales Heatmap</div>';
+    html += '<div class="hb-heatmap">';
+
+    hourly.forEach(h => {
+        const intensity = h.delta / maxDelta;
+        const bg = h.count === 0 ? 'var(--bg-hover,#F6F8FA)' : hbHeatColor(intensity);
+        const label = h.hour === 0 ? '12a' : h.hour < 12 ? `${h.hour}a` : h.hour === 12 ? '12p' : `${h.hour - 12}p`;
+        const title = `${label}: +$${h.delta.toLocaleString()} (${h.count} samples)`;
+        html += `<div class="hb-heat-cell" style="background:${bg};" title="${title}">`;
+        html += `<span class="hb-heat-label">${label}</span>`;
+        if (h.delta > 0) html += `<span class="hb-heat-val">$${hbShortNum(h.delta)}</span>`;
+        html += '</div>';
+    });
+
+    html += '</div></div>';
+    return html;
+}
+
+function hbHeatColor(intensity) {
+    // Gradient from light green to deep green
+    const r = Math.round(240 - intensity * 200);
+    const g = Math.round(248 - intensity * 48);
+    const b = Math.round(240 - intensity * 180);
+    if (intensity > 0.8) return `rgb(0, 180, 60)`;
+    if (intensity > 0.5) return `rgb(${r}, ${g}, ${b})`;
+    return `rgb(${Math.round(220 - intensity * 100)}, ${Math.round(240 - intensity * 20)}, ${Math.round(220 - intensity * 100)})`;
+}
+
+function hbShortNum(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'K';
+    return n.toLocaleString();
+}
+
+// ---------------------------------------------------------------------------
+// 9. Peak Hours Analysis
+// ---------------------------------------------------------------------------
+
+function renderHbPeakHours(samples) {
+    const hourly = hbComputeHourlySales(samples);
+    const active = hourly.filter(h => h.count >= 2 && h.delta > 0);
+    active.sort((a, b) => b.delta - a.delta);
+
+    const top3 = active.slice(0, 3);
+    const bottom3 = active.length > 3 ? active.slice(-3).reverse() : [];
+
+    const fmtHour = (h) => {
+        const start = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+        const end = (h + 1) % 24;
+        const endStr = end === 0 ? '12 AM' : end < 12 ? `${end} AM` : end === 12 ? '12 PM' : `${end - 12} PM`;
+        return `${start} – ${endStr}`;
+    };
+
+    let html = '<div class="hb-card hb-card-half">';
+    html += '<div class="hb-card-title">Peak Hours</div>';
+
+    if (top3.length === 0) {
+        html += '<div class="hb-goal-empty">Not enough data yet. Check back in a few hours.</div>';
+        html += '</div>';
+        return html;
+    }
+
+    html += '<div class="hb-peak-section">';
+    html += '<div class="hb-peak-label hb-val-green">Hottest</div>';
+    top3.forEach((h, i) => {
+        html += `<div class="hb-peak-row">
+            <span class="hb-peak-rank">#${i + 1}</span>
+            <span class="hb-peak-time">${fmtHour(h.hour)}</span>
+            <span class="hb-peak-val hb-val-green">+$${h.delta.toLocaleString()}</span>
+        </div>`;
+    });
+    html += '</div>';
+
+    if (bottom3.length > 0) {
+        html += '<div class="hb-peak-section" style="margin-top:12px;">';
+        html += '<div class="hb-peak-label" style="color:var(--text-muted,#6B7C93);">Slowest</div>';
+        bottom3.forEach((h, i) => {
+            html += `<div class="hb-peak-row">
+                <span class="hb-peak-rank" style="color:var(--text-muted,#6B7C93);">#${active.length - 2 + i}</span>
+                <span class="hb-peak-time">${fmtHour(h.hour)}</span>
+                <span class="hb-peak-val" style="color:var(--text-muted,#6B7C93);">+$${h.delta.toLocaleString()}</span>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+// ---------------------------------------------------------------------------
+// 10. Jackpot Comparison to Previous Events
+// ---------------------------------------------------------------------------
+
+function renderHbJackpotComparison(data) {
+    const currentPool = data.pool || 0;
+    const currentEvent = data.event || 'Current Raffle';
+    const wh = data.winnersHistory;
+    if (!wh || !wh.grandPrizeWinners || wh.grandPrizeWinners.length === 0) return '';
+
+    // Deduplicate events — use the highest jackpot per event
+    const eventMap = new Map();
+    wh.grandPrizeWinners.forEach(w => {
+        const jackpotVal = parseFloat(String(w.jackpot).replace(/[^0-9.]/g, '')) || 0;
+        const key = w.eventId || w.eventTitle;
+        if (!eventMap.has(key) || jackpotVal > eventMap.get(key).jackpot) {
+            eventMap.set(key, {
+                title: (w.eventTitle || '').replace(/^TBRHSF\s+/, '').replace(/^TB\s+/, ''),
+                jackpot: jackpotVal,
+                date: w.date || ''
+            });
+        }
+    });
+
+    const pastEvents = Array.from(eventMap.values()).filter(e => e.jackpot > 0).sort((a, b) => b.jackpot - a.jackpot);
+    if (pastEvents.length === 0) return '';
+
+    const allValues = [currentPool, ...pastEvents.map(e => e.jackpot)];
+    const maxVal = Math.max(...allValues, 1);
+
+    let html = '<div class="hb-card">';
+    html += '<div class="hb-card-title">Jackpot Comparison &mdash; Current vs Previous Events</div>';
+
+    // Current event bar
+    const currentPct = (currentPool / maxVal * 100).toFixed(1);
+    html += '<div class="hb-compare-row hb-compare-current">';
+    html += `<div class="hb-compare-label">${escapeHtml(currentEvent)} <span class="hb-compare-badge">LIVE</span></div>`;
+    html += `<div class="hb-compare-bar-track"><div class="hb-compare-bar" style="width:${currentPct}%;background:linear-gradient(90deg,#635BFF,#00C853);"></div></div>`;
+    html += `<div class="hb-compare-val">$${currentPool.toLocaleString()}</div>`;
+    html += '</div>';
+
+    // Past event bars
+    pastEvents.slice(0, 6).forEach(evt => {
+        const pct = (evt.jackpot / maxVal * 100).toFixed(1);
+        const diff = currentPool - evt.jackpot;
+        const diffPct = evt.jackpot > 0 ? ((diff / evt.jackpot) * 100).toFixed(0) : '—';
+        const diffClass = diff > 0 ? 'hb-val-green' : (diff < 0 ? 'hb-val-red' : '');
+        const diffSign = diff > 0 ? '+' : '';
+        const dateStr = evt.date ? new Date(evt.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
+
+        html += '<div class="hb-compare-row">';
+        html += `<div class="hb-compare-label">${escapeHtml(evt.title)} <span class="hb-compare-date">${dateStr}</span></div>`;
+        html += `<div class="hb-compare-bar-track"><div class="hb-compare-bar" style="width:${pct}%;background:var(--border,#E3E8EE);"></div></div>`;
+        html += `<div class="hb-compare-val">$${evt.jackpot.toLocaleString()} <span class="${diffClass}">(${diffSign}${diffPct}%)</span></div>`;
+        html += '</div>';
+    });
+
+    html += '</div>';
+    return html;
 }
 
 /**
