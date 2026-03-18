@@ -18429,6 +18429,99 @@
             font-variant-numeric: tabular-nums;
         }
 
+        /* ── Live Orders Feed ── */
+        .hb-orders-card {
+            margin-bottom: 20px;
+        }
+        .hb-orders-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .hb-orders-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .hb-orders-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-alt, #F6F9FC);
+            color: var(--text-secondary, #425466);
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: var(--radius-pill, 24px);
+            padding: 2px 10px;
+        }
+        .hb-orders-updated {
+            font-size: 11px;
+            color: var(--text-muted, #6B7C93);
+        }
+        .hb-orders-scroll {
+            max-height: 420px;
+            overflow-y: auto;
+        }
+        .hb-order-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border, #E3E8EE);
+            gap: 12px;
+        }
+        .hb-order-item:last-child { border-bottom: none; }
+        .hb-order-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .hb-order-number {
+            font-weight: 600;
+            color: var(--text-primary, #0A2540);
+            font-size: 0.85rem;
+        }
+        .hb-order-customer {
+            font-size: 0.75rem;
+            color: var(--text-muted, #6B7C93);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hb-order-amount {
+            font-weight: 700;
+            color: var(--text-primary, #0A2540);
+            font-size: 0.85rem;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .hb-order-time {
+            font-size: 0.7rem;
+            color: var(--text-muted, #6B7C93);
+            white-space: nowrap;
+        }
+        .hb-order-badge {
+            display: inline-block;
+            padding: 0.2rem 0.65rem;
+            border-radius: var(--radius-pill, 24px);
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+        .hb-badge-paid {
+            background: rgba(48, 177, 48, 0.1);
+            color: #30B130;
+        }
+        .hb-badge-pending {
+            background: rgba(244, 123, 58, 0.1);
+            color: #F47B3A;
+        }
+        .hb-badge-refunded {
+            background: rgba(233, 30, 140, 0.1);
+            color: #E91E8C;
+        }
+
         /* ── Responsive ── */
         @media (max-width: 768px) {
             .hb-heatmap { grid-template-columns: repeat(6, 1fr); }
