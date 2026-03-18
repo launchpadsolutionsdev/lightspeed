@@ -15,3 +15,4 @@ build/
 tmp/
 temp/
 .cache/
+backend/data/velocity-snapshots.json

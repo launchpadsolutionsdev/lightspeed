@@ -27,8 +27,51 @@ let _feedCacheTime = 0;
 
 // Sales velocity snapshots — stores { timestamp, totalSales, totalTickets } samples
 // Used for sparkline and surge indicator on the frontend
-const VELOCITY_MAX_SAMPLES = 750; // ~25 hours at 2-min intervals (supports 1d view)
+const VELOCITY_MAX_SAMPLES = 5040; // ~7 days at 2-min intervals
+const VELOCITY_SNAPSHOTS_PATH = path.join(__dirname, '../../data/velocity-snapshots.json');
+const VELOCITY_SAVE_INTERVAL = 60 * 1000;     // Write to disk at most once per 60s
+const VELOCITY_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // Prune snapshots older than 7 days
 let _salesSnapshots = [];
+let _snapshotsLoaded = false;
+let _lastSaveTime = 0;
+
+/**
+ * Load velocity snapshots from disk on first access.
+ * Prunes entries older than 7 days.
+ */
+function loadSnapshots() {
+    if (_snapshotsLoaded) return;
+    _snapshotsLoaded = true;
+    try {
+        if (fs.existsSync(VELOCITY_SNAPSHOTS_PATH)) {
+            const raw = fs.readFileSync(VELOCITY_SNAPSHOTS_PATH, 'utf8');
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                const cutoff = Date.now() - VELOCITY_MAX_AGE;
+                _salesSnapshots = parsed.filter(s => s.ts >= cutoff);
+                console.log(`Loaded ${_salesSnapshots.length} velocity snapshots from disk`);
+            }
+        }
+    } catch (err) {
+        console.warn('Could not load velocity snapshots:', err.message);
+        _salesSnapshots = [];
+    }
+}
+
+/**
+ * Persist snapshots to disk (throttled, async, fire-and-forget).
+ */
+function saveSnapshotsIfNeeded() {
+    const now = Date.now();
+    if (now - _lastSaveTime < VELOCITY_SAVE_INTERVAL) return;
+    _lastSaveTime = now;
+
+    const cutoff = now - VELOCITY_MAX_AGE;
+    const toSave = _salesSnapshots.filter(s => s.ts >= cutoff);
+
+    fs.promises.writeFile(VELOCITY_SNAPSHOTS_PATH, JSON.stringify(toSave), 'utf8')
+        .catch(err => console.warn('Could not save velocity snapshots:', err.message));
+}
 
 const xmlParser = new XMLParser({
     ignoreAttributes: false,
@@ -68,6 +111,7 @@ async function fetchXmlFeed(url) {
  * Fetch all three feeds in parallel, parse, and cache.
  */
 async function fetchFeed() {
+    loadSnapshots();
     const now = Date.now();
     if (_feedCache && (now - _feedCacheTime) < FEED_CACHE_TTL) {
         // Still record a time-stamped snapshot and recompute velocity on cache hits
@@ -80,6 +124,7 @@ async function fetchFeed() {
             if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
                 _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
             }
+            saveSnapshotsIfNeeded();
             _feedCache.salesVelocity = buildVelocityData(_salesSnapshots);
         }
         return _feedCache;
@@ -125,6 +170,7 @@ async function fetchFeed() {
             if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
                 _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
             }
+            saveSnapshotsIfNeeded();
         }
         data.salesVelocity = buildVelocityData(_salesSnapshots);
 
