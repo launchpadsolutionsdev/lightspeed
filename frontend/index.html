@@ -1045,7 +1045,9 @@
             margin-bottom: 20px;
         }
         .raffle-hero {
-            background: linear-gradient(135deg, #0A2540 0%, #1a3a5c 50%, #0A2540 100%);
+            background: linear-gradient(90deg, #0F3460 0%, #5B1A6E 30%, #E91E8C 55%, #F47B3A 80%, #F5C623 100%);
+            background-size: 150% 100%;
+            background-position: 0% 50%;
             border-radius: var(--radius-lg, 12px);
             padding: 36px 24px;
             text-align: center;
@@ -1053,38 +1055,42 @@
             color: #fff;
             position: relative;
             overflow: hidden;
+            transition: background-position 0.4s ease;
+        }
+        .raffle-hero:hover {
+            background-position: 50% 50%;
         }
         .raffle-hero::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(135deg, rgba(233,30,140,0.12), rgba(244,123,58,0.12), rgba(245,198,35,0.08));
+            background: none;
             pointer-events: none;
         }
         .raffle-hero-label {
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 2px;
-            opacity: 0.65;
+            opacity: 0.85;
             margin-bottom: 10px;
             position: relative;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         .raffle-hero-prize {
             font-size: 3rem;
             font-weight: 800;
             letter-spacing: -1px;
             line-height: 1.1;
-            background: linear-gradient(135deg, #E91E8C, #F47B3A, #F5C623);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #FFFFFF;
+            text-shadow: 0 3px 6px rgba(0, 0, 0, 0.35);
             position: relative;
         }
         .raffle-hero-sub {
             font-size: 14px;
-            opacity: 0.55;
+            opacity: 0.8;
             margin-top: 10px;
             position: relative;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
 
         /* KPI Grid */
