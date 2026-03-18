@@ -6,8 +6,8 @@
 .compliance-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    max-height: 100vh;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
     background: var(--bg-primary, #f8f9fa);
 }

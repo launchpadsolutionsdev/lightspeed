@@ -18,7 +18,7 @@
     max-width: 1400px;
     margin: 0 auto;
     background: #ffffff;
-    min-height: 100vh;
+    overflow-y: auto;
 }
 
 /* ==================== HEADER ==================== */

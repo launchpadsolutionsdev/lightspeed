@@ -2,9 +2,12 @@
 /* Uses Lightspeed design system tokens for consistent branding       */
 
 .sd-dashboard {
-    padding: 0;
+    padding: 24px;
     width: 100%;
     font-family: var(--font-family, 'Inter', 'Helvetica Neue', Arial, sans-serif);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 /* Header */

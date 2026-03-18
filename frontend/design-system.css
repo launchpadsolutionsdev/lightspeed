@@ -446,7 +446,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* --- Knowledge Base Page --- */
-.kb-page { }
+.kb-page { padding: 24px; flex: 1; min-height: 0; overflow-y: auto; }
 .kb-page-header { margin-bottom: 20px; }
 .kb-page-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .kb-page-title { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0; }
