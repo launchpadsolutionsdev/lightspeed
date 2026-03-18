@@ -26,7 +26,7 @@ let _feedCacheTime = 0;
 
 // Sales velocity snapshots — stores { timestamp, totalSales, totalTickets } samples
 // Used for sparkline and surge indicator on the frontend
-const VELOCITY_MAX_SAMPLES = 180; // 6 hours at 2-min intervals
+const VELOCITY_MAX_SAMPLES = 750; // ~25 hours at 2-min intervals (supports 1d view)
 let _salesSnapshots = [];
 
 const xmlParser = new XMLParser({
@@ -337,44 +337,80 @@ function extractWinnersHistory(winnersContent) {
 }
 
 /**
- * Build velocity data from sales snapshots for the frontend sparkline and surge indicator.
+ * Time windows for multi-window velocity (stock ticker style).
+ * Each window defines: label, duration in ms, and the "prior" comparison period.
+ */
+const VELOCITY_WINDOWS = [
+    { key: '1m',  label: '1 min',   ms: 1 * 60 * 1000 },
+    { key: '5m',  label: '5 min',   ms: 5 * 60 * 1000 },
+    { key: '10m', label: '10 min',  ms: 10 * 60 * 1000 },
+    { key: '30m', label: '30 min',  ms: 30 * 60 * 1000 },
+    { key: '1h',  label: '1 hour',  ms: 60 * 60 * 1000 },
+    { key: '3h',  label: '3 hours', ms: 3 * 60 * 60 * 1000 },
+    { key: '1d',  label: '1 day',   ms: 24 * 60 * 60 * 1000 }
+];
+
+/**
+ * Build velocity data from sales snapshots for the frontend stock-ticker card.
+ * Returns all samples plus per-window velocity stats.
  */
 function buildVelocityData(snapshots) {
-    if (snapshots.length < 2) return { samples: [], surge: null };
+    if (snapshots.length < 2) return { samples: [], surge: null, windows: {} };
 
-    // Build time-bucketed samples (one per snapshot)
     const samples = snapshots.map(s => ({
         ts: s.ts,
         sales: s.totalSales,
         tickets: s.totalTickets
     }));
 
-    // Surge: compare last hour vs the hour before that
     const now = snapshots[snapshots.length - 1].ts;
-    const oneHourAgo = now - 60 * 60 * 1000;
-    const twoHoursAgo = now - 2 * 60 * 60 * 1000;
-
     const currentSnap = snapshots[snapshots.length - 1];
-    const hourAgoSnap = snapshots.find(s => s.ts >= oneHourAgo) || snapshots[0];
-    const twoHourSnap = snapshots.find(s => s.ts >= twoHoursAgo) || snapshots[0];
 
-    const recentDelta = currentSnap.totalSales - hourAgoSnap.totalSales;
-    const priorDelta = hourAgoSnap.totalSales - twoHourSnap.totalSales;
+    // Build per-window stats
+    const windows = {};
+    for (const win of VELOCITY_WINDOWS) {
+        const cutoff = now - win.ms;
+        const priorCutoff = now - win.ms * 2;
 
-    let surgePercent = null;
-    if (priorDelta > 0) {
-        surgePercent = Math.round(((recentDelta - priorDelta) / priorDelta) * 100);
+        // Find the earliest snapshot within this window
+        const windowStart = snapshots.find(s => s.ts >= cutoff) || snapshots[0];
+        // Find the earliest snapshot within the prior comparison window
+        const priorStart = snapshots.find(s => s.ts >= priorCutoff) || snapshots[0];
+
+        const salesDelta = currentSnap.totalSales - windowStart.totalSales;
+        const ticketsDelta = currentSnap.totalTickets - windowStart.totalTickets;
+        const priorDelta = windowStart.totalSales - priorStart.totalSales;
+
+        let percentChange = null;
+        if (priorDelta > 0) {
+            percentChange = Math.round(((salesDelta - priorDelta) / priorDelta) * 100);
+        }
+
+        // Filter samples within this window for the sparkline
+        const windowSamples = samples.filter(s => s.ts >= cutoff);
+
+        windows[win.key] = {
+            key: win.key,
+            label: win.label,
+            durationMs: win.ms,
+            salesDelta,
+            ticketsDelta,
+            percentChange,
+            priorDelta,
+            samples: windowSamples
+        };
     }
 
-    return {
-        samples,
-        surge: {
-            recentSales: recentDelta,
-            priorSales: priorDelta,
-            percent: surgePercent,
-            periodMinutes: 60
-        }
-    };
+    // Default surge uses 1h window for backwards compat
+    const hourWindow = windows['1h'];
+    const surge = hourWindow ? {
+        recentSales: hourWindow.salesDelta,
+        priorSales: hourWindow.priorDelta,
+        percent: hourWindow.percentChange,
+        periodMinutes: 60
+    } : null;
+
+    return { samples, surge, windows };
 }
 
 // GET /api/feed-dashboard/data
