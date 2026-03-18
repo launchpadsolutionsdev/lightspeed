@@ -17185,7 +17185,7 @@ function renderHeartbeatPage(data) {
     // 2 — Surge alerts banner
     html += renderHbSurgeAlerts(v);
 
-    // 3 — Sales velocity ticker (reuse existing shared renderers)
+    // 3 — Sales velocity ticker
     html += renderHbVelocityTicker(v);
 
     // 4 — Goal tracker
@@ -17193,7 +17193,7 @@ function renderHeartbeatPage(data) {
 
     // 5 — Payment donut + Sales waterfall (side by side)
     if (sb) {
-        html += '<div class="hb-two-col">';
+        html += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;">';
         html += renderHbPaymentDonut(sb);
         html += renderHbWaterfall(sb);
         html += '</div>';
@@ -17206,7 +17206,7 @@ function renderHeartbeatPage(data) {
 
     // 7 — Hourly heatmap + Peak hours (side by side)
     if (v.samples && v.samples.length >= 4) {
-        html += '<div class="hb-two-col">';
+        html += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;">';
         html += renderHbHeatmap(v.samples);
         html += renderHbPeakHours(v.samples);
         html += '</div>';
@@ -17258,13 +17258,12 @@ function updateHeartbeatQuick(data) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Vital Signs Row
+// 1. Vital Signs Row (uses raffle-kpi-grid / raffle-kpi-card)
 // ---------------------------------------------------------------------------
 
 function hbComputeTicketsPerMin(velocity) {
     const w = velocity.windows;
     if (!w) return null;
-    // Prefer 5m window for a stable-but-responsive rate
     const win = w['5m'] || w['10m'] || w['1h'];
     if (!win || !win.durationMs) return null;
     const minutes = win.durationMs / 60000;
@@ -17278,44 +17277,34 @@ function renderHbVitals(data) {
     const prize = data.prize || 0;
     const orgKeeps = pool - prize;
 
-    // Determine surge class for the rate card
-    const w1h = v.windows?.['1h'];
-    const pct = w1h?.percentChange;
-    let ratePulseClass = '';
-    if (pct !== null && pct !== undefined) {
-        if (pct > 50) ratePulseClass = ' hb-vital-surge';
-        else if (pct < -30) ratePulseClass = ' hb-vital-slow';
-    }
-
-    let html = '<div class="hb-vitals">';
+    let html = '<div class="raffle-kpi-grid">';
 
     // Tickets / min
-    html += `<div class="hb-vital-card${ratePulseClass}">
-        <div class="hb-vital-icon"><span class="hb-heartbeat-icon">&#128147;</span></div>
-        <div class="hb-vital-label">Tickets / Min</div>
-        <div class="hb-vital-value" id="hbVitalRate">${rate !== null ? rate.toFixed(1) : '--'}</div>
-        <div class="hb-vital-sub">5-min avg rate</div>
+    html += `<div class="raffle-kpi-card">
+        <div class="raffle-kpi-label">Tickets / Min</div>
+        <div class="raffle-kpi-value" id="hbVitalRate">${rate !== null ? rate.toFixed(1) : '--'}</div>
+        <div class="raffle-kpi-sub">5-min avg rate</div>
     </div>`;
 
     // Total revenue
-    html += `<div class="hb-vital-card">
-        <div class="hb-vital-label">Gross Revenue</div>
-        <div class="hb-vital-value">$${pool.toLocaleString()}</div>
-        <div class="hb-vital-sub">Total jackpot pool</div>
+    html += `<div class="raffle-kpi-card">
+        <div class="raffle-kpi-label">Gross Revenue</div>
+        <div class="raffle-kpi-value">$${pool.toLocaleString()}</div>
+        <div class="raffle-kpi-sub">Total jackpot pool</div>
     </div>`;
 
     // Winner takes
-    html += `<div class="hb-vital-card">
-        <div class="hb-vital-label">Winner Takes</div>
-        <div class="hb-vital-value hb-val-green">$${prize.toLocaleString()}</div>
-        <div class="hb-vital-sub">50% of pool</div>
+    html += `<div class="raffle-kpi-card">
+        <div class="raffle-kpi-label">Winner Takes</div>
+        <div class="raffle-kpi-value" style="color:#30B130;">$${prize.toLocaleString()}</div>
+        <div class="raffle-kpi-sub">50% of pool</div>
     </div>`;
 
     // Organization keeps
-    html += `<div class="hb-vital-card">
-        <div class="hb-vital-label">Organization Keeps</div>
-        <div class="hb-vital-value">$${orgKeeps.toLocaleString()}</div>
-        <div class="hb-vital-sub">50% net revenue</div>
+    html += `<div class="raffle-kpi-card">
+        <div class="raffle-kpi-label">Organization Keeps</div>
+        <div class="raffle-kpi-value">$${orgKeeps.toLocaleString()}</div>
+        <div class="raffle-kpi-sub">50% net revenue</div>
     </div>`;
 
     html += '</div>';
@@ -17335,8 +17324,6 @@ function renderHbSurgeAlertsInner(velocity) {
     if (!windows) return '';
 
     const alerts = [];
-
-    // Check each window for significant deviations
     const checks = [
         { key: '5m', label: '5 minutes' },
         { key: '10m', label: '10 minutes' },
@@ -17347,7 +17334,6 @@ function renderHbSurgeAlertsInner(velocity) {
     for (const c of checks) {
         const w = windows[c.key];
         if (!w || w.percentChange === null) continue;
-
         if (w.percentChange > 100) {
             alerts.push({ type: 'surge', pct: w.percentChange, label: c.label, delta: w.salesDelta });
         } else if (w.percentChange > 50) {
@@ -17358,25 +17344,20 @@ function renderHbSurgeAlertsInner(velocity) {
     }
 
     if (alerts.length === 0) return '';
-
-    // Show the most significant alert
     alerts.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
     const top = alerts[0];
 
     if (top.type === 'surge') {
         return `<div class="hb-alert hb-alert-surge">
-            <span class="hb-alert-icon">&#9650;</span>
-            <span class="hb-alert-text"><strong>Sales Surging!</strong> +${top.pct}% vs prior ${top.label} &middot; +$${top.delta.toLocaleString()} in revenue</span>
+            <strong>Sales Surging!</strong> +${top.pct}% vs prior ${top.label} &middot; +$${top.delta.toLocaleString()} in revenue
         </div>`;
     } else if (top.type === 'hot') {
         return `<div class="hb-alert hb-alert-hot">
-            <span class="hb-alert-icon">&#128293;</span>
-            <span class="hb-alert-text"><strong>Above Average</strong> +${top.pct}% vs prior ${top.label} &middot; +$${top.delta.toLocaleString()}</span>
+            <strong>Above Average</strong> +${top.pct}% vs prior ${top.label} &middot; +$${top.delta.toLocaleString()}
         </div>`;
     } else {
         return `<div class="hb-alert hb-alert-cold">
-            <span class="hb-alert-icon">&#9660;</span>
-            <span class="hb-alert-text"><strong>Sales Slowing</strong> ${top.pct}% vs prior ${top.label}</span>
+            <strong>Sales Slowing</strong> ${top.pct}% vs prior ${top.label}
         </div>`;
     }
 }
@@ -17436,7 +17417,7 @@ function selectHeartbeatWindow(key) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Goal Tracker with ETA Projection
+// 4. Goal Tracker with ETA Projection (uses raffle-card / raffle-milestone styles)
 // ---------------------------------------------------------------------------
 
 function renderHbGoalTracker(data) {
@@ -17444,32 +17425,35 @@ function renderHbGoalTracker(data) {
     const goal = _heartbeatGoal;
     const v = data.salesVelocity || {};
 
-    let html = '<div class="hb-card">';
-    html += '<div class="hb-card-header">';
-    html += '<span class="hb-card-title">Goal Tracker</span>';
+    let html = '<div class="raffle-card" style="margin-top:0;margin-bottom:20px;">';
+    html += '<div class="raffle-card-header">';
+    html += '<div class="raffle-card-title">Goal Tracker</div>';
     html += '<div class="hb-goal-input-row">';
-    html += `<span class="hb-goal-label">Target:</span>`;
+    html += `<span style="font-size:12px;font-weight:600;color:var(--text-secondary,#425466);white-space:nowrap;">Target:</span>`;
     html += `<input type="text" class="hb-goal-input" id="hbGoalInput" value="${goal > 0 ? '$' + goal.toLocaleString() : ''}" placeholder="e.g. $500,000" onkeydown="if(event.key==='Enter')hbSetGoal()">`;
     html += `<button class="hb-goal-set-btn" onclick="hbSetGoal()">Set</button>`;
     html += '</div></div>';
 
     if (goal > 0) {
         const pct = Math.min((pool / goal) * 100, 100);
-        const remaining = Math.max(goal - pool, 0);
         const reached = pool >= goal;
 
-        html += '<div class="hb-goal-bar-wrap">';
-        html += `<div class="hb-goal-bar-track"><div class="hb-goal-bar-fill${reached ? ' hb-goal-reached' : ''}" style="width:${pct.toFixed(1)}%"></div></div>`;
-        html += '<div class="hb-goal-bar-labels">';
-        html += `<span>$${pool.toLocaleString()}</span>`;
-        html += `<span class="hb-goal-pct">${pct.toFixed(1)}%</span>`;
-        html += `<span>$${goal.toLocaleString()}</span>`;
+        html += '<div class="raffle-milestone">';
+        html += '<div class="raffle-milestone-header">';
+        html += `<span class="raffle-milestone-label">$${pool.toLocaleString()} raised</span>`;
+        html += `<span class="raffle-milestone-pct">${pct.toFixed(1)}%</span>`;
+        html += '</div>';
+        html += '<div class="raffle-milestone-track" style="height:14px;border-radius:7px;">';
+        html += `<div class="raffle-milestone-fill" style="width:${pct.toFixed(1)}%;border-radius:7px;${reached ? 'background:linear-gradient(90deg,#30B130,#00E676);' : ''}"></div>`;
+        html += '</div>';
+        html += '<div class="raffle-milestone-markers">';
+        html += '<span class="raffle-milestone-mark">$0</span>';
+        html += `<span class="raffle-milestone-mark">$${goal.toLocaleString()}</span>`;
         html += '</div></div>';
 
-        // ETA projection
-        html += `<div class="hb-goal-eta" id="hbGoalEta">${hbComputeEtaText(pool, v)}</div>`;
+        html += `<div id="hbGoalEta" style="font-size:13px;color:var(--text-secondary,#425466);margin-top:10px;line-height:1.5;">${hbComputeEtaText(pool, v)}</div>`;
     } else {
-        html += '<div class="hb-goal-empty">Set a jackpot target above to see progress and projected ETA.</div>';
+        html += '<div style="font-size:13px;color:var(--text-muted,#6B7C93);text-align:center;padding:16px 0;">Set a jackpot target above to see progress and projected ETA.</div>';
     }
 
     html += '</div>';
@@ -17531,100 +17515,84 @@ function hbSetGoal() {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Payment Method Donut Chart
+// 5. Payment Method Donut Chart (uses raffle-metric-card)
 // ---------------------------------------------------------------------------
 
 function renderHbPaymentDonut(sb) {
     const total = sb.totalSales || 1;
     const creditPct = (sb.creditSales / total) * 100;
     const debitPct = (sb.debitSales / total) * 100;
-    const cashPct = (sb.cashSales / total) * 100;
-
-    // Conic gradient angles
     const creditEnd = creditPct;
     const debitEnd = creditEnd + debitPct;
 
-    let html = '<div class="hb-card hb-card-half">';
-    html += '<div class="hb-card-title">Payment Methods</div>';
+    let html = '<div class="raffle-metric-card">';
+    html += '<div class="raffle-metric-title">Payment Methods</div>';
     html += '<div class="hb-donut-wrap">';
-    html += `<div class="hb-donut" style="background:conic-gradient(#635BFF 0% ${creditEnd.toFixed(1)}%, #00C853 ${creditEnd.toFixed(1)}% ${debitEnd.toFixed(1)}%, #FF9800 ${debitEnd.toFixed(1)}% 100%);"></div>`;
+    html += `<div class="hb-donut" style="background:conic-gradient(#635BFF 0% ${creditEnd.toFixed(1)}%, #F47B3A ${creditEnd.toFixed(1)}% ${debitEnd.toFixed(1)}%, #30B130 ${debitEnd.toFixed(1)}% 100%);"></div>`;
     html += `<div class="hb-donut-center">$${total.toLocaleString()}</div>`;
     html += '</div>';
 
-    // Legend
-    html += '<div class="hb-donut-legend">';
-    html += `<div class="hb-legend-row"><span class="hb-legend-dot" style="background:#635BFF"></span> Credit <strong>${sb.creditPercent}%</strong> &middot; $${sb.creditSales.toLocaleString()}</div>`;
-    html += `<div class="hb-legend-row"><span class="hb-legend-dot" style="background:#00C853"></span> Debit <strong>${sb.debitPercent}%</strong> &middot; $${sb.debitSales.toLocaleString()}</div>`;
-    html += `<div class="hb-legend-row"><span class="hb-legend-dot" style="background:#FF9800"></span> Cash <strong>${sb.cashPercent}%</strong> &middot; $${sb.cashSales.toLocaleString()}</div>`;
-    html += '</div></div>';
+    html += '<div class="raffle-payment-bars" style="margin-top:12px;">';
+    html += `<div class="raffle-pay-row"><span class="raffle-pay-label">Credit</span><div class="raffle-pay-bar-track"><div class="raffle-pay-bar-fill raffle-pay-bar-credit" style="width:${sb.creditPercent}%"></div></div><span class="raffle-pay-pct">${sb.creditPercent}%</span></div>`;
+    html += `<div class="raffle-pay-row"><span class="raffle-pay-label">Debit</span><div class="raffle-pay-bar-track"><div class="raffle-pay-bar-fill raffle-pay-bar-debit" style="width:${sb.debitPercent}%"></div></div><span class="raffle-pay-pct">${sb.debitPercent}%</span></div>`;
+    html += `<div class="raffle-pay-row"><span class="raffle-pay-label">Cash</span><div class="raffle-pay-bar-track"><div class="raffle-pay-bar-fill raffle-pay-bar-cash" style="width:${sb.cashPercent}%"></div></div><span class="raffle-pay-pct">${sb.cashPercent}%</span></div>`;
+    html += '</div>';
+    html += `<div class="raffle-metric-sub" style="margin-top:10px;">$${sb.creditSales.toLocaleString()} credit &middot; $${sb.debitSales.toLocaleString()} debit &middot; $${sb.cashSales.toLocaleString()} cash</div>`;
+    html += '</div>';
     return html;
 }
 
 // ---------------------------------------------------------------------------
-// 6. Sales Composition Waterfall
+// 6. Sales Composition Waterfall (uses raffle-metric-card + raffle-tier styles)
 // ---------------------------------------------------------------------------
 
 function renderHbWaterfall(sb) {
     const total = sb.totalSales || 1;
     const segments = [
         { label: 'Credit', value: sb.creditSales, color: '#635BFF' },
-        { label: 'Debit', value: sb.debitSales, color: '#00C853' },
-        { label: 'Cash', value: sb.cashSales, color: '#FF9800' }
+        { label: 'Debit', value: sb.debitSales, color: '#F47B3A' },
+        { label: 'Cash', value: sb.cashSales, color: '#30B130' }
     ];
 
-    let html = '<div class="hb-card hb-card-half">';
-    html += '<div class="hb-card-title">Revenue Breakdown</div>';
+    let html = '<div class="raffle-metric-card">';
+    html += '<div class="raffle-metric-title">Revenue Breakdown</div>';
 
     // Total bar
-    html += '<div class="hb-wf-row">';
-    html += '<span class="hb-wf-label">Total</span>';
-    html += '<div class="hb-wf-bar-track"><div class="hb-wf-bar" style="width:100%;background:var(--text-primary,#0A2540);"></div></div>';
-    html += `<span class="hb-wf-val">$${total.toLocaleString()}</span>`;
-    html += '</div>';
+    html += '<div class="raffle-tier-list">';
+    html += `<div class="raffle-tier-row"><span class="raffle-tier-price">Total</span><div class="raffle-tier-bar-track" style="height:8px;"><div class="raffle-tier-bar-fill" style="width:100%;background:var(--text-primary,#0A2540);border-radius:3px;"></div></div><span class="raffle-tier-sales">$${total.toLocaleString()}</span></div>`;
 
-    // Segment bars (proportional to total)
     let cumOffset = 0;
     segments.forEach(seg => {
         const pct = (seg.value / total) * 100;
-        html += '<div class="hb-wf-row">';
-        html += `<span class="hb-wf-label">${seg.label}</span>`;
-        html += `<div class="hb-wf-bar-track"><div class="hb-wf-bar" style="width:${pct.toFixed(1)}%;margin-left:${cumOffset.toFixed(1)}%;background:${seg.color};"></div></div>`;
-        html += `<span class="hb-wf-val">$${seg.value.toLocaleString()}</span>`;
-        html += '</div>';
+        html += `<div class="raffle-tier-row"><span class="raffle-tier-price">${seg.label}</span><div class="raffle-tier-bar-track" style="height:8px;"><div style="height:100%;width:${pct.toFixed(1)}%;margin-left:${cumOffset.toFixed(1)}%;background:${seg.color};border-radius:3px;"></div></div><span class="raffle-tier-sales">$${seg.value.toLocaleString()}</span></div>`;
         cumOffset += pct;
     });
 
-    html += '</div>';
+    html += '</div></div>';
     return html;
 }
 
 // ---------------------------------------------------------------------------
-// 7. Package Tier Performance Dashboard
+// 7. Package Tier Performance Dashboard (uses raffle-metric-card + raffle-tier)
 // ---------------------------------------------------------------------------
 
 function renderHbTierPerformance(sb) {
     const tiers = sb.tiers;
     const maxSales = Math.max(...tiers.map(t => t.sales), 1);
-    const maxTickets = Math.max(...tiers.map(t => t.tickets), 1);
 
-    let html = '<div class="hb-card">';
-    html += '<div class="hb-card-title">Package Tier Performance</div>';
-    html += '<div class="hb-tier-grid">';
+    let html = '<div class="raffle-metric-card" style="margin-bottom:20px;">';
+    html += '<div class="raffle-metric-title">Package Breakdown</div>';
+    html += '<div class="raffle-tier-list">';
 
     tiers.forEach(tier => {
-        const salesPct = (tier.sales / maxSales * 100).toFixed(0);
-        const ticketsPct = (tier.tickets / maxTickets * 100).toFixed(0);
+        const pct = ((tier.sales / maxSales) * 100).toFixed(0);
         const revenueShare = ((tier.sales / sb.totalSales) * 100).toFixed(1);
-
-        html += '<div class="hb-tier-row">';
-        html += `<div class="hb-tier-price">$${tier.price}</div>`;
-        html += '<div class="hb-tier-details">';
-        html += `<div class="hb-tier-bar-group">`;
-        html += `<div class="hb-tier-bar-row"><span class="hb-tier-bar-label">Revenue</span><div class="hb-tier-bar-track"><div class="hb-tier-bar-fill" style="width:${salesPct}%;background:#635BFF;"></div></div><span class="hb-tier-bar-val">$${tier.sales.toLocaleString()}</span></div>`;
-        html += `<div class="hb-tier-bar-row"><span class="hb-tier-bar-label">Tickets</span><div class="hb-tier-bar-track"><div class="hb-tier-bar-fill" style="width:${ticketsPct}%;background:#00C853;"></div></div><span class="hb-tier-bar-val">${tier.tickets.toLocaleString()}</span></div>`;
-        html += '</div>';
-        html += `<div class="hb-tier-meta">${tier.numbersPerTicket} numbers/ticket &middot; ${revenueShare}% of total revenue</div>`;
-        html += '</div></div>';
+        html += `<div class="raffle-tier-row">
+            <span class="raffle-tier-price">$${tier.price}</span>
+            <div class="raffle-tier-bar-track"><div class="raffle-tier-bar-fill" style="width:${pct}%"></div></div>
+            <span class="raffle-tier-sales">$${tier.sales.toLocaleString()}</span>
+        </div>`;
+        html += `<div style="padding:0 10px 4px;"><span class="raffle-tier-detail">${tier.tickets.toLocaleString()} tickets &middot; ${tier.numbersPerTicket} numbers each &middot; ${revenueShare}% of revenue</span></div>`;
     });
 
     html += '</div></div>';
@@ -17663,13 +17631,13 @@ function renderHbHeatmap(samples) {
     const hourly = hbComputeHourlySales(samples);
     const maxDelta = Math.max(...hourly.map(h => h.delta), 1);
 
-    let html = '<div class="hb-card hb-card-half">';
-    html += '<div class="hb-card-title">Hourly Sales Heatmap</div>';
+    let html = '<div class="raffle-metric-card">';
+    html += '<div class="raffle-metric-title">Hourly Sales Heatmap</div>';
     html += '<div class="hb-heatmap">';
 
     hourly.forEach(h => {
         const intensity = h.delta / maxDelta;
-        const bg = h.count === 0 ? 'var(--bg-hover,#F6F8FA)' : hbHeatColor(intensity);
+        const bg = h.count === 0 ? 'var(--bg-alt,#F6F9FC)' : hbHeatColor(intensity);
         const label = h.hour === 0 ? '12a' : h.hour < 12 ? `${h.hour}a` : h.hour === 12 ? '12p' : `${h.hour - 12}p`;
         const title = `${label}: +$${h.delta.toLocaleString()} (${h.count} samples)`;
         html += `<div class="hb-heat-cell" style="background:${bg};" title="${title}">`;
@@ -17717,29 +17685,29 @@ function renderHbPeakHours(samples) {
         return `${start} – ${endStr}`;
     };
 
-    let html = '<div class="hb-card hb-card-half">';
-    html += '<div class="hb-card-title">Peak Hours</div>';
+    let html = '<div class="raffle-metric-card">';
+    html += '<div class="raffle-metric-title">Peak Hours</div>';
 
     if (top3.length === 0) {
-        html += '<div class="hb-goal-empty">Not enough data yet. Check back in a few hours.</div>';
+        html += '<div class="raffle-metric-sub" style="text-align:center;padding:16px 0;">Not enough data yet. Check back in a few hours.</div>';
         html += '</div>';
         return html;
     }
 
     html += '<div class="hb-peak-section">';
-    html += '<div class="hb-peak-label hb-val-green">Hottest</div>';
+    html += '<div class="raffle-kpi-label" style="color:#30B130;margin-bottom:6px;">Hottest</div>';
     top3.forEach((h, i) => {
         html += `<div class="hb-peak-row">
             <span class="hb-peak-rank">#${i + 1}</span>
             <span class="hb-peak-time">${fmtHour(h.hour)}</span>
-            <span class="hb-peak-val hb-val-green">+$${h.delta.toLocaleString()}</span>
+            <span class="hb-peak-val" style="color:#30B130;">+$${h.delta.toLocaleString()}</span>
         </div>`;
     });
     html += '</div>';
 
     if (bottom3.length > 0) {
         html += '<div class="hb-peak-section" style="margin-top:12px;">';
-        html += '<div class="hb-peak-label" style="color:var(--text-muted,#6B7C93);">Slowest</div>';
+        html += '<div class="raffle-kpi-label" style="margin-bottom:6px;">Slowest</div>';
         bottom3.forEach((h, i) => {
             html += `<div class="hb-peak-row">
                 <span class="hb-peak-rank" style="color:var(--text-muted,#6B7C93);">#${active.length - 2 + i}</span>
@@ -17784,14 +17752,14 @@ function renderHbJackpotComparison(data) {
     const allValues = [currentPool, ...pastEvents.map(e => e.jackpot)];
     const maxVal = Math.max(...allValues, 1);
 
-    let html = '<div class="hb-card">';
-    html += '<div class="hb-card-title">Jackpot Comparison &mdash; Current vs Previous Events</div>';
+    let html = '<div class="raffle-card" style="margin-bottom:20px;">';
+    html += '<div class="raffle-card-header"><div class="raffle-card-title">Jackpot Comparison &mdash; Current vs Previous Events</div></div>';
 
     // Current event bar
     const currentPct = (currentPool / maxVal * 100).toFixed(1);
     html += '<div class="hb-compare-row hb-compare-current">';
     html += `<div class="hb-compare-label">${escapeHtml(currentEvent)} <span class="hb-compare-badge">LIVE</span></div>`;
-    html += `<div class="hb-compare-bar-track"><div class="hb-compare-bar" style="width:${currentPct}%;background:linear-gradient(90deg,#635BFF,#00C853);"></div></div>`;
+    html += `<div class="raffle-milestone-track"><div class="raffle-milestone-fill" style="width:${currentPct}%;"></div></div>`;
     html += `<div class="hb-compare-val">$${currentPool.toLocaleString()}</div>`;
     html += '</div>';
 
@@ -17800,14 +17768,14 @@ function renderHbJackpotComparison(data) {
         const pct = (evt.jackpot / maxVal * 100).toFixed(1);
         const diff = currentPool - evt.jackpot;
         const diffPct = evt.jackpot > 0 ? ((diff / evt.jackpot) * 100).toFixed(0) : '—';
-        const diffClass = diff > 0 ? 'hb-val-green' : (diff < 0 ? 'hb-val-red' : '');
+        const diffColor = diff > 0 ? '#30B130' : (diff < 0 ? '#E91E8C' : '');
         const diffSign = diff > 0 ? '+' : '';
         const dateStr = evt.date ? new Date(evt.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
 
         html += '<div class="hb-compare-row">';
         html += `<div class="hb-compare-label">${escapeHtml(evt.title)} <span class="hb-compare-date">${dateStr}</span></div>`;
-        html += `<div class="hb-compare-bar-track"><div class="hb-compare-bar" style="width:${pct}%;background:var(--border,#E3E8EE);"></div></div>`;
-        html += `<div class="hb-compare-val">$${evt.jackpot.toLocaleString()} <span class="${diffClass}">(${diffSign}${diffPct}%)</span></div>`;
+        html += `<div class="raffle-milestone-track"><div style="height:100%;border-radius:5px;width:${pct}%;background:var(--border,#E3E8EE);"></div></div>`;
+        html += `<div class="hb-compare-val">$${evt.jackpot.toLocaleString()} <span style="color:${diffColor};">(${diffSign}${diffPct}%)</span></div>`;
         html += '</div>';
     });
 
