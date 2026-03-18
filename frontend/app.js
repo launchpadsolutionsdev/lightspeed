@@ -16505,35 +16505,40 @@ function renderRaffleDashboard(data) {
 
     html += '</div>';
 
-    // Early Bird Prizes — Drawn (collapsible, show 3)
-    if (data.drawnPrizes && data.drawnPrizes.length > 0) {
-        html += renderCollapsiblePrizeList(
-            data.drawnPrizes,
-            'Early Bird Winners',
-            'drawn',
-            3
-        );
+    // Early Bird Prizes — side-by-side grid
+    const hasDrawn = data.drawnPrizes && data.drawnPrizes.length > 0;
+    const hasUpcoming = data.upcomingPrizes && data.upcomingPrizes.length > 0;
+    if (hasDrawn || hasUpcoming) {
+        html += '<div class="raffle-earlybird-grid">';
+        if (hasDrawn) {
+            html += renderCollapsiblePrizeList(
+                data.drawnPrizes,
+                'Early Bird Winners',
+                'drawn',
+                3
+            );
+        }
+        if (hasUpcoming) {
+            html += renderCollapsiblePrizeList(
+                data.upcomingPrizes,
+                'Upcoming Draws',
+                'upcoming',
+                3
+            );
+        }
+        html += '</div>';
     }
 
-    // Early Bird Prizes — Upcoming (collapsible, show 3)
-    if (data.upcomingPrizes && data.upcomingPrizes.length > 0) {
-        html += renderCollapsiblePrizeList(
-            data.upcomingPrizes,
-            'Upcoming Draws',
-            'upcoming',
-            3
-        );
-    }
-
-    // Sales breakdown metrics (from Feed 3)
+    // Sales breakdown metrics (from Sales feed)
     if (data.salesBreakdown) {
         html += renderSalesMetrics(data.salesBreakdown);
     }
 
-    // Jackpot history (from Feed 2)
+    // Jackpot history (from Winners feed)
     if (data.winnersHistory && data.winnersHistory.grandPrizeWinners.length > 0) {
         html += renderJackpotHistory(data.winnersHistory);
     }
+
 
     // Last updated
     html += `<div class="feed-dash-updated">
