@@ -13,9 +13,12 @@ const router = express.Router();
 const { XMLParser } = require('fast-xml-parser');
 const { authenticate } = require('../middleware/auth');
 
+// Feed URLs — configure via environment variables.
+// The main feed URL is required; winners and sales feeds are optional enhancements.
+// Set DASHBOARD_WINNERS_FEED_URL and DASHBOARD_SALES_FEED_URL to enable those sections.
 const FEED_URL = process.env.DASHBOARD_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/dak';
-const WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/winners';
-const SALES_FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/sales';
+const WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || '';
+const SALES_FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || '';
 const FEED_CACHE_TTL = 2 * 60 * 1000; // 2-minute cache for near-real-time pool updates
 
 let _feedCache = null;
@@ -65,24 +68,32 @@ async function fetchFeed() {
     }
 
     try {
-        // Fetch all three feeds in parallel — secondary feeds are optional
-        const [mainResult, winnersResult, salesResult] = await Promise.allSettled([
-            fetchXmlFeed(FEED_URL),
-            fetchXmlFeed(WINNERS_FEED_URL),
-            fetchXmlFeed(SALES_FEED_URL)
-        ]);
+        // Fetch all configured feeds in parallel — secondary feeds are optional
+        const feedPromises = [fetchXmlFeed(FEED_URL)];
+        const winnersIdx = WINNERS_FEED_URL ? (feedPromises.push(fetchXmlFeed(WINNERS_FEED_URL)), feedPromises.length - 1) : -1;
+        const salesIdx = SALES_FEED_URL ? (feedPromises.push(fetchXmlFeed(SALES_FEED_URL)), feedPromises.length - 1) : -1;
 
-        if (mainResult.status === 'rejected') {
-            throw mainResult.reason;
+        const results = await Promise.allSettled(feedPromises);
+
+        if (results[0].status === 'rejected') {
+            throw results[0].reason;
         }
 
-        const mainContent = mainResult.value.content || mainResult.value;
-        const winnersContent = winnersResult.status === 'fulfilled'
-            ? (winnersResult.value.content || winnersResult.value)
-            : null;
-        const salesContent = salesResult.status === 'fulfilled'
-            ? (salesResult.value.content || salesResult.value)
-            : null;
+        const mainContent = results[0].value.content || results[0].value;
+
+        let winnersContent = null;
+        if (winnersIdx >= 0 && results[winnersIdx].status === 'fulfilled') {
+            winnersContent = results[winnersIdx].value.content || results[winnersIdx].value;
+        } else if (winnersIdx >= 0) {
+            console.warn('Winners feed failed:', results[winnersIdx].reason?.message);
+        }
+
+        let salesContent = null;
+        if (salesIdx >= 0 && results[salesIdx].status === 'fulfilled') {
+            salesContent = results[salesIdx].value.content || results[salesIdx].value;
+        } else if (salesIdx >= 0) {
+            console.warn('Sales feed failed:', results[salesIdx].reason?.message);
+        }
 
         const data = extractRaffleData(mainContent, winnersContent, salesContent);
 
@@ -278,6 +289,17 @@ router.get('/data', authenticate, async (req, res) => {
         console.error('Feed dashboard error:', error.message);
         res.status(502).json({ error: 'Unable to fetch feed data', message: error.message });
     }
+});
+
+// GET /api/feed-dashboard/status — show which feeds are configured
+router.get('/status', authenticate, (req, res) => {
+    res.json({
+        mainFeed: { url: FEED_URL, configured: !!FEED_URL },
+        winnersFeed: { url: WINNERS_FEED_URL || null, configured: !!WINNERS_FEED_URL },
+        salesFeed: { url: SALES_FEED_URL || null, configured: !!SALES_FEED_URL },
+        cacheTtl: FEED_CACHE_TTL,
+        cacheAge: _feedCacheTime ? Date.now() - _feedCacheTime : null
+    });
 });
 
 // POST /api/feed-dashboard/refresh — force cache refresh

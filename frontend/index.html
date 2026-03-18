@@ -1131,6 +1131,22 @@
             font-weight: 700;
         }
 
+        /* Early Bird 2-column grid */
+        .raffle-earlybird-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .raffle-earlybird-grid .raffle-card {
+            margin-top: 0;
+            padding: 16px;
+        }
+        @media (max-width: 768px) {
+            .raffle-earlybird-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* Prize Cards */
         .raffle-card {
             background: var(--bg-card, #ffffff);
@@ -1170,12 +1186,12 @@
         }
         .raffle-prize-row {
             display: grid;
-            grid-template-columns: 28px 1fr 160px 80px;
+            grid-template-columns: 22px 1fr auto auto;
             align-items: center;
-            padding: 10px 12px;
+            padding: 8px 10px;
             border-radius: var(--radius-md, 8px);
-            font-size: 13px;
-            gap: 8px;
+            font-size: 12px;
+            gap: 6px;
             transition: background 0.15s;
         }
         .raffle-prize-hidden {
