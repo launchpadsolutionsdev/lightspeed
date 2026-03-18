@@ -139,7 +139,7 @@
             sdFetch('summary', params),
             sdFetch('sales-over-time', params),
             sdFetch('top-products', params),
-            sdFetch('recent-orders', { limit: 12 }),
+            sdFetch('recent-orders', { limit: 10 }),
         ]);
 
         if (summary.status === 'fulfilled') sdRenderKPIs(summary.value);
