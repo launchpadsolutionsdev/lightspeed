@@ -16619,7 +16619,7 @@ function renderRaffleDashboard(data) {
     }
 
     // Sales velocity sparkline + surge indicator
-    if (data.salesVelocity && data.salesVelocity.samples.length >= 2) {
+    if (data.salesVelocity) {
         html += renderVelocityCard(data.salesVelocity);
     }
 
@@ -16764,7 +16764,7 @@ function renderMilestoneBar(pool) {
  * Render the sales velocity sparkline card with surge indicator.
  */
 function renderVelocityCard(velocity) {
-    const samples = velocity.samples;
+    const samples = velocity.samples || [];
     const surge = velocity.surge;
 
     let html = '<div class="raffle-sparkline-card" style="margin-top:16px;">';
@@ -16779,6 +16779,10 @@ function renderVelocityCard(velocity) {
         const arrow = isFlat ? '&mdash;' : (isUp ? '&#9650;' : '&#9660;');
         const label = isFlat ? 'Steady' : `${arrow} ${Math.abs(surge.percent)}% vs prior hour`;
         html += `<span class="raffle-surge ${cls}">${label}</span>`;
+    } else if (samples.length < 2) {
+        html += '<span class="raffle-surge raffle-surge-flat">Collecting data&hellip;</span>';
+    } else {
+        html += '<span class="raffle-surge raffle-surge-flat">Steady</span>';
     }
 
     html += '</div>';
@@ -16799,12 +16803,10 @@ function renderVelocityCard(velocity) {
             return `${x.toFixed(1)},${y.toFixed(1)}`;
         });
 
-        // Build area fill path
         const firstX = padding.toFixed(1);
         const lastX = (padding + ((samples.length - 1) / (samples.length - 1)) * (w - 2 * padding)).toFixed(1);
 
         html += `<svg class="raffle-sparkline-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">`;
-        // Gradient fill under the line
         html += `<defs><linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#635BFF" stop-opacity="0.2"/>
             <stop offset="100%" stop-color="#635BFF" stop-opacity="0.02"/>
@@ -16812,20 +16814,25 @@ function renderVelocityCard(velocity) {
         html += `<polygon points="${firstX},${h} ${points.join(' ')} ${lastX},${h}" fill="url(#sparkGrad)"/>`;
         html += `<polyline points="${points.join(' ')}" fill="none" stroke="#635BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
         html += '</svg>';
+
+        // Summary stats
+        const firstSample = samples[0];
+        const lastSample = samples[samples.length - 1];
+        const totalGain = lastSample.sales - firstSample.sales;
+        const ticketGain = lastSample.tickets - firstSample.tickets;
+        const elapsedMin = Math.round((lastSample.ts - firstSample.ts) / 60000);
+        const periodLabel = elapsedMin >= 60 ? `${(elapsedMin / 60).toFixed(1)}h` : `${elapsedMin}m`;
+
+        html += '<div class="raffle-sparkline-summary">';
+        html += `<span class="raffle-sparkline-stat"><strong>+$${totalGain.toLocaleString()}</strong> in sales (${periodLabel})</span>`;
+        html += `<span class="raffle-sparkline-stat"><strong>+${ticketGain.toLocaleString()}</strong> tickets</span>`;
+        html += '</div>';
+    } else {
+        // Placeholder when still collecting initial data
+        html += '<div style="height:60px;display:flex;align-items:center;justify-content:center;">';
+        html += '<span class="raffle-metric-sub">Sparkline will appear as sales data accumulates over the next few minutes</span>';
+        html += '</div>';
     }
-
-    // Summary stats
-    const firstSample = samples[0];
-    const lastSample = samples[samples.length - 1];
-    const totalGain = lastSample.sales - firstSample.sales;
-    const ticketGain = lastSample.tickets - firstSample.tickets;
-    const elapsedMin = Math.round((lastSample.ts - firstSample.ts) / 60000);
-    const periodLabel = elapsedMin >= 60 ? `${(elapsedMin / 60).toFixed(1)}h` : `${elapsedMin}m`;
-
-    html += '<div class="raffle-sparkline-summary">';
-    html += `<span class="raffle-sparkline-stat"><strong>+$${totalGain.toLocaleString()}</strong> in sales (${periodLabel})</span>`;
-    html += `<span class="raffle-sparkline-stat"><strong>+${ticketGain.toLocaleString()}</strong> tickets</span>`;
-    html += '</div>';
 
     html += '</div>';
     return html;

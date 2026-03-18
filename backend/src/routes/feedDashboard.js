@@ -69,6 +69,18 @@ async function fetchXmlFeed(url) {
 async function fetchFeed() {
     const now = Date.now();
     if (_feedCache && (now - _feedCacheTime) < FEED_CACHE_TTL) {
+        // Still record a time-stamped snapshot and recompute velocity on cache hits
+        if (_feedCache.salesBreakdown) {
+            _salesSnapshots.push({
+                ts: now,
+                totalSales: _feedCache.salesBreakdown.totalSales,
+                totalTickets: _feedCache.salesBreakdown.totalTickets
+            });
+            if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
+                _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
+            }
+            _feedCache.salesVelocity = buildVelocityData(_salesSnapshots);
+        }
         return _feedCache;
     }
 
@@ -104,21 +116,16 @@ async function fetchFeed() {
 
         // Record sales snapshot for velocity tracking
         if (data.salesBreakdown) {
-            const snap = {
+            _salesSnapshots.push({
                 ts: now,
                 totalSales: data.salesBreakdown.totalSales,
                 totalTickets: data.salesBreakdown.totalTickets
-            };
-            // Only add if value changed or first sample
-            const last = _salesSnapshots[_salesSnapshots.length - 1];
-            if (!last || last.totalSales !== snap.totalSales || last.totalTickets !== snap.totalTickets) {
-                _salesSnapshots.push(snap);
-                if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
-                    _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
-                }
+            });
+            if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
+                _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
             }
-            data.salesVelocity = buildVelocityData(_salesSnapshots);
         }
+        data.salesVelocity = buildVelocityData(_salesSnapshots);
 
         _feedCache = data;
         _feedCacheTime = now;
