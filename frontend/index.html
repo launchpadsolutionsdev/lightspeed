@@ -1090,7 +1090,7 @@
         /* KPI Grid */
         .raffle-kpi-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 14px;
             margin-bottom: 20px;
         }
@@ -1249,6 +1249,172 @@
             transition: transform 0.2s;
         }
 
+        /* Sales Metrics Grid — 3 columns for tickets/payment/tiers */
+        .raffle-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-top: 16px;
+        }
+        @media (max-width: 900px) {
+            .raffle-metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .raffle-metric-card {
+            background: var(--bg-card, #ffffff);
+            border: 1px solid var(--border, #E3E8EE);
+            border-radius: var(--radius-lg, 12px);
+            padding: 20px;
+            box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));
+        }
+        .raffle-metric-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted, #6B7C93);
+            margin-bottom: 14px;
+        }
+        .raffle-metric-big {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-primary, #0A2540);
+            margin-bottom: 4px;
+        }
+        .raffle-metric-sub {
+            font-size: 12px;
+            color: var(--text-muted, #6B7C93);
+        }
+
+        /* Payment method bars */
+        .raffle-payment-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .raffle-pay-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .raffle-pay-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary, #425466);
+            min-width: 50px;
+        }
+        .raffle-pay-bar-track {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-alt, #F6F9FC);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .raffle-pay-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .raffle-pay-bar-credit { background: #635BFF; }
+        .raffle-pay-bar-debit { background: #F47B3A; }
+        .raffle-pay-bar-cash { background: #30B130; }
+        .raffle-pay-pct {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary, #425466);
+            min-width: 42px;
+            text-align: right;
+        }
+
+        /* Package tier rows */
+        .raffle-tier-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .raffle-tier-row {
+            display: grid;
+            grid-template-columns: 55px 1fr 70px;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: var(--radius-md, 8px);
+            background: var(--bg-alt, #F6F9FC);
+            font-size: 13px;
+            gap: 8px;
+        }
+        .raffle-tier-price {
+            font-weight: 700;
+            color: var(--text-primary, #0A2540);
+        }
+        .raffle-tier-bar-track {
+            height: 6px;
+            background: var(--border, #E3E8EE);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .raffle-tier-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #635BFF, #E91E8C);
+            transition: width 0.5s ease;
+        }
+        .raffle-tier-sales {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary, #425466);
+            text-align: right;
+        }
+        .raffle-tier-detail {
+            font-size: 11px;
+            color: var(--text-muted, #6B7C93);
+            grid-column: 2 / 4;
+            margin-top: -2px;
+        }
+
+        /* Jackpot history */
+        .raffle-history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .raffle-history-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: var(--radius-md, 8px);
+            background: var(--bg-alt, #F6F9FC);
+            font-size: 13px;
+            gap: 12px;
+        }
+        .raffle-history-event {
+            font-weight: 600;
+            color: var(--text-primary, #0A2540);
+        }
+        .raffle-history-amount {
+            font-weight: 700;
+            color: var(--text-primary, #0A2540);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+        }
+        .raffle-history-status {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: var(--radius-pill, 24px);
+        }
+        .raffle-status-unclaimed {
+            background: rgba(244, 123, 58, 0.12);
+            color: #D35400;
+        }
+        .raffle-status-claimed {
+            background: rgba(48, 177, 48, 0.1);
+            color: #30B130;
+        }
+
         /* Utilities */
         .feed-dash-loading {
             display: flex;
@@ -1265,7 +1431,7 @@
 
         @media (max-width: 900px) {
             .raffle-kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             }
         }
         @media (max-width: 768px) {
