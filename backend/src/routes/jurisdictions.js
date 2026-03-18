@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 /**
  * GET /api/jurisdictions
@@ -28,7 +29,7 @@ router.get('/', authenticate, async (req, res) => {
         const result = await pool.query(query, params);
         res.json({ jurisdictions: result.rows });
     } catch (error) {
-        console.error('Get jurisdictions error:', error);
+        log.error('Get jurisdictions error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get jurisdictions' });
     }
 });
@@ -45,7 +46,7 @@ router.get('/:id', authenticate, async (req, res) => {
         }
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Get jurisdiction error:', error);
+        log.error('Get jurisdiction error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get jurisdiction' });
     }
 });
@@ -94,7 +95,7 @@ router.post('/waitlist', authenticate, async (req, res) => {
 
         res.json({ success: true, message: 'You will be notified when this jurisdiction becomes available.' });
     } catch (error) {
-        console.error('Waitlist error:', error);
+        log.error('Waitlist error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to join waitlist' });
     }
 });

@@ -11,6 +11,7 @@ const pool = require('../../config/database');
 const { authenticate, requireOrganization, requireAdmin, requireOwner } = require('../middleware/auth');
 const { sendInvitationEmail } = require('../services/email');
 const auditLog = require('../services/auditLog');
+const log = require('../services/logger');
 
 const FRONTEND_URL = 'https://www.lightspeedutility.ca';
 
@@ -32,7 +33,7 @@ router.get('/my', authenticate, async (req, res) => {
         res.json({ organizations: result.rows });
 
     } catch (error) {
-        console.error('Get organizations error:', error);
+        log.error('Get organizations error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get organizations' });
     }
 });
@@ -57,7 +58,7 @@ router.get('/:orgId', authenticate, requireOrganization, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get organization error:', error);
+        log.error('Get organization error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get organization' });
     }
 });
@@ -149,7 +150,7 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
         res.json({ organization: result.rows[0] });
 
     } catch (error) {
-        console.error('Update organization error:', error);
+        log.error('Update organization error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update organization' });
     }
 });
@@ -188,7 +189,7 @@ router.get('/:orgId/members', authenticate, requireOrganization, async (req, res
         });
 
     } catch (error) {
-        console.error('Get members error:', error);
+        log.error('Get members error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get members' });
     }
 });
@@ -271,10 +272,10 @@ router.post('/:orgId/invite', authenticate, requireOrganization, requireAdmin, [
             });
             emailSent = emailResult.success;
             if (!emailSent) {
-                console.log('Email not sent (SMTP not configured), invite link returned for manual sharing');
+                log.info('Email not sent (SMTP not configured), invite link returned for manual sharing');
             }
         } catch (emailError) {
-            console.error('Failed to send invitation email:', emailError);
+            log.error('Failed to send invitation email', { error: emailError.message || emailError });
         }
 
         auditLog.logAction({ orgId: req.organization.id, userId: req.userId, action: 'MEMBER_INVITED', resourceType: 'INVITATION', resourceId: inviteId, changes: { email, role, emailSent }, req });
@@ -291,7 +292,7 @@ router.post('/:orgId/invite', authenticate, requireOrganization, requireAdmin, [
         });
 
     } catch (error) {
-        console.error('Create invitation error:', error);
+        log.error('Create invitation error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to create invitation' });
     }
 });
@@ -358,7 +359,7 @@ router.post('/accept-invite', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Accept invitation error:', error);
+        log.error('Accept invitation error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to accept invitation' });
     }
 });
@@ -400,7 +401,7 @@ router.delete('/:orgId/members/:memberId', authenticate, requireOrganization, re
         res.json({ message: 'Member removed' });
 
     } catch (error) {
-        console.error('Remove member error:', error);
+        log.error('Remove member error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to remove member' });
     }
 });
@@ -447,7 +448,7 @@ router.patch('/:orgId/members/:memberId', authenticate, requireOrganization, req
         res.json({ message: 'Role updated' });
 
     } catch (error) {
-        console.error('Update role error:', error);
+        log.error('Update role error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update role' });
     }
 });
@@ -472,7 +473,7 @@ router.delete('/:orgId/invitations/:id', authenticate, requireOrganization, requ
         res.json({ message: 'Invitation cancelled' });
 
     } catch (error) {
-        console.error('Cancel invitation error:', error);
+        log.error('Cancel invitation error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to cancel invitation' });
     }
 });

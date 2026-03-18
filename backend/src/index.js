@@ -5,6 +5,8 @@
 
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -201,34 +203,34 @@ app.use('/api/feed-dashboard', feedDashboardRoutes);
 // Start reminder checker (runs every 60 seconds)
 if (contentCalendarRoutes.checkReminders) {
     setInterval(contentCalendarRoutes.checkReminders, 60000);
-    console.log('Calendar reminder checker started (60s interval)');
+    log.info('Calendar reminder checker started (60s interval)');
 }
 
 // Start Home Base scheduled post publisher (runs every 60 seconds)
 if (homeBaseRoutes.publishScheduledPosts) {
     setInterval(homeBaseRoutes.publishScheduledPosts, 60000);
-    console.log('Home Base scheduled post publisher started (60s interval)');
+    log.info('Home Base scheduled post publisher started (60s interval)');
 }
 
 // Start Home Base digest email checker (runs every hour)
 if (homeBaseRoutes.sendDigestEmails) {
     setInterval(homeBaseRoutes.sendDigestEmails, 60 * 60 * 1000);
-    console.log('Home Base digest email checker started (hourly)');
+    log.info('Home Base digest email checker started (hourly)');
 }
 
 // Start Shopify analytics incremental sync (every 15 minutes) with concurrency guard
 let analyticsSyncRunning = false;
 setInterval(() => {
     if (analyticsSyncRunning) {
-        console.log('Shopify analytics sync skipped — previous sync still running');
+        log.debug('Shopify analytics sync skipped — previous sync still running');
         return;
     }
     analyticsSyncRunning = true;
     shopifyAnalytics.syncAllStores()
-        .catch(err => console.error('Shopify analytics sync error:', err.message))
+        .catch(err => log.error('Shopify analytics sync error', { error: err.message }))
         .finally(() => { analyticsSyncRunning = false; });
 }, 15 * 60 * 1000);
-console.log('Shopify analytics sync scheduler started (15min interval)');
+log.info('Shopify analytics sync scheduler started (15min interval)');
 
 // 404 handler
 app.use((req, res) => {
@@ -244,8 +246,6 @@ app.use((err, req, res, next) => {
 // Run pending migrations on startup
 async function runMigrations() {
     try {
-        const fs = require('fs');
-        const path = require('path');
         const migrationsDir = path.join(__dirname, '..', 'migrations');
         const files = fs.readdirSync(migrationsDir)
             .filter(f => f.endsWith('.sql'))
@@ -271,14 +271,12 @@ runMigrations().then(async () => {
         const kbCount = await pool.query('SELECT COUNT(*) FROM compliance_knowledge_base');
         if (parseInt(kbCount.rows[0].count) === 0) {
             log.info('Compliance KB is empty — seeding from JSON files...');
-            const fs2 = require('fs');
-            const path2 = require('path');
-            const dataDir = path2.join(__dirname, '..', 'data');
-            const kbFiles = fs2.readdirSync(dataDir).filter(f => f.endsWith('-kb-entries.json')).sort();
+            const dataDir = path.join(__dirname, '..', 'data');
+            const kbFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('-kb-entries.json')).sort();
             let totalSeeded = 0;
             for (const file of kbFiles) {
                 try {
-                    const raw = JSON.parse(fs2.readFileSync(path2.join(dataDir, file), 'utf8'));
+                    const raw = JSON.parse(fs.readFileSync(path.join(dataDir, file), 'utf8'));
                     const entries = raw.entries || raw;
                     for (const entry of entries) {
                         const jurisResult = await pool.query(

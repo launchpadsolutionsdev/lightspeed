@@ -8,6 +8,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 /**
  * GET /api/shared-prompts
@@ -45,7 +46,7 @@ router.get('/', authenticate, async (req, res) => {
         const result = await pool.query(sql, params);
         res.json({ prompts: result.rows });
     } catch (error) {
-        console.error('List shared prompts error:', error);
+        log.error('List shared prompts error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to list shared prompts' });
     }
 });
@@ -84,7 +85,7 @@ router.post('/', authenticate, [
 
         res.status(201).json({ prompt: result.rows[0] });
     } catch (error) {
-        console.error('Create shared prompt error:', error);
+        log.error('Create shared prompt error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to create shared prompt' });
     }
 });
@@ -107,7 +108,7 @@ router.post('/:id/use', authenticate, async (req, res) => {
 
         res.json({ usage_count: result.rows[0].usage_count });
     } catch (error) {
-        console.error('Use shared prompt error:', error);
+        log.error('Use shared prompt error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update usage' });
     }
 });
@@ -142,7 +143,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 
         res.json({ deleted: true });
     } catch (error) {
-        console.error('Delete shared prompt error:', error);
+        log.error('Delete shared prompt error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete shared prompt' });
     }
 });
@@ -177,7 +178,7 @@ router.get('/team-activity', authenticate, async (req, res) => {
 
         res.json({ activity: result.rows });
     } catch (error) {
-        console.error('Team activity error:', error);
+        log.error('Team activity error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get team activity' });
     }
 });

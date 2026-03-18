@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 const VALID_COLORS = ['tomato', 'blue', 'green', 'cyan', 'purple', 'gray', 'orange', 'pink'];
 const VALID_RECURRENCE = ['daily', 'weekly', 'monthly'];
@@ -133,7 +134,7 @@ router.get('/', authenticate, async (req, res) => {
 
         res.json(expanded);
     } catch (error) {
-        console.error('Calendar events list error:', error);
+        log.error('Calendar events list error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to load calendar events', detail: error.message });
     }
 });
@@ -181,7 +182,7 @@ router.post('/', authenticate, async (req, res) => {
 
         res.json(full.rows[0]);
     } catch (error) {
-        console.error('Calendar event create error:', error);
+        log.error('Calendar event create error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to create calendar event', detail: error.message });
     }
 });
@@ -252,7 +253,7 @@ router.put('/:id', authenticate, async (req, res) => {
 
         res.json(full.rows[0]);
     } catch (error) {
-        console.error('Calendar event update error:', error);
+        log.error('Calendar event update error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update calendar event' });
     }
 });
@@ -295,7 +296,7 @@ router.patch('/:id/move', authenticate, async (req, res) => {
 
         res.json(full.rows[0]);
     } catch (error) {
-        console.error('Calendar event move error:', error);
+        log.error('Calendar event move error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to move calendar event', detail: error.message });
     }
 });
@@ -328,7 +329,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Calendar event delete error:', error);
+        log.error('Calendar event delete error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete calendar event' });
     }
 });
@@ -350,7 +351,7 @@ router.get('/:id/comments', authenticate, async (req, res) => {
         );
         res.json(result.rows);
     } catch (error) {
-        console.error('Calendar comments fetch error:', error);
+        log.error('Calendar comments fetch error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to load comments' });
     }
 });
@@ -381,7 +382,7 @@ router.post('/:id/comments', authenticate, async (req, res) => {
 
         res.json(full.rows[0]);
     } catch (error) {
-        console.error('Calendar comment create error:', error);
+        log.error('Calendar comment create error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to add comment' });
     }
 });
@@ -403,7 +404,7 @@ router.delete('/comments/:commentId', authenticate, async (req, res) => {
         await pool.query('DELETE FROM calendar_event_comments WHERE id = $1', [req.params.commentId]);
         res.json({ success: true });
     } catch (error) {
-        console.error('Calendar comment delete error:', error);
+        log.error('Calendar comment delete error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete comment' });
     }
 });
@@ -426,7 +427,7 @@ router.get('/notifications/list', authenticate, async (req, res) => {
         );
         res.json(result.rows);
     } catch (error) {
-        console.error('Notifications fetch error:', error);
+        log.error('Notifications fetch error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to load notifications' });
     }
 });
@@ -536,13 +537,13 @@ async function checkReminders() {
                         }
                     } catch (emailErr) {
                         // Email sending is best-effort
-                        console.log('Reminder email skipped:', emailErr.message);
+                        log.info('Reminder email skipped', { error: emailErr.message });
                     }
                 }
             }
         }
     } catch (error) {
-        console.error('Reminder check error:', error);
+        log.error('Reminder check error', { error: error.message || error });
     }
 }
 
@@ -619,7 +620,7 @@ router.get('/export/ics', authenticate, async (req, res) => {
         res.setHeader('Content-Disposition', 'attachment; filename="runway-calendar.ics"');
         res.send(ics);
     } catch (error) {
-        console.error('Calendar export error:', error);
+        log.error('Calendar export error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to export calendar' });
     }
 });
@@ -674,13 +675,13 @@ router.post('/import/ics', authenticate, async (req, res) => {
                 );
                 imported++;
             } catch (insertErr) {
-                console.error('Failed to import event:', ev.title, insertErr.message);
+                log.error('Failed to import event', { title: ev.title, error: insertErr.message });
             }
         }
 
         res.json({ success: true, imported, total: events.length });
     } catch (error) {
-        console.error('Calendar import error:', error);
+        log.error('Calendar import error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to import calendar' });
     }
 });

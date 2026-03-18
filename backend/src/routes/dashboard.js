@@ -8,6 +8,7 @@ const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const analyticsService = require('../services/shopifyAnalytics');
+const log = require('../services/logger');
 
 function clampLimit(val, defaultVal, max) {
     const n = parseInt(val) || defaultVal;
@@ -116,7 +117,7 @@ router.get('/summary', authenticate, async (req, res) => {
         const summary = await analyticsService.getDashboardSummary(org.organizationId, startDate, endDate, compare);
         res.json(summary);
     } catch (error) {
-        console.error('Dashboard summary error:', error);
+        log.error('Dashboard summary error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch dashboard summary' });
     }
 });
@@ -133,7 +134,7 @@ router.get('/sales-over-time', authenticate, async (req, res) => {
         const data = await analyticsService.getSalesOverTime(org.organizationId, startDate, endDate, granularity);
         res.json(data);
     } catch (error) {
-        console.error('Sales over time error:', error);
+        log.error('Sales over time error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch sales data' });
     }
 });
@@ -150,7 +151,7 @@ router.get('/top-products', authenticate, async (req, res) => {
         const data = await analyticsService.getTopProducts(org.organizationId, startDate, endDate, limit);
         res.json(data);
     } catch (error) {
-        console.error('Top products error:', error);
+        log.error('Top products error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch top products' });
     }
 });
@@ -166,7 +167,7 @@ router.get('/sales-by-channel', authenticate, async (req, res) => {
         const data = await analyticsService.getSalesByChannel(org.organizationId, startDate, endDate);
         res.json(data);
     } catch (error) {
-        console.error('Sales by channel error:', error);
+        log.error('Sales by channel error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch channel data' });
     }
 });
@@ -183,7 +184,7 @@ router.get('/sales-by-region', authenticate, async (req, res) => {
         const data = await analyticsService.getSalesByRegion(org.organizationId, startDate, endDate, limit);
         res.json(data);
     } catch (error) {
-        console.error('Sales by region error:', error);
+        log.error('Sales by region error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch region data' });
     }
 });
@@ -198,7 +199,7 @@ router.get('/recent-orders', authenticate, async (req, res) => {
         const data = await analyticsService.getRecentOrders(org.organizationId, limit);
         res.json(data);
     } catch (error) {
-        console.error('Recent orders error:', error);
+        log.error('Recent orders error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch recent orders' });
     }
 });
@@ -212,7 +213,7 @@ router.get('/sync-status', authenticate, async (req, res) => {
         const status = await analyticsService.getSyncStatus(org.organizationId);
         res.json(status);
     } catch (error) {
-        console.error('Sync status error:', error);
+        log.error('Sync status error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch sync status' });
     }
 });
@@ -227,7 +228,7 @@ router.get('/price-points', authenticate, async (req, res) => {
         const data = await analyticsService.getPricePoints(org.organizationId, startDate, endDate);
         res.json(data);
     } catch (error) {
-        console.error('Price points error:', error);
+        log.error('Price points error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to fetch price point data' });
     }
 });
@@ -255,7 +256,7 @@ router.post('/sync', authenticate, async (req, res) => {
                     `UPDATE shopify_stores SET analytics_sync_status = 'error', analytics_sync_error = 'Previous sync timed out', updated_at = NOW() WHERE organization_id = $1`,
                     [organizationId]
                 );
-                console.warn(`Reset stuck sync for org ${organizationId}`);
+                log.warn('Reset stuck sync for org', { organizationId });
                 // Fall through to start a new sync
             } else {
                 return res.json({ success: true, message: 'Sync already in progress' });
@@ -276,7 +277,7 @@ router.post('/sync', authenticate, async (req, res) => {
             : analyticsService.runFullSync;
 
         syncFn(organizationId).catch(async (error) => {
-            console.error('Manual sync error:', error.message);
+            log.error('Manual sync error', { error: error.message || error });
             // Safety net: ensure DB status is updated to 'error' so polling doesn't hang forever
             try {
                 await pool.query(
@@ -284,11 +285,11 @@ router.post('/sync', authenticate, async (req, res) => {
                     [organizationId, error.message]
                 );
             } catch (dbErr) {
-                console.error('Failed to update sync error status:', dbErr.message);
+                log.error('Failed to update sync error status', { error: dbErr.message || dbErr });
             }
         });
     } catch (error) {
-        console.error('Dashboard sync trigger error:', error);
+        log.error('Dashboard sync trigger error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to trigger sync' });
     }
 });

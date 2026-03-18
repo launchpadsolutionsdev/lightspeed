@@ -9,9 +9,10 @@
 
 const pool = require('../../config/database');
 const { cache, TTL } = require('./cache');
+const log = require('./logger');
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+const HAIKU_MODEL = process.env.HAIKU_MODEL || 'claude-haiku-4-5-20251001';
 
 const VOICE_CACHE_TTL = 60 * 60 * 1000;
 
@@ -42,7 +43,7 @@ async function getVoiceProfile(organizationId, tool = 'general') {
 
         return null;
     } catch (err) {
-        console.warn('Voice profile retrieval failed:', err.message);
+        log.warn('Voice profile retrieval failed', { error: err.message });
         return null;
     }
 }
@@ -135,7 +136,7 @@ async function buildVoiceProfile(organizationId, tool = 'general') {
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            console.warn('Voice profile analysis API error:', response.status, errData);
+            log.warn('Voice profile analysis API error', { status: response.status, error: errData });
             return null;
         }
 
@@ -156,7 +157,7 @@ async function buildVoiceProfile(organizationId, tool = 'general') {
 
         return profileText;
     } catch (err) {
-        console.warn('Voice profile generation failed:', err.message);
+        log.warn('Voice profile generation failed', { error: err.message });
         return null;
     }
 }

@@ -3,9 +3,11 @@
  * Anthropic API integration
  */
 
+const log = require('./logger');
+
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
-const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+const HAIKU_MODEL = process.env.HAIKU_MODEL || 'claude-haiku-4-5-20251001';
 
 /**
  * Sanitize a JSON string by replacing escaped lone surrogate code points.
@@ -69,7 +71,7 @@ async function generateResponse({ messages, system, max_tokens = 1024, tools, mo
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Claude API error:', response.status, errorData);
+        log.error('Claude API error', { status: response.status, error: errorData });
         throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
     }
 
@@ -226,7 +228,7 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
         });
 
         if (!response.ok) {
-            console.warn('Haiku relevance picker failed, using tag-match fallback');
+            log.warn('Haiku relevance picker failed, using tag-match fallback');
             return tagMatchFallback(inquiry, knowledgeEntries, maxEntries);
         }
 
@@ -236,7 +238,7 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
         // Extract the JSON array from the response
         const match = text.match(/\[[\d,\s]*\]/);
         if (!match) {
-            console.warn('Haiku relevance picker returned unexpected format, using tag-match fallback');
+            log.warn('Haiku relevance picker returned unexpected format, using tag-match fallback');
             return tagMatchFallback(inquiry, knowledgeEntries, maxEntries);
         }
 
@@ -252,7 +254,7 @@ async function pickRelevantKnowledge(inquiry, knowledgeEntries, maxEntries = 8) 
         return validIndices.map(i => knowledgeEntries[i]);
 
     } catch (error) {
-        console.warn('Haiku relevance picker error, using tag-match fallback:', error.message);
+        log.warn('Haiku relevance picker error, using tag-match fallback', { error: error.message });
         return tagMatchFallback(inquiry, knowledgeEntries, maxEntries);
     }
 }
@@ -308,7 +310,7 @@ async function pickRelevantRatedExamples(inquiry, positiveExamples, negativeExam
         });
 
         if (!response.ok) {
-            console.warn('Haiku rated-example picker failed, returning most recent');
+            log.warn('Haiku rated-example picker failed, returning most recent');
             return {
                 positive: positiveExamples.slice(0, maxPositive),
                 negative: negativeExamples.slice(0, maxNegative)
@@ -320,7 +322,7 @@ async function pickRelevantRatedExamples(inquiry, positiveExamples, negativeExam
 
         const match = text.match(/\[[\d,\s]*\]/);
         if (!match) {
-            console.warn('Haiku rated-example picker returned unexpected format, returning most recent');
+            log.warn('Haiku rated-example picker returned unexpected format, returning most recent');
             return {
                 positive: positiveExamples.slice(0, maxPositive),
                 negative: negativeExamples.slice(0, maxNegative)
@@ -347,7 +349,7 @@ async function pickRelevantRatedExamples(inquiry, positiveExamples, negativeExam
         return { positive: pickedPositive, negative: pickedNegative };
 
     } catch (error) {
-        console.warn('Haiku rated-example picker error, returning most recent:', error.message);
+        log.warn('Haiku rated-example picker error, returning most recent', { error: error.message });
         return {
             positive: positiveExamples.slice(0, maxPositive),
             negative: negativeExamples.slice(0, maxNegative)
@@ -417,7 +419,7 @@ async function streamResponse({ messages, system, staticSystem, dynamicSystem, m
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Claude streaming API error:', response.status, errorData);
+        log.error('Claude streaming API error', { status: response.status, error: errorData });
         throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
     }
 

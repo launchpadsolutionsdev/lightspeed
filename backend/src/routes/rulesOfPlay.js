@@ -12,6 +12,7 @@ const claudeService = require('../services/claude');
 const { buildSystemPrompt, RAFFLE_TYPE_LABELS } = require('../services/ropTemplates');
 const multer = require('multer');
 const mammoth = require('mammoth');
+const log = require('../services/logger');
 
 // Multer for reference document uploads (max 10MB, .docx and .pdf)
 const upload = multer({
@@ -60,7 +61,7 @@ router.get('/', authenticate, async (req, res) => {
 
         res.json({ drafts: result.rows });
     } catch (error) {
-        console.error('List ROP drafts error:', error);
+        log.error('List ROP drafts error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to list drafts' });
     }
 });
@@ -93,7 +94,7 @@ router.post('/',
 
             res.status(201).json(result.rows[0]);
         } catch (error) {
-            console.error('Create ROP draft error:', error);
+            log.error('Create ROP draft error', { error: error.message || error });
             res.status(500).json({ error: 'Failed to create draft' });
         }
     }
@@ -122,7 +123,7 @@ router.get('/:id', authenticate, async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'Draft not found' });
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Get ROP draft error:', error);
+        log.error('Get ROP draft error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get draft' });
     }
 });
@@ -162,7 +163,7 @@ router.put('/:id', authenticate, async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'Draft not found' });
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Update ROP draft error:', error);
+        log.error('Update ROP draft error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update draft' });
     }
 });
@@ -184,7 +185,7 @@ router.delete('/:id', authenticate, async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'Draft not found' });
         res.json({ success: true });
     } catch (error) {
-        console.error('Delete ROP draft error:', error);
+        log.error('Delete ROP draft error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete draft' });
     }
 });
@@ -267,7 +268,7 @@ router.post('/:id/generate', authenticate, checkUsageLimit, async (req, res) => 
 
         res.json({ generated_document: generatedText, usage: response.usage });
     } catch (error) {
-        console.error('Generate ROP error:', error);
+        log.error('Generate ROP error', { error: error.message || error });
         res.status(500).json({ error: error.message || 'Failed to generate document' });
     }
 });
@@ -316,7 +317,7 @@ router.post('/:id/upload-reference', authenticate, upload.single('file'), async 
             preview: extractedText.substring(0, 500)
         });
     } catch (error) {
-        console.error('Upload reference error:', error);
+        log.error('Upload reference error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to parse uploaded document' });
     }
 });
@@ -395,7 +396,7 @@ ${htmlBody}
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.send(htmlDoc);
     } catch (error) {
-        console.error('Export ROP error:', error);
+        log.error('Export ROP error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to export document' });
     }
 });

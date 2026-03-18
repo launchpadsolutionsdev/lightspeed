@@ -11,6 +11,7 @@
 
 const pool = require('../../config/database');
 const shopifyService = require('./shopify');
+const log = require('./logger');
 
 const SHOPIFY_API_VERSION = '2025-04';
 
@@ -48,7 +49,7 @@ async function shopifyGraphQL(shopDomain, accessToken, query, variables = {}) {
 
         if (!response.ok) {
             const errorText = await response.text().catch(() => '');
-            console.error(`Shopify GraphQL ${response.status} at ${url}`);
+            log.error('Shopify GraphQL error', { status: response.status, url });
             throw new Error(`Shopify GraphQL error ${response.status}: ${errorText}`);
         }
 
@@ -152,9 +153,9 @@ async function runFullSync(organizationId) {
         try {
             await runShopifyQL(store.shop_domain, store.access_token, 'FROM orders SHOW sum(orders) AS c SINCE -1d UNTIL today');
             shopifyqlAvailable = true;
-            console.log(`ShopifyQL available for ${cleanShopDomain(store.shop_domain)}`);
+            log.info(`ShopifyQL available for ${cleanShopDomain(store.shop_domain)}`);
         } catch (sqlErr) {
-            console.warn(`ShopifyQL NOT available for ${cleanShopDomain(store.shop_domain)}: ${sqlErr.message}. Falling back to GraphQL-based sync. For full analytics, ensure the access token has the read_reports scope.`);
+            log.warn(`ShopifyQL NOT available for ${cleanShopDomain(store.shop_domain)}: ${sqlErr.message}. Falling back to GraphQL-based sync. For full analytics, ensure the access token has the read_reports scope.`);
         }
 
         if (shopifyqlAvailable) {
@@ -283,7 +284,7 @@ async function syncDailySales(store, organizationId, days) {
                 store.access_token,
                 `FROM orders SHOW sum(orders) AS total_orders GROUP BY day SINCE -${days}d UNTIL today ORDER BY day ASC`
             ).catch(err => {
-                console.error('syncDailySales order count query error (non-fatal):', err.message);
+                log.error('syncDailySales order count query error (non-fatal)', { error: err.message });
                 return [];
             }),
         ]);
@@ -328,7 +329,7 @@ async function syncDailySales(store, organizationId, days) {
 
         return salesRows.length;
     } catch (error) {
-        console.error('syncDailySales ShopifyQL error:', error.message);
+        log.error('syncDailySales ShopifyQL error', { error: error.message });
         return 0;
     }
 }
@@ -339,7 +340,7 @@ async function syncDailySales(store, organizationId, days) {
  * For high-volume stores this can take a few minutes on initial sync.
  */
 async function syncViaGraphQLFallback(store, organizationId, days) {
-    console.log(`Running GraphQL fallback sync for ${days} days (ShopifyQL unavailable — fetching ALL orders for exact data)`);
+    log.info(`Running GraphQL fallback sync for ${days} days (ShopifyQL unavailable - fetching ALL orders for exact data)`);
 
     const sinceDate = new Date();
     sinceDate.setDate(sinceDate.getDate() - days);
@@ -359,7 +360,7 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
     while (true) {
         pageNum++;
         if (pageNum > MAX_PAGES) {
-            console.warn(`GraphQL fallback: hit max page limit (${MAX_PAGES}), stopping with ${totalFetched} orders`);
+            log.warn(`GraphQL fallback: hit max page limit (${MAX_PAGES}), stopping with ${totalFetched} orders`);
             break;
         }
         const afterClause = cursor ? `, after: "${cursor}"` : '';
@@ -445,7 +446,7 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
         totalFetched += edges.length;
 
         if (pageNum % 10 === 0) {
-            console.log(`GraphQL fallback: fetched ${totalFetched} orders so far (page ${pageNum})...`);
+            log.info(`GraphQL fallback: fetched ${totalFetched} orders so far (page ${pageNum})...`);
             // Heartbeat: bump updated_at so stuck-sync detection knows we're still alive
             await pool.query(
                 `UPDATE shopify_stores SET updated_at = NOW() WHERE organization_id = $1 AND analytics_sync_status = 'syncing'`,
@@ -462,7 +463,7 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
         }
     }
 
-    console.log(`GraphQL fallback: fetched ALL ${totalFetched} orders — exact data, no estimates`);
+    log.info(`GraphQL fallback: fetched ALL ${totalFetched} orders - exact data, no estimates`);
     if (totalFetched === 0) return 0;
 
     // ── Write exact daily sales ──
@@ -534,7 +535,7 @@ async function syncViaGraphQLFallback(store, organizationId, days) {
         totalRecords++;
     }
 
-    console.log(`GraphQL fallback: wrote ${totalRecords} records`);
+    log.info(`GraphQL fallback: wrote ${totalRecords} records`);
     return totalRecords;
 }
 
@@ -563,7 +564,7 @@ async function syncProductSales(store, organizationId, days) {
         }
         return rows.length;
     } catch (err) {
-        console.error('syncProductSales error:', err.message);
+        log.error('syncProductSales error', { error: err.message });
         return 0;
     }
 }
@@ -593,7 +594,7 @@ async function syncSalesByChannel(store, organizationId, days) {
         }
         return rows.length;
     } catch (err) {
-        console.error('syncSalesByChannel error:', err.message);
+        log.error('syncSalesByChannel error', { error: err.message });
         return 0;
     }
 }
@@ -629,7 +630,7 @@ async function syncSalesByRegion(store, organizationId, days) {
         }
         return rows.length;
     } catch (err) {
-        console.error('syncSalesByRegion error:', err.message);
+        log.error('syncSalesByRegion error', { error: err.message });
         return 0;
     }
 }
@@ -673,7 +674,7 @@ async function syncSalesByCity(store, organizationId, days) {
         }
         return rows.length;
     } catch (err) {
-        console.error('syncSalesByCity error:', err.message);
+        log.error('syncSalesByCity error', { error: err.message });
         return 0;
     }
 }
@@ -702,10 +703,10 @@ async function syncSessions(store, organizationId, days) {
                 );
                 if (res.rowCount > 0) updated++;
             }
-            console.log(`syncSessions: wrote ${updated} session records using query format: ${q.substring(0, 40)}...`);
+            log.info(`syncSessions: wrote ${updated} session records using query format: ${q.substring(0, 40)}...`);
             return updated;
         } catch (err) {
-            console.warn(`syncSessions query failed (trying next format): ${err.message}`);
+            log.warn(`syncSessions query failed (trying next format): ${err.message}`);
             continue;
         }
     }
@@ -732,10 +733,10 @@ async function syncSessions(store, organizationId, days) {
                 updated++;
             }
         }
-        if (updated > 0) console.log(`syncSessions: derived ${updated} session records from customer counts (ShopifyQL sessions unavailable)`);
+        if (updated > 0) log.info(`syncSessions: derived ${updated} session records from customer counts (ShopifyQL sessions unavailable)`);
         return updated;
     } catch (err) {
-        console.error('syncSessions fallback error:', err.message);
+        log.error('syncSessions fallback error', { error: err.message });
         return 0;
     }
 }
@@ -783,7 +784,7 @@ async function syncPricePoints(store, organizationId) {
 
         return Object.keys(bucketMap).length;
     } catch (err) {
-        console.error('syncPricePoints error:', err.message);
+        log.error('syncPricePoints error', { error: err.message });
         return 0;
     }
 }
@@ -855,7 +856,7 @@ async function syncRecentOrders(store, organizationId) {
 
         return orders.length;
     } catch (err) {
-        console.error('syncRecentOrders error:', err.message);
+        log.error('syncRecentOrders error', { error: err.message });
         return 0;
     }
 }
@@ -901,7 +902,7 @@ async function syncCustomerMetrics(store, organizationId) {
         }
         return customers.length;
     } catch (err) {
-        console.error('syncCustomerMetrics error:', err.message);
+        log.error('syncCustomerMetrics error', { error: err.message });
         return 0;
     }
 }
@@ -942,7 +943,7 @@ async function syncCustomerRetention(organizationId) {
 
         return 1;
     } catch (err) {
-        console.error('syncCustomerRetention error:', err.message);
+        log.error('syncCustomerRetention error', { error: err.message });
         return 0;
     }
 }
@@ -1426,11 +1427,11 @@ async function syncAllStores() {
                     await runFullSync(row.organization_id);
                 }
             } catch (error) {
-                console.error(`Sync failed for org ${row.organization_id}:`, error.message);
+                log.error(`Sync failed for org ${row.organization_id}`, { error: error.message });
             }
         }
     } catch (error) {
-        console.error('syncAllStores error:', error.message);
+        log.error('syncAllStores error', { error: error.message });
     }
 }
 

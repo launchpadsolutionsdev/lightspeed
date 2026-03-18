@@ -4,6 +4,7 @@
  */
 
 const nodemailer = require('nodemailer');
+const log = require('./logger');
 
 // Create transporter — defaults to Gmail SMTP
 let transporter;
@@ -26,8 +27,8 @@ const FROM_NAME = process.env.FROM_NAME || 'Lightspeed';
 // Verify SMTP connection on startup
 if (transporter) {
     transporter.verify()
-        .then(() => console.log('[EMAIL] SMTP connection verified — emails will send.'))
-        .catch(err => console.error('[EMAIL] SMTP connection FAILED:', err.message));
+        .then(() => log.info('SMTP connection verified — emails will send'))
+        .catch(err => log.error('SMTP connection failed', { error: err.message }));
 }
 
 /**
@@ -41,8 +42,8 @@ if (transporter) {
 async function sendEmail({ to, subject, text, html }) {
     // Check if email is configured
     if (!transporter) {
-        console.warn('[EMAIL] SMTP not configured — set SMTP_USER and SMTP_PASS env vars.');
-        console.warn('[EMAIL] Would have sent to:', to, '| Subject:', subject);
+        log.warn('SMTP not configured — set SMTP_USER and SMTP_PASS env vars');
+        log.warn('Email not sent', { subject });
         return { success: false, reason: 'Email not configured' };
     }
 
@@ -55,12 +56,11 @@ async function sendEmail({ to, subject, text, html }) {
             html
         });
 
-        console.log('Email sent:', result.messageId);
+        log.info('Email sent', { messageId: result.messageId });
         return { success: true, messageId: result.messageId };
 
     } catch (error) {
-        console.error('Email send error:', error.message);
-        console.error('Email error details:', error.code, error.command, error.response);
+        log.error('Email send error', { error: error.message, code: error.code });
         return { success: false, error: error.message };
     }
 }

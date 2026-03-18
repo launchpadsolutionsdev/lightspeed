@@ -11,6 +11,7 @@
 
 const pool = require('../../config/database');
 const { pickRelevantRatedExamples, pickRelevantKnowledge } = require('./claude');
+const log = require('./logger');
 
 // ─── Input sanitization ─────────────────────────────────────────────
 
@@ -38,7 +39,7 @@ function sanitizeInquiry(text, maxLength = MAX_INQUIRY_LENGTH) {
 
     for (const pattern of INJECTION_PATTERNS) {
         if (pattern.test(sanitized)) {
-            console.warn(`[SECURITY] Prompt injection pattern detected: ${pattern}`);
+            log.warn('Prompt injection pattern detected', { pattern: pattern.toString(), tag: 'security' });
             sanitized = sanitized.replace(pattern, '[filtered]');
         }
     }
@@ -146,7 +147,7 @@ async function buildCalendarContext(organizationId, options = {}) {
 
         return context;
     } catch (err) {
-        console.warn('Calendar context fetch failed:', err.message);
+        log.warn('Calendar context fetch failed', { error: err.message });
         return '';
     }
 }
@@ -391,7 +392,7 @@ async function fetchRelevantCorrections(organizationId, inquiry, tool, format) {
         return deduped.length > 0 ? deduped.slice(0, 5) : corrections.slice(0, 3);
 
     } catch (err) {
-        console.warn('Correction retrieval failed:', err.message);
+        log.warn('Correction retrieval failed', { error: err.message });
         return [];
     }
 }
@@ -482,7 +483,7 @@ async function buildResponseAssistantPrompt(params) {
     try {
         calendarContext = await buildCalendarContext(organizationId);
     } catch (err) {
-        console.warn('Calendar context fetch failed:', err.message);
+        log.warn('Calendar context fetch failed', { error: err.message });
     }
 
     // Fetch rated examples + dedicated corrections (in parallel)
@@ -496,7 +497,7 @@ async function buildResponseAssistantPrompt(params) {
         ratedExamplesContext = buildRatedExamplesContext(ratedExamples);
         correctionsContext = buildCorrectionsContext(corrections);
     } catch (err) {
-        console.warn('Rated examples / corrections fetch failed:', err.message);
+        log.warn('Rated examples / corrections fetch failed', { error: err.message });
     }
 
     // Language instruction

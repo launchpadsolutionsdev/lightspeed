@@ -13,6 +13,7 @@ const MODEL_CONTEXT_WINDOWS = {
     'claude-haiku-4-5-20251001': 200000,
 };
 
+const log = require('./logger');
 const DEFAULT_CONTEXT_WINDOW = 200000;
 const SAFETY_MARGIN = 0.75; // Use at most 75% of context window for input
 
@@ -46,7 +47,7 @@ function checkTokenBudget({ systemPrompt, userPrompt, maxOutputTokens = 1024, mo
     const budgetRemaining = maxInputTokens - totalInputTokens - maxOutputTokens;
 
     if (totalInputTokens > 100000) {
-        console.warn(`[TOKEN BUDGET] Large prompt detected: ~${totalInputTokens} estimated tokens`);
+        log.warn(`[TOKEN BUDGET] Large prompt detected: ~${totalInputTokens} estimated tokens`);
     }
 
     return {

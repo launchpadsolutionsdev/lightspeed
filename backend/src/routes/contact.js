@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { sendEmail } = require('../services/email');
+const log = require('../services/logger');
 
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'hello@launchpadsolutions.ca';
 
@@ -69,8 +70,8 @@ router.post('/', async (req, res) => {
             res.json({ success: true, message: 'Your message has been sent. We\'ll be in touch soon!' });
         } else {
             // Email service not configured or failed — log details
-            console.error('Contact form email failed:', JSON.stringify(result));
-            console.warn('Submission data:', { organizationName, name, title, phone, email, message });
+            log.error('Contact form email failed', { result });
+            log.warn('Submission data', { organizationName, name, title, phone, email, message });
 
             // Include debug info in non-production environments
             const debugInfo = process.env.NODE_ENV !== 'production' ? ` (Debug: ${result.reason || result.error || 'unknown'})` : '';
@@ -78,7 +79,7 @@ router.post('/', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Contact form error:', error);
+        log.error('Contact form error', { error: error.message || error });
         res.status(500).json({ error: 'Something went wrong. Please try again or email us directly at hello@launchpadsolutions.ca' });
     }
 });

@@ -12,6 +12,7 @@ const express = require('express');
 const router = express.Router();
 const { XMLParser } = require('fast-xml-parser');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 const FEED_URL = process.env.DASHBOARD_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/dak';
 const WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/winners';
@@ -91,7 +92,7 @@ async function fetchFeed() {
         return data;
     } catch (error) {
         if (_feedCache) {
-            console.warn('Feed fetch failed, returning stale cache:', error.message);
+            log.warn('Feed fetch failed, returning stale cache', { error: error.message });
             return _feedCache;
         }
         throw error;
@@ -275,7 +276,7 @@ router.get('/data', authenticate, async (req, res) => {
         const data = await fetchFeed();
         res.json(data);
     } catch (error) {
-        console.error('Feed dashboard error:', error.message);
+        log.error('Feed dashboard error', { error: error.message });
         res.status(502).json({ error: 'Unable to fetch feed data', message: error.message });
     }
 });
@@ -288,7 +289,7 @@ router.post('/refresh', authenticate, async (req, res) => {
         const data = await fetchFeed();
         res.json(data);
     } catch (error) {
-        console.error('Feed dashboard refresh error:', error.message);
+        log.error('Feed dashboard refresh error', { error: error.message });
         res.status(502).json({ error: 'Unable to refresh feed data' });
     }
 });

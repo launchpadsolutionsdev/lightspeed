@@ -9,6 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('../../config/database');
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 const auditLog = require('../services/auditLog');
+const log = require('../services/logger');
 
 /**
  * GET /api/admin/dashboard
@@ -198,7 +199,7 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get admin dashboard error:', error);
+        log.error('Get admin dashboard error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get dashboard data' });
     }
 });
@@ -291,7 +292,7 @@ router.get('/analytics/engagement', authenticate, requireSuperAdmin, async (req,
         });
 
     } catch (error) {
-        console.error('Get engagement analytics error:', error);
+        log.error('Get engagement analytics error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get engagement data' });
     }
 });
@@ -355,7 +356,7 @@ router.get('/stats', authenticate, requireSuperAdmin, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get admin stats error:', error);
+        log.error('Get admin stats error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get statistics' });
     }
 });
@@ -407,7 +408,7 @@ router.get('/users', authenticate, requireSuperAdmin, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get users error:', error);
+        log.error('Get users error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get users' });
     }
 });
@@ -475,7 +476,7 @@ router.get('/organizations', authenticate, requireSuperAdmin, async (req, res) =
         });
 
     } catch (error) {
-        console.error('Get organizations error:', error);
+        log.error('Get organizations error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get organizations' });
     }
 });
@@ -532,7 +533,7 @@ router.get('/usage', authenticate, requireSuperAdmin, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get usage error:', error);
+        log.error('Get usage error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get usage data' });
     }
 });
@@ -560,7 +561,7 @@ router.patch('/users/:userId/super-admin', authenticate, requireSuperAdmin, asyn
         res.json({ message: 'Super admin status updated' });
 
     } catch (error) {
-        console.error('Update super admin error:', error);
+        log.error('Update super admin error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update super admin status' });
     }
 });
@@ -614,7 +615,7 @@ router.delete('/users/:userId', authenticate, requireSuperAdmin, async (req, res
         res.json({ message: 'User deleted successfully' });
 
     } catch (error) {
-        console.error('Delete user error:', error);
+        log.error('Delete user error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete user' });
     }
 });
@@ -659,7 +660,7 @@ router.get('/recent-activity', authenticate, requireSuperAdmin, async (req, res)
         });
 
     } catch (error) {
-        console.error('Get recent activity error:', error);
+        log.error('Get recent activity error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get recent activity' });
     }
 });
@@ -763,7 +764,7 @@ router.get('/cost-estimate', authenticate, requireSuperAdmin, async (req, res) =
         });
 
     } catch (error) {
-        console.error('Get cost estimate error:', error);
+        log.error('Get cost estimate error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get cost estimates' });
     }
 });
@@ -779,7 +780,7 @@ router.get('/organizations-list', authenticate, requireSuperAdmin, async (req, r
         );
         res.json({ organizations: result.rows });
     } catch (error) {
-        console.error('Get organizations list error:', error);
+        log.error('Get organizations list error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get organizations list' });
     }
 });
@@ -839,7 +840,7 @@ router.put('/users/:userId/organization', authenticate, requireSuperAdmin, async
         });
 
     } catch (error) {
-        console.error('Assign user organization error:', error);
+        log.error('Assign user organization error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to assign user to organization' });
     }
 });
@@ -875,7 +876,7 @@ router.patch('/users/:userId/role', authenticate, requireSuperAdmin, async (req,
         res.json({ message: 'User role updated' });
 
     } catch (error) {
-        console.error('Update user role error:', error);
+        log.error('Update user role error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update user role' });
     }
 });
@@ -901,7 +902,7 @@ router.delete('/users/:userId/organization', authenticate, requireSuperAdmin, as
         res.json({ message: 'User removed from organization' });
 
     } catch (error) {
-        console.error('Remove user from organization error:', error);
+        log.error('Remove user from organization error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to remove user from organization' });
     }
 });
@@ -934,7 +935,7 @@ router.post('/organizations', authenticate, requireSuperAdmin, async (req, res) 
         auditLog.logAction({ orgId: orgId, userId: req.userId, action: 'ADMIN_ORG_CREATED', resourceType: 'ORGANIZATION', resourceId: orgId, changes: { name: trimmedName }, req });
         res.status(201).json({ organization: result.rows[0] });
     } catch (error) {
-        console.error('Create organization error:', error);
+        log.error('Create organization error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to create organization' });
     }
 });
@@ -994,7 +995,7 @@ router.delete('/organizations/:orgId', authenticate, requireSuperAdmin, async (r
         res.json({ message: 'Organization deleted successfully' });
 
     } catch (error) {
-        console.error('Delete organization error:', error);
+        log.error('Delete organization error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete organization' });
     }
 });
@@ -1052,7 +1053,7 @@ router.get('/organizations/:orgId/setup', authenticate, requireSuperAdmin, async
             setupProgress: { completed: completedCount, total: totalCount }
         });
     } catch (error) {
-        console.error('Get org setup error:', error);
+        log.error('Get org setup error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get organization setup' });
     }
 });
@@ -1114,7 +1115,7 @@ router.patch('/organizations/:orgId', authenticate, requireSuperAdmin, async (re
         auditLog.logAction({ orgId: orgId, userId: req.userId, action: 'ADMIN_ORG_UPDATED', resourceType: 'ORGANIZATION', resourceId: orgId, changes: req.body, req });
         res.json({ organization: result.rows[0] });
     } catch (error) {
-        console.error('Update organization error:', error);
+        log.error('Update organization error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update organization' });
     }
 });
@@ -1132,7 +1133,7 @@ router.get('/organizations/:orgId/knowledge-base', authenticate, requireSuperAdm
         );
         res.json({ entries: result.rows });
     } catch (error) {
-        console.error('Get org KB error:', error);
+        log.error('Get org KB error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get knowledge base' });
     }
 });
@@ -1158,7 +1159,7 @@ router.post('/organizations/:orgId/knowledge-base', authenticate, requireSuperAd
 
         res.status(201).json({ entry: result.rows[0] });
     } catch (error) {
-        console.error('Add KB entry error:', error);
+        log.error('Add KB entry error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to add knowledge base entry' });
     }
 });
@@ -1179,7 +1180,7 @@ router.delete('/organizations/:orgId/knowledge-base/:entryId', authenticate, req
         }
         res.json({ message: 'Entry deleted' });
     } catch (error) {
-        console.error('Delete KB entry error:', error);
+        log.error('Delete KB entry error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete entry' });
     }
 });
@@ -1198,7 +1199,7 @@ router.get('/organizations/:orgId/content-templates', authenticate, requireSuper
         );
         res.json({ templates: result.rows });
     } catch (error) {
-        console.error('Get org templates error:', error);
+        log.error('Get org templates error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get content templates' });
     }
 });
@@ -1225,7 +1226,7 @@ router.post('/organizations/:orgId/content-templates/import-all', authenticate, 
             count: result.rows.length
         });
     } catch (error) {
-        console.error('Import templates error:', error);
+        log.error('Import templates error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to import templates' });
     }
 });
@@ -1271,7 +1272,7 @@ router.get('/audit-logs', authenticate, requireSuperAdmin, async (req, res) => {
             total: parseInt(countResult.rows[0].count)
         });
     } catch (error) {
-        console.error('Get audit logs error:', error);
+        log.error('Get audit logs error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get audit logs' });
     }
 });
@@ -1309,7 +1310,7 @@ router.get('/users/:userId/response-history', authenticate, requireSuperAdmin, a
         });
 
     } catch (error) {
-        console.error('Get user response history error:', error);
+        log.error('Get user response history error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get user response history' });
     }
 });

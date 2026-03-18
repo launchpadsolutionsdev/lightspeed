@@ -8,6 +8,7 @@ const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const { pickRelevantRatedExamples } = require('../services/claude');
+const log = require('../services/logger');
 
 /**
  * GET /api/response-history
@@ -39,7 +40,7 @@ router.get('/', authenticate, async (req, res) => {
         res.json({ entries: result.rows });
 
     } catch (error) {
-        console.error('Get response history error:', error);
+        log.error('Get response history error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get response history' });
     }
 });
@@ -185,7 +186,7 @@ router.get('/stats', authenticate, async (req, res) => {
                 categories: kbCategoriesResult.rows
             };
         } catch (kbErr) {
-            console.warn('KB health stats unavailable:', kbErr.message);
+            log.warn('KB health stats unavailable', { error: kbErr.message });
         }
 
         // Quality metrics (gracefully handles missing columns from migration 024)
@@ -235,7 +236,7 @@ router.get('/stats', authenticate, async (req, res) => {
             };
         } catch (qualityErr) {
             // Migration 024 may not have run yet — quality columns don't exist
-            console.warn('Quality metrics unavailable:', qualityErr.message);
+            log.warn('Quality metrics unavailable', { error: qualityErr.message });
         }
 
         const rating = ratingResult.rows[0];
@@ -262,7 +263,7 @@ router.get('/stats', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get analytics stats error:', error);
+        log.error('Get analytics stats error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get analytics' });
     }
 });
@@ -306,7 +307,7 @@ router.post('/', authenticate, async (req, res) => {
         res.status(201).json({ entry: result.rows[0] });
 
     } catch (error) {
-        console.error('Save response history error:', error);
+        log.error('Save response history error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to save response' });
     }
 });
@@ -411,14 +412,14 @@ router.post('/:id/rate', authenticate, async (req, res) => {
                 entry.feedback_kb_entry_id = kbEntryId;
             } catch (kbErr) {
                 // Non-fatal: the rating was still saved successfully
-                console.warn('Auto-correction KB entry creation failed:', kbErr.message);
+                log.warn('Auto-correction KB entry creation failed', { error: kbErr.message });
             }
         }
 
         res.json({ entry });
 
     } catch (error) {
-        console.error('Rate response error:', error);
+        log.error('Rate response error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to rate response' });
     }
 });
@@ -501,7 +502,7 @@ router.get('/rated-examples', authenticate, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get rated examples error:', error);
+        log.error('Get rated examples error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get rated examples' });
     }
 });
@@ -611,7 +612,7 @@ router.get('/analytics', authenticate, async (req, res) => {
             kbGaps
         });
     } catch (error) {
-        console.error('Analytics error:', error);
+        log.error('Analytics error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to load analytics' });
     }
 });

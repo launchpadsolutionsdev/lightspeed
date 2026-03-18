@@ -17,6 +17,7 @@ const { getVoiceProfileContext } = require('./voiceFingerprint');
 const { embedQuery, formatForPgvector } = require('./embeddingService');
 const { getBudgetAllocation } = require('./budgetAllocator');
 const { fetchRelevantCorrections, buildCorrectionsContext, buildCalendarContext } = require('./systemPromptBuilder');
+const log = require('./logger');
 
 // ─── Per-tool context configuration ─────────────────────────────────
 // Each tool declares which context layers it wants injected.
@@ -71,7 +72,7 @@ async function injectResponseRules(system, organizationId) {
         }
         return system + rulesSection;
     } catch (err) {
-        console.warn('Response rules injection failed, continuing without:', err.message);
+        log.warn('Response rules injection failed, continuing without', { error: err.message });
         return system;
     }
 }
@@ -211,7 +212,7 @@ async function injectKnowledgeBase(system, inquiry, organizationId, kbType, opti
 
         return { system: updatedSystem, entries: referencedKbEntries };
     } catch (err) {
-        console.warn('KB relevance picking failed, continuing without:', err.message);
+        log.warn('KB relevance picking failed, continuing without', { error: err.message });
         return { system, entries: [] };
     }
 }
@@ -242,7 +243,7 @@ async function semanticChunkSearch(inquiry, organizationId, kbFilter, limit = 15
     } catch (err) {
         // pgvector extension or kb_chunks table may not exist yet
         if (!err.message.includes('does not exist')) {
-            console.warn('[SEMANTIC SEARCH] Error:', err.message);
+            log.warn('[SEMANTIC SEARCH] Error', { error: err.message });
         }
         return [];
     }
@@ -282,7 +283,7 @@ async function injectShopifyContext(system, inquiry, organizationId) {
             return system + shopifyContext;
         }
     } catch (err) {
-        console.warn('Shopify context injection failed, continuing without:', err.message);
+        log.warn('Shopify context injection failed, continuing without', { error: err.message });
     }
     return system;
 }

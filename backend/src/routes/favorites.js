@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 /**
  * GET /api/favorites
@@ -35,7 +36,7 @@ router.get('/', authenticate, async (req, res) => {
         res.json({ entries: result.rows });
 
     } catch (error) {
-        console.error('Get favorites error:', error);
+        log.error('Get favorites error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get favorites' });
     }
 });
@@ -73,7 +74,7 @@ router.post('/', authenticate, async (req, res) => {
         res.status(201).json({ entry: result.rows[0] });
 
     } catch (error) {
-        console.error('Save favorite error:', error);
+        log.error('Save favorite error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to save favorite' });
     }
 });
@@ -110,7 +111,7 @@ router.delete('/:id', authenticate, async (req, res) => {
         res.json({ message: 'Favorite deleted' });
 
     } catch (error) {
-        console.error('Delete favorite error:', error);
+        log.error('Delete favorite error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete favorite' });
     }
 });

@@ -8,6 +8,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
+const log = require('../services/logger');
 
 /**
  * GET /api/content-templates
@@ -43,7 +44,7 @@ router.get('/', authenticate, async (req, res) => {
 
         res.json({ templates: result.rows });
     } catch (error) {
-        console.error('Get content templates error:', error);
+        log.error('Get content templates error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get content templates' });
     }
 });
@@ -72,7 +73,7 @@ router.get('/library', authenticate, async (req, res) => {
 
         res.json({ templates: result.rows });
     } catch (error) {
-        console.error('Get template library error:', error);
+        log.error('Get template library error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to get template library' });
     }
 });
@@ -118,7 +119,7 @@ router.post('/import', authenticate, [
             templates: result.rows
         });
     } catch (error) {
-        console.error('Import templates error:', error);
+        log.error('Import templates error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to import templates' });
     }
 });
@@ -162,7 +163,7 @@ router.post('/import-all', authenticate, async (req, res) => {
             templates: result.rows
         });
     } catch (error) {
-        console.error('Import all templates error:', error);
+        log.error('Import all templates error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to import templates' });
     }
 });
@@ -203,7 +204,7 @@ router.post('/', authenticate, [
 
         res.status(201).json({ template: result.rows[0] });
     } catch (error) {
-        console.error('Create content template error:', error);
+        log.error('Create content template error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to create content template' });
     }
 });
@@ -265,7 +266,7 @@ router.patch('/:id', authenticate, async (req, res) => {
 
         res.json({ template: result.rows[0] });
     } catch (error) {
-        console.error('Update content template error:', error);
+        log.error('Update content template error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to update content template' });
     }
 });
@@ -299,7 +300,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 
         res.json({ message: 'Template deleted' });
     } catch (error) {
-        console.error('Delete content template error:', error);
+        log.error('Delete content template error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to delete content template' });
     }
 });
