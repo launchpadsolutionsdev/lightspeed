@@ -1105,48 +1105,36 @@
             margin-bottom: 20px;
         }
         .raffle-kpi-card {
-            background: linear-gradient(90deg, #0F3460 0%, #5B1A6E 30%, #E91E8C 55%, #F47B3A 80%, #F5C623 100%);
-            background-size: 150% 100%;
-            background-position: 0% 50%;
-            border: none;
+            background: var(--bg-card, #ffffff);
+            border: 1px solid var(--border, #E3E8EE);
             border-radius: var(--radius-md, 8px);
             padding: 16px 18px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-            transition: all 0.4s ease;
-        }
-        .raffle-kpi-card:hover {
-            transform: translateY(-2px);
-            background-position: 50% 50%;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));
         }
         .raffle-kpi-label {
             font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: rgba(255, 255, 255, 0.85);
+            color: var(--text-muted, #6B7C93);
             margin-bottom: 6px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         .raffle-kpi-value {
             font-size: 1.5rem;
             font-weight: 700;
-            color: #FFFFFF;
+            color: var(--text-primary, #0A2540);
             line-height: 1.2;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         .raffle-kpi-of {
             font-size: 0.85rem;
             font-weight: 500;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-muted, #6B7C93);
             margin-left: 2px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         .raffle-kpi-sub {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.75);
+            color: var(--text-muted, #6B7C93);
             margin-top: 4px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         .raffle-winner-highlight {
             color: #86efac;
@@ -1360,40 +1348,29 @@
             }
         }
         .raffle-metric-card {
-            background: linear-gradient(90deg, #0F3460 0%, #5B1A6E 30%, #E91E8C 55%, #F47B3A 80%, #F5C623 100%);
-            background-size: 150% 100%;
-            background-position: 0% 50%;
-            border: none;
+            background: var(--bg-card, #ffffff);
+            border: 1px solid var(--border, #E3E8EE);
             border-radius: var(--radius-lg, 12px);
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-            transition: all 0.4s ease;
-        }
-        .raffle-metric-card:hover {
-            transform: translateY(-2px);
-            background-position: 50% 50%;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));
         }
         .raffle-metric-title {
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: rgba(255, 255, 255, 0.85);
+            color: var(--text-muted, #6B7C93);
             margin-bottom: 14px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         .raffle-metric-big {
             font-size: 1.6rem;
             font-weight: 700;
-            color: #FFFFFF;
+            color: var(--text-primary, #0A2540);
             margin-bottom: 4px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         .raffle-metric-sub {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.75);
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            color: var(--text-muted, #6B7C93);
         }
 
         /* Payment method bars */
@@ -1411,14 +1388,13 @@
         .raffle-pay-label {
             font-size: 12px;
             font-weight: 600;
-            color: rgba(255, 255, 255, 0.85);
+            color: var(--text-secondary, #425466);
             min-width: 50px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         .raffle-pay-bar-track {
             flex: 1;
             height: 8px;
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--bg-alt, #F6F9FC);
             border-radius: 4px;
             overflow: hidden;
         }
@@ -1427,16 +1403,15 @@
             border-radius: 4px;
             transition: width 0.5s ease;
         }
-        .raffle-pay-bar-credit { background: rgba(255, 255, 255, 0.9); }
-        .raffle-pay-bar-debit { background: rgba(255, 255, 255, 0.65); }
-        .raffle-pay-bar-cash { background: rgba(255, 255, 255, 0.45); }
+        .raffle-pay-bar-credit { background: #635BFF; }
+        .raffle-pay-bar-debit { background: #F47B3A; }
+        .raffle-pay-bar-cash { background: #30B130; }
         .raffle-pay-pct {
             font-size: 12px;
             font-weight: 600;
-            color: rgba(255, 255, 255, 0.85);
+            color: var(--text-secondary, #425466);
             min-width: 42px;
             text-align: right;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
 
         /* Package tier rows */
