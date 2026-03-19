@@ -5608,6 +5608,17 @@ function parseCurrency(value) {
 const DATA_HEADER_KEYWORDS = ['email', 'e-mail', 'name', 'phone', 'city', 'total', 'spent', 'amount',
     'seller', 'quantity', 'tickets', 'postal', 'zip', 'cash', 'credit', 'debit', 'net sales', 'customer'];
 
+// Known column layout for BUMP Raffle Customer Purchases export (0-indexed)
+// (D) Email=3, (F) Phone=5, (I) City=8, (K) Postal=10, (N) Tickets=13, (O) Amount=14
+const BUMP_PURCHASES_HEADERS = {
+    3: 'E-mail',
+    5: 'Phone',
+    8: 'City',
+    10: 'Postal Code',
+    13: 'Quantity',
+    14: 'Total Spent'
+};
+
 function parseSheetWithHeaderDetection(sheet) {
     // First try default parsing (Row 1 = headers)
     const defaultData = XLSX.utils.sheet_to_json(sheet);
@@ -5632,6 +5643,18 @@ function parseSheetWithHeaderDetection(sheet) {
             range.s.r = i; // start from header row
             return XLSX.utils.sheet_to_json(sheet, { range });
         }
+    }
+
+    // No recognizable headers found — apply known BUMP column layout
+    if (rawRows.length > 0) {
+        console.warn('[Insights Engine] No headers detected, applying BUMP Raffle column mapping');
+        return rawRows.map(row => {
+            const obj = {};
+            for (const [colIdx, headerName] of Object.entries(BUMP_PURCHASES_HEADERS)) {
+                obj[headerName] = row[Number(colIdx)] != null ? row[Number(colIdx)] : '';
+            }
+            return obj;
+        });
     }
 
     // Fallback to default parsing
