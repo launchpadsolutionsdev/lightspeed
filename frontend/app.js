@@ -5595,6 +5595,15 @@ const NORTHERN_ONTARIO_CITIES = new Set([
     'byng inlet', 'pointe au baril', 'depot harbour', 'mactier', 'honey harbour'
 ]);
 
+// Parse currency strings like "$1,234.56" or "1234.56" into numbers
+function parseCurrency(value) {
+    if (value == null || value === '') return 0;
+    if (typeof value === 'number') return value;
+    const cleaned = String(value).replace(/[$,\s]/g, '');
+    const num = Number(cleaned);
+    return isNaN(num) ? 0 : num;
+}
+
 function normalizeCity(city) {
     if (!city) return '';
     return city.toString().toLowerCase().trim()
@@ -5853,7 +5862,7 @@ function analyzeDataFull(data) {
     }
 
     // Basic metrics
-    const totalRevenue = data.reduce((sum, row) => sum + (Number(row[spentCol]) || 0), 0);
+    const totalRevenue = data.reduce((sum, row) => sum + parseCurrency(row[spentCol]), 0);
     const totalTransactions = data.length;
 
     // Package-level analysis
@@ -5862,7 +5871,7 @@ function analyzeDataFull(data) {
     let packageCounts = { 10: 0, 20: 0, 50: 0, 75: 0, 100: 0 };
 
     data.forEach(row => {
-        const spent = Number(row[spentCol]) || 0;
+        const spent = parseCurrency(row[spentCol]);
         const packages = estimatePackages(spent);
         totalPackageCount += packages.length;
         totalPackageValue += packages.reduce((sum, p) => sum + p, 0);
@@ -5881,7 +5890,7 @@ function analyzeDataFull(data) {
     // Repeat buyers
     let repeatBuyersCount = 0;
     data.forEach(row => {
-        const spent = Number(row[spentCol]) || 0;
+        const spent = parseCurrency(row[spentCol]);
         if (!SINGLE_PACKAGE_AMOUNTS.has(spent)) repeatBuyersCount++;
     });
 
@@ -5902,7 +5911,7 @@ function analyzeDataFull(data) {
 
     data.forEach(row => {
         let rawCity = cityCol ? (row[cityCol] || '').toString().trim() : '';
-        const amount = Number(row[spentCol]) || 0;
+        const amount = parseCurrency(row[spentCol]);
         const email = (row[emailCol] || '').toString().toLowerCase().trim();
         const name = row[nameCol] || 'Unknown';
         const phone = row[phoneCol] || '';
@@ -6709,7 +6718,7 @@ function analyzePaymentTicketsReport(data) {
 
     data.forEach(row => {
         const seller = (row[sellerCol] || 'Unknown').toString().trim();
-        const amount = Number(row[amountCol]) || 0;
+        const amount = parseCurrency(row[amountCol]);
 
         if (!sellerData[seller]) {
             sellerData[seller] = { sales: 0, revenue: 0 };
@@ -6983,14 +6992,14 @@ function analyzeSellersReport(data) {
 
     data.forEach(row => {
         const seller = (row[sellerCol] || 'Unknown').toString().trim();
-        const netSales = Number(row[netSalesCol]) || 0;
-        const cash = Number(row[cashCol]) || 0;
-        const cc = Number(row[ccCol]) || 0;
-        const debit = Number(row[debitCol]) || 0;
-        const tx = Number(row[txCol]) || 0;
-        const voided = Number(row[voidedSalesCol]) || 0;
+        const netSales = parseCurrency(row[netSalesCol]);
+        const cash = parseCurrency(row[cashCol]);
+        const cc = parseCurrency(row[ccCol]);
+        const debit = parseCurrency(row[debitCol]);
+        const tx = parseCurrency(row[txCol]);
+        const voided = parseCurrency(row[voidedSalesCol]);
         const avgOrder = row[avgOrderCol];
-        const netNumbers = Number(row[netNumbersCol]) || 0;
+        const netNumbers = parseCurrency(row[netNumbersCol]);
 
         totalNetSales += netSales;
         totalCash += cash;
