@@ -237,6 +237,18 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
             },
             required: ['query']
         }
+    },
+    {
+        name: 'search_heartbeat_data',
+        description: 'Query real-time and historical raffle sales data from the Heartbeat monitor. Returns current totals (sales, tickets, numbers sold), sales velocity across multiple time windows (1m, 5m, 10m, 30m, 1h, 3h, 24h, 7d), surge detection, and package tier breakdowns. Use this when the user asks about current sales performance, velocity, how fast tickets are selling, sales trends, revenue totals, or anything related to the live raffle dashboard/heartbeat.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                window: { type: 'string', enum: ['1m', '5m', '10m', '30m', '1h', '3h', '24h', '7d', 'all'], description: 'Time window to focus on. Use "all" for a full summary across all windows. Default "all".' },
+                include_tiers: { type: 'boolean', description: 'Include package tier breakdown (ticket packages by price point). Default false.' }
+            },
+            required: []
+        }
     }
 ];
 
@@ -700,6 +712,141 @@ Use markdown formatting for readability.`;
     }
 }
 
+// ─── Heartbeat Data Query ────────────────────────────────────────────
+
+/**
+ * Query velocity_snapshots and current feed data for Ask Lightspeed.
+ * Returns a text summary of current sales totals, velocity windows, and
+ * optionally package tier breakdowns.
+ */
+async function executeSearchHeartbeatData(input) {
+    const window = input.window || 'all';
+    const includeTiers = input.include_tiers || false;
+
+    // Time window definitions (mirrors feedDashboard.js VELOCITY_WINDOWS)
+    const WINDOWS = [
+        { key: '1m',  label: '1 min',    ms: 1 * 60 * 1000 },
+        { key: '5m',  label: '5 min',    ms: 5 * 60 * 1000 },
+        { key: '10m', label: '10 min',   ms: 10 * 60 * 1000 },
+        { key: '30m', label: '30 min',   ms: 30 * 60 * 1000 },
+        { key: '1h',  label: '1 hour',   ms: 60 * 60 * 1000 },
+        { key: '3h',  label: '3 hours',  ms: 3 * 60 * 60 * 1000 },
+        { key: '24h', label: '24 hours', ms: 24 * 60 * 60 * 1000 },
+        { key: '7d',  label: '7 days',   ms: 7 * 24 * 60 * 60 * 1000 }
+    ];
+
+    try {
+        // Load snapshots from the last 7 days
+        const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const result = await pool.query(
+            'SELECT ts, total_sales, total_tickets FROM velocity_snapshots WHERE ts >= $1 ORDER BY ts ASC',
+            [cutoff]
+        );
+
+        const snapshots = result.rows.map(r => ({
+            ts: Number(r.ts),
+            totalSales: parseFloat(r.total_sales),
+            totalTickets: parseInt(r.total_tickets, 10)
+        }));
+
+        if (snapshots.length < 2) {
+            return 'Heartbeat has insufficient data — fewer than 2 velocity snapshots recorded. The raffle feed may not be connected or no sales have been recorded yet.';
+        }
+
+        const latest = snapshots[snapshots.length - 1];
+        const now = latest.ts;
+
+        // Build summary header with current totals
+        let summary = `**Heartbeat — Live Raffle Sales Data**\n`;
+        summary += `As of: ${new Date(now).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}\n`;
+        summary += `Total Sales: $${latest.totalSales.toLocaleString('en-CA', { minimumFractionDigits: 2 })}\n`;
+        summary += `Total Tickets Sold: ${latest.totalTickets.toLocaleString()}\n`;
+        summary += `Data Points: ${snapshots.length} snapshots over the collection period\n\n`;
+
+        // Compute velocity for requested windows
+        const windowsToShow = window === 'all'
+            ? WINDOWS
+            : WINDOWS.filter(w => w.key === window);
+
+        if (windowsToShow.length > 0) {
+            summary += `**Sales Velocity:**\n`;
+            for (const win of windowsToShow) {
+                const winCutoff = now - win.ms;
+                const priorCutoff = now - win.ms * 2;
+
+                const windowStart = snapshots.find(s => s.ts >= winCutoff) || snapshots[0];
+                const priorStart = snapshots.find(s => s.ts >= priorCutoff) || snapshots[0];
+
+                const salesDelta = latest.totalSales - windowStart.totalSales;
+                const ticketsDelta = latest.totalTickets - windowStart.totalTickets;
+                const priorDelta = windowStart.totalSales - priorStart.totalSales;
+
+                let changeStr = '';
+                if (priorDelta > 0) {
+                    const pct = Math.round(((salesDelta - priorDelta) / priorDelta) * 100);
+                    changeStr = pct >= 0 ? ` (+${pct}% vs prior period)` : ` (${pct}% vs prior period)`;
+                }
+
+                summary += `- ${win.label}: $${salesDelta.toLocaleString('en-CA', { minimumFractionDigits: 2 })} revenue, ${ticketsDelta.toLocaleString()} tickets${changeStr}\n`;
+            }
+
+            // Surge detection (1h window)
+            const hourWindow = WINDOWS.find(w => w.key === '1h');
+            if (hourWindow) {
+                const hCutoff = now - hourWindow.ms;
+                const hPriorCutoff = now - hourWindow.ms * 2;
+                const hStart = snapshots.find(s => s.ts >= hCutoff) || snapshots[0];
+                const hPrior = snapshots.find(s => s.ts >= hPriorCutoff) || snapshots[0];
+                const hSales = latest.totalSales - hStart.totalSales;
+                const hPriorSales = hStart.totalSales - hPrior.totalSales;
+                if (hPriorSales > 0) {
+                    const surgePct = Math.round(((hSales - hPriorSales) / hPriorSales) * 100);
+                    if (surgePct >= 50) {
+                        summary += `\n**SURGE DETECTED:** Sales are up ${surgePct}% in the last hour compared to the previous hour.\n`;
+                    }
+                }
+            }
+        }
+
+        // Include tier breakdown if requested (requires a live feed fetch)
+        if (includeTiers) {
+            try {
+                const FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/event-details';
+                const { XMLParser } = require('fast-xml-parser');
+                const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '_', parseTagValue: true, trimValues: true, isArray: (name) => name === 'node' });
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 10000);
+                const resp = await fetch(FEED_URL, { signal: controller.signal, headers: { 'Accept': 'application/xml, text/xml, */*' } });
+                clearTimeout(timeout);
+                if (resp.ok) {
+                    const xml = await resp.text();
+                    const parsed = parser.parse(xml);
+                    const salesContent = parsed.content || parsed;
+                    const breakdownNodes = salesContent.breakdown?.node || [];
+                    const tiers = (Array.isArray(breakdownNodes) ? breakdownNodes : [breakdownNodes]);
+                    if (tiers.length > 0) {
+                        summary += `\n**Package Tier Breakdown:**\n`;
+                        for (const t of tiers) {
+                            const qty = parseInt(t.quantity) || 0;
+                            const price = parseFloat(t.price) || 0;
+                            const tickets = parseInt(String(t.total_tickets).replace(/,/g, '')) || 0;
+                            const sales = parseFloat(String(t.total_sales).replace(/,/g, '')) || 0;
+                            summary += `- ${qty}-number package ($${price.toFixed(2)}): ${tickets.toLocaleString()} tickets, $${sales.toLocaleString('en-CA', { minimumFractionDigits: 2 })} revenue\n`;
+                        }
+                    }
+                }
+            } catch (_e) {
+                summary += `\n(Package tier breakdown unavailable — feed fetch failed.)\n`;
+            }
+        }
+
+        return summary;
+    } catch (err) {
+        log.error('Heartbeat data query error', { error: err.message });
+        return `Heartbeat data query failed: ${err.message}`;
+    }
+}
+
 // ─── Proactive Suggestions Engine ────────────────────────────────────
 
 function generateSuggestions(completedTool, toolInput, toolResult) {
@@ -780,6 +927,15 @@ function generateSuggestions(completedTool, toolInput, toolResult) {
                 { label: 'Search another customer', icon: '🔍', prompt: 'Search for another customer' }
             );
             break;
+
+        case 'search_heartbeat_data':
+            suggestions.push(
+                { label: 'Draft sales update email', icon: '✉️', prompt: 'Draft an email update about current sales performance using the Heartbeat data' },
+                { label: 'Draft social post', icon: '📱', prompt: 'Draft a social media post highlighting the current sales momentum' },
+                { label: 'Compare with Shopify', icon: '🔍', prompt: 'Search Shopify for today\'s recent orders to cross-reference with Heartbeat data' },
+                { label: 'Check tier breakdown', icon: '📊', prompt: 'Show me the Heartbeat data with package tier breakdown included' }
+            );
+            break;
     }
 
     return suggestions.slice(0, 4);
@@ -794,6 +950,8 @@ function generateTextSuggestions(text) {
         suggestions.push({ label: 'Check Runway calendar', icon: '📅', prompt: 'Search the Runway calendar for related events' });
     if (lower.includes('policy') || lower.includes('procedure') || lower.includes('rule'))
         suggestions.push({ label: 'Search KB for policy', icon: '🔍', prompt: 'Search the Knowledge Base for related policies' });
+    if (lower.includes('sales') || lower.includes('velocity') || lower.includes('ticket') || lower.includes('revenue') || lower.includes('heartbeat'))
+        suggestions.push({ label: 'Check Heartbeat sales', icon: '📊', prompt: 'Show me the current sales velocity from Heartbeat' });
     if (suggestions.length === 0)
         suggestions.push(
             { label: 'Search Knowledge Base', icon: '🔍', prompt: 'Search the Knowledge Base for more information about this' },
@@ -913,7 +1071,9 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
         // Reinforce tool usage after all context injection (KB, rules, memory, etc.)
         // This must come LAST so it isn't buried by appended context.
         enhancedSystem += `\n\nCRITICAL REMINDER — TOOL USAGE:
-When the user asks about a specific customer, email address, order, or purchase, you MUST call the search_shopify_orders or search_shopify_customers tool to look up the data. Do NOT tell the user to check Shopify Admin manually. Do NOT say you only have aggregate data. You have real-time Shopify lookup tools — use them.`;
+When the user asks about a specific customer, email address, order, or purchase, you MUST call the search_shopify_orders or search_shopify_customers tool to look up the data. Do NOT tell the user to check Shopify Admin manually. Do NOT say you only have aggregate data. You have real-time Shopify lookup tools — use them.
+
+When the user asks about current sales, velocity, how tickets are selling, revenue pace, sales trends, or Heartbeat data, you MUST call search_heartbeat_data. Do NOT say you don't have access to live sales data — you do.`;
 
         // Whitelist models
         const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
@@ -1308,6 +1468,29 @@ async function processResponse(response, messages, system, organizationId, userI
 
             await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
             return;
+
+        } else if (toolUse.name === 'search_heartbeat_data') {
+            // Read action — query Heartbeat velocity/sales data
+            sendEvent({ type: 'status', message: 'Querying Heartbeat sales data...' });
+            const toolResult = await executeSearchHeartbeatData(toolUse.input);
+
+            trackTool('search_heartbeat_data');
+            const followUpMessages = [
+                ...messages,
+                { role: 'assistant', content: response.content },
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
+            ];
+
+            const followUp = await claudeService.generateResponse({
+                messages: followUpMessages,
+                system,
+                max_tokens: 4096,
+                tools: TOOLS,
+                model
+            });
+
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            return;
         }
     }
 }
@@ -1524,6 +1707,9 @@ SHOPIFY TOOLS:
 - search_shopify_orders: Search Shopify orders by order number, email, or customer name. Use when the user asks about orders, purchases, or what a customer has bought.
 - search_shopify_customers: Search Shopify customers by name, email, or phone. Use when the user asks about customers, supporters, or buyers.
 
+HEARTBEAT (LIVE RAFFLE MONITOR):
+- search_heartbeat_data: Query real-time raffle sales data from the Heartbeat monitor. Returns current totals (revenue, tickets, numbers sold), sales velocity across time windows (1m to 7d), surge detection, and optionally package tier breakdowns. Use when the user asks about current sales, velocity, how fast tickets are selling, revenue performance, sales trends, or anything related to live raffle metrics.
+
 ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
 - run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
@@ -1541,6 +1727,7 @@ TOOL USAGE GUIDELINES:
 - For order lookups ("any orders under...", "order #1042", "what did X buy?"): Call search_shopify_orders with the appropriate parameter (orderNumber, email, or customerName)
 - For customer lookups ("find customer...", "who is...", "look up..."): Call search_shopify_customers with the query
 - For data analysis requests: Call run_insights_analysis with the data
+- For current sales, velocity, "how are sales going?", "how fast are tickets selling?", heartbeat metrics, or live raffle performance: Call search_heartbeat_data. Use window parameter to focus on a specific time range, or "all" for a full overview.
 - For policy/procedure questions: Call search_knowledge_base
 - For team announcements, internal updates, or "what did the team post about X?": Call search_home_base with a query
 - For "latest post", "recent posts", "what's new in home base", or "summarize home base": Call search_home_base WITHOUT a query to browse recent posts
