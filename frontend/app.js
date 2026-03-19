@@ -6465,11 +6465,28 @@ function renderDataHeatmap(cityData) {
 
     document.getElementById('dataHeatmapGrid').innerHTML = sortedCities.map(([_, data]) => {
         const intensity = data.revenue / maxRevenue;
-        // Interpolate from light purple to dark purple
-        const r = Math.round(139 + (1 - intensity) * 100);
-        const g = Math.round(92 - intensity * 50);
-        const b = Math.round(246 - intensity * 50);
-        const textColor = intensity > 0.5 ? 'white' : '#0A2540';
+        // Brand gradient: warm gold → orange → pink → deep purple
+        let r, g, b;
+        if (intensity < 0.33) {
+            // Low: light warm (#FEF3E0) → Gold (#F5C623)
+            const t = intensity / 0.33;
+            r = Math.round(254 - t * 9);
+            g = Math.round(243 - t * 45);
+            b = Math.round(224 - t * 189);
+        } else if (intensity < 0.66) {
+            // Mid: Gold (#F5C623) → Orange (#F47B3A)
+            const t = (intensity - 0.33) / 0.33;
+            r = Math.round(245 - t * 1);
+            g = Math.round(198 - t * 75);
+            b = Math.round(35 + t * 23);
+        } else {
+            // High: Orange (#F47B3A) → Deep Pink-Purple (#9B1B6E)
+            const t = (intensity - 0.66) / 0.34;
+            r = Math.round(244 - t * 89);
+            g = Math.round(123 - t * 96);
+            b = Math.round(58 + t * 52);
+        }
+        const textColor = intensity > 0.45 ? 'white' : '#0A2540';
         return `
             <div class="data-heatmap-cell" style="background: rgb(${r}, ${g}, ${b}); color: ${textColor};" title="${data.displayName}: ${formatDataCurrency(data.revenue)}">
                 <div class="data-heatmap-city">${data.displayName}</div>
