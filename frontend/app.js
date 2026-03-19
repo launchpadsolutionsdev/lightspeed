@@ -5772,6 +5772,9 @@ function setupDataAnalysisListeners() {
 
     dataAnalysisListenersSetup = true;
 
+    // Set up AI Analysis panel
+    setupAnalysisPanelListeners();
+
     // Report type selection - now reveals upload step on same page
     const reportTypeSelect = document.getElementById("dataReportTypeSelect");
     const reportTypeDescription = document.getElementById("dataReportTypeDescription");
@@ -6552,6 +6555,7 @@ function resetDataAnalysis() {
     currentReportType = null;
     dataCharts.forEach(chart => chart.destroy());
     dataCharts = [];
+    resetAnalysisPanel();
 
     // Hide all dashboards
     document.getElementById("dataDashboard").classList.remove("visible");
@@ -6591,6 +6595,370 @@ function resetDataAnalysis() {
     document.querySelectorAll('.data-page').forEach(p => p.classList.remove('active'));
     document.querySelector('[data-page="overview"]')?.classList.add('active');
     document.getElementById('data-page-overview')?.classList.add('active');
+}
+
+// ==================== INSIGHTS ENGINE - AI ANALYSIS PANEL ====================
+let iapConversation = [];      // { role: 'user'|'assistant', content: string }
+let iapStreamController = null;
+let iapCurrentReport = null;   // 'customer-purchases' | 'customers' | 'payment-tickets' | 'sellers'
+let iapIsStreaming = false;
+
+function setupAnalysisPanelListeners() {
+    // "Generate Analysis" buttons
+    document.querySelectorAll('.data-generate-analysis-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const reportType = btn.dataset.report;
+            openAnalysisPanel(reportType);
+        });
+    });
+
+    // Close button
+    const closeBtn = document.getElementById('iapCloseBtn');
+    if (closeBtn) closeBtn.addEventListener('click', closeAnalysisPanel);
+
+    // Send follow-up
+    const sendBtn = document.getElementById('iapSendBtn');
+    const input = document.getElementById('iapInput');
+    if (sendBtn) sendBtn.addEventListener('click', sendIapFollowUp);
+    if (input) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendIapFollowUp();
+            }
+        });
+        // Auto-resize textarea
+        input.addEventListener('input', () => {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+        });
+    }
+}
+
+function openAnalysisPanel(reportType) {
+    const wrapper = document.getElementById('dataBodyWrapper');
+    const panel = document.getElementById('insightsAnalysisPanel');
+    if (!wrapper || !panel) return;
+
+    // If already open for same report with existing conversation, just toggle panel back open
+    if (iapCurrentReport === reportType && iapConversation.length > 0) {
+        wrapper.classList.add('analysis-panel-open');
+        return;
+    }
+
+    // New report or different report — reset conversation
+    iapCurrentReport = reportType;
+    iapConversation = [];
+    document.getElementById('iapMessages').innerHTML = '';
+
+    // Open the panel
+    wrapper.classList.add('analysis-panel-open');
+
+    // Auto-generate initial analysis after a brief delay for the animation
+    setTimeout(() => {
+        const context = collectReportData(reportType);
+        const systemMsg = buildAnalysisSystemPrompt(reportType, context);
+        const userMsg = 'Analyze this report data and provide key insights, trends, and actionable recommendations.';
+
+        iapConversation.push({ role: 'user', content: systemMsg + '\n\n' + userMsg });
+        streamIapResponse();
+    }, 300);
+}
+
+function closeAnalysisPanel() {
+    const wrapper = document.getElementById('dataBodyWrapper');
+    if (wrapper) wrapper.classList.remove('analysis-panel-open');
+    // Stop any active stream
+    if (iapStreamController) {
+        iapStreamController.abort();
+        iapStreamController = null;
+    }
+    iapIsStreaming = false;
+}
+
+function collectReportData(reportType) {
+    const getText = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.textContent.trim() : '';
+    };
+
+    if (reportType === 'customer-purchases') {
+        return {
+            reportName: getText('dataReportName'),
+            totalRevenue: getText('dataTotalRevenue'),
+            totalPurchases: getText('dataTotalPurchases'),
+            totalUniqueCustomers: getText('dataTotalUniqueCustomers'),
+            avgSale: getText('dataAvgSale'),
+            uniqueCustomers: getText('dataUniqueCustomers'),
+            avgPerCustomer: getText('dataAvgPerCustomer'),
+            repeatBuyers: getText('dataRepeatBuyers'),
+            northernRevenue: getText('dataNorthernRevenue'),
+            northernSubtext: getText('dataNorthernSubtext'),
+            // Grab city table data
+            cityTable: extractTableData('data-page-overview', '.data-chart-card table'),
+            // Summary table
+            summaryTotalCustomers: getText('summaryTotalCustomers'),
+            summaryAvgOrderPerCustomer: getText('summaryAvgOrderPerCustomer'),
+            summaryAvgSalesPerCustomer: getText('summaryAvgSalesPerCustomer')
+        };
+    }
+
+    if (reportType === 'customers') {
+        return {
+            reportName: getText('dataCustomersReportName'),
+            totalCustomers: getText('dataCustTotalCustomers'),
+            totalCities: getText('dataCustTotalCities'),
+            northernCount: getText('dataCustNorthernCount'),
+            northernPct: getText('dataCustNorthernPct'),
+            cityTable: extractTableData('data-page-customers-overview', 'table'),
+            postalTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(2)'),
+            areaCodeTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(3)')
+        };
+    }
+
+    if (reportType === 'payment-tickets') {
+        return {
+            reportName: getText('dataPaymentTicketsReportName'),
+            totalSales: getText('dataPTTotalSales'),
+            shopifyPct: getText('dataPTShopifyPct'),
+            shopifyCount: getText('dataPTShopifyCount'),
+            inPersonPct: getText('dataPTInPersonPct'),
+            inPersonCount: getText('dataPTInPersonCount'),
+            totalRevenue: getText('dataPTTotalRevenue'),
+            shopifyRevenue: getText('dataPTShopifyRevenue'),
+            inPersonRevenue: getText('dataPTInPersonRevenue'),
+            sellerTable: extractTableData('data-page-payment-tickets-overview', 'table')
+        };
+    }
+
+    if (reportType === 'sellers') {
+        return {
+            reportName: getText('dataSellersReportName'),
+            netSales: getText('dataSellersNetSales'),
+            totalTransactions: getText('dataSellersTotalTx'),
+            activeSellers: getText('dataSellersActiveSellers'),
+            avgOrder: getText('dataSellersAvgOrder'),
+            cashTotal: getText('dataSellersCashTotal'),
+            cashPct: getText('dataSellersCashPct'),
+            ccTotal: getText('dataSellersCCTotal'),
+            ccPct: getText('dataSellersCCPct'),
+            debitTotal: getText('dataSellersDebitTotal'),
+            debitPct: getText('dataSellersDebitPct'),
+            sellerTable: extractSellerTableData(),
+            // In-person breakdown
+            ipCashTotal: getText('dataSellersIPCashTotal'),
+            ipCashPct: getText('dataSellersIPCashPct'),
+            ipCCTotal: getText('dataSellersIPCCTotal'),
+            ipCCPct: getText('dataSellersIPCCPct'),
+            ipDebitTotal: getText('dataSellersIPDebitTotal'),
+            ipDebitPct: getText('dataSellersIPDebitPct')
+        };
+    }
+
+    return {};
+}
+
+function extractTableData(pageId, tableSelector) {
+    const page = document.getElementById(pageId);
+    if (!page) return '';
+    const table = page.querySelector(tableSelector);
+    if (!table) return '';
+    const rows = [];
+    table.querySelectorAll('tr').forEach(tr => {
+        const cells = [];
+        tr.querySelectorAll('th, td').forEach(td => cells.push(td.textContent.trim()));
+        if (cells.length > 0) rows.push(cells.join(' | '));
+    });
+    return rows.join('\n');
+}
+
+function extractSellerTableData() {
+    const tbody = document.getElementById('dataSellersTable');
+    const tfoot = document.getElementById('dataSellersTotals');
+    if (!tbody) return '';
+    const rows = [];
+    rows.push('Seller | Net Sales | Cash | Credit | Debit | Transactions | Voided | Avg Order');
+    tbody.querySelectorAll('tr').forEach(tr => {
+        const cells = [];
+        tr.querySelectorAll('td').forEach(td => cells.push(td.textContent.trim()));
+        if (cells.length > 0) rows.push(cells.join(' | '));
+    });
+    if (tfoot) {
+        tfoot.querySelectorAll('tr').forEach(tr => {
+            const cells = [];
+            tr.querySelectorAll('td, th').forEach(td => cells.push(td.textContent.trim()));
+            if (cells.length > 0) rows.push(cells.join(' | '));
+        });
+    }
+    return rows.join('\n');
+}
+
+function buildAnalysisSystemPrompt(reportType, data) {
+    const reportNames = {
+        'customer-purchases': 'Customer Purchases',
+        'customers': 'Customers',
+        'payment-tickets': 'Payment Tickets',
+        'sellers': 'Sellers'
+    };
+
+    let prompt = `You are an expert data analyst for a charitable lottery/raffle organization. You are analyzing a "${reportNames[reportType]}" report from their Insights Engine.\n\n`;
+    prompt += `REPORT DATA:\n`;
+    prompt += JSON.stringify(data, null, 2);
+    prompt += `\n\nProvide a thorough yet concise analysis including:\n`;
+    prompt += `1. Key highlights and notable metrics\n`;
+    prompt += `2. Trends or patterns you observe\n`;
+    prompt += `3. Areas of strength\n`;
+    prompt += `4. Areas for improvement or concern\n`;
+    prompt += `5. Actionable recommendations\n\n`;
+    prompt += `Format your response with clear headers and bullet points. Be specific with numbers. Do not use emojis. Keep it professional and data-driven.`;
+
+    return prompt;
+}
+
+async function streamIapResponse() {
+    const messagesEl = document.getElementById('iapMessages');
+    if (!messagesEl) return;
+
+    iapIsStreaming = true;
+    updateIapSendButton();
+
+    // Add typing indicator
+    const typingEl = document.createElement('div');
+    typingEl.className = 'iap-msg iap-typing';
+    typingEl.id = 'iapTypingIndicator';
+    typingEl.innerHTML = '<div class="iap-typing-dots"><span></span><span></span><span></span></div><span class="iap-typing-text">Analyzing report data...</span>';
+    messagesEl.appendChild(typingEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    // Create the AI message container
+    const msgEl = document.createElement('div');
+    msgEl.className = 'iap-msg iap-msg-ai';
+    msgEl.style.display = 'none';
+
+    iapStreamController = new AbortController();
+
+    try {
+        // Build messages array for API
+        const apiMessages = iapConversation.map(m => ({
+            role: m.role,
+            content: m.content
+        }));
+
+        const formData = new FormData();
+        formData.append('messages', JSON.stringify(apiMessages));
+        formData.append('model', 'sonnet');
+        formData.append('tone', 'professional');
+
+        const response = await fetch(`${API_BASE_URL}/api/ask-lightspeed/agent`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            },
+            body: formData,
+            signal: iapStreamController.signal
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        // Remove typing indicator, show message
+        const typing = document.getElementById('iapTypingIndicator');
+        if (typing) typing.remove();
+        msgEl.style.display = '';
+        messagesEl.appendChild(msgEl);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullText = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr || jsonStr === '[DONE]') continue;
+
+                let event;
+                try { event = JSON.parse(jsonStr); } catch (_e) { continue; }
+
+                if (event.type === 'text') {
+                    fullText += (fullText && event.content ? '\n' : '') + (event.content || '');
+                    msgEl.innerHTML = renderSimpleMarkdown(fullText);
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
+                } else if (event.type === 'status') {
+                    // Update typing text if still visible
+                    const typingText = document.querySelector('#iapTypingIndicator .iap-typing-text');
+                    if (typingText) typingText.textContent = event.message;
+                } else if (event.type === 'error') {
+                    throw new Error(event.error || 'Server error');
+                }
+            }
+        }
+
+        // Store assistant response in conversation
+        iapConversation.push({ role: 'assistant', content: fullText });
+
+    } catch (err) {
+        const typing = document.getElementById('iapTypingIndicator');
+        if (typing) typing.remove();
+
+        if (err.name !== 'AbortError') {
+            msgEl.style.display = '';
+            msgEl.innerHTML = `<p style="color: var(--danger, #ef4444);">Unable to generate analysis. ${escapeHtml(err.message)}</p>`;
+            if (!msgEl.parentNode) messagesEl.appendChild(msgEl);
+        }
+    } finally {
+        iapIsStreaming = false;
+        iapStreamController = null;
+        updateIapSendButton();
+    }
+}
+
+function sendIapFollowUp() {
+    const input = document.getElementById('iapInput');
+    if (!input || iapIsStreaming) return;
+    const text = input.value.trim();
+    if (!text) return;
+
+    const messagesEl = document.getElementById('iapMessages');
+
+    // Show user message
+    const userMsgEl = document.createElement('div');
+    userMsgEl.className = 'iap-msg iap-msg-user';
+    userMsgEl.textContent = text;
+    messagesEl.appendChild(userMsgEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    // Add to conversation
+    iapConversation.push({ role: 'user', content: text });
+
+    // Clear input
+    input.value = '';
+    input.style.height = 'auto';
+
+    // Stream response
+    streamIapResponse();
+}
+
+function updateIapSendButton() {
+    const sendBtn = document.getElementById('iapSendBtn');
+    if (sendBtn) sendBtn.disabled = iapIsStreaming;
+}
+
+function resetAnalysisPanel() {
+    closeAnalysisPanel();
+    iapConversation = [];
+    iapCurrentReport = null;
+    const messagesEl = document.getElementById('iapMessages');
+    if (messagesEl) messagesEl.innerHTML = '';
 }
 
 // ==================== CUSTOMERS REPORT ANALYSIS ====================
