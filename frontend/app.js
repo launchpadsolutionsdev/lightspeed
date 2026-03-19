@@ -5602,14 +5602,27 @@ const DATA_HEADER_KEYWORDS = ['email', 'e-mail', 'name', 'phone', 'city', 'total
     'seller', 'quantity', 'tickets', 'postal', 'zip', 'cash', 'credit', 'debit', 'net sales', 'customer'];
 
 // Known column layouts for BUMP Raffle exports (0-indexed)
-// Customer Purchases: (D) Email=3, (F) Phone=5, (I) City=8, (K) Postal=10, (N) Tickets=13, (O) Amount=14
+// Customer Purchases (16 cols): (A) Event Name=0, (B) End Date=1, (C) Customer Name=2,
+// (D) E-mail=3, (E) Country Code=4, (F) Phone=5, (G) Address=6, (H) Suite=7,
+// (I) City=8, (J) State=9, (K) Zip Code=10, (L) Email Opt-In=11, (M) Phone Opt-In=12,
+// (N) Number Count=13, (O) Total Spent=14, (P) Event ID=15
 const BUMP_PURCHASES_HEADERS = {
+    0: 'Event Name',
+    1: 'End Date',
+    2: 'Customer Name',
     3: 'E-mail',
+    4: 'Country Code',
     5: 'Phone',
+    6: 'Address',
+    7: 'Suite',
     8: 'City',
-    10: 'Postal Code',
-    13: 'Quantity',
-    14: 'Total Spent'
+    9: 'State',
+    10: 'Zip Code',
+    11: 'Email Opt-In',
+    12: 'Phone Opt-In',
+    13: 'Number Count',
+    14: 'Total Spent',
+    15: 'Event ID'
 };
 // Customers: (B) First Name=1, (C) Last Name=2, (D) E-mail=3, (E) Country Code=4,
 // (F) Phone=5, (G) Work Phone=6, (H) Home Phone=7, (I) Address=8, (J) City=9,
@@ -5678,7 +5691,7 @@ const BUMP_SELLERS_HEADERS = {
     19: 'ID'
 };
 
-function parseSheetWithHeaderDetection(sheet) {
+function parseSheetWithHeaderDetection(sheet, reportType) {
     // First try default parsing (Row 1 = headers)
     const defaultData = XLSX.utils.sheet_to_json(sheet);
     if (defaultData.length > 0) {
@@ -5706,8 +5719,8 @@ function parseSheetWithHeaderDetection(sheet) {
 
     // No recognizable headers found — apply known BUMP column layout
     if (rawRows.length > 0) {
-        // Pick the right mapping based on column count:
-        // Payment Tickets = 14 cols (A-N), Purchases = 15 cols (A-O),
+        // Pick the right mapping based on column count and selected report type:
+        // Payment Tickets = 14 cols (A-N), Purchases = 16 cols (A-P),
         // Customers = 16 cols (A-P), Sellers = 20 cols (A-T)
         const maxCols = rawRows.reduce((max, r) => Math.max(max, Array.isArray(r) ? r.length : 0), 0);
         let headerMap, reportLabel;
@@ -5715,8 +5728,14 @@ function parseSheetWithHeaderDetection(sheet) {
             headerMap = BUMP_SELLERS_HEADERS;
             reportLabel = 'Sellers';
         } else if (maxCols >= 16) {
-            headerMap = BUMP_CUSTOMERS_HEADERS;
-            reportLabel = 'Customers';
+            // Both Purchases and Customers have 16 columns — use the selected report type to disambiguate
+            if (reportType === 'customers') {
+                headerMap = BUMP_CUSTOMERS_HEADERS;
+                reportLabel = 'Customers';
+            } else {
+                headerMap = BUMP_PURCHASES_HEADERS;
+                reportLabel = 'Purchases';
+            }
         } else if (maxCols <= 14) {
             headerMap = BUMP_PAYMENT_TICKETS_HEADERS;
             reportLabel = 'Payment Tickets';
@@ -5896,7 +5915,7 @@ function processDataFile(file) {
             const workbook = XLSX.read(data, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
-            dataPendingFileData = parseSheetWithHeaderDetection(sheet);
+            dataPendingFileData = parseSheetWithHeaderDetection(sheet, currentReportType);
 
             document.getElementById("dataLoading").style.display = "none";
             document.getElementById("dataNamingSection").style.display = "block";
