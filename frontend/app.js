@@ -5608,8 +5608,8 @@ function parseCurrency(value) {
 const DATA_HEADER_KEYWORDS = ['email', 'e-mail', 'name', 'phone', 'city', 'total', 'spent', 'amount',
     'seller', 'quantity', 'tickets', 'postal', 'zip', 'cash', 'credit', 'debit', 'net sales', 'customer'];
 
-// Known column layout for BUMP Raffle Customer Purchases export (0-indexed)
-// (D) Email=3, (F) Phone=5, (I) City=8, (K) Postal=10, (N) Tickets=13, (O) Amount=14
+// Known column layouts for BUMP Raffle exports (0-indexed)
+// Customer Purchases: (D) Email=3, (F) Phone=5, (I) City=8, (K) Postal=10, (N) Tickets=13, (O) Amount=14
 const BUMP_PURCHASES_HEADERS = {
     3: 'E-mail',
     5: 'Phone',
@@ -5617,6 +5617,26 @@ const BUMP_PURCHASES_HEADERS = {
     10: 'Postal Code',
     13: 'Quantity',
     14: 'Total Spent'
+};
+// Customers: (B) First Name=1, (C) Last Name=2, (D) E-mail=3, (E) Country Code=4,
+// (F) Phone=5, (G) Work Phone=6, (H) Home Phone=7, (I) Address=8, (J) City=9,
+// (K) State=10, (L) Zip Code=11, (M) Age Range=12, (N) Phone Opt-In=13, (O) Email Opt-In=14, (P) ID=15
+const BUMP_CUSTOMERS_HEADERS = {
+    1: 'First Name',
+    2: 'Last Name',
+    3: 'E-mail',
+    4: 'Country Code',
+    5: 'Phone',
+    6: 'Work Phone',
+    7: 'Home Phone',
+    8: 'Address',
+    9: 'City',
+    10: 'State',
+    11: 'Zip Code',
+    12: 'Age Range',
+    13: 'Phone Opt-In',
+    14: 'Email Opt-In',
+    15: 'ID'
 };
 
 function parseSheetWithHeaderDetection(sheet) {
@@ -5647,10 +5667,14 @@ function parseSheetWithHeaderDetection(sheet) {
 
     // No recognizable headers found — apply known BUMP column layout
     if (rawRows.length > 0) {
-        console.warn('[Insights Engine] No headers detected, applying BUMP Raffle column mapping');
+        // Pick the right mapping based on column count:
+        // Customers export has 16 columns (A-P), Purchases has 15 (A-O)
+        const maxCols = rawRows.reduce((max, r) => Math.max(max, Array.isArray(r) ? r.length : 0), 0);
+        const headerMap = maxCols >= 16 ? BUMP_CUSTOMERS_HEADERS : BUMP_PURCHASES_HEADERS;
+        console.warn(`[Insights Engine] No headers detected, applying BUMP Raffle ${maxCols >= 16 ? 'Customers' : 'Purchases'} column mapping (${maxCols} columns)`);
         return rawRows.map(row => {
             const obj = {};
-            for (const [colIdx, headerName] of Object.entries(BUMP_PURCHASES_HEADERS)) {
+            for (const [colIdx, headerName] of Object.entries(headerMap)) {
                 obj[headerName] = row[Number(colIdx)] != null ? row[Number(colIdx)] : '';
             }
             return obj;
