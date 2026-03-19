@@ -10686,6 +10686,7 @@
             min-height: 0;
             overflow: visible;
             align-items: flex-start;
+            gap: 20px;
         }
 
         .data-body-wrapper .data-analysis-container {
@@ -10884,41 +10885,42 @@
             max-width: 85%;
         }
 
-        .iap-typing {
+        .iap-thinking {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 8px;
-            padding: 16px 20px;
-            background: white;
-            border-radius: 12px;
-            border: 1px solid var(--border, #e5e7eb);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            justify-content: center;
+            gap: 16px;
+            padding: 32px 20px;
+            animation: iapFadeIn 0.4s ease;
         }
 
-        .iap-typing-dots {
-            display: flex;
-            gap: 4px;
-        }
-
-        .iap-typing-dots span {
-            width: 6px;
-            height: 6px;
+        .iap-thinking-spinner {
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            background: #7c3aed;
-            animation: iapBounce 1.4s ease-in-out infinite;
+            border: 3px solid rgba(124, 58, 237, 0.15);
+            border-top-color: #7c3aed;
+            animation: iapSpin 0.8s linear infinite;
         }
 
-        .iap-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-        .iap-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes iapBounce {
-            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-            40% { transform: scale(1); opacity: 1; }
+        @keyframes iapSpin {
+            to { transform: rotate(360deg); }
         }
 
-        .iap-typing-text {
-            font-size: 13px;
+        .iap-thinking-status {
+            position: relative;
+            height: 22px;
+            overflow: hidden;
+        }
+
+        .iap-thinking-text {
+            font-size: 14px;
+            font-weight: 500;
             color: var(--text-secondary, #6b7280);
+            text-align: center;
+            white-space: nowrap;
+            transition: opacity 0.3s ease;
         }
 
         /* Input area */
