@@ -586,13 +586,6 @@ const REPORT_TYPES = {
         description: 'In-depth breakdown of each seller with payment method analysis (Cash, Credit Card, Debit). Shows net sales, transactions, voided sales, and average order value per seller.',
         uploadTitle: 'Upload Sellers Report',
         uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
-    },
-    'shopify': {
-        name: 'Shopify Store Analytics',
-        description: 'Pull live data from your connected Shopify store. See revenue trends, top products, order fulfillment status, customer metrics, and AI-generated insights — no file upload required.',
-        uploadTitle: 'Pull Shopify Data',
-        uploadSubtitle: 'Data will be pulled directly from your connected Shopify store',
-        noUpload: true
     }
 };
 
@@ -5657,6 +5650,33 @@ const BUMP_PAYMENT_TICKETS_HEADERS = {
     12: 'Referrer Code',
     13: 'Ticket Numbers'
 };
+// Sellers: (A) Event Start=0, (B) Event=1, (C) Seller=2, (D) Paid Seller=3,
+// (E) Seller Organization Name=4, (F) Location=5, (G) Net Sales=6, (H) Cash Sales=7,
+// (I) Credit Sales=8, (J) Debit Sales=9, (K) Total Transactions=10, (L) Voided Numbers=11,
+// (M) Void Sales=12, (N) Average Order Value=13, (O) Net Numbers=14, (P) grossNumbers=15,
+// (Q) Float=16, (R) Reprints=17, (S) Mobile Errors=18, (T) ID=19
+const BUMP_SELLERS_HEADERS = {
+    0: 'Event Start',
+    1: 'Event',
+    2: 'Seller',
+    3: 'Paid Seller',
+    4: 'Seller Organization Name',
+    5: 'Location',
+    6: 'Net Sales',
+    7: 'Cash Sales',
+    8: 'Credit Sales',
+    9: 'Debit Sales',
+    10: 'Total Transactions',
+    11: 'Voided Numbers',
+    12: 'Void Sales',
+    13: 'Average Order Value',
+    14: 'Net Numbers',
+    15: 'grossNumbers',
+    16: 'Float',
+    17: 'Reprints',
+    18: 'Mobile Errors',
+    19: 'ID'
+};
 
 function parseSheetWithHeaderDetection(sheet) {
     // First try default parsing (Row 1 = headers)
@@ -5687,10 +5707,14 @@ function parseSheetWithHeaderDetection(sheet) {
     // No recognizable headers found — apply known BUMP column layout
     if (rawRows.length > 0) {
         // Pick the right mapping based on column count:
-        // Payment Tickets = 14 cols (A-N), Purchases = 15 cols (A-O), Customers = 16 cols (A-P)
+        // Payment Tickets = 14 cols (A-N), Purchases = 15 cols (A-O),
+        // Customers = 16 cols (A-P), Sellers = 20 cols (A-T)
         const maxCols = rawRows.reduce((max, r) => Math.max(max, Array.isArray(r) ? r.length : 0), 0);
         let headerMap, reportLabel;
-        if (maxCols >= 16) {
+        if (maxCols >= 18) {
+            headerMap = BUMP_SELLERS_HEADERS;
+            reportLabel = 'Sellers';
+        } else if (maxCols >= 16) {
             headerMap = BUMP_CUSTOMERS_HEADERS;
             reportLabel = 'Customers';
         } else if (maxCols <= 14) {
@@ -5780,14 +5804,6 @@ function setupDataAnalysisListeners() {
                 document.querySelectorAll('.data-report-type-card').forEach(c => c.classList.remove('selected'));
                 const selectedCard = document.querySelector(`.data-report-type-card[data-report-type="${type}"]`);
                 if (selectedCard) selectedCard.classList.add('selected');
-
-                // Shopify: skip upload, go straight to data pull
-                if (REPORT_TYPES[type].noUpload) {
-                    uploadStep.classList.remove('active');
-                    updateDataStepIndicator(3);
-                    handleShopifyAnalytics();
-                    return;
-                }
 
                 // Activate the upload step
                 uploadStep.classList.add('active');
@@ -7077,11 +7093,11 @@ function analyzeSellersReport(data) {
     const sellerCol = findCol(['seller'], ['seller']);
     const netSalesCol = findCol(['net sales'], ['net sales']);
     const cashCol = findCol(['cash sales'], ['cash']);
-    const ccCol = findCol(['cc sales', 'credit card sales'], ['cc', 'credit card']);
+    const ccCol = findCol(['credit sales', 'cc sales', 'credit card sales'], ['credit', 'cc']);
     const debitCol = findCol(['debit sales'], ['debit']);
     const txCol = findCol(['total transactions', 'transactions'], ['transaction']);
-    const voidedSalesCol = findCol(['voided sales'], ['voided']);
-    const avgOrderCol = findCol(['average order', 'avg order'], ['avg', 'average']);
+    const voidedSalesCol = findCol(['void sales', 'voided sales'], ['void']);
+    const avgOrderCol = findCol(['average order value', 'average order', 'avg order'], ['avg', 'average']);
     const netNumbersCol = findCol(['net numbers', 'net tickets'], ['net number', 'net ticket']);
 
 
@@ -18296,238 +18312,6 @@ function openSettingsShopify() {
     }
 }
 
-/**
- * Handle Shopify Analytics in the Insights Engine.
- * Pulls data from the Shopify API instead of requiring a file upload.
- */
-async function handleShopifyAnalytics() {
-    const combinedSection = document.getElementById('dataCombinedUploadSection');
-    const loadingEl = document.getElementById('dataLoading');
-    const dashboardEl = document.getElementById('dataDashboard');
-
-    // Show loading
-    combinedSection.style.display = 'none';
-    loadingEl.style.display = 'flex';
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/shopify/analytics?days=30`, {
-            headers: getAuthHeaders()
-        });
-
-        if (!response.ok) {
-            const data = await response.json();
-            if (data.error && data.error.includes('No Shopify store connected')) {
-                throw new Error('No Shopify store connected. Go to Settings to connect your store first.');
-            }
-            throw new Error(data.error || 'Failed to fetch Shopify analytics');
-        }
-
-        const analyticsData = await response.json();
-        renderShopifyDashboard({ analytics: analyticsData });
-
-    } catch (err) {
-        loadingEl.style.display = 'none';
-        combinedSection.style.display = 'block';
-        showToast(err.message, 'error');
-    }
-}
-
-/**
- * Render the Shopify analytics dashboard with charts and metrics.
- */
-function renderShopifyDashboard(data) {
-    const loadingEl = document.getElementById('dataLoading');
-    const dashboardEl = document.getElementById('dataDashboard');
-    const navTabs = document.getElementById('dataNavTabs');
-    const headerActions = document.getElementById('dataHeaderActions');
-
-    loadingEl.style.display = 'none';
-    dashboardEl.style.display = 'block';
-    navTabs.style.display = 'flex';
-    headerActions.style.display = 'flex';
-
-    const s = data.analytics.summary;
-    const totalRevenue = parseFloat(s.total_revenue) || 0;
-    const avgOrderValue = parseFloat(s.avg_order_value) || 0;
-    const totalOrders = parseInt(s.total_orders) || 0;
-    const uniqueCustomers = parseInt(s.unique_customers) || 0;
-    const fulfilledOrders = parseInt(s.fulfilled_orders) || 0;
-    const unfulfilledOrders = parseInt(s.unfulfilled_orders) || 0;
-    const refundedOrders = parseInt(s.refunded_orders) || 0;
-    const refundTotal = parseFloat(s.refund_total) || 0;
-
-    // Set report name
-    const reportNameEl = document.getElementById('dataReportName');
-    if (reportNameEl) reportNameEl.textContent = `Shopify Store Analytics (Last 30 Days)`;
-
-    // Fill key metrics
-    const revenueEl = document.getElementById('dataTotalRevenue');
-    const revenueSubEl = document.getElementById('dataRevenueSubtext');
-    if (revenueEl) animateCurrency(revenueEl, totalRevenue, 800);
-    if (revenueSubEl) revenueSubEl.textContent = `from ${totalOrders} orders`;
-
-    // Fill other metric cards if they exist
-    const avgEl = document.getElementById('dataAvgSale');
-    if (avgEl) animateCurrency(avgEl, avgOrderValue, 800);
-
-    const customersEl = document.getElementById('dataUniqueCustomers');
-    if (customersEl) animateNumber(customersEl, uniqueCustomers, 800);
-
-    // Destroy old charts
-    if (typeof dataCharts !== 'undefined') {
-        dataCharts.forEach(chart => chart.destroy());
-        dataCharts.length = 0;
-    }
-
-    // Build the overview page content with Shopify-specific sections
-    const overviewPage = document.getElementById('data-page-overview');
-    if (!overviewPage) return;
-
-    // Find or create the charts container area after the metrics
-    let shopifyChartsArea = document.getElementById('shopifyChartsArea');
-    if (!shopifyChartsArea) {
-        shopifyChartsArea = document.createElement('div');
-        shopifyChartsArea.id = 'shopifyChartsArea';
-        // Insert after the metrics grid
-        const metricsGrid = overviewPage.querySelector('.data-metrics-grid');
-        if (metricsGrid) {
-            metricsGrid.parentNode.insertBefore(shopifyChartsArea, metricsGrid.nextSibling);
-        } else {
-            overviewPage.appendChild(shopifyChartsArea);
-        }
-    }
-
-    shopifyChartsArea.innerHTML = `
-        <div class="data-metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin-top: 16px;">
-            <div class="data-metric-card">
-                <div class="data-metric-label">Fulfilled</div>
-                <div class="data-metric-value" style="color: var(--success);">${fulfilledOrders}</div>
-            </div>
-            <div class="data-metric-card">
-                <div class="data-metric-label">Unfulfilled</div>
-                <div class="data-metric-value" style="color: var(--warning, #f59e0b);">${unfulfilledOrders}</div>
-            </div>
-            <div class="data-metric-card">
-                <div class="data-metric-label">Refunded</div>
-                <div class="data-metric-value" style="color: var(--danger);">${refundedOrders}</div>
-            </div>
-            <div class="data-metric-card">
-                <div class="data-metric-label">Refund Total</div>
-                <div class="data-metric-value" style="color: var(--danger);">$${refundTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-            </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-            <div class="data-chart-card" style="background: var(--bg-secondary, #fff); border-radius: 12px; padding: 20px;">
-                <h4 style="margin-bottom: 12px;">Daily Revenue (Last 30 Days)</h4>
-                <div style="height: 250px;"><canvas id="shopifyDailyRevenueChart"></canvas></div>
-            </div>
-            <div class="data-chart-card" style="background: var(--bg-secondary, #fff); border-radius: 12px; padding: 20px;">
-                <h4 style="margin-bottom: 12px;">Top Products by Revenue</h4>
-                <div style="height: 250px;"><canvas id="shopifyTopProductsChart"></canvas></div>
-            </div>
-        </div>
-
-        <div style="background: var(--bg-secondary, #fff); border-radius: 12px; padding: 20px; margin-top: 20px;">
-            <h4 style="margin-bottom: 12px;">AI Insights</h4>
-            <div id="shopifyAiInsights" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-primary, #333);">
-                <div style="text-align: center; padding: 20px; color: var(--text-secondary, #888);">Generating AI insights...</div>
-            </div>
-        </div>
-    `;
-
-    // Render Daily Revenue Chart
-    if (data.analytics.daily && data.analytics.daily.length > 0) {
-        const dailyCtx = document.getElementById('shopifyDailyRevenueChart');
-        if (dailyCtx) {
-            const dailyChart = new Chart(dailyCtx, {
-                type: 'bar',
-                data: {
-                    labels: data.analytics.daily.map(d => {
-                        const date = new Date(d.date);
-                        return date.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
-                    }),
-                    datasets: [{
-                        label: 'Revenue ($)',
-                        data: data.analytics.daily.map(d => parseFloat(d.revenue)),
-                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => '$' + ctx.raw.toLocaleString(undefined, { minimumFractionDigits: 2 }) } } },
-                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } } }
-                }
-            });
-            dataCharts.push(dailyChart);
-        }
-    }
-
-    // Render Top Products Chart
-    if (data.analytics.topProducts && data.analytics.topProducts.length > 0) {
-        const productsCtx = document.getElementById('shopifyTopProductsChart');
-        if (productsCtx) {
-            const topProducts = data.analytics.topProducts.slice(0, 8);
-            const productChart = new Chart(productsCtx, {
-                type: 'bar',
-                data: {
-                    labels: topProducts.map(p => p.product_title.length > 25 ? p.product_title.substring(0, 25) + '...' : p.product_title),
-                    datasets: [{
-                        label: 'Revenue ($)',
-                        data: topProducts.map(p => parseFloat(p.total_revenue)),
-                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => '$' + ctx.raw.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' (' + topProducts[ctx.dataIndex].total_quantity + ' sold)' } } },
-                    scales: { x: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } } }
-                }
-            });
-            dataCharts.push(productChart);
-        }
-    }
-
-    // Generate AI insights
-    generateShopifyInsights(data);
-}
-
-/**
- * Generate AI-powered insights for Shopify data using the analyze endpoint.
- */
-async function generateShopifyInsights(data) {
-    const insightsEl = document.getElementById('shopifyAiInsights');
-    if (!insightsEl) return;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/analyze`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                data: data.analytics,
-                reportType: 'shopify',
-                additionalContext: `Store analytics for the selected period. Orders: ${data.analytics?.summary?.total_orders || 0}. Unique customers: ${data.analytics?.summary?.unique_customers || 0}.`
-            })
-        });
-
-        if (!response.ok) {
-            insightsEl.innerHTML = '<p style="color: var(--text-secondary);">Unable to generate AI insights at this time.</p>';
-            return;
-        }
-
-        const result = await response.json();
-        const text = result.content?.[0]?.text || 'No insights generated.';
-        insightsEl.innerHTML = renderSimpleMarkdown(text);
-
-    } catch (err) {
-        insightsEl.innerHTML = '<p style="color: var(--text-secondary);">Unable to generate AI insights at this time.</p>';
-    }
-}
 
 /**
  * Handle Shopify customer import in the List Normalizer.
