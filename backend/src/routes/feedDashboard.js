@@ -15,6 +15,7 @@ const path = require('path');
 const { XMLParser } = require('fast-xml-parser');
 const { authenticate } = require('../middleware/auth');
 const log = require('../services/logger');
+const pool = require('../../config/database');
 
 // Feed URLs — configure via environment variables or use BUMP API defaults.
 const FEED_URL = process.env.DASHBOARD_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/dak';
@@ -25,52 +26,95 @@ const FEED_CACHE_TTL = 2 * 60 * 1000; // 2-minute cache for near-real-time pool 
 let _feedCache = null;
 let _feedCacheTime = 0;
 
-// Sales velocity snapshots — stores { timestamp, totalSales, totalTickets } samples
-// Used for sparkline and surge indicator on the frontend
+// Sales velocity snapshots — stores { ts, totalSales, totalTickets } samples.
+// Primary storage is PostgreSQL (velocity_snapshots table) so data survives
+// restarts, redeploys, and disk wipes.  In-memory array is kept as a hot cache
+// for fast velocity calculations without hitting the DB on every request.
 const VELOCITY_MAX_SAMPLES = 5040; // ~7 days at 2-min intervals
-const VELOCITY_SNAPSHOTS_PATH = path.join(__dirname, '../../data/velocity-snapshots.json');
-const VELOCITY_SAVE_INTERVAL = 60 * 1000;     // Write to disk at most once per 60s
+const VELOCITY_SAVE_INTERVAL = 60 * 1000;     // Flush to DB at most once per 60s
 const VELOCITY_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // Prune snapshots older than 7 days
 let _salesSnapshots = [];
 let _snapshotsLoaded = false;
 let _lastSaveTime = 0;
+let _pendingDbSnapshots = [];  // Snapshots queued for the next DB flush
+let _bgFetchCount = 0;        // Health counter: total background fetches since startup
+let _bgFetchFails = 0;        // Health counter: failed background fetches since startup
 
 /**
- * Load velocity snapshots from disk on first access.
- * Prunes entries older than 7 days.
+ * Load velocity snapshots from PostgreSQL on first access.
+ * Falls back to the legacy JSON file if the DB table doesn't exist yet
+ * (e.g. migration hasn't run), then prunes entries older than 7 days.
  */
-function loadSnapshots() {
+async function loadSnapshots() {
     if (_snapshotsLoaded) return;
     _snapshotsLoaded = true;
+
+    const cutoff = Date.now() - VELOCITY_MAX_AGE;
+
+    // Try PostgreSQL first
     try {
-        if (fs.existsSync(VELOCITY_SNAPSHOTS_PATH)) {
-            const raw = fs.readFileSync(VELOCITY_SNAPSHOTS_PATH, 'utf8');
+        const result = await pool.query(
+            'SELECT ts, total_sales, total_tickets FROM velocity_snapshots WHERE ts >= $1 ORDER BY ts ASC',
+            [cutoff]
+        );
+        _salesSnapshots = result.rows.map(r => ({
+            ts: Number(r.ts),
+            totalSales: parseFloat(r.total_sales),
+            totalTickets: parseInt(r.total_tickets, 10)
+        }));
+        log.info('Loaded velocity snapshots from database', { count: _salesSnapshots.length });
+        return;
+    } catch (err) {
+        log.warn('Could not load velocity snapshots from DB, trying JSON fallback', { error: err.message });
+    }
+
+    // Fallback: legacy JSON file (for first deploy before migration runs)
+    const jsonPath = path.join(__dirname, '../../data/velocity-snapshots.json');
+    try {
+        if (fs.existsSync(jsonPath)) {
+            const raw = fs.readFileSync(jsonPath, 'utf8');
             const parsed = JSON.parse(raw);
             if (Array.isArray(parsed)) {
-                const cutoff = Date.now() - VELOCITY_MAX_AGE;
                 _salesSnapshots = parsed.filter(s => s.ts >= cutoff);
-                console.log(`Loaded ${_salesSnapshots.length} velocity snapshots from disk`);
+                log.info('Loaded velocity snapshots from JSON fallback', { count: _salesSnapshots.length });
             }
         }
     } catch (err) {
-        console.warn('Could not load velocity snapshots:', err.message);
+        log.warn('Could not load velocity snapshots from JSON', { error: err.message });
         _salesSnapshots = [];
     }
 }
 
 /**
- * Persist snapshots to disk (throttled, async, fire-and-forget).
+ * Flush pending snapshots to PostgreSQL (throttled, async, fire-and-forget).
+ * Also prunes rows older than 7 days periodically.
  */
 function saveSnapshotsIfNeeded() {
     const now = Date.now();
     if (now - _lastSaveTime < VELOCITY_SAVE_INTERVAL) return;
+    if (_pendingDbSnapshots.length === 0) return;
     _lastSaveTime = now;
 
-    const cutoff = now - VELOCITY_MAX_AGE;
-    const toSave = _salesSnapshots.filter(s => s.ts >= cutoff);
+    const batch = _pendingDbSnapshots.splice(0);
 
-    fs.promises.writeFile(VELOCITY_SNAPSHOTS_PATH, JSON.stringify(toSave), 'utf8')
-        .catch(err => console.warn('Could not save velocity snapshots:', err.message));
+    // Build a multi-row INSERT for efficiency
+    const values = [];
+    const params = [];
+    batch.forEach((s, i) => {
+        const offset = i * 3;
+        values.push(`($${offset + 1}, $${offset + 2}, $${offset + 3})`);
+        params.push(s.ts, s.totalSales, s.totalTickets);
+    });
+
+    pool.query(
+        `INSERT INTO velocity_snapshots (ts, total_sales, total_tickets) VALUES ${values.join(', ')} ON CONFLICT DO NOTHING`,
+        params
+    ).catch(err => log.warn('Could not save velocity snapshots to DB', { error: err.message }));
+
+    // Prune old rows periodically (fire-and-forget)
+    const cutoff = now - VELOCITY_MAX_AGE;
+    pool.query('DELETE FROM velocity_snapshots WHERE ts < $1', [cutoff])
+        .catch(err => log.warn('Could not prune old velocity snapshots', { error: err.message }));
 }
 
 const xmlParser = new XMLParser({
@@ -108,23 +152,30 @@ async function fetchXmlFeed(url) {
 }
 
 /**
+ * Record a snapshot into the in-memory array and queue it for DB persistence.
+ */
+function recordSnapshot(ts, totalSales, totalTickets) {
+    const snap = { ts, totalSales, totalTickets };
+    _salesSnapshots.push(snap);
+    _pendingDbSnapshots.push(snap);
+    if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
+        _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
+    }
+    saveSnapshotsIfNeeded();
+}
+
+/**
  * Fetch all three feeds in parallel, parse, and cache.
+ * Records a velocity snapshot on every call — even on cache hits and failures —
+ * so the timeline never has gaps while the server is running.
  */
 async function fetchFeed() {
-    loadSnapshots();
+    await loadSnapshots();
     const now = Date.now();
     if (_feedCache && (now - _feedCacheTime) < FEED_CACHE_TTL) {
         // Still record a time-stamped snapshot and recompute velocity on cache hits
         if (_feedCache.salesBreakdown) {
-            _salesSnapshots.push({
-                ts: now,
-                totalSales: _feedCache.salesBreakdown.totalSales,
-                totalTickets: _feedCache.salesBreakdown.totalTickets
-            });
-            if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
-                _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
-            }
-            saveSnapshotsIfNeeded();
+            recordSnapshot(now, _feedCache.salesBreakdown.totalSales, _feedCache.salesBreakdown.totalTickets);
             _feedCache.salesVelocity = buildVelocityData(_salesSnapshots);
         }
         return _feedCache;
@@ -162,15 +213,7 @@ async function fetchFeed() {
 
         // Record sales snapshot for velocity tracking
         if (data.salesBreakdown) {
-            _salesSnapshots.push({
-                ts: now,
-                totalSales: data.salesBreakdown.totalSales,
-                totalTickets: data.salesBreakdown.totalTickets
-            });
-            if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
-                _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
-            }
-            saveSnapshotsIfNeeded();
+            recordSnapshot(now, data.salesBreakdown.totalSales, data.salesBreakdown.totalTickets);
         }
         data.salesVelocity = buildVelocityData(_salesSnapshots);
 
@@ -178,6 +221,11 @@ async function fetchFeed() {
         _feedCacheTime = now;
         return data;
     } catch (error) {
+        // Record a snapshot from the last known values so the timeline stays continuous
+        if (_feedCache && _feedCache.salesBreakdown) {
+            recordSnapshot(now, _feedCache.salesBreakdown.totalSales, _feedCache.salesBreakdown.totalTickets);
+        }
+
         if (_feedCache) {
             log.warn('Feed fetch failed, returning stale cache', { error: error.message });
             return _feedCache;
@@ -387,7 +435,8 @@ const VELOCITY_WINDOWS = [
     { key: '30m', label: '30 min',  ms: 30 * 60 * 1000 },
     { key: '1h',  label: '1 hour',  ms: 60 * 60 * 1000 },
     { key: '3h',  label: '3 hours', ms: 3 * 60 * 60 * 1000 },
-    { key: '1d',  label: '1 day',   ms: 24 * 60 * 60 * 1000 }
+    { key: '24h', label: '24 hours', ms: 24 * 60 * 60 * 1000 },
+    { key: '7d',  label: '7 days',  ms: 7 * 24 * 60 * 60 * 1000 }
 ];
 
 /**
@@ -559,15 +608,42 @@ router.get('/whats-new', authenticate, (req, res) => {
     res.json(_whatsNewCache);
 });
 
-// Background snapshot collection — fetches every 2 minutes regardless of page visits
-// so velocity data accumulates continuously while the server is running.
-const VELOCITY_BG_INTERVAL = 2 * 60 * 1000;
+// Background snapshot collection — fetches every 90 seconds regardless of page visits
+// so velocity data accumulates continuously 24/7 while the server is running.
+// Interval is 90s (staggered from the 2-minute cache TTL) to ensure at least one
+// fresh XML fetch per cache cycle, avoiding a timing race where every background
+// fetch hits the cache and never gets new data.
+const VELOCITY_BG_INTERVAL = 90 * 1000;
+const VELOCITY_HEALTH_LOG_INTERVAL = 30 * 60 * 1000; // Log health stats every 30 min
+
 setInterval(() => {
-    fetchFeed().catch(err => console.warn('Background velocity fetch failed:', err.message));
+    _bgFetchCount++;
+    fetchFeed().catch(err => {
+        _bgFetchFails++;
+        log.warn('Background velocity fetch failed', { error: err.message, totalFails: _bgFetchFails });
+    });
 }, VELOCITY_BG_INTERVAL);
+
 // Run once on startup after a short delay to seed the first snapshot
 setTimeout(() => {
-    fetchFeed().catch(err => console.warn('Initial velocity fetch failed:', err.message));
+    _bgFetchCount++;
+    fetchFeed().catch(err => {
+        _bgFetchFails++;
+        log.warn('Initial velocity fetch failed', { error: err.message });
+    });
 }, 5000);
+
+// Periodic health log — helps diagnose overnight gaps by checking Render logs
+setInterval(() => {
+    const lastSnap = _salesSnapshots.length > 0 ? _salesSnapshots[_salesSnapshots.length - 1] : null;
+    log.info('Heartbeat background health', {
+        snapshotsInMemory: _salesSnapshots.length,
+        pendingDbWrites: _pendingDbSnapshots.length,
+        bgFetches: _bgFetchCount,
+        bgFails: _bgFetchFails,
+        lastSnapshotAge: lastSnap ? `${Math.round((Date.now() - lastSnap.ts) / 1000)}s ago` : 'none',
+        lastSnapshotSales: lastSnap ? lastSnap.totalSales : null
+    });
+}, VELOCITY_HEALTH_LOG_INTERVAL);
 
 module.exports = router;

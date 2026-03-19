@@ -16883,8 +16883,8 @@ function renderVelocityTickerCard(velocity) {
 
     // Time-window pill selector
     html += '<div class="velocity-ticker-pills">';
-    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
-    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
+    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '24h', '7d'];
+    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '24h': '24H', '7d': '7D' };
     windowKeys.forEach(key => {
         const active = key === _velocitySelectedWindow ? ' velocity-pill-active' : '';
         html += `<button class="velocity-pill${active}" data-window="${key}" onclick="selectVelocityWindow('${key}')">${windowLabels[key]}</button>`;
@@ -17003,8 +17003,8 @@ function renderTickerSparkline(samples, win) {
 function renderTickerMiniStats(windows, selectedWindow, selectFn) {
     const selWin = selectedWindow || _velocitySelectedWindow;
     const selFnName = selectFn || 'selectVelocityWindow';
-    const keys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
-    const labels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
+    const keys = ['1m', '5m', '10m', '30m', '1h', '3h', '24h', '7d'];
+    const labels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '24h': '24H', '7d': '7D' };
 
     let html = '<div class="velocity-mini-stats">';
     keys.forEach(key => {
@@ -17059,8 +17059,8 @@ function updateVelocityTickerCard(card, velocity) {
     inner += '</div>';
 
     inner += '<div class="velocity-ticker-pills">';
-    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '1d'];
-    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '1d': '1D' };
+    const windowKeys = ['1m', '5m', '10m', '30m', '1h', '3h', '24h', '7d'];
+    const windowLabels = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '24h': '24H', '7d': '7D' };
     windowKeys.forEach(key => {
         const active = key === _velocitySelectedWindow ? ' velocity-pill-active' : '';
         inner += `<button class="velocity-pill${active}" data-window="${key}" onclick="selectVelocityWindow('${key}')">${windowLabels[key]}</button>`;
@@ -17518,9 +17518,10 @@ function hbTickerInner(velocity, win, samples, agoText) {
     h += '<span class="velocity-ticker-live"><span class="velocity-pulse"></span> LIVE</span>';
     h += '</div>';
     h += '<div class="velocity-ticker-pills">';
-    ['1m','5m','10m','30m','1h','3h','1d'].forEach(key => {
+    ['1m','5m','10m','30m','1h','3h','24h','7d'].forEach(key => {
         const active = key === _heartbeatSelectedWindow ? ' velocity-pill-active' : '';
-        h += `<button class="velocity-pill${active}" onclick="selectHeartbeatWindow('${key}')">${key.toUpperCase()}</button>`;
+        const label = { '1m': '1M', '5m': '5M', '10m': '10M', '30m': '30M', '1h': '1H', '3h': '3H', '24h': '24H', '7d': '7D' }[key] || key.toUpperCase();
+        h += `<button class="velocity-pill${active}" onclick="selectHeartbeatWindow('${key}')">${label}</button>`;
     });
     h += '</div></div>';
     h += renderTickerPriceBlock(win, samples);
