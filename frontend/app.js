@@ -5638,6 +5638,25 @@ const BUMP_CUSTOMERS_HEADERS = {
     14: 'Email Opt-In',
     15: 'ID'
 };
+// Payment Tickets: (A) Event Name=0, (B) Purchase Time=1, (C) Payment ID=2,
+// (D) Quantity=3, (E) Amount=4, (F) Status=5, (G) Payment Type=6, (H) Reference=7,
+// (I) Seller=8, (J) Customer=9, (K) Phone=10, (L) E-mail=11, (M) Referrer Code=12, (N) Ticket Numbers=13
+const BUMP_PAYMENT_TICKETS_HEADERS = {
+    0: 'Event Name',
+    1: 'Purchase Time',
+    2: 'Payment ID',
+    3: 'Quantity',
+    4: 'Amount',
+    5: 'Status',
+    6: 'Payment Type',
+    7: 'Reference',
+    8: 'Seller',
+    9: 'Customer',
+    10: 'Phone',
+    11: 'E-mail',
+    12: 'Referrer Code',
+    13: 'Ticket Numbers'
+};
 
 function parseSheetWithHeaderDetection(sheet) {
     // First try default parsing (Row 1 = headers)
@@ -5668,10 +5687,20 @@ function parseSheetWithHeaderDetection(sheet) {
     // No recognizable headers found — apply known BUMP column layout
     if (rawRows.length > 0) {
         // Pick the right mapping based on column count:
-        // Customers export has 16 columns (A-P), Purchases has 15 (A-O)
+        // Payment Tickets = 14 cols (A-N), Purchases = 15 cols (A-O), Customers = 16 cols (A-P)
         const maxCols = rawRows.reduce((max, r) => Math.max(max, Array.isArray(r) ? r.length : 0), 0);
-        const headerMap = maxCols >= 16 ? BUMP_CUSTOMERS_HEADERS : BUMP_PURCHASES_HEADERS;
-        console.warn(`[Insights Engine] No headers detected, applying BUMP Raffle ${maxCols >= 16 ? 'Customers' : 'Purchases'} column mapping (${maxCols} columns)`);
+        let headerMap, reportLabel;
+        if (maxCols >= 16) {
+            headerMap = BUMP_CUSTOMERS_HEADERS;
+            reportLabel = 'Customers';
+        } else if (maxCols <= 14) {
+            headerMap = BUMP_PAYMENT_TICKETS_HEADERS;
+            reportLabel = 'Payment Tickets';
+        } else {
+            headerMap = BUMP_PURCHASES_HEADERS;
+            reportLabel = 'Purchases';
+        }
+        console.warn(`[Insights Engine] No headers detected, applying BUMP Raffle ${reportLabel} column mapping (${maxCols} columns)`);
         return rawRows.map(row => {
             const obj = {};
             for (const [colIdx, headerName] of Object.entries(headerMap)) {
