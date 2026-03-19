@@ -6838,16 +6838,19 @@ async function streamIapResponse() {
     iapStreamController = new AbortController();
 
     try {
-        // Build messages array for API
-        const apiMessages = iapConversation.map(m => ({
+        // Build messages for API - last user message goes in 'message', rest in 'conversation'
+        const lastUserMsg = iapConversation.filter(m => m.role === 'user').slice(-1)[0];
+        const conversationHistory = iapConversation.slice(0, -1).map(m => ({
             role: m.role,
             content: m.content
         }));
 
         const formData = new FormData();
-        formData.append('messages', JSON.stringify(apiMessages));
+        formData.append('message', lastUserMsg ? lastUserMsg.content : '');
+        formData.append('conversation', JSON.stringify(conversationHistory));
         formData.append('model', 'sonnet');
         formData.append('tone', 'professional');
+        formData.append('language', 'en');
 
         const response = await fetch(`${API_BASE_URL}/api/ask-lightspeed/agent`, {
             method: 'POST',
