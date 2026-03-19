@@ -550,14 +550,18 @@ describe('Tool Definitions', () => {
         expect(source).toContain("name: 'search_home_base'");
     });
 
-    it('has exactly 10 tools defined', () => {
+    it('defines search_heartbeat_data tool', () => {
+        expect(source).toContain("name: 'search_heartbeat_data'");
+    });
+
+    it('has exactly 11 tools defined', () => {
         const toolCount = (source.match(/name: '/g) || []).length;
-        // The TOOLS array should have 10 entries
+        // The TOOLS array should have 11 entries
         // (name: ' appears for each tool definition plus maybe elsewhere, so check the TOOLS array)
         expect(source).toContain('const TOOLS = [');
         // Count tool objects by looking for 'input_schema'
         const schemaCount = (source.match(/input_schema:/g) || []).length;
-        expect(schemaCount).toBe(10);
+        expect(schemaCount).toBe(11);
     });
 
     it('requires confirmation for write tools (create_runway_events, save_to_knowledge_base)', () => {
@@ -576,6 +580,7 @@ describe('Tool Definitions', () => {
         expect(source).toContain("'Searching past responses...'");
         expect(source).toContain("'Running insights analysis...'");
         expect(source).toContain("'Searching Home Base...'");
+        expect(source).toContain("'Querying Heartbeat sales data...'");
     });
 });
 
@@ -594,6 +599,7 @@ describe('Agentic System Prompt', () => {
         expect(source).toContain('draft_content');
         expect(source).toContain('search_response_history');
         expect(source).toContain('run_insights_analysis');
+        expect(source).toContain('search_heartbeat_data');
     });
 
     it('tells AI the system handles confirmation (not text-based)', () => {
