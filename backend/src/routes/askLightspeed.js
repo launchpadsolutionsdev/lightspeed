@@ -655,14 +655,22 @@ async function executeRunInsightsAnalysis(input, organizationId, userId) {
 
     // Build insights-specific system prompt
     const REPORT_PROMPTS = {
-        customer_purchases: 'Analyze this customer purchase data. Identify revenue trends, top customers, purchase patterns, and actionable recommendations.',
+        customer_purchases: 'Analyze this customer purchase data. Identify revenue trends, top customers (always include a Top 10 Buyers list), purchase patterns, and actionable recommendations. An average orders-per-customer of 1.0–1.2 is normal and healthy for lottery — 1.1 is very good. Highlight repeat buyers as a strength.',
         sellers: 'Analyze this seller performance data. Identify top performers, areas for improvement, and support recommendations.',
         payment_tickets: 'Analyze this payment/ticket data. Summarize status overview, identify issues, and suggest follow-ups.',
         shopify: 'Analyze this Shopify store data. Cover revenue, top products, customer acquisition, fulfillment, and recommendations.',
         general: 'Analyze this data thoroughly. Identify key trends, patterns, anomalies, and provide actionable insights.'
     };
 
-    const systemPrompt = `You are the Lightspeed Insights Engine, an expert data analyst. ${REPORT_PROMPTS[reportType] || REPORT_PROMPTS.general}
+    const domainContext = `You specialize in charitable gaming — 50/50 raffles, Catch The Ace, Fixed Prize Lotteries, and House Lotteries. Key context:
+- Sales periods range from one week to four+ months. Sales are naturally cyclical — higher at the start and end of a draw, lower in the middle. This is normal; do not flag mid-draw dips as problems or compute simplistic daily averages.
+- Most supporters buy tickets once per draw. An orders-per-customer average of 1.0–1.2 is healthy; 1.1 is very good.
+- If the user asks for something beyond the data you have (e.g., "top 100 cities" when you only have 20), be upfront: explain you only have a summary, then suggest Excel (COUNTIF, pivot tables) or their Raffle Service Provider dashboard as alternatives.
+- Be encouraging and constructive — these are charitable organizations. Frame recommendations as opportunities, not problems.`;
+
+    const systemPrompt = `You are the Lightspeed Insights Engine, an expert data analyst. ${domainContext}
+
+${REPORT_PROMPTS[reportType] || REPORT_PROMPTS.general}
 
 Present your analysis in a clear, structured format with:
 - Key metrics and highlights
