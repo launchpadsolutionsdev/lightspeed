@@ -5604,6 +5604,40 @@ function parseCurrency(value) {
     return isNaN(num) ? 0 : num;
 }
 
+// Auto-detect header row in BUMP Raffle exports that have title/metadata rows above the data
+const DATA_HEADER_KEYWORDS = ['email', 'e-mail', 'name', 'phone', 'city', 'total', 'spent', 'amount',
+    'seller', 'quantity', 'tickets', 'postal', 'zip', 'cash', 'credit', 'debit', 'net sales', 'customer'];
+
+function parseSheetWithHeaderDetection(sheet) {
+    // First try default parsing (Row 1 = headers)
+    const defaultData = XLSX.utils.sheet_to_json(sheet);
+    if (defaultData.length > 0) {
+        const cols = Object.keys(defaultData[0]).map(c => c.toLowerCase().trim());
+        const matchCount = cols.filter(c => DATA_HEADER_KEYWORDS.some(kw => c.includes(kw))).length;
+        if (matchCount >= 2) return defaultData; // Headers look valid
+    }
+
+    // Headers not found in Row 1 — scan for the real header row
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    for (let i = 1; i < Math.min(rawRows.length, 10); i++) {
+        const row = rawRows[i];
+        if (!Array.isArray(row)) continue;
+        const cellValues = row.map(c => String(c || '').toLowerCase().trim());
+        const matchCount = cellValues.filter(c => DATA_HEADER_KEYWORDS.some(kw => c.includes(kw))).length;
+        if (matchCount >= 2) {
+            // Found the header row — re-parse starting from this row
+            const ref = sheet['!ref'];
+            if (!ref) return defaultData;
+            const range = XLSX.utils.decode_range(ref);
+            range.s.r = i; // start from header row
+            return XLSX.utils.sheet_to_json(sheet, { range });
+        }
+    }
+
+    // Fallback to default parsing
+    return defaultData;
+}
+
 function normalizeCity(city) {
     if (!city) return '';
     return city.toString().toLowerCase().trim()
@@ -5767,7 +5801,7 @@ function processDataFile(file) {
             const workbook = XLSX.read(data, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
-            dataPendingFileData = XLSX.utils.sheet_to_json(sheet);
+            dataPendingFileData = parseSheetWithHeaderDetection(sheet);
 
             document.getElementById("dataLoading").style.display = "none";
             document.getElementById("dataNamingSection").style.display = "block";
@@ -5838,13 +5872,16 @@ function analyzeDataFull(data) {
     };
 
     const emailCol = findCol(['e-mail', 'email', 'email address'], ['email']);
-    const spentCol = findCol(['total spent', 'amount', 'total', 'spent'], ['spent', 'amount']);
+    const spentCol = findCol(['total spent', 'amount', 'total', 'spent', 'revenue', 'purchase total', 'total purchases', 'paid', 'sales'], ['spent', 'amount', 'revenue', 'paid', 'price', 'sales']);
     const cityCol = findCol(['city'], ['city']);
-    const nameCol = findCol(['customer', 'customer name', 'name', 'full name'], ['customer']);
-    const ticketCol = findCol(['quantity', 'tickets', 'number count'], ['ticket', 'quantity']);
+    const nameCol = findCol(['customer', 'customer name', 'name', 'full name', 'buyer'], ['customer', 'buyer', 'name']);
+    const ticketCol = findCol(['quantity', 'tickets', 'number count', 'numbers', 'total numbers'], ['ticket', 'quantity', 'numbers']);
     const phoneCol = findCol(['phone', 'phone number'], ['phone']);
     const zipCol = findCol(['zip code', 'postal code', 'zip', 'postal'], ['zip', 'postal']);
 
+    // Debug: warn if critical columns aren't found
+    if (!spentCol) console.warn('[Insights Engine] Could not find spending column. Available columns:', columns);
+    if (!emailCol) console.warn('[Insights Engine] Could not find email column. Available columns:', columns);
 
     const PACKAGES = [100, 75, 50, 20, 10];
     const SINGLE_PACKAGE_AMOUNTS = new Set([10, 20, 50, 75, 100]);
