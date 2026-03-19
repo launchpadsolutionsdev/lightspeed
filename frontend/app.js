@@ -5657,6 +5657,33 @@ const BUMP_PAYMENT_TICKETS_HEADERS = {
     12: 'Referrer Code',
     13: 'Ticket Numbers'
 };
+// Sellers: (A) Event Start=0, (B) Event=1, (C) Seller=2, (D) Paid Seller=3,
+// (E) Seller Organization Name=4, (F) Location=5, (G) Net Sales=6, (H) Cash Sales=7,
+// (I) Credit Sales=8, (J) Debit Sales=9, (K) Total Transactions=10, (L) Voided Numbers=11,
+// (M) Void Sales=12, (N) Average Order Value=13, (O) Net Numbers=14, (P) grossNumbers=15,
+// (Q) Float=16, (R) Reprints=17, (S) Mobile Errors=18, (T) ID=19
+const BUMP_SELLERS_HEADERS = {
+    0: 'Event Start',
+    1: 'Event',
+    2: 'Seller',
+    3: 'Paid Seller',
+    4: 'Seller Organization Name',
+    5: 'Location',
+    6: 'Net Sales',
+    7: 'Cash Sales',
+    8: 'Credit Sales',
+    9: 'Debit Sales',
+    10: 'Total Transactions',
+    11: 'Voided Numbers',
+    12: 'Void Sales',
+    13: 'Average Order Value',
+    14: 'Net Numbers',
+    15: 'grossNumbers',
+    16: 'Float',
+    17: 'Reprints',
+    18: 'Mobile Errors',
+    19: 'ID'
+};
 
 function parseSheetWithHeaderDetection(sheet) {
     // First try default parsing (Row 1 = headers)
@@ -5687,10 +5714,14 @@ function parseSheetWithHeaderDetection(sheet) {
     // No recognizable headers found — apply known BUMP column layout
     if (rawRows.length > 0) {
         // Pick the right mapping based on column count:
-        // Payment Tickets = 14 cols (A-N), Purchases = 15 cols (A-O), Customers = 16 cols (A-P)
+        // Payment Tickets = 14 cols (A-N), Purchases = 15 cols (A-O),
+        // Customers = 16 cols (A-P), Sellers = 20 cols (A-T)
         const maxCols = rawRows.reduce((max, r) => Math.max(max, Array.isArray(r) ? r.length : 0), 0);
         let headerMap, reportLabel;
-        if (maxCols >= 16) {
+        if (maxCols >= 18) {
+            headerMap = BUMP_SELLERS_HEADERS;
+            reportLabel = 'Sellers';
+        } else if (maxCols >= 16) {
             headerMap = BUMP_CUSTOMERS_HEADERS;
             reportLabel = 'Customers';
         } else if (maxCols <= 14) {
@@ -7077,11 +7108,11 @@ function analyzeSellersReport(data) {
     const sellerCol = findCol(['seller'], ['seller']);
     const netSalesCol = findCol(['net sales'], ['net sales']);
     const cashCol = findCol(['cash sales'], ['cash']);
-    const ccCol = findCol(['cc sales', 'credit card sales'], ['cc', 'credit card']);
+    const ccCol = findCol(['credit sales', 'cc sales', 'credit card sales'], ['credit', 'cc']);
     const debitCol = findCol(['debit sales'], ['debit']);
     const txCol = findCol(['total transactions', 'transactions'], ['transaction']);
-    const voidedSalesCol = findCol(['voided sales'], ['voided']);
-    const avgOrderCol = findCol(['average order', 'avg order'], ['avg', 'average']);
+    const voidedSalesCol = findCol(['void sales', 'voided sales'], ['void']);
+    const avgOrderCol = findCol(['average order value', 'average order', 'avg order'], ['avg', 'average']);
     const netNumbersCol = findCol(['net numbers', 'net tickets'], ['net number', 'net ticket']);
 
 
