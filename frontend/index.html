@@ -9535,6 +9535,13 @@
             position: relative;
             overflow: hidden;
             border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+            border-top: 3px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .data-metric-card:not(.highlight):not(.northern):not(.rsu) {
+            border-top: 3px solid;
+            border-image: linear-gradient(90deg, #E91E8C, #F47B3A, #F5C623) 1;
         }
 
         .data-metric-card:hover {
@@ -9543,9 +9550,10 @@
         }
 
         .data-metric-card.highlight {
-            background: var(--primary);
+            background: linear-gradient(135deg, #0F3460 0%, #5B1A6E 50%, #E91E8C 100%);
             color: white;
             border-color: transparent;
+            box-shadow: 0 4px 15px rgba(91, 26, 110, 0.3);
         }
 
         .data-metric-card.highlight .data-metric-label,
@@ -9566,6 +9574,24 @@
             color: white;
         }
 
+        .data-metric-card.rsu {
+            background: linear-gradient(135deg, #F47B3A, #E91E8C);
+            color: white;
+            border-color: transparent;
+            border-top: none;
+            box-shadow: 0 4px 15px rgba(233, 30, 140, 0.25);
+        }
+
+        .data-metric-card.rsu .data-metric-label,
+        .data-metric-card.rsu .data-metric-sublabel {
+            opacity: 0.9;
+            color: white;
+        }
+
+        .data-metric-card.rsu .data-metric-value {
+            color: white;
+        }
+
         .data-metric-icon {
             font-size: 28px;
             margin-bottom: 12px;
@@ -9581,7 +9607,8 @@
         }
 
         .data-metric-card.highlight .data-metric-value,
-        .data-metric-card.northern .data-metric-value {
+        .data-metric-card.northern .data-metric-value,
+        .data-metric-card.rsu .data-metric-value {
             color: white;
         }
 
@@ -9618,7 +9645,7 @@
             content: '';
             width: 4px;
             height: 20px;
-            background: var(--primary);
+            background: linear-gradient(180deg, #E91E8C, #F47B3A);
             border-radius: 2px;
         }
 
@@ -9742,18 +9769,18 @@
         }
 
         .data-rank-1 {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+            background: linear-gradient(135deg, #E91E8C, #5B1A6E);
+            box-shadow: 0 2px 8px rgba(233, 30, 140, 0.4);
         }
 
         .data-rank-2 {
-            background: linear-gradient(135deg, #9ca3af, #6b7280);
-            box-shadow: 0 2px 8px rgba(156, 163, 175, 0.4);
+            background: linear-gradient(135deg, #F47B3A, #E91E8C);
+            box-shadow: 0 2px 8px rgba(244, 123, 58, 0.4);
         }
 
         .data-rank-3 {
-            background: linear-gradient(135deg, #d97706, #b45309);
-            box-shadow: 0 2px 8px rgba(217, 119, 6, 0.4);
+            background: linear-gradient(135deg, #F5C623, #F47B3A);
+            box-shadow: 0 2px 8px rgba(245, 198, 35, 0.4);
         }
 
         /* ==================== END ENHANCED UI ==================== */
@@ -9783,7 +9810,8 @@
         }
 
         .data-metric-card.highlight .data-metric-value,
-        .data-metric-card.northern .data-metric-value {
+        .data-metric-card.northern .data-metric-value,
+        .data-metric-card.rsu .data-metric-value {
             color: white;
             -webkit-text-fill-color: white;
         }
@@ -9872,7 +9900,7 @@
             content: '';
             width: 4px;
             height: 24px;
-            background: linear-gradient(180deg, var(--primary), var(--primary-light));
+            background: linear-gradient(180deg, #E91E8C, #F47B3A);
             border-radius: 2px;
         }
 
@@ -9884,22 +9912,37 @@
         }
 
         .data-payment-stat-big {
-            background: var(--bg-light);
+            background: white;
             border-radius: var(--radius-lg);
             padding: 28px;
             text-align: center;
             transition: all 0.3s ease;
             border: 1px solid var(--border);
+            border-top: 3px solid;
+            border-image: linear-gradient(90deg, #E91E8C, #F47B3A, #F5C623) 1;
         }
 
         .data-payment-stat-big:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 15px rgba(233, 30, 140, 0.12);
         }
 
         .data-payment-stat-big.highlight {
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1));
-            border-color: var(--primary-light);
+            background: linear-gradient(135deg, #0F3460 0%, #5B1A6E 50%, #E91E8C 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(91, 26, 110, 0.3);
+        }
+
+        .data-payment-stat-big.highlight .data-payment-stat-value,
+        .data-payment-stat-big.highlight .data-payment-stat-label,
+        .data-payment-stat-big.highlight .data-payment-stat-sublabel {
+            color: white;
+        }
+
+        .data-payment-stat-big.highlight .data-payment-stat-label,
+        .data-payment-stat-big.highlight .data-payment-stat-sublabel {
+            opacity: 0.9;
         }
 
         .data-payment-stat-icon {
@@ -9915,9 +9958,7 @@
             margin-bottom: 8px;
         }
 
-        .data-payment-stat-big.highlight .data-payment-stat-value {
-            color: var(--primary);
-        }
+        /* highlight value color now handled above in the grouped .highlight rules */
 
         .data-payment-stat-label {
             font-size: 14px;
@@ -9952,8 +9993,14 @@
         }
 
         .data-payment-revenue-item.highlight {
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08));
-            border-color: var(--primary-light);
+            background: linear-gradient(135deg, #0F3460, #5B1A6E);
+            border-color: transparent;
+            color: white;
+        }
+
+        .data-payment-revenue-item.highlight .data-payment-revenue-label,
+        .data-payment-revenue-item.highlight .data-payment-revenue-value {
+            color: white;
         }
 
         .data-payment-revenue-label {
@@ -10041,13 +10088,13 @@
         }
 
         .data-seller-section-header.foundation {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(96, 165, 250, 0.1));
-            border: 1px solid rgba(59, 130, 246, 0.2);
+            background: linear-gradient(135deg, rgba(15, 52, 96, 0.08), rgba(91, 26, 110, 0.08));
+            border: 1px solid rgba(91, 26, 110, 0.2);
         }
 
         .data-seller-section-header.store {
-            background: linear-gradient(135deg, rgba(5, 150, 105, 0.1), rgba(16, 185, 129, 0.1));
-            border: 1px solid rgba(5, 150, 105, 0.2);
+            background: linear-gradient(135deg, rgba(244, 123, 58, 0.08), rgba(233, 30, 140, 0.08));
+            border: 1px solid rgba(233, 30, 140, 0.2);
         }
 
         .data-seller-section-icon {
@@ -10111,29 +10158,33 @@
         }
 
         .data-sellers-payment-card {
-            background: var(--bg-light);
+            background: white;
             border-radius: var(--radius-lg);
             padding: 24px;
             text-align: center;
             border: 1px solid var(--border);
+            border-top: 3px solid transparent;
             transition: all 0.3s ease;
         }
 
         .data-sellers-payment-card:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
         .data-sellers-payment-card.cash {
-            border-left: 4px solid #10b981;
+            border-top: 3px solid #10b981;
+            border-left: none;
         }
 
         .data-sellers-payment-card.credit {
-            border-left: 4px solid #3b82f6;
+            border-top: 3px solid #635BFF;
+            border-left: none;
         }
 
         .data-sellers-payment-card.debit {
-            border-left: 4px solid #425466;
+            border-top: 3px solid #F47B3A;
+            border-left: none;
         }
 
         .data-sellers-payment-icon {
@@ -10279,9 +10330,9 @@
             font-weight: 700;
         }
 
-        .data-rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; }
-        .data-rank-2 { background: linear-gradient(135deg, #9ca3af, #6b7280); color: white; }
-        .data-rank-3 { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
+        .data-rank-1 { background: linear-gradient(135deg, #E91E8C, #5B1A6E); color: white; }
+        .data-rank-2 { background: linear-gradient(135deg, #F47B3A, #E91E8C); color: white; }
+        .data-rank-3 { background: linear-gradient(135deg, #F5C623, #F47B3A); color: white; }
         .data-rank-default { background: var(--bg-light); color: var(--text-secondary); }
 
         /* Postal Codes Section */
@@ -16586,7 +16637,7 @@
                                 <div class="data-metric-value" id="dataNorthernSales">$0</div>
                                 <div class="data-metric-sublabel" id="dataNorthernSubtext">0 customers</div>
                             </div>
-                            <div class="data-metric-card highlight">
+                            <div class="data-metric-card rsu">
                                 <div class="data-metric-icon">🏪</div>
                                 <div class="data-metric-label">Total RSU Sales</div>
                                 <div class="data-metric-value" id="dataRsuSales">$0</div>
