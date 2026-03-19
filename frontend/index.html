@@ -10678,6 +10678,330 @@
             }
         }
 
+        /* ==================== INSIGHTS ENGINE - AI ANALYSIS PANEL ==================== */
+        .data-body-wrapper {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .data-body-wrapper .data-analysis-container {
+            flex: 1;
+            min-width: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .data-body-wrapper.analysis-panel-open .data-analysis-container {
+            flex: 0 0 58%;
+            max-width: 58%;
+        }
+
+        /* Generate Analysis button */
+        .data-generate-analysis-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .data-generate-analysis-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
+        }
+
+        .data-generate-analysis-btn:active {
+            transform: translateY(0);
+        }
+
+        .data-generate-analysis-btn svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        /* Analysis Panel */
+        .insights-analysis-panel {
+            width: 0;
+            min-width: 0;
+            opacity: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-light, #f8f9fa);
+            border-left: 1px solid var(--border, #e5e7eb);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0 var(--radius-xl, 16px) var(--radius-xl, 16px) 0;
+        }
+
+        .data-body-wrapper.analysis-panel-open .insights-analysis-panel {
+            width: 42%;
+            min-width: 360px;
+            opacity: 1;
+        }
+
+        .iap-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border, #e5e7eb);
+            background: white;
+            flex-shrink: 0;
+            border-radius: 0 var(--radius-xl, 16px) 0 0;
+        }
+
+        .iap-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .iap-header-left svg {
+            width: 20px;
+            height: 20px;
+            color: #7c3aed;
+        }
+
+        .iap-header-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary, #1f2937);
+        }
+
+        .iap-close-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary, #6b7280);
+            transition: all 0.2s ease;
+        }
+
+        .iap-close-btn:hover {
+            background: var(--bg-light, #f3f4f6);
+            border-color: var(--border, #e5e7eb);
+            color: var(--text-primary, #1f2937);
+        }
+
+        .iap-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .iap-msg {
+            max-width: 100%;
+            animation: iapFadeIn 0.3s ease;
+        }
+
+        @keyframes iapFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .iap-msg-ai {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid var(--border, #e5e7eb);
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-primary, #1f2937);
+        }
+
+        .iap-msg-ai h1, .iap-msg-ai h2, .iap-msg-ai h3, .iap-msg-ai h4 {
+            margin: 16px 0 8px 0;
+            color: var(--text-primary, #1f2937);
+        }
+
+        .iap-msg-ai h1:first-child, .iap-msg-ai h2:first-child,
+        .iap-msg-ai h3:first-child, .iap-msg-ai h4:first-child {
+            margin-top: 0;
+        }
+
+        .iap-msg-ai p { margin: 8px 0; }
+        .iap-msg-ai ul, .iap-msg-ai ol { margin: 8px 0; padding-left: 20px; }
+        .iap-msg-ai li { margin: 4px 0; }
+
+        .iap-msg-ai strong { color: var(--text-primary, #111827); }
+
+        .iap-msg-ai code {
+            background: var(--bg-light, #f3f4f6);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .iap-msg-user {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            color: white;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-left: auto;
+            max-width: 85%;
+        }
+
+        .iap-typing {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 20px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border, #e5e7eb);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .iap-typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .iap-typing-dots span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #7c3aed;
+            animation: iapBounce 1.4s ease-in-out infinite;
+        }
+
+        .iap-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .iap-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes iapBounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .iap-typing-text {
+            font-size: 13px;
+            color: var(--text-secondary, #6b7280);
+        }
+
+        /* Input area */
+        .iap-input-area {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border, #e5e7eb);
+            background: white;
+            flex-shrink: 0;
+            border-radius: 0 0 var(--radius-xl, 16px) 0;
+        }
+
+        .iap-input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .iap-input {
+            flex: 1;
+            resize: none;
+            border: 1px solid var(--border, #e5e7eb);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-family: inherit;
+            line-height: 1.5;
+            max-height: 120px;
+            background: var(--bg-light, #f8f9fa);
+            transition: border-color 0.2s ease;
+            color: var(--text-primary, #1f2937);
+        }
+
+        .iap-input:focus {
+            outline: none;
+            border-color: #7c3aed;
+            background: white;
+        }
+
+        .iap-input::placeholder {
+            color: var(--text-muted, #9ca3af);
+        }
+
+        .iap-send-btn {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .iap-send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        .iap-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .iap-send-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .data-body-wrapper.analysis-panel-open .data-analysis-container {
+                flex: 0 0 50%;
+                max-width: 50%;
+            }
+            .data-body-wrapper.analysis-panel-open .insights-analysis-panel {
+                width: 50%;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .data-body-wrapper.analysis-panel-open {
+                flex-direction: column;
+            }
+            .data-body-wrapper.analysis-panel-open .data-analysis-container {
+                flex: none;
+                max-width: 100%;
+            }
+            .data-body-wrapper.analysis-panel-open .insights-analysis-panel {
+                width: 100%;
+                min-width: 100%;
+                height: 50vh;
+                border-left: none;
+                border-top: 1px solid var(--border, #e5e7eb);
+                border-radius: 0;
+            }
+        }
+
         /* ==================== RESPONSIVE ==================== */
         @media (max-width: 768px) {
             .response-grid,
@@ -16045,7 +16369,7 @@
             </div>
         </header>
 
-        <div class="container">
+        <div class="container data-body-wrapper" id="dataBodyWrapper">
             <div class="data-analysis-container nested-card">
                 <!-- Page Header -->
                 <div class="data-page-header">
@@ -16159,6 +16483,10 @@
                                 <span class="data-report-badge">Live Report</span>
                                 <span class="data-report-name" id="dataReportName">January 2026</span>
                             </div>
+                            <button class="data-generate-analysis-btn" data-report="customer-purchases" title="Generate AI Analysis">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5L18.2 22 12 17.5 5.8 22l2.4-8.1L2 9.4h7.6z"/></svg>
+                                Generate Analysis
+                            </button>
                         </div>
 
                         <!-- Key Metrics Row -->
@@ -16464,6 +16792,10 @@
                                 <span class="data-report-badge">👥 Customers Report</span>
                                 <span class="data-report-name" id="dataCustomersReportName">Customers Report</span>
                             </div>
+                            <button class="data-generate-analysis-btn" data-report="customers" title="Generate AI Analysis">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5L18.2 22 12 17.5 5.8 22l2.4-8.1L2 9.4h7.6z"/></svg>
+                                Generate Analysis
+                            </button>
                         </div>
 
                         <!-- Metrics Row -->
@@ -16582,6 +16914,10 @@
                                 <span class="data-report-badge">🎫 Payment Tickets Report</span>
                                 <span class="data-report-name" id="dataPaymentTicketsReportName">Payment Tickets Report</span>
                             </div>
+                            <button class="data-generate-analysis-btn" data-report="payment-tickets" title="Generate AI Analysis">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5L18.2 22 12 17.5 5.8 22l2.4-8.1L2 9.4h7.6z"/></svg>
+                                Generate Analysis
+                            </button>
                         </div>
 
                         <!-- Overview Container - Big prominent display for Shopify vs Total -->
@@ -16703,6 +17039,10 @@
                                 <span class="data-report-badge">👤 Sellers Report</span>
                                 <span class="data-report-name" id="dataSellersReportName">Sellers Report</span>
                             </div>
+                            <button class="data-generate-analysis-btn" data-report="sellers" title="Generate AI Analysis">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5L18.2 22 12 17.5 5.8 22l2.4-8.1L2 9.4h7.6z"/></svg>
+                                Generate Analysis
+                            </button>
                         </div>
 
                         <!-- Overview Metrics -->
@@ -16840,6 +17180,28 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Analysis Panel -->
+            <div class="insights-analysis-panel" id="insightsAnalysisPanel">
+                <div class="iap-header">
+                    <div class="iap-header-left">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v1a3 3 0 0 1 3 3v1a2 2 0 0 1-2 2h-1l-2 5H10l-2-5H7a2 2 0 0 1-2-2v-1a3 3 0 0 1 3-3V6a4 4 0 0 1 4-4z"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="9" r="1"/></svg>
+                        <span class="iap-header-title">AI Analysis</span>
+                    </div>
+                    <button class="iap-close-btn" id="iapCloseBtn" title="Close panel">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="iap-messages" id="iapMessages"></div>
+                <div class="iap-input-area">
+                    <div class="iap-input-row">
+                        <textarea class="iap-input" id="iapInput" rows="1" placeholder="Ask a follow-up question..."></textarea>
+                        <button class="iap-send-btn" id="iapSendBtn" title="Send">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                        </button>
                     </div>
                 </div>
             </div>
