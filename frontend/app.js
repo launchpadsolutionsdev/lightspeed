@@ -6718,6 +6718,9 @@ function collectReportData(reportType) {
         return el ? el.textContent.trim() : '';
     };
 
+    // Include a representative sample of the raw uploaded data
+    const rawDataContext = sampleRawData(dataPendingFileData);
+
     if (reportType === 'customer-purchases') {
         return {
             reportName: getText('dataReportName'),
@@ -6730,12 +6733,11 @@ function collectReportData(reportType) {
             repeatBuyers: getText('dataRepeatBuyers'),
             northernRevenue: getText('dataNorthernRevenue'),
             northernSubtext: getText('dataNorthernSubtext'),
-            // Grab city table data
             cityTable: extractTableData('data-page-overview', '.data-chart-card table'),
-            // Summary table
             summaryTotalCustomers: getText('summaryTotalCustomers'),
             summaryAvgOrderPerCustomer: getText('summaryAvgOrderPerCustomer'),
-            summaryAvgSalesPerCustomer: getText('summaryAvgSalesPerCustomer')
+            summaryAvgSalesPerCustomer: getText('summaryAvgSalesPerCustomer'),
+            rawData: rawDataContext
         };
     }
 
@@ -6748,7 +6750,8 @@ function collectReportData(reportType) {
             northernPct: getText('dataCustNorthernPct'),
             cityTable: extractTableData('data-page-customers-overview', 'table'),
             postalTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(2)'),
-            areaCodeTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(3)')
+            areaCodeTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(3)'),
+            rawData: rawDataContext
         };
     }
 
@@ -6763,7 +6766,8 @@ function collectReportData(reportType) {
             totalRevenue: getText('dataPTTotalRevenue'),
             shopifyRevenue: getText('dataPTShopifyRevenue'),
             inPersonRevenue: getText('dataPTInPersonRevenue'),
-            sellerTable: extractTableData('data-page-payment-tickets-overview', 'table')
+            sellerTable: extractTableData('data-page-payment-tickets-overview', 'table'),
+            rawData: rawDataContext
         };
     }
 
@@ -6781,17 +6785,57 @@ function collectReportData(reportType) {
             debitTotal: getText('dataSellersDebitTotal'),
             debitPct: getText('dataSellersDebitPct'),
             sellerTable: extractSellerTableData(),
-            // In-person breakdown
             ipCashTotal: getText('dataSellersIPCashTotal'),
             ipCashPct: getText('dataSellersIPCashPct'),
             ipCCTotal: getText('dataSellersIPCCTotal'),
             ipCCPct: getText('dataSellersIPCCPct'),
             ipDebitTotal: getText('dataSellersIPDebitTotal'),
-            ipDebitPct: getText('dataSellersIPDebitPct')
+            ipDebitPct: getText('dataSellersIPDebitPct'),
+            rawData: rawDataContext
         };
     }
 
-    return {};
+    return { rawData: rawDataContext };
+}
+
+function sampleRawData(data) {
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+
+    const columns = Object.keys(data[0]);
+    const totalRows = data.length;
+
+    // Take first 150 rows, then evenly spaced samples from the rest
+    const FIRST_N = 150;
+    const SAMPLE_N = 350;
+    const sampleRows = [];
+
+    // First batch: rows 0..49
+    for (let i = 0; i < Math.min(FIRST_N, totalRows); i++) {
+        sampleRows.push(data[i]);
+    }
+
+    // Evenly spaced samples from the remainder
+    if (totalRows > FIRST_N) {
+        const remaining = totalRows - FIRST_N;
+        const step = Math.max(1, Math.floor(remaining / SAMPLE_N));
+        for (let i = FIRST_N; i < totalRows && sampleRows.length < FIRST_N + SAMPLE_N; i += step) {
+            sampleRows.push(data[i]);
+        }
+    }
+
+    // Convert to compact CSV-style string to save tokens
+    const header = columns.join(' | ');
+    const rows = sampleRows.map(row => columns.map(col => {
+        const val = row[col];
+        return val != null ? String(val).substring(0, 80) : '';
+    }).join(' | '));
+
+    return {
+        columns: columns,
+        totalRows: totalRows,
+        sampleCount: sampleRows.length,
+        csv: header + '\n' + rows.join('\n')
+    };
 }
 
 function extractTableData(pageId, tableSelector) {
@@ -6837,16 +6881,59 @@ function buildAnalysisSystemPrompt(reportType, data) {
         'sellers': 'Sellers'
     };
 
-    let prompt = `You are an expert data analyst for a charitable lottery/raffle organization. You are analyzing a "${reportNames[reportType]}" report from their Insights Engine.\n\n`;
-    prompt += `REPORT DATA:\n`;
-    prompt += JSON.stringify(data, null, 2);
+    // Separate raw data from computed metrics for clearer prompt structure
+    const rawData = data.rawData;
+    const metrics = { ...data };
+    delete metrics.rawData;
+
+    let prompt = `You are an expert data analyst specializing in charitable gaming — specifically 50/50 raffles, Catch The Ace, Fixed Prize Lotteries, and House Lotteries run by nonprofits. You are analyzing a "${reportNames[reportType]}" report from their Insights Engine.\n\n`;
+
+    // ── Domain context ──────────────────────────────────────────────────
+    prompt += `IMPORTANT DOMAIN CONTEXT — read this before analyzing:\n\n`;
+
+    prompt += `1. SALES CYCLE: This data represents a single draw/sales period which can range from one week to four+ months. Sales are cyclical within a draw — they are typically higher at the beginning (launch excitement) and at the end (jackpot urgency / fear of missing out), with a natural dip in the middle. This is NORMAL. Do not flag a mid-draw dip as a problem. Do not compute a simple "total ÷ days" daily average and present it as meaningful — that flattens the natural rhythm. Instead, acknowledge the sales pattern and, when possible, identify the early surge, mid-draw plateau, and late-draw ramp-up phases.\n\n`;
+
+    prompt += `2. PURCHASE FREQUENCY: For 50/50 and similar lotteries, most supporters buy tickets once per draw period (usually monthly). An average orders-per-customer of 1.0–1.2 is completely normal and healthy. An average of 1.1 is actually very good — it means a meaningful portion of supporters are coming back for additional purchases within the same draw. Do not frame a low orders-per-customer number as a concern. Instead, highlight repeat buyers as a strength.\n\n`;
+
+    prompt += `3. TICKET PRICE: Try to infer the ticket price from the data (look for the most common sale amount). Use it to contextualize average order values. For example, if tickets are $10 and the average sale is $22, that likely means most people buy 2 tickets.\n\n`;
+
+    prompt += `4. GEOGRAPHIC REACH: For charitable lotteries, expanding into new cities and postal codes is a meaningful growth signal. Highlight geographic spread positively. If the data covers many cities, that reflects strong community reach.\n\n`;
+
+    prompt += `5. REVENUE CONCENTRATION: If a small number of top buyers account for a large share of revenue, note this — but frame it as "key supporters to recognize and retain" rather than a risk.\n\n`;
+
+    prompt += `6. TONE: These are charitable organizations, not Fortune 500 companies. Be encouraging and constructive. Small variations are normal — don't over-alarm on minor fluctuations. Frame recommendations as opportunities, not problems. Be professional but warm.\n\n`;
+
+    // ── Data limitations guidance ────────────────────────────────────────
+    prompt += `7. DATA LIMITATIONS: You are working with the dashboard's computed metrics plus a sample of the raw data (not the full dataset). If the user asks a follow-up question that requires more data than what was provided (e.g., "show me the top 100 cities" when only the top 20 are shown), be upfront about it. Say something like: "That's a great question! Unfortunately, I only have access to a summary of the data right now and can't break it down that far. A couple of quick ways to get that: you could use Excel's COUNTIF or pivot table features on the original export, or check if your Raffle Service Provider dashboard has that breakdown built in." Always try to provide a helpful alternative.\n\n`;
+
+    // ── Report-specific instructions ────────────────────────────────────
+    if (reportType === 'customer-purchases') {
+        prompt += `REPORT-SPECIFIC INSTRUCTIONS:\n`;
+        prompt += `- ALWAYS include a "Top 10 Buyers" section that lists the top 10 customers by total spend. Format it as a numbered list with the customer name (or identifier) and their total. If the data has names/emails, use them. This section should appear in every customer purchases analysis.\n`;
+        prompt += `- Highlight repeat purchasers as a strength — these are engaged supporters.\n`;
+        prompt += `- Note the spread between the highest and average spender to show supporter engagement range.\n\n`;
+    }
+
+    // ── Metrics and data ────────────────────────────────────────────────
+    prompt += `COMPUTED METRICS (from the dashboard):\n`;
+    prompt += JSON.stringify(metrics, null, 2);
+
+    if (rawData && rawData.csv) {
+        prompt += `\n\nRAW DATA (${rawData.totalRows.toLocaleString()} total rows, showing ${rawData.sampleCount} representative rows):\n`;
+        prompt += `Columns: ${rawData.columns.join(', ')}\n\n`;
+        prompt += rawData.csv;
+    }
+
     prompt += `\n\nProvide a thorough yet concise analysis including:\n`;
     prompt += `1. Key highlights and notable metrics\n`;
-    prompt += `2. Trends or patterns you observe\n`;
+    prompt += `2. Trends or patterns you observe (remember: sales cycles are normal)\n`;
     prompt += `3. Areas of strength\n`;
-    prompt += `4. Areas for improvement or concern\n`;
-    prompt += `5. Actionable recommendations\n\n`;
-    prompt += `Format your response with clear headers and bullet points. Be specific with numbers. Do not use emojis. Keep it professional and data-driven.`;
+    prompt += `4. Opportunities for growth\n`;
+    prompt += `5. Actionable recommendations\n`;
+    if (reportType === 'customer-purchases') {
+        prompt += `6. Top 10 Buyers (always include this)\n`;
+    }
+    prompt += `\nFormat your response with clear headers and bullet points. Be specific with numbers. Do not use emojis. Keep it professional, data-driven, and encouraging.`;
 
     return prompt;
 }
