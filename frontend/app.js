@@ -6822,13 +6822,39 @@ async function streamIapResponse() {
     iapIsStreaming = true;
     updateIapSendButton();
 
-    // Add typing indicator
+    // Add animated thinking indicator with rotating phrases
+    const iapThinkingPhrases = [
+        'Analyzing your data...',
+        'Crunching the numbers...',
+        'Spotting trends...',
+        'Finding insights...',
+        'Connecting the dots...',
+        'Doing the math...',
+        'Reading between the lines...',
+        'Digging deeper...',
+        'Building your analysis...',
+        'Almost there...'
+    ];
     const typingEl = document.createElement('div');
-    typingEl.className = 'iap-msg iap-typing';
+    typingEl.className = 'iap-msg iap-thinking';
     typingEl.id = 'iapTypingIndicator';
-    typingEl.innerHTML = '<div class="iap-typing-dots"><span></span><span></span><span></span></div><span class="iap-typing-text">Analyzing report data...</span>';
+    typingEl.innerHTML = '<div class="iap-thinking-spinner"></div><div class="iap-thinking-status"><span class="iap-thinking-text">' + iapThinkingPhrases[0] + '</span></div>';
     messagesEl.appendChild(typingEl);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    // Rotate through phrases
+    let iapPhraseIndex = 0;
+    const iapPhraseInterval = setInterval(() => {
+        iapPhraseIndex = (iapPhraseIndex + 1) % iapThinkingPhrases.length;
+        const textEl = typingEl.querySelector('.iap-thinking-text');
+        if (textEl) {
+            textEl.style.opacity = '0';
+            setTimeout(() => {
+                textEl.textContent = iapThinkingPhrases[iapPhraseIndex];
+                textEl.style.opacity = '1';
+            }, 300);
+        }
+    }, 3000);
 
     // Create the AI message container
     const msgEl = document.createElement('div');
@@ -6865,7 +6891,8 @@ async function streamIapResponse() {
             throw new Error(`HTTP ${response.status}`);
         }
 
-        // Remove typing indicator, show message
+        // Remove thinking indicator, show message
+        clearInterval(iapPhraseInterval);
         const typing = document.getElementById('iapTypingIndicator');
         if (typing) typing.remove();
         msgEl.style.display = '';
@@ -6897,9 +6924,9 @@ async function streamIapResponse() {
                     msgEl.innerHTML = renderSimpleMarkdown(fullText);
                     messagesEl.scrollTop = messagesEl.scrollHeight;
                 } else if (event.type === 'status') {
-                    // Update typing text if still visible
-                    const typingText = document.querySelector('#iapTypingIndicator .iap-typing-text');
-                    if (typingText) typingText.textContent = event.message;
+                    // Update thinking text with server status if still visible
+                    const thinkingText = document.querySelector('#iapTypingIndicator .iap-thinking-text');
+                    if (thinkingText) thinkingText.textContent = event.message;
                 } else if (event.type === 'error') {
                     throw new Error(event.error || 'Server error');
                 }
@@ -6910,6 +6937,7 @@ async function streamIapResponse() {
         iapConversation.push({ role: 'assistant', content: fullText });
 
     } catch (err) {
+        clearInterval(iapPhraseInterval);
         const typing = document.getElementById('iapTypingIndicator');
         if (typing) typing.remove();
 
