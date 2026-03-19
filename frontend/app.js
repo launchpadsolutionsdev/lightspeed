@@ -6718,6 +6718,9 @@ function collectReportData(reportType) {
         return el ? el.textContent.trim() : '';
     };
 
+    // Include a representative sample of the raw uploaded data
+    const rawDataContext = sampleRawData(dataPendingFileData);
+
     if (reportType === 'customer-purchases') {
         return {
             reportName: getText('dataReportName'),
@@ -6730,12 +6733,11 @@ function collectReportData(reportType) {
             repeatBuyers: getText('dataRepeatBuyers'),
             northernRevenue: getText('dataNorthernRevenue'),
             northernSubtext: getText('dataNorthernSubtext'),
-            // Grab city table data
             cityTable: extractTableData('data-page-overview', '.data-chart-card table'),
-            // Summary table
             summaryTotalCustomers: getText('summaryTotalCustomers'),
             summaryAvgOrderPerCustomer: getText('summaryAvgOrderPerCustomer'),
-            summaryAvgSalesPerCustomer: getText('summaryAvgSalesPerCustomer')
+            summaryAvgSalesPerCustomer: getText('summaryAvgSalesPerCustomer'),
+            rawData: rawDataContext
         };
     }
 
@@ -6748,7 +6750,8 @@ function collectReportData(reportType) {
             northernPct: getText('dataCustNorthernPct'),
             cityTable: extractTableData('data-page-customers-overview', 'table'),
             postalTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(2)'),
-            areaCodeTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(3)')
+            areaCodeTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(3)'),
+            rawData: rawDataContext
         };
     }
 
@@ -6763,7 +6766,8 @@ function collectReportData(reportType) {
             totalRevenue: getText('dataPTTotalRevenue'),
             shopifyRevenue: getText('dataPTShopifyRevenue'),
             inPersonRevenue: getText('dataPTInPersonRevenue'),
-            sellerTable: extractTableData('data-page-payment-tickets-overview', 'table')
+            sellerTable: extractTableData('data-page-payment-tickets-overview', 'table'),
+            rawData: rawDataContext
         };
     }
 
@@ -6781,17 +6785,57 @@ function collectReportData(reportType) {
             debitTotal: getText('dataSellersDebitTotal'),
             debitPct: getText('dataSellersDebitPct'),
             sellerTable: extractSellerTableData(),
-            // In-person breakdown
             ipCashTotal: getText('dataSellersIPCashTotal'),
             ipCashPct: getText('dataSellersIPCashPct'),
             ipCCTotal: getText('dataSellersIPCCTotal'),
             ipCCPct: getText('dataSellersIPCCPct'),
             ipDebitTotal: getText('dataSellersIPDebitTotal'),
-            ipDebitPct: getText('dataSellersIPDebitPct')
+            ipDebitPct: getText('dataSellersIPDebitPct'),
+            rawData: rawDataContext
         };
     }
 
-    return {};
+    return { rawData: rawDataContext };
+}
+
+function sampleRawData(data) {
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+
+    const columns = Object.keys(data[0]);
+    const totalRows = data.length;
+
+    // Take first 50 rows, then evenly spaced samples from the rest
+    const FIRST_N = 50;
+    const SAMPLE_N = 50;
+    const sampleRows = [];
+
+    // First batch: rows 0..49
+    for (let i = 0; i < Math.min(FIRST_N, totalRows); i++) {
+        sampleRows.push(data[i]);
+    }
+
+    // Evenly spaced samples from the remainder
+    if (totalRows > FIRST_N) {
+        const remaining = totalRows - FIRST_N;
+        const step = Math.max(1, Math.floor(remaining / SAMPLE_N));
+        for (let i = FIRST_N; i < totalRows && sampleRows.length < FIRST_N + SAMPLE_N; i += step) {
+            sampleRows.push(data[i]);
+        }
+    }
+
+    // Convert to compact CSV-style string to save tokens
+    const header = columns.join(' | ');
+    const rows = sampleRows.map(row => columns.map(col => {
+        const val = row[col];
+        return val != null ? String(val).substring(0, 80) : '';
+    }).join(' | '));
+
+    return {
+        columns: columns,
+        totalRows: totalRows,
+        sampleCount: sampleRows.length,
+        csv: header + '\n' + rows.join('\n')
+    };
 }
 
 function extractTableData(pageId, tableSelector) {
@@ -6837,9 +6881,22 @@ function buildAnalysisSystemPrompt(reportType, data) {
         'sellers': 'Sellers'
     };
 
+    // Separate raw data from computed metrics for clearer prompt structure
+    const rawData = data.rawData;
+    const metrics = { ...data };
+    delete metrics.rawData;
+
     let prompt = `You are an expert data analyst for a charitable lottery/raffle organization. You are analyzing a "${reportNames[reportType]}" report from their Insights Engine.\n\n`;
-    prompt += `REPORT DATA:\n`;
-    prompt += JSON.stringify(data, null, 2);
+
+    prompt += `COMPUTED METRICS (from the dashboard):\n`;
+    prompt += JSON.stringify(metrics, null, 2);
+
+    if (rawData && rawData.csv) {
+        prompt += `\n\nRAW DATA (${rawData.totalRows.toLocaleString()} total rows, showing ${rawData.sampleCount} sample rows):\n`;
+        prompt += `Columns: ${rawData.columns.join(', ')}\n\n`;
+        prompt += rawData.csv;
+    }
+
     prompt += `\n\nProvide a thorough yet concise analysis including:\n`;
     prompt += `1. Key highlights and notable metrics\n`;
     prompt += `2. Trends or patterns you observe\n`;
