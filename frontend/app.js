@@ -6891,17 +6891,11 @@ async function streamIapResponse() {
             throw new Error(`HTTP ${response.status}`);
         }
 
-        // Remove thinking indicator, show message
-        clearInterval(iapPhraseInterval);
-        const typing = document.getElementById('iapTypingIndicator');
-        if (typing) typing.remove();
-        msgEl.style.display = '';
-        messagesEl.appendChild(msgEl);
-
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let fullText = '';
+        let iapFirstTextReceived = false;
 
         while (true) {
             const { done, value } = await reader.read();
@@ -6920,6 +6914,15 @@ async function streamIapResponse() {
                 try { event = JSON.parse(jsonStr); } catch (_e) { continue; }
 
                 if (event.type === 'text') {
+                    // Remove thinking indicator on first text chunk
+                    if (!iapFirstTextReceived) {
+                        iapFirstTextReceived = true;
+                        clearInterval(iapPhraseInterval);
+                        const typing = document.getElementById('iapTypingIndicator');
+                        if (typing) typing.remove();
+                        msgEl.style.display = '';
+                        messagesEl.appendChild(msgEl);
+                    }
                     fullText += (fullText && event.content ? '\n' : '') + (event.content || '');
                     msgEl.innerHTML = renderSimpleMarkdown(fullText);
                     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -6933,8 +6936,18 @@ async function streamIapResponse() {
             }
         }
 
+        // Clean up thinking indicator if stream ended without text
+        clearInterval(iapPhraseInterval);
+        const typingAfter = document.getElementById('iapTypingIndicator');
+        if (typingAfter) typingAfter.remove();
+        if (!iapFirstTextReceived) {
+            msgEl.style.display = '';
+            msgEl.innerHTML = '<p style="color: var(--text-secondary);">No analysis was returned. Try again.</p>';
+            messagesEl.appendChild(msgEl);
+        }
+
         // Store assistant response in conversation
-        iapConversation.push({ role: 'assistant', content: fullText });
+        if (fullText) iapConversation.push({ role: 'assistant', content: fullText });
 
     } catch (err) {
         clearInterval(iapPhraseInterval);
