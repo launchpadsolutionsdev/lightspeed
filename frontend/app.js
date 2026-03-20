@@ -8059,6 +8059,7 @@ function closeSidebar() {
 function switchPage(pageId) {
     // Cleanup previous page resources
     if (typeof sdCleanup === 'function') sdCleanup();
+    if (typeof cleanupAdminDashboard === 'function') cleanupAdminDashboard();
 
     // Update URL
     pushRoute(PAGE_ROUTES[pageId] || TOOL_ROUTES[currentTool] || '/dashboard');

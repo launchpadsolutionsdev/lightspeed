@@ -17,88 +17,66 @@ const log = require('../services/logger');
  */
 router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
     try {
-        // Get total user count
-        const userCount = await pool.query('SELECT COUNT(*) FROM users');
+        // Run independent queries in parallel for ~3-4x faster response
+        const [
+            userCount,
+            orgCount,
+            newUsersToday,
+            newOrgsThisWeek,
+            activeUsers7Days,
+            activeUsersToday,
+            totalRequests30Days,
+            requestsToday,
+            perfMetrics,
+            toolUsage,
+            dailyActivity,
+            subscriptionStats
+        ] = await Promise.all([
+            pool.query('SELECT COUNT(*) FROM users'),
+            pool.query('SELECT COUNT(*) FROM organizations'),
+            pool.query(`SELECT COUNT(*) FROM users WHERE created_at > CURRENT_DATE`),
+            pool.query(`SELECT COUNT(*) FROM organizations WHERE created_at > NOW() - INTERVAL '7 days'`),
+            pool.query(`SELECT COUNT(DISTINCT user_id) FROM usage_logs WHERE created_at > NOW() - INTERVAL '7 days'`),
+            pool.query(`SELECT COUNT(DISTINCT user_id) FROM usage_logs WHERE created_at > CURRENT_DATE`),
+            pool.query(`SELECT COUNT(*) FROM usage_logs WHERE created_at > NOW() - INTERVAL '30 days'`),
+            pool.query(`SELECT COUNT(*) FROM usage_logs WHERE created_at > CURRENT_DATE`),
+            pool.query(
+                `SELECT
+                     COALESCE(AVG(response_time_ms) FILTER (WHERE response_time_ms IS NOT NULL), 0) as avg_response_time,
+                     CASE WHEN COUNT(*) > 0
+                          THEN ROUND(COUNT(*) FILTER (WHERE success IS NOT FALSE)::numeric / COUNT(*) * 100)
+                          ELSE 100
+                     END as success_rate
+                 FROM usage_logs
+                 WHERE created_at > NOW() - INTERVAL '30 days'`
+            ),
+            pool.query(
+                `SELECT tool, COUNT(*) as count, SUM(total_tokens) as tokens
+                 FROM usage_logs
+                 WHERE created_at > NOW() - INTERVAL '30 days'
+                 GROUP BY tool
+                 ORDER BY count DESC`
+            ),
+            pool.query(
+                `SELECT DATE(created_at) as date, COUNT(*) as requests, COUNT(DISTINCT user_id) as users
+                 FROM usage_logs
+                 WHERE created_at > NOW() - INTERVAL '14 days'
+                 GROUP BY DATE(created_at)
+                 ORDER BY date DESC`
+            ),
+            pool.query(
+                `SELECT subscription_status, COUNT(*) as count
+                 FROM organizations
+                 GROUP BY subscription_status`
+            )
+        ]);
 
-        // Get total organization count
-        const orgCount = await pool.query('SELECT COUNT(*) FROM organizations');
-
-        // Get new users today
-        const newUsersToday = await pool.query(
-            `SELECT COUNT(*) FROM users WHERE created_at > CURRENT_DATE`
-        );
-
-        // Get new orgs this week
-        const newOrgsThisWeek = await pool.query(
-            `SELECT COUNT(*) FROM organizations
-             WHERE created_at > NOW() - INTERVAL '7 days'`
-        );
-
-        // Get active users in last 7 days
-        const activeUsers7Days = await pool.query(
-            `SELECT COUNT(DISTINCT user_id) FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '7 days'`
-        );
-
-        // Get active users today
-        const activeUsersToday = await pool.query(
-            `SELECT COUNT(DISTINCT user_id) FROM usage_logs
-             WHERE created_at > CURRENT_DATE`
-        );
-
-        // Get total requests in 30 days
-        const totalRequests30Days = await pool.query(
-            `SELECT COUNT(*) FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '30 days'`
-        );
-
-        // Get requests today
-        const requestsToday = await pool.query(
-            `SELECT COUNT(*) FROM usage_logs WHERE created_at > CURRENT_DATE`
-        );
-
-        // Calculate real performance metrics from usage_logs
-        const perfMetrics = await pool.query(
-            `SELECT
-                 COALESCE(AVG(response_time_ms) FILTER (WHERE response_time_ms IS NOT NULL), 0) as avg_response_time,
-                 CASE WHEN COUNT(*) > 0
-                      THEN ROUND(COUNT(*) FILTER (WHERE success IS NOT FALSE)::numeric / COUNT(*) * 100)
-                      ELSE 100
-                 END as success_rate
-             FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '30 days'`
-        );
         const avgResponseTimeMs = Math.round(parseFloat(perfMetrics.rows[0].avg_response_time)) || 0;
         const successRate = parseInt(perfMetrics.rows[0].success_rate) || 100;
 
-        // Get tool usage breakdown
-        const toolUsage = await pool.query(
-            `SELECT tool, COUNT(*) as count, SUM(total_tokens) as tokens
-             FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '30 days'
-             GROUP BY tool
-             ORDER BY count DESC`
-        );
-
-        // Get daily activity for last 14 days
-        const dailyActivity = await pool.query(
-            `SELECT DATE(created_at) as date, COUNT(*) as requests, COUNT(DISTINCT user_id) as users
-             FROM usage_logs
-             WHERE created_at > NOW() - INTERVAL '14 days'
-             GROUP BY DATE(created_at)
-             ORDER BY date DESC`
-        );
-
-        // Get subscription stats
-        const trialCount = await pool.query(
-            `SELECT COUNT(*) FROM organizations WHERE subscription_status = 'trial'`
-        );
-        const activeCount = await pool.query(
-            `SELECT COUNT(*) FROM organizations WHERE subscription_status = 'active'`
-        );
-        const cancelledCount = await pool.query(
-            `SELECT COUNT(*) FROM organizations WHERE subscription_status = 'cancelled'`
-        );
+        // Parse subscription stats from grouped query
+        const subMap = {};
+        subscriptionStats.rows.forEach(r => { subMap[r.subscription_status] = parseInt(r.count); });
 
         // Platform-wide response quality metrics
         let responseQuality = null;
@@ -192,9 +170,9 @@ router.get('/dashboard', authenticate, requireSuperAdmin, async (req, res) => {
             kbOverview,
             contentStats,
             subscriptions: {
-                trial: parseInt(trialCount.rows[0].count),
-                active: parseInt(activeCount.rows[0].count),
-                cancelled: parseInt(cancelledCount.rows[0].count)
+                trial: subMap.trial || 0,
+                active: subMap.active || 0,
+                cancelled: subMap.cancelled || 0
             }
         });
 
@@ -367,8 +345,10 @@ router.get('/stats', authenticate, requireSuperAdmin, async (req, res) => {
  */
 router.get('/users', authenticate, requireSuperAdmin, async (req, res) => {
     try {
-        const { page = 1, limit = 50, search } = req.query;
-        const offset = (page - 1) * limit;
+        const { page = 1, limit: rawLimit = 50, search } = req.query;
+        const limit = Math.max(1, Math.min(100, parseInt(rawLimit) || 50));
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const offset = (pageNum - 1) * limit;
 
         let query = `
             SELECT u.id, u.email, u.first_name, u.last_name, u.picture,
@@ -403,8 +383,8 @@ router.get('/users', authenticate, requireSuperAdmin, async (req, res) => {
         res.json({
             users: result.rows,
             total: parseInt(countResult.rows[0].count),
-            page: parseInt(page),
-            limit: parseInt(limit)
+            page: pageNum,
+            limit: limit
         });
 
     } catch (error) {
@@ -419,8 +399,10 @@ router.get('/users', authenticate, requireSuperAdmin, async (req, res) => {
  */
 router.get('/organizations', authenticate, requireSuperAdmin, async (req, res) => {
     try {
-        const { page = 1, limit = 50, search, status } = req.query;
-        const offset = (page - 1) * limit;
+        const { page = 1, limit: rawLimit = 50, search, status } = req.query;
+        const limit = Math.max(1, Math.min(100, parseInt(rawLimit) || 50));
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const offset = (pageNum - 1) * limit;
 
         let query = `
             SELECT o.*,
@@ -471,8 +453,8 @@ router.get('/organizations', authenticate, requireSuperAdmin, async (req, res) =
         res.json({
             organizations: result.rows,
             total: parseInt(countResult.rows[0].count),
-            page: parseInt(page),
-            limit: parseInt(limit)
+            page: pageNum,
+            limit: limit
         });
 
     } catch (error) {
@@ -626,12 +608,13 @@ router.delete('/users/:userId', authenticate, requireSuperAdmin, async (req, res
  */
 router.get('/recent-activity', authenticate, requireSuperAdmin, async (req, res) => {
     try {
-        const { limit = 50 } = req.query;
+        const { limit: rawLimit = 50 } = req.query;
+        const limit = Math.max(1, Math.min(200, parseInt(rawLimit) || 50));
 
         // Recent signups
         const recentSignups = await pool.query(
             `SELECT id, email, first_name, last_name, created_at
-             FROM users ORDER BY created_at DESC LIMIT $1`, [parseInt(limit)]
+             FROM users ORDER BY created_at DESC LIMIT $1`, [limit]
         );
 
         // Recent usage activity
@@ -642,7 +625,7 @@ router.get('/recent-activity', authenticate, requireSuperAdmin, async (req, res)
              FROM usage_logs ul
              LEFT JOIN users u ON ul.user_id = u.id
              LEFT JOIN organizations o ON ul.organization_id = o.id
-             ORDER BY ul.created_at DESC LIMIT $1`, [parseInt(limit)]
+             ORDER BY ul.created_at DESC LIMIT $1`, [limit]
         );
 
         // Recent logins
@@ -650,7 +633,7 @@ router.get('/recent-activity', authenticate, requireSuperAdmin, async (req, res)
             `SELECT id, email, first_name, last_name, last_login_at
              FROM users
              WHERE last_login_at IS NOT NULL
-             ORDER BY last_login_at DESC LIMIT $1`, [parseInt(limit)]
+             ORDER BY last_login_at DESC LIMIT $1`, [limit]
         );
 
         res.json({
@@ -1265,7 +1248,23 @@ router.get('/audit-logs', authenticate, requireSuperAdmin, async (req, res) => {
 
         const result = await pool.query(query, params);
 
-        const countResult = await pool.query('SELECT COUNT(*) FROM audit_logs');
+        // Build count query with the same filters
+        let countQuery = 'SELECT COUNT(*) FROM audit_logs al WHERE 1=1';
+        const countParams = [];
+        let countParamIdx = 1;
+        if (action) {
+            countQuery += ` AND al.action = $${countParamIdx++}`;
+            countParams.push(action);
+        }
+        if (org_id) {
+            countQuery += ` AND al.organization_id = $${countParamIdx++}`;
+            countParams.push(org_id);
+        }
+        if (user_id) {
+            countQuery += ` AND al.actor_user_id = $${countParamIdx++}`;
+            countParams.push(user_id);
+        }
+        const countResult = await pool.query(countQuery, countParams);
 
         res.json({
             logs: result.rows,

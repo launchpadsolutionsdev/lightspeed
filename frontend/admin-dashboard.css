@@ -243,6 +243,7 @@
 }
 
 .admin-card:hover {
+    box-shadow: 0 2px 8px rgba(10, 37, 64, 0.06);
 }
 
 .admin-card-header {
@@ -331,7 +332,7 @@
 }
 
 .admin-table tbody tr:hover {
-    background: #ffffff;
+    background: #F6F9FC;
 }
 
 .admin-table td.name {
@@ -552,7 +553,7 @@
 
 /* ==================== ORG DETAIL EXPANSION ==================== */
 .admin-org-row:hover {
-    background: #ffffff;
+    background: #F6F9FC;
 }
 
 .admin-org-detail {
@@ -803,7 +804,7 @@
 }
 
 .admin-activity-item:hover {
-    background: #ffffff;
+    background: #F6F9FC;
     margin: 0 -1.5rem;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
