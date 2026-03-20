@@ -2522,6 +2522,39 @@
             color: #fff;
         }
 
+        /* Web search toggle */
+        .als-web-search-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .als-web-search-toggle:hover {
+            border-color: rgba(0, 0, 0, 0.2);
+            color: var(--text-primary);
+        }
+
+        .als-web-search-toggle.active {
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .als-web-search-toggle.active svg {
+            stroke: #fff;
+        }
+
         /* Input row */
         .als-input-row {
             display: flex;
@@ -2822,6 +2855,10 @@
             .als-tone, .als-model {
                 flex: 1;
                 text-align: center;
+            }
+
+            .als-web-search-toggle {
+                align-self: center;
             }
 
             .als-input-area {
@@ -18439,6 +18476,10 @@
                             </div>
                         </div>
                         <div class="als-controls-right">
+                            <button class="als-web-search-toggle" id="alsWebSearchToggle" title="Enable web search">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                <span>Web</span>
+                            </button>
                             <div class="als-model-pills" id="alsModelPills">
                                 <button class="als-model active" data-model="claude-sonnet-4-6">
                                     <span class="als-model-name">Sonnet 4.6</span>

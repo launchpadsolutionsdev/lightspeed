@@ -1031,7 +1031,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
     };
 
     try {
-        const { message, conversation, model, tone, language } = req.body;
+        const { message, conversation, model, tone, language, webSearch } = req.body;
         const file = req.file;
         const organizationId = req.organizationId;
         const userId = req.userId;
@@ -1074,7 +1074,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
 
         // Build system prompt with full org profile (always use server-built prompt)
         const orgProfile = await fetchOrgProfile(organizationId);
-        const systemPrompt = buildAgenticSystemPrompt(orgProfile, { tone, language });
+        const systemPrompt = buildAgenticSystemPrompt(orgProfile, { tone, language, webSearch: webSearch === 'true' });
 
         // Build messages array
         const messages = [
@@ -1099,6 +1099,9 @@ When the user asks about current sales, velocity, how tickets are selling, reven
         const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
         const selectedModel = model && ALLOWED_MODELS.includes(model) ? model : undefined;
 
+        // Include web search tool only when explicitly enabled by the user
+        const requestTools = webSearch === 'true' ? ALL_TOOLS : TOOLS;
+
         // Call Claude with tools
         sendEvent({ type: 'status', message: 'Thinking...' });
 
@@ -1106,7 +1109,7 @@ When the user asks about current sales, velocity, how tickets are selling, reven
             messages,
             system: enhancedSystem,
             max_tokens: 4096,
-            tools: ALL_TOOLS,
+            tools: requestTools,
             model: selectedModel
         });
 
@@ -1118,7 +1121,7 @@ When the user asks about current sales, velocity, how tickets are selling, reven
         await processResponse(response, messages, enhancedSystem, organizationId, userId, selectedModel, sendEvent, (toolName, toolInput) => {
             lastExecutedTool = toolName;
             lastToolInput = toolInput;
-        });
+        }, requestTools);
 
         // Emit proactive suggestions based on what just happened
         if (lastExecutedTool) {
@@ -1157,7 +1160,7 @@ When the user asks about current sales, velocity, how tickets are selling, reven
  * For read-only tools (search), executes immediately and loops back.
  * For write tools (create_runway_events), sends a confirmation prompt.
  */
-async function processResponse(response, messages, system, organizationId, userId, model, sendEvent, trackTool) {
+async function processResponse(response, messages, system, organizationId, userId, model, sendEvent, trackTool, tools) {
     const content = response.content || [];
 
     // Collect text and tool_use blocks
@@ -1240,12 +1243,12 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: ALL_TOOLS,
+                tools: tools,
                 model
             });
 
             // Recursively process (Claude might call another tool)
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
 
         } else if (toolUse.name === 'search_knowledge_base') {
@@ -1266,11 +1269,11 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: ALL_TOOLS,
+                tools: tools,
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
 
         } else if (toolUse.name === 'draft_content') {
@@ -1298,11 +1301,11 @@ async function processResponse(response, messages, system, organizationId, userI
                     messages: followUpMessages,
                     system,
                     max_tokens: 4096,
-                    tools: ALL_TOOLS,
+                    tools: tools,
                     model
                 });
 
-                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             } else {
                 // Draft succeeded — send the full draft directly to the user
                 sendEvent({ type: 'text', content: result.draft });
@@ -1319,11 +1322,11 @@ async function processResponse(response, messages, system, organizationId, userI
                     messages: followUpMessages,
                     system,
                     max_tokens: 1024,
-                    tools: ALL_TOOLS,
+                    tools: tools,
                     model
                 });
 
-                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             }
             return;
 
@@ -1364,11 +1367,11 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: ALL_TOOLS,
+                tools: tools,
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
 
         } else if (toolUse.name === 'search_home_base') {
@@ -1392,11 +1395,11 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: ALL_TOOLS,
+                tools: tools,
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
 
         } else if (toolUse.name === 'run_insights_analysis') {
@@ -1417,11 +1420,11 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: ALL_TOOLS,
+                tools: tools,
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
 
         } else if (toolUse.name === 'search_shopify_orders') {
@@ -1451,11 +1454,11 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: ALL_TOOLS,
+                tools: tools,
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
 
         } else if (toolUse.name === 'search_shopify_customers') {
@@ -1484,11 +1487,11 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: ALL_TOOLS,
+                tools: tools,
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
 
         } else if (toolUse.name === 'search_heartbeat_data') {
@@ -1507,11 +1510,11 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: ALL_TOOLS,
+                tools: tools,
                 model
             });
 
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool);
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
         }
     }
@@ -1636,7 +1639,7 @@ async function fetchOrgProfile(organizationId) {
 
 function buildAgenticSystemPrompt(org, options = {}) {
     const orgName = org.name || 'your organization';
-    const { tone, language } = options;
+    const { tone, language, webSearch } = options;
 
     // Build tone/language instructions
     const TONE_MAP = {
@@ -1732,10 +1735,10 @@ SHOPIFY TOOLS:
 HEARTBEAT (LIVE RAFFLE MONITOR):
 - search_heartbeat_data: Query real-time raffle sales data from the Heartbeat monitor. Returns current totals (revenue, tickets, numbers sold), sales velocity across time windows (1m to 7d), surge detection, and optionally package tier breakdowns. Use when the user asks about current sales, velocity, how fast tickets are selling, revenue performance, sales trends, or anything related to live raffle metrics.
 
-WEB SEARCH:
+${webSearch ? `WEB SEARCH:
 - web_search: Search the internet for current information. This is a server-managed tool — you can call it like any other tool, and the results will be provided automatically. Use this when the user asks about external topics relevant to charitable gaming, lottery regulations, industry news, best practices, or anything where up-to-date web information would be helpful. Do NOT use web search for questions that should be answered from the organization's own Knowledge Base, calendar, or Shopify data — always check internal tools first.
 
-ANALYSIS & HISTORY TOOLS:
+` : ''}ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
 - run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
 
@@ -1753,8 +1756,8 @@ TOOL USAGE GUIDELINES:
 - For customer lookups ("find customer...", "who is...", "look up..."): Call search_shopify_customers with the query
 - For data analysis requests: Call run_insights_analysis with the data
 - For current sales, velocity, "how are sales going?", "how fast are tickets selling?", heartbeat metrics, or live raffle performance: Call search_heartbeat_data. Use window parameter to focus on a specific time range, or "all" for a full overview.
-- For external/industry questions ("what are the regulations for...", "best practices for...", "latest news about..."): Call web_search — but only AFTER checking the Knowledge Base first. Internal data always takes priority.
-- For policy/procedure questions: Call search_knowledge_base
+${webSearch ? `- For external/industry questions ("what are the regulations for...", "best practices for...", "latest news about..."): Call web_search — but only AFTER checking the Knowledge Base first. Internal data always takes priority.
+` : ''}- For policy/procedure questions: Call search_knowledge_base
 - For team announcements, internal updates, or "what did the team post about X?": Call search_home_base with a query
 - For "latest post", "recent posts", "what's new in home base", or "summarize home base": Call search_home_base WITHOUT a query to browse recent posts
 - For calendar questions: Call search_runway_events
