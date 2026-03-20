@@ -1102,7 +1102,7 @@ Web search is ENABLED. For any factual question, external topic, industry inform
         }
 
         // Whitelist models
-        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
+        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6'];
         const selectedModel = model && ALLOWED_MODELS.includes(model) ? model : undefined;
 
         // Include web search tool only when explicitly enabled by the user
@@ -1608,7 +1608,7 @@ router.post('/confirm-action', authenticate, async (req, res) => {
         }
 
         // Let Claude compose a nice response
-        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
+        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6'];
         const selectedModel = model && ALLOWED_MODELS.includes(model) ? model : undefined;
 
         const response = await claudeService.generateResponse({

@@ -229,7 +229,7 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
         const { messages, system, staticSystem, dynamicSystem, inquiry, max_tokens = 1024, model, kb_type, includeCitations, tool } = req.body;
 
         // Whitelist allowed models to prevent abuse
-        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
+        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6'];
         const selectedModel = model && ALLOWED_MODELS.includes(model) ? model : undefined;
 
         if (!messages || !Array.isArray(messages)) {
