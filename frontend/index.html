@@ -2457,39 +2457,9 @@
         .als-controls-row {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-end;
             margin-bottom: 8px;
             gap: 8px;
-        }
-
-        /* Tone pills */
-        .als-tone-pills {
-            display: flex;
-            gap: 4px;
-        }
-
-        .als-tone {
-            padding: 4px 12px;
-            border-radius: 100px;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 0.72rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
-        }
-
-        .als-tone:hover {
-            border-color: rgba(0, 0, 0, 0.2);
-            color: var(--text-primary);
-        }
-
-        .als-tone.active {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            border-color: transparent;
-            color: #fff;
         }
 
         /* Model pills */
@@ -2534,12 +2504,12 @@
             align-items: center;
             gap: 5px;
             padding: 4px 12px;
-            border-radius: 100px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--border);
             background: transparent;
             color: var(--text-muted);
             font-size: 0.72rem;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
@@ -2548,7 +2518,7 @@
 
         .als-web-search-toggle:hover {
             border-color: rgba(0, 0, 0, 0.2);
-            color: var(--text-primary);
+            background: #fff;
         }
 
         .als-web-search-toggle.active {
@@ -2850,21 +2820,16 @@
             }
 
             .als-controls-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .als-tone-pills, .als-model-pills {
                 justify-content: center;
             }
 
-            .als-tone, .als-model {
-                flex: 1;
-                text-align: center;
+            .als-model-pills {
+                justify-content: center;
             }
 
-            .als-web-search-toggle {
-                align-self: center;
+            .als-model {
+                flex: 1;
+                text-align: center;
             }
 
             .als-input-area {
@@ -18165,19 +18130,12 @@
             <div class="als-input-area">
                 <div class="als-input-inner">
                     <div class="als-controls-row">
-                        <div class="als-controls-left">
-                            <div class="als-tone-pills" id="alsTonePills">
-                                <button class="als-tone active" data-tone="professional">Professional</button>
-                                <button class="als-tone" data-tone="friendly">Friendly</button>
-                                <button class="als-tone" data-tone="casual">Casual</button>
-                            </div>
-                        </div>
                         <div class="als-controls-right">
-                            <button class="als-web-search-toggle" id="alsWebSearchToggle" title="Enable web search">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                                <span>Web</span>
-                            </button>
                             <div class="als-model-pills" id="alsModelPills">
+                                <button class="als-web-search-toggle" id="alsWebSearchToggle" title="Enable web search">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                    <span>Web</span>
+                                </button>
                                 <button class="als-model active" data-model="claude-sonnet-4-6">
                                     <span class="als-model-name">Sonnet 4.6</span>
                                 </button>

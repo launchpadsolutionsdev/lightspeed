@@ -2407,7 +2407,6 @@ const ASK_SAMPLE_PROMPTS = [
 ];
 
 let askConversation = [];
-let askTone = 'professional';
 let alsModel = 'claude-sonnet-4-6';
 let alsWebSearch = false;
 let askListenersSetup = false;
@@ -2417,7 +2416,6 @@ let alsQueuedMessage = null;
 function saveAskConversation() {
     try {
         localStorage.setItem('lightspeed_ask_conversation', JSON.stringify(askConversation));
-        localStorage.setItem('lightspeed_ask_tone', askTone);
         localStorage.setItem('lightspeed_als_model', alsModel);
     } catch (e) {
         // localStorage full or unavailable — silently fail
@@ -2427,12 +2425,8 @@ function saveAskConversation() {
 function loadAskConversation() {
     try {
         const saved = localStorage.getItem('lightspeed_ask_conversation');
-        const savedTone = localStorage.getItem('lightspeed_ask_tone');
         if (saved) {
             askConversation = JSON.parse(saved);
-        }
-        if (savedTone) {
-            askTone = savedTone;
         }
         const savedModel = localStorage.getItem('lightspeed_als_model');
         if (savedModel) {
@@ -2452,11 +2446,6 @@ function restoreAskChat() {
     if (chatArea) chatArea.style.display = 'block';
     if (prompts) prompts.style.display = 'none';
 
-    // Restore tone pill
-    document.querySelectorAll('.ask-tone').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tone === askTone);
-    });
-
     // Re-render all messages
     askConversation.forEach(msg => {
         appendAskMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.content);
@@ -2474,16 +2463,6 @@ function initAskLightspeed() {
 
     if (!askListenersSetup) {
         askListenersSetup = true;
-
-        // Tone pills
-        document.querySelectorAll('.ask-tone').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.ask-tone').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                askTone = btn.dataset.tone;
-                saveAskConversation();
-            });
-        });
 
         // Send button
         document.getElementById('askSendBtn').addEventListener('click', sendAskMessage);
@@ -2559,9 +2538,7 @@ async function sendAskMessage() {
     chatArea.scrollTop = chatArea.scrollHeight;
 
     try {
-        const toneDesc = askTone === 'professional' ? 'professional and helpful' :
-                         askTone === 'friendly' ? 'warm, friendly, and conversational' :
-                         'casual and relaxed';
+        const toneDesc = 'professional and helpful';
 
         const orgName = currentUser?.organization?.name || 'your organization';
 
@@ -2711,7 +2688,7 @@ ${feedbackSection}`;
                     inquiry: lastUserMsg ? lastUserMsg.content : '',
                     response: aiText,
                     format: 'chat',
-                    tone: askTone,
+                    tone: 'professional',
                     tool: 'ask_lightspeed'
                 })
             });
@@ -3275,7 +3252,7 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
     formData.append('model', alsModel);
 
     // Pass tone and language as separate fields; backend builds the full system prompt
-    formData.append('tone', askTone || 'professional');
+    formData.append('tone', 'professional');
     formData.append('language', responseLanguage || 'en');
 
     // Pass web search toggle state
@@ -3656,16 +3633,6 @@ function initAskLightspeedPage() {
     if (!alsListenersSetup) {
         alsListenersSetup = true;
 
-        // Tone pills
-        document.querySelectorAll('.als-tone').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.als-tone').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                askTone = btn.dataset.tone;
-                saveAskConversation();
-            });
-        });
-
         // Model pills
         document.querySelectorAll('.als-model').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -3911,14 +3878,8 @@ async function loadAlsConversation(convId) {
 
         alsCurrentConversationId = conv.id;
         askConversation = conv.messages || [];
-        askTone = conv.tone || 'professional';
         alsConversationUsedAgentic = false;
         saveAskConversation();
-
-        // Restore tone pill
-        document.querySelectorAll('.als-tone').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tone === askTone);
-        });
 
         const messagesEl = document.getElementById('alsMessages');
         if (messagesEl) messagesEl.innerHTML = '';
@@ -3954,13 +3915,13 @@ async function saveAlsConversationToServer() {
             await fetch(`${API_BASE_URL}/api/conversations/${alsCurrentConversationId}`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ messages: askConversation, tone: askTone })
+                body: JSON.stringify({ messages: askConversation })
             });
         } else {
             const response = await fetch(`${API_BASE_URL}/api/conversations`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ messages: askConversation, tone: askTone })
+                body: JSON.stringify({ messages: askConversation })
             });
             if (response.ok) {
                 const data = await response.json();
@@ -4025,9 +3986,6 @@ function restoreAlsChat() {
     const welcome = document.getElementById('alsWelcome');
     if (welcome) welcome.style.display = 'none';
 
-    document.querySelectorAll('.als-tone').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tone === askTone);
-    });
     document.querySelectorAll('.als-model').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.model === alsModel);
     });
@@ -4122,10 +4080,6 @@ async function sendAlsMessage() {
     chatArea.scrollTop = chatArea.scrollHeight;
 
     try {
-        const toneDesc = askTone === 'professional' ? 'professional and helpful' :
-                         askTone === 'friendly' ? 'warm, friendly, and conversational' :
-                         'casual and relaxed';
-
         const orgName = currentUser?.organization?.name || 'your organization';
 
         // Build messages to send — include summary as context if available
@@ -4150,7 +4104,7 @@ async function sendAlsMessage() {
 
 TODAY'S DATE: ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}, ${new Date().toISOString().split('T')[0]}
 
-TONE: Respond in a ${toneDesc} tone.
+TONE: Respond in a professional and helpful tone.
 ${getLanguageInstruction()}
 CORE BEHAVIOR:
 Respond directly to the user's request. If the request is clear enough to produce useful output, do so immediately. Only ask clarifying questions when the request is genuinely ambiguous and getting it wrong would waste the user's time — and even then, limit yourself to 1-2 focused questions, not a list. When in doubt, generate a response and let the user iterate.
@@ -4271,7 +4225,7 @@ Keep responses concise but thorough.`;
                     inquiry: lastUserMsg ? lastUserMsg.content : '',
                     response: aiText,
                     format: 'chat',
-                    tone: askTone,
+                    tone: 'professional',
                     tool: 'ask_lightspeed'
                 })
             });
