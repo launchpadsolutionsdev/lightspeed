@@ -554,14 +554,18 @@ describe('Tool Definitions', () => {
         expect(source).toContain("name: 'search_heartbeat_data'");
     });
 
-    it('has exactly 11 tools defined', () => {
+    it('has exactly 12 tools defined', () => {
         const toolCount = (source.match(/name: '/g) || []).length;
-        // The TOOLS array should have 11 entries
+        // The TOOLS array should have 12 entries
         // (name: ' appears for each tool definition plus maybe elsewhere, so check the TOOLS array)
         expect(source).toContain('const TOOLS = [');
         // Count tool objects by looking for 'input_schema'
         const schemaCount = (source.match(/input_schema:/g) || []).length;
-        expect(schemaCount).toBe(11);
+        expect(schemaCount).toBe(12);
+    });
+
+    it('defines render_chart tool', () => {
+        expect(source).toContain("name: 'render_chart'");
     });
 
     it('defines web_search server tool', () => {
