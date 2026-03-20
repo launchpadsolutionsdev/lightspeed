@@ -252,6 +252,18 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
     }
 ];
 
+// Server-managed tools (executed by Anthropic's API, not by us)
+const SERVER_TOOLS = [
+    {
+        type: 'web_search_20250305',
+        name: 'web_search',
+        max_uses: 5
+    }
+];
+
+// Combined tools array for API calls
+const ALL_TOOLS = [...TOOLS, ...SERVER_TOOLS];
+
 // ─── File Parsing ────────────────────────────────────────────────────
 
 async function parseUploadedFile(file) {
@@ -1094,7 +1106,7 @@ When the user asks about current sales, velocity, how tickets are selling, reven
             messages,
             system: enhancedSystem,
             max_tokens: 4096,
-            tools: TOOLS,
+            tools: ALL_TOOLS,
             model: selectedModel
         });
 
@@ -1149,6 +1161,7 @@ async function processResponse(response, messages, system, organizationId, userI
     const content = response.content || [];
 
     // Collect text and tool_use blocks
+    // server_tool_use and web_search_tool_result blocks are handled by the API — skip them
     let textParts = [];
     let toolUseBlocks = [];
 
@@ -1158,6 +1171,7 @@ async function processResponse(response, messages, system, organizationId, userI
         } else if (block.type === 'tool_use') {
             toolUseBlocks.push(block);
         }
+        // server_tool_use, web_search_tool_result — handled server-side, no action needed
     }
 
     // Send any text content
@@ -1226,7 +1240,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: TOOLS,
+                tools: ALL_TOOLS,
                 model
             });
 
@@ -1252,7 +1266,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: TOOLS,
+                tools: ALL_TOOLS,
                 model
             });
 
@@ -1284,7 +1298,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     messages: followUpMessages,
                     system,
                     max_tokens: 4096,
-                    tools: TOOLS,
+                    tools: ALL_TOOLS,
                     model
                 });
 
@@ -1305,7 +1319,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     messages: followUpMessages,
                     system,
                     max_tokens: 1024,
-                    tools: TOOLS,
+                    tools: ALL_TOOLS,
                     model
                 });
 
@@ -1350,7 +1364,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: TOOLS,
+                tools: ALL_TOOLS,
                 model
             });
 
@@ -1378,7 +1392,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: TOOLS,
+                tools: ALL_TOOLS,
                 model
             });
 
@@ -1403,7 +1417,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: TOOLS,
+                tools: ALL_TOOLS,
                 model
             });
 
@@ -1437,7 +1451,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: TOOLS,
+                tools: ALL_TOOLS,
                 model
             });
 
@@ -1470,7 +1484,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: TOOLS,
+                tools: ALL_TOOLS,
                 model
             });
 
@@ -1493,7 +1507,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 messages: followUpMessages,
                 system,
                 max_tokens: 4096,
-                tools: TOOLS,
+                tools: ALL_TOOLS,
                 model
             });
 
@@ -1718,6 +1732,9 @@ SHOPIFY TOOLS:
 HEARTBEAT (LIVE RAFFLE MONITOR):
 - search_heartbeat_data: Query real-time raffle sales data from the Heartbeat monitor. Returns current totals (revenue, tickets, numbers sold), sales velocity across time windows (1m to 7d), surge detection, and optionally package tier breakdowns. Use when the user asks about current sales, velocity, how fast tickets are selling, revenue performance, sales trends, or anything related to live raffle metrics.
 
+WEB SEARCH:
+- web_search: Search the internet for current information. This is a server-managed tool — you can call it like any other tool, and the results will be provided automatically. Use this when the user asks about external topics relevant to charitable gaming, lottery regulations, industry news, best practices, or anything where up-to-date web information would be helpful. Do NOT use web search for questions that should be answered from the organization's own Knowledge Base, calendar, or Shopify data — always check internal tools first.
+
 ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
 - run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
@@ -1736,6 +1753,7 @@ TOOL USAGE GUIDELINES:
 - For customer lookups ("find customer...", "who is...", "look up..."): Call search_shopify_customers with the query
 - For data analysis requests: Call run_insights_analysis with the data
 - For current sales, velocity, "how are sales going?", "how fast are tickets selling?", heartbeat metrics, or live raffle performance: Call search_heartbeat_data. Use window parameter to focus on a specific time range, or "all" for a full overview.
+- For external/industry questions ("what are the regulations for...", "best practices for...", "latest news about..."): Call web_search — but only AFTER checking the Knowledge Base first. Internal data always takes priority.
 - For policy/procedure questions: Call search_knowledge_base
 - For team announcements, internal updates, or "what did the team post about X?": Call search_home_base with a query
 - For "latest post", "recent posts", "what's new in home base", or "summarize home base": Call search_home_base WITHOUT a query to browse recent posts
