@@ -18671,6 +18671,35 @@
                         </div>
                     </div>
 
+                    <!-- Status / Approval Workflow -->
+                    <div class="rop-workflow-bar" id="ropWorkflowBar">
+                        <div class="rop-workflow-steps">
+                            <div class="rop-wf-step active" data-status="draft"><span class="rop-wf-dot"></span> Draft</div>
+                            <div class="rop-wf-line"></div>
+                            <div class="rop-wf-step" data-status="generated"><span class="rop-wf-dot"></span> Generated</div>
+                            <div class="rop-wf-line"></div>
+                            <div class="rop-wf-step" data-status="in_review"><span class="rop-wf-dot"></span> In Review</div>
+                            <div class="rop-wf-line"></div>
+                            <div class="rop-wf-step" data-status="approved"><span class="rop-wf-dot"></span> Approved</div>
+                        </div>
+                        <div class="rop-workflow-actions">
+                            <button class="btn-secondary rop-wf-action-btn" id="ropSubmitForReviewBtn" style="display:none;">Submit for Review</button>
+                            <button class="btn-secondary rop-wf-action-btn" id="ropApproveBtn" style="display:none;">Approve</button>
+                            <button class="btn-secondary rop-wf-action-btn" id="ropRejectBtn" style="display:none;">Return to Draft</button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Indicator -->
+                    <div class="rop-progress-bar-wrapper">
+                        <div class="rop-progress-info">
+                            <span class="rop-progress-label">Form Completion</span>
+                            <span class="rop-progress-pct" id="ropProgressPct">0%</span>
+                        </div>
+                        <div class="rop-progress-track">
+                            <div class="rop-progress-fill" id="ropProgressFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+
                     <div class="rop-disclaimer">
                         <strong>Disclaimer:</strong> This document was generated using AI and should be reviewed by qualified legal counsel and your jurisdiction's regulatory body before submission or use. Lightspeed is not responsible for ensuring regulatory compliance.
                     </div>
@@ -18689,9 +18718,17 @@
                             <span class="rop-badge" id="ropOutputBadge"></span>
                         </div>
                         <div class="rop-form-actions">
+                            <button class="btn-secondary" id="ropVersionHistoryBtn" title="Version History">&#128336; History</button>
                             <button class="btn-secondary" id="ropRegenerateBtn">Regenerate</button>
                             <button class="btn-secondary" id="ropCopyBtn">Copy to Clipboard</button>
-                            <button class="btn-secondary" id="ropExportBtn">Export as DOCX</button>
+                            <div class="rop-export-dropdown">
+                                <button class="btn-secondary" id="ropExportBtn">Export &#9660;</button>
+                                <div class="rop-export-menu" id="ropExportMenu">
+                                    <button class="rop-export-option" data-format="docx">Export as DOCX</button>
+                                    <button class="rop-export-option" data-format="pdf">Export as PDF</button>
+                                    <button class="rop-export-option" data-format="txt">Export as TXT</button>
+                                </div>
+                            </div>
                             <button class="btn-primary" id="ropSaveOutputBtn">Save</button>
                         </div>
                     </div>
@@ -18700,7 +18737,44 @@
                         <strong>Disclaimer:</strong> This document was generated using AI and should be reviewed by qualified legal counsel and your jurisdiction's regulatory body before submission or use. Lightspeed is not responsible for ensuring regulatory compliance.
                     </div>
 
+                    <!-- Refinement Buttons -->
+                    <div class="rop-refinement-bar">
+                        <span class="rop-refinement-label">Refine:</span>
+                        <button class="rop-refine-btn" data-refine="concise">Shorter</button>
+                        <button class="rop-refine-btn" data-refine="detailed">More Detailed</button>
+                        <button class="rop-refine-btn" data-refine="formal">More Formal</button>
+                        <button class="rop-refine-btn" data-refine="plain">Plain Language</button>
+                        <button class="rop-refine-btn" data-refine="strict">Stricter Compliance</button>
+                    </div>
+
+                    <!-- Edit / Preview Toggle -->
+                    <div class="rop-output-mode-toggle">
+                        <button class="rop-mode-btn active" data-mode="edit">Edit</button>
+                        <button class="rop-mode-btn" data-mode="preview">Preview</button>
+                    </div>
+
                     <textarea id="ropOutputText" class="rop-output-textarea" placeholder="Your generated document will appear here..."></textarea>
+                    <div id="ropOutputPreview" class="rop-output-preview" style="display:none;"></div>
+                </div>
+
+                <!-- VERSION HISTORY PANEL -->
+                <div id="ropVersionHistory" class="rop-view" style="display:none;">
+                    <div class="rop-form-header">
+                        <button class="rop-back-btn" id="ropBackFromHistory">&#8592; Back to Document</button>
+                        <div class="rop-form-header-info">
+                            <h2 class="rop-page-title">Version History</h2>
+                        </div>
+                    </div>
+                    <div class="rop-version-list" id="ropVersionList">
+                        <div class="rop-empty-state"><p>No versions yet. Generate a document to create your first version.</p></div>
+                    </div>
+                    <div class="rop-version-diff" id="ropVersionDiff" style="display:none;">
+                        <div class="rop-diff-header">
+                            <h3 id="ropDiffTitle">Comparing Versions</h3>
+                            <button class="btn-secondary" id="ropRestoreVersionBtn">Restore This Version</button>
+                        </div>
+                        <div class="rop-diff-content" id="ropDiffContent"></div>
+                    </div>
                 </div>
 
                 <!-- GENERATING SPINNER -->

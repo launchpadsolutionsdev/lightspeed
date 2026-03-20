@@ -117,8 +117,11 @@
 .rop-status-draft { background: #f0f0f0; color: #666; }
 .rop-status-generated { background: rgba(16,185,129,0.12); color: #059669; }
 .rop-status-finalized { background: rgba(59,130,246,0.12); color: #2563eb; }
+.rop-status-in_review { background: rgba(245,158,11,0.12); color: #d97706; }
+.rop-status-approved { background: rgba(16,185,129,0.12); color: #047857; }
 
-.rop-delete-btn {
+.rop-delete-btn,
+.rop-clone-btn {
     background: none;
     border: none;
     cursor: pointer;
@@ -128,6 +131,7 @@
     padding: 4px 8px;
 }
 .rop-delete-btn:hover { opacity: 1; color: var(--danger); }
+.rop-clone-btn:hover { opacity: 1; color: var(--cta); }
 
 /* Back button */
 .rop-back-btn {
@@ -268,6 +272,394 @@
     white-space: nowrap;
 }
 
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+.rop-progress-bar-wrapper {
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: var(--bg-alt);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+}
+.rop-progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.rop-progress-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.rop-progress-pct {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--cta);
+}
+.rop-progress-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.rop-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #635BFF, #8B5CF6);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+
+/* Section completion indicator */
+.rop-section-header .rop-section-check {
+    font-size: 0.75rem;
+    margin-left: 8px;
+    color: #059669;
+}
+
+/* ============================================================
+   WORKFLOW / APPROVAL BAR
+   ============================================================ */
+.rop-workflow-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 20px;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.rop-workflow-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+.rop-wf-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.rop-wf-step.active {
+    color: var(--cta);
+    font-weight: 600;
+}
+.rop-wf-step.completed {
+    color: #059669;
+}
+.rop-wf-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+}
+.rop-wf-step.active .rop-wf-dot {
+    background: var(--cta);
+    box-shadow: 0 0 0 3px rgba(99,91,255,0.2);
+}
+.rop-wf-step.completed .rop-wf-dot {
+    background: #059669;
+}
+.rop-wf-line {
+    width: 24px;
+    height: 2px;
+    background: var(--border);
+    flex-shrink: 0;
+}
+.rop-workflow-actions {
+    display: flex;
+    gap: 8px;
+}
+.rop-wf-action-btn {
+    font-size: 0.78rem;
+    padding: 6px 12px;
+}
+
+/* ============================================================
+   REFINEMENT BUTTONS
+   ============================================================ */
+.rop-refinement-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.rop-refinement-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.rop-refine-btn {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    padding: 5px 14px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.rop-refine-btn:hover {
+    border-color: var(--cta);
+    color: var(--cta);
+    background: rgba(99,91,255,0.06);
+}
+.rop-refine-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.rop-refine-btn.loading {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* ============================================================
+   EDIT / PREVIEW TOGGLE
+   ============================================================ */
+.rop-output-mode-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    width: fit-content;
+}
+.rop-mode-btn {
+    background: var(--bg-primary);
+    border: none;
+    padding: 7px 20px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+}
+.rop-mode-btn:not(:last-child) {
+    border-right: 1px solid var(--border);
+}
+.rop-mode-btn.active {
+    background: var(--cta);
+    color: #fff;
+    font-weight: 500;
+}
+
+/* Rich Preview */
+.rop-output-preview {
+    width: 100%;
+    min-height: 500px;
+    padding: 32px 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: #fff;
+    font-size: 0.92rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+.rop-output-preview h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+    color: var(--text-primary);
+}
+.rop-output-preview h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 24px 0 10px;
+    color: var(--text-primary);
+}
+.rop-output-preview h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 18px 0 8px;
+    color: var(--text-primary);
+}
+.rop-output-preview p {
+    margin: 0 0 10px;
+}
+.rop-output-preview ul, .rop-output-preview ol {
+    margin: 0 0 12px;
+    padding-left: 24px;
+}
+.rop-output-preview li {
+    margin-bottom: 4px;
+}
+.rop-output-preview strong {
+    font-weight: 600;
+}
+.rop-output-preview hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+}
+.rop-output-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.86rem;
+}
+.rop-output-preview th, .rop-output-preview td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    text-align: left;
+}
+.rop-output-preview th {
+    background: var(--bg-alt);
+    font-weight: 600;
+}
+
+/* ============================================================
+   EXPORT DROPDOWN
+   ============================================================ */
+.rop-export-dropdown {
+    position: relative;
+}
+.rop-export-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    min-width: 160px;
+    overflow: hidden;
+}
+.rop-export-menu.open {
+    display: block;
+}
+.rop-export-option {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    text-align: left;
+    font-size: 0.84rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.rop-export-option:hover {
+    background: var(--bg-alt);
+}
+
+/* ============================================================
+   VERSION HISTORY
+   ============================================================ */
+.rop-version-list {
+    margin-bottom: 24px;
+}
+.rop-version-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.rop-version-card:hover {
+    border-color: var(--cta);
+    box-shadow: var(--shadow-sm);
+}
+.rop-version-card.active {
+    border-color: var(--cta);
+    box-shadow: 0 0 0 2px rgba(99,91,255,0.15);
+}
+.rop-version-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.rop-version-label {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+}
+.rop-version-meta {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
+.rop-version-actions {
+    display: flex;
+    gap: 8px;
+}
+.rop-version-badge {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    background: rgba(99,91,255,0.1);
+    color: #635BFF;
+    font-weight: 500;
+}
+.rop-version-badge.current {
+    background: rgba(16,185,129,0.12);
+    color: #059669;
+}
+
+/* Diff display */
+.rop-diff-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.rop-diff-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+.rop-diff-content {
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: #fff;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+.rop-diff-add {
+    background: rgba(16,185,129,0.1);
+    color: #047857;
+}
+.rop-diff-remove {
+    background: rgba(239,68,68,0.1);
+    color: #dc2626;
+    text-decoration: line-through;
+}
+
 /* Form sections (collapsible) */
 .rop-form-section {
     border: 1px solid var(--border);
@@ -291,6 +683,8 @@
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-primary);
+    display: flex;
+    align-items: center;
 }
 .rop-section-toggle {
     font-size: 0.7rem;
@@ -512,4 +906,7 @@ textarea.rop-input { resize: vertical; min-height: 60px; }
     .rop-table td:nth-child(3),
     .rop-table th:nth-child(5),
     .rop-table td:nth-child(5) { display: none; }
+    .rop-workflow-bar { flex-direction: column; }
+    .rop-refinement-bar { gap: 6px; }
+    .rop-refine-btn { padding: 4px 10px; font-size: 0.74rem; }
 }
