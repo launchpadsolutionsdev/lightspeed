@@ -17745,11 +17745,6 @@ function renderRaffleDashboard(data) {
         html += renderVelocityTickerCard(data.salesVelocity);
     }
 
-    // Jackpot history (from Winners feed)
-    if (data.winnersHistory && data.winnersHistory.grandPrizeWinners.length > 0) {
-        html += renderJackpotHistory(data.winnersHistory);
-    }
-
     // What's New placeholder — filled async after main render
     html += '<div id="dashWhatsNew"></div>';
 
