@@ -5305,7 +5305,11 @@ function loginUser(user, showMessage = true) {
     const hadRedirect = handlePostLoginRedirect();
     if (!hadRedirect) {
         // Check if there's an initial path from page load (e.g. browser refresh on /list-normalizer)
-        const initialPath = window._initialPath;
+        let initialPath = window._initialPath;
+        // Normalize trailing slash (e.g. /dashboard/ → /dashboard)
+        if (initialPath && initialPath !== '/' && initialPath.endsWith('/')) {
+            initialPath = initialPath.slice(0, -1);
+        }
         const route = initialPath ? ROUTES[initialPath] : null;
         if (route && route.view === 'tool') {
             _routerNavigating = true;
@@ -17806,6 +17810,12 @@ function pushRoute(path) {
 }
 
 function navigateToRoute(path) {
+    // Normalize trailing slashes (except root '/') to match ROUTES keys
+    if (path !== '/' && path.endsWith('/')) {
+        path = path.slice(0, -1);
+        history.replaceState(null, '', path);
+    }
+
     const route = ROUTES[path];
     if (!route) {
         // Unknown route — go to landing or dashboard depending on auth
@@ -17892,7 +17902,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Capture the URL BEFORE init() runs (init may change it via showToolMenu → pushRoute)
         // Store globally so loginUser() can use it for direct navigation
-        window._initialPath = spaRedirect || window.location.pathname;
+        let _capturedPath = spaRedirect || window.location.pathname;
+        // Normalize trailing slash so /dashboard/ matches the /dashboard route
+        if (_capturedPath !== '/' && _capturedPath.endsWith('/')) {
+            _capturedPath = _capturedPath.slice(0, -1);
+            history.replaceState(null, '', _capturedPath);
+        }
+        window._initialPath = _capturedPath;
 
         init();
 
@@ -17902,24 +17918,32 @@ document.addEventListener("DOMContentLoaded", () => {
         // (loginUser already handled routing if user was logged in)
         delete window._initialPath;
 
-        // Safety net: detect blank page and recover
-        const landingVisible = !document.getElementById('landingPage')?.classList.contains('hidden');
-        const toolMenuVisible = document.getElementById('toolMenuPage')?.classList.contains('visible');
-        const appWrapperVisible = document.getElementById('appWrapper')?.classList.contains('visible');
-        const loginVisible = document.getElementById('loginPage')?.classList.contains('visible');
+        // Safety net: detect blank page and recover (check immediately + delayed)
+        function recoverIfBlank(label) {
+            const landingVisible = !document.getElementById('landingPage')?.classList.contains('hidden');
+            const toolMenuVisible = document.getElementById('toolMenuPage')?.classList.contains('visible');
+            const appWrapperVisible = document.getElementById('appWrapper')?.classList.contains('visible');
+            const loginVisible = document.getElementById('loginPage')?.classList.contains('visible');
 
-
-        // If NOTHING is visible, the user would see a blank page — recover now
-        if (!landingVisible && !toolMenuVisible && !appWrapperVisible && !loginVisible) {
-            console.warn('[BOOT] Blank page detected! No container is visible. Recovering...');
-            if (currentUser) {
-                // User is logged in but nothing rendered — show the dashboard
-                showToolMenu();
-            } else {
-                // Not logged in — show landing page
-                document.getElementById('landingPage').classList.remove('hidden');
+            if (!landingVisible && !toolMenuVisible && !appWrapperVisible && !loginVisible) {
+                console.warn('[BOOT] Blank page detected (' + label + ')! Recovering...');
+                if (currentUser) {
+                    showToolMenu();
+                } else {
+                    document.getElementById('landingPage').classList.remove('hidden');
+                }
+                // Ensure body is visible in case CSS failed to load
+                document.body.style.opacity = '1';
+                return true;
             }
+            return false;
         }
+
+        // Immediate check
+        recoverIfBlank('sync');
+
+        // Delayed re-check: catches race conditions with CSS transitions or async rendering
+        setTimeout(function() { recoverIfBlank('delayed'); }, 1000);
     } catch (err) {
         console.error('[BOOT] Fatal error during initialization:', err);
         // Show error visually so the user sees something

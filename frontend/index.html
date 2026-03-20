@@ -20,6 +20,8 @@
     <meta name="twitter:image" content="https://www.lightspeedutility.ca/Social-Share-Image.jpg">
     <!-- FOUC guard: hide body until external CSS loads and overrides this -->
     <style>body{opacity:0}</style>
+    <!-- Safety: force body visible after 3s in case CSS fails to load -->
+    <script>setTimeout(function(){document.body.style.opacity='1'},3000)</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -30,12 +32,12 @@
     <link rel="stylesheet" href="landing.css?v=20260301">
     <link rel="stylesheet" href="rules-of-play.css?v=20260301">
     <link rel="stylesheet" href="compliance.css?v=20260316e">
-    <!-- SheetJS for Excel parsing (Data Analysis Tool) -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <!-- Chart.js for visualizations -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- html2pdf for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- SheetJS for Excel parsing (Data Analysis Tool) — defer to avoid blocking page render -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" defer></script>
+    <!-- Chart.js for visualizations — defer to avoid blocking page render -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <!-- html2pdf for PDF export — defer to avoid blocking page render -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
     <!-- Google Identity Services for OAuth -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Microsoft Authentication Library (MSAL) for OAuth -->
