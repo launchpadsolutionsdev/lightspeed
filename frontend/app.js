@@ -3287,6 +3287,7 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
 
     let fullText = '';
     let alsPendingSuggestions = null;
+    let alsPendingSources = [];
     alsKbEntries = [];
 
     try {
@@ -3360,6 +3361,12 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
                         // Events were successfully created
                         break;
 
+                    case 'sources':
+                        if (event.items && event.items.length > 0) {
+                            alsPendingSources = alsPendingSources.concat(event.items);
+                        }
+                        break;
+
                     case 'suggestions':
                         alsPendingSuggestions = event.items;
                         break;
@@ -3374,6 +3381,11 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
         }
 
         msgDiv.classList.remove('als-streaming');
+
+        // Render web search sources if available
+        if (alsPendingSources.length > 0) {
+            renderAlsWebSources(msgDiv, alsPendingSources);
+        }
 
         // Render proactive suggestions if available and not disabled
         if (alsPendingSuggestions && alsPendingSuggestions.length > 0 && !localStorage.getItem('alsSuggestionsDisabled')) {
@@ -4396,6 +4408,63 @@ function sendAlsRefinement(instruction) {
 }
 
 // ===== PROACTIVE SUGGESTIONS =====
+
+function renderAlsWebSources(msgDiv, sources) {
+    // Deduplicate by URL
+    const seen = new Set();
+    const unique = sources.filter(s => {
+        if (seen.has(s.url)) return false;
+        seen.add(s.url);
+        return true;
+    });
+    if (unique.length === 0) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'als-web-sources';
+
+    // Show first source as a clickable pill, then "+N more" if there are extras
+    const first = unique[0];
+    const firstPill = document.createElement('a');
+    firstPill.className = 'als-source-pill';
+    firstPill.href = first.url;
+    firstPill.target = '_blank';
+    firstPill.rel = 'noopener noreferrer';
+    firstPill.title = first.url;
+    firstPill.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' +
+        '<span>' + escapeHtml(truncateSourceTitle(first.title)) + '</span>';
+    wrap.appendChild(firstPill);
+
+    if (unique.length > 1) {
+        const morePill = document.createElement('button');
+        morePill.className = 'als-source-pill als-source-more';
+        morePill.textContent = '+' + (unique.length - 1) + ' more source' + (unique.length - 1 > 1 ? 's' : '');
+        morePill.onclick = () => {
+            // Expand to show all sources
+            morePill.remove();
+            unique.slice(1).forEach(s => {
+                const pill = document.createElement('a');
+                pill.className = 'als-source-pill';
+                pill.href = s.url;
+                pill.target = '_blank';
+                pill.rel = 'noopener noreferrer';
+                pill.title = s.url;
+                pill.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' +
+                    '<span>' + escapeHtml(truncateSourceTitle(s.title)) + '</span>';
+                wrap.appendChild(pill);
+            });
+        };
+        wrap.appendChild(morePill);
+    }
+
+    msgDiv.appendChild(wrap);
+}
+
+function truncateSourceTitle(title) {
+    // Extract domain as fallback, and truncate long titles
+    if (!title) return 'Source';
+    if (title.length > 50) return title.substring(0, 47) + '...';
+    return title;
+}
 
 function renderAlsSuggestions(msgDiv, suggestions) {
     const existing = msgDiv.querySelector('.als-suggestions');

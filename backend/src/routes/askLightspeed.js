@@ -1163,23 +1163,35 @@ When the user asks about current sales, velocity, how tickets are selling, reven
 async function processResponse(response, messages, system, organizationId, userId, model, sendEvent, trackTool, tools) {
     const content = response.content || [];
 
-    // Collect text and tool_use blocks
-    // server_tool_use and web_search_tool_result blocks are handled by the API — skip them
+    // Collect text, tool_use, and web search source blocks
     let textParts = [];
     let toolUseBlocks = [];
+    let webSources = [];
 
     for (const block of content) {
         if (block.type === 'text') {
             textParts.push(block.text);
         } else if (block.type === 'tool_use') {
             toolUseBlocks.push(block);
+        } else if (block.type === 'web_search_tool_result' && Array.isArray(block.content)) {
+            // Extract source URLs from web search results
+            for (const result of block.content) {
+                if (result.type === 'web_search_result' && result.url) {
+                    webSources.push({ url: result.url, title: result.title || result.url });
+                }
+            }
         }
-        // server_tool_use, web_search_tool_result — handled server-side, no action needed
+        // server_tool_use — handled server-side, no action needed
     }
 
     // Send any text content
     if (textParts.length > 0) {
         sendEvent({ type: 'text', content: textParts.join('\n') });
+    }
+
+    // Send web search sources if present
+    if (webSources.length > 0) {
+        sendEvent({ type: 'sources', items: webSources });
     }
 
     // If no tool calls, we're done
