@@ -182,7 +182,10 @@ describe('claude service', () => {
             await generateResponse({ messages: [{ role: 'user', content: 'Test' }], tools });
 
             const body = JSON.parse(global.fetch.mock.calls[0][1].body);
-            expect(body.tools).toEqual(tools);
+            // Last tool gets cache_control appended for prompt caching
+            expect(body.tools).toEqual([
+                { ...tools[0], cache_control: { type: 'ephemeral' } }
+            ]);
         });
 
         it('does not include tools key when tools is empty', async () => {

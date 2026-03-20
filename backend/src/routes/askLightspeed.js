@@ -249,6 +249,43 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
             },
             required: []
         }
+    },
+    {
+        name: 'render_chart',
+        description: 'Render an interactive chart or graph inline in the conversation. Use this when data would be better understood visually — sales trends, comparisons, distributions, breakdowns, etc. The chart is rendered using Chart.js. Call this tool AFTER you have the data (from Heartbeat, Shopify, Insights, KB, or web search). You may call this alongside your text explanation.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                chart_type: {
+                    type: 'string',
+                    enum: ['bar', 'line', 'pie', 'doughnut', 'horizontalBar'],
+                    description: 'Chart type. Use bar for comparisons, line for trends over time, pie/doughnut for proportions, horizontalBar for ranked lists.'
+                },
+                title: {
+                    type: 'string',
+                    description: 'Chart title displayed above the chart'
+                },
+                labels: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'X-axis labels (categories, dates, names, etc.)'
+                },
+                datasets: {
+                    type: 'array',
+                    description: 'One or more data series to plot',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            label: { type: 'string', description: 'Dataset label (shown in legend)' },
+                            data: { type: 'array', items: { type: 'number' }, description: 'Numeric values corresponding to each label' },
+                            color: { type: 'string', description: 'Optional color name: blue, green, red, orange, purple, cyan, pink, yellow. Defaults to blue.' }
+                        },
+                        required: ['label', 'data']
+                    }
+                }
+            },
+            required: ['chart_type', 'title', 'labels', 'datasets']
+        }
     }
 ];
 
@@ -867,118 +904,26 @@ async function executeSearchHeartbeatData(input) {
     }
 }
 
-// ─── Proactive Suggestions Engine ────────────────────────────────────
-
-function generateSuggestions(completedTool, toolInput, toolResult) {
-    const suggestions = [];
-
-    switch (completedTool) {
-        case 'draft_content':
-            if (toolInput.content_type === 'email')
-                suggestions.push({ label: 'Draft matching social posts', icon: '📱', prompt: `Draft social media posts about the same topic: ${toolInput.inquiry}` });
-            if (toolInput.content_type === 'social')
-                suggestions.push({ label: 'Draft matching email', icon: '✉️', prompt: `Draft an email newsletter about the same topic: ${toolInput.inquiry}` });
-            suggestions.push(
-                { label: 'Add dates to calendar', icon: '📅', prompt: 'Add any dates or deadlines from this content to the Runway calendar' },
-                { label: 'Save key info to KB', icon: '💾', prompt: 'Save the key facts from this draft to the Knowledge Base' }
-            );
-            if (toolInput.content_type === 'email')
-                suggestions.push({ label: 'Draft ad copy', icon: '📣', prompt: `Create Facebook ad variants promoting the same campaign: ${toolInput.inquiry}` });
-            break;
-
-        case 'create_runway_events':
-            suggestions.push(
-                { label: 'Draft announcement email', icon: '✉️', prompt: 'Draft an announcement email about the events we just added to the calendar' },
-                { label: 'Draft social posts', icon: '📱', prompt: 'Draft social media posts announcing the events we just scheduled' }
-            );
-            break;
-
-        case 'search_runway_events':
-            suggestions.push(
-                { label: 'Draft content for these', icon: '✏️', prompt: 'Draft promotional content for the upcoming events' },
-                { label: 'Add new events', icon: '➕', prompt: 'Add new events to the Runway calendar' }
-            );
-            break;
-
-        case 'search_knowledge_base':
-            if (toolResult && typeof toolResult === 'string' && toolResult.includes('No matching'))
-                suggestions.push({ label: 'Create KB entry for this', icon: '💾', prompt: 'Save an answer to this question in the Knowledge Base' });
-            suggestions.push(
-                { label: 'Draft a response using this', icon: '✉️', prompt: 'Draft a customer response using the information found' }
-            );
-            break;
-
-        case 'save_to_knowledge_base':
-            suggestions.push(
-                { label: 'Add more to KB', icon: '💾', prompt: 'Save another piece of information to the Knowledge Base' },
-                { label: 'Verify in KB', icon: '🔍', prompt: 'Search the Knowledge Base to verify the entry was saved correctly' }
-            );
-            break;
-
-        case 'run_insights_analysis':
-            suggestions.push(
-                { label: 'Draft board report', icon: '📊', prompt: 'Draft a board report summarizing these analysis findings' },
-                { label: 'Draft team update', icon: '📝', prompt: 'Write a team update post about these insights for Home Base' }
-            );
-            break;
-
-        case 'search_response_history':
-            suggestions.push(
-                { label: 'Draft updated version', icon: '✏️', prompt: 'Draft an updated version of the most relevant past response' }
-            );
-            break;
-
-        case 'search_home_base':
-            suggestions.push(
-                { label: 'Summarize key takeaways', icon: '📋', prompt: 'Summarize the key takeaways from these Home Base posts' }
-            );
-            break;
-
-        case 'search_shopify_orders':
-            suggestions.push(
-                { label: 'Search another order', icon: '🔍', prompt: 'Search for another Shopify order' },
-                { label: 'Look up customer', icon: '👤', prompt: 'Look up the customer details for this order' }
-            );
-            break;
-
-        case 'search_shopify_customers':
-            suggestions.push(
-                { label: 'View their orders', icon: '🛒', prompt: 'Show me the orders for this customer' },
-                { label: 'Search another customer', icon: '🔍', prompt: 'Search for another customer' }
-            );
-            break;
-
-        case 'search_heartbeat_data':
-            suggestions.push(
-                { label: 'Draft sales update email', icon: '✉️', prompt: 'Draft an email update about current sales performance using the Heartbeat data' },
-                { label: 'Draft social post', icon: '📱', prompt: 'Draft a social media post highlighting the current sales momentum' },
-                { label: 'Compare with Shopify', icon: '🔍', prompt: 'Search Shopify for today\'s recent orders to cross-reference with Heartbeat data' },
-                { label: 'Check tier breakdown', icon: '📊', prompt: 'Show me the Heartbeat data with package tier breakdown included' }
-            );
-            break;
-    }
-
-    return suggestions.slice(0, 4);
-}
+// ─── Web Search Follow-up Suggestions ────────────────────────────────
 
 async function generateAISuggestions(userMessage, assistantResponse) {
     try {
         const response = await claudeService.generateResponse({
             messages: [{
                 role: 'user',
-                content: `Given this conversation, suggest 2-3 natural follow-up actions the user might want to take next.
+                content: `The user just did a web search. Suggest 2-3 follow-up web searches they might want to try next.
 
-USER ASKED: ${userMessage.slice(0, 500)}
+USER SEARCHED: ${userMessage.slice(0, 500)}
 
-ASSISTANT REPLIED: ${assistantResponse.slice(0, 1000)}
+RESULT SUMMARY: ${assistantResponse.slice(0, 1000)}
 
-Return ONLY a JSON array of objects, each with "label" (short button text, max 5 words), "icon" (single emoji), and "prompt" (the full question/request to send). The suggestions must be directly relevant to what was just discussed — do not suggest generic or unrelated actions. Focus on what would genuinely be useful as a next step given the specific topic.
+Return ONLY a JSON array of objects, each with "label" (short button text, max 5 words), "icon" (single emoji), and "prompt" (the full follow-up search question). Every suggestion must be a follow-up web search question — do NOT suggest drafting content, checking internal tools, or anything else. Only suggest searches that dig deeper into or expand on the topic.
 
-Example format: [{"label":"Draft email about this","icon":"✉️","prompt":"Draft an email about..."},{"label":"Dig deeper into X","icon":"🔍","prompt":"Tell me more about..."}]
+Example format: [{"label":"Compare provincial rules","icon":"🔍","prompt":"What are the provincial regulations for..."},{"label":"Find recent winners","icon":"🔍","prompt":"Who won the largest..."}]
 
 JSON array:`
             }],
-            system: 'You are a helpful assistant that generates contextual follow-up suggestions for a charitable gaming / nonprofit lottery platform called Lightspeed. Available tools the user can leverage: Knowledge Base search, Runway calendar, Draft Studio (email, social, ad copy), Shopify order/customer lookup, Heartbeat live sales monitor, Home Base team posts, Insights Engine data analysis, and web search. Only suggest tools that are relevant to the conversation — never suggest irrelevant ones. Return ONLY valid JSON, no markdown fences.',
+            system: 'You generate follow-up web search suggestions. Every suggestion must be a web search question — never suggest internal tools, drafting, or anything else. Keep suggestions tightly related to what was just searched. Return ONLY valid JSON, no markdown fences.',
             max_tokens: 300,
             model: 'claude-haiku-4-5-20251001'
         });
@@ -1157,24 +1102,13 @@ Web search is ENABLED. For any factual question, external topic, industry inform
             model: selectedModel
         });
 
-        // Track last executed tool for proactive suggestions
-        let lastExecutedTool = null;
-        let lastToolInput = null;
-
         // Process the response — handle tool_use blocks
-        await processResponse(response, messages, combinedSystem, organizationId, userId, selectedModel, sendEvent, (toolName, toolInput) => {
-            lastExecutedTool = toolName;
-            lastToolInput = toolInput;
-        }, requestTools);
+        await processResponse(response, messages, combinedSystem, organizationId, userId, selectedModel, sendEvent, () => {}, requestTools);
 
-        // Emit proactive suggestions based on what just happened
-        if (lastExecutedTool) {
-            const suggestions = generateSuggestions(lastExecutedTool, lastToolInput || {}, '');
-            if (suggestions.length > 0) sendEvent({ type: 'suggestions', items: suggestions });
-        } else {
+        // Emit follow-up suggestions only for web search conversations
+        if (webSearch === 'true') {
             const textContent = response.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
             if (textContent) {
-                // Extract the user's last message for context
                 const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
                 const userText = typeof lastUserMsg?.content === 'string'
                     ? lastUserMsg.content
@@ -1585,6 +1519,35 @@ async function processResponse(response, messages, system, organizationId, userI
 
             await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
+
+        } else if (toolUse.name === 'render_chart') {
+            // Visual tool — send chart config to frontend for rendering
+            const { chart_type, title, labels, datasets } = toolUse.input;
+            sendEvent({
+                type: 'chart',
+                config: { chart_type, title, labels, datasets }
+            });
+
+            trackTool('render_chart');
+
+            // Tell Claude the chart was rendered so it can add commentary
+            const toolResult = `The ${chart_type} chart "${title}" has been rendered and displayed to the user. You may add a brief text summary or analysis of the data shown in the chart, but do NOT reproduce the raw numbers — the user can see them in the chart.`;
+            const followUpMessages = [
+                ...messages,
+                { role: 'assistant', content: response.content },
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
+            ];
+
+            const followUp = await claudeService.generateResponse({
+                messages: followUpMessages,
+                system,
+                max_tokens: 2048,
+                tools: tools,
+                model
+            });
+
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            return;
         }
     }
 }
@@ -1805,7 +1768,10 @@ ${webSearch ? `WEB SEARCH (ENABLED):
 - The ONLY exceptions where you should skip web search: questions answered by the organization's own Knowledge Base, calendar, Shopify data, or Home Base. For those, use internal tools instead.
 - After using web search, your response will automatically include source links for the user.
 
-` : ''}ANALYSIS & HISTORY TOOLS:
+` : ''}VISUALIZATION:
+- render_chart: Render an interactive chart or graph inline in the conversation. Use this AFTER you have data to visualize — from Heartbeat, Shopify, Insights, KB, or web search. Supported types: bar, line, pie, doughnut, horizontalBar. Provide a title, labels array, and one or more datasets with numeric data. Use this proactively when data would be clearer as a visual — sales trends, comparisons, breakdowns, distributions. You can call render_chart and include text explanation in the same response.
+
+ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
 - run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
 
@@ -1823,6 +1789,7 @@ TOOL USAGE GUIDELINES:
 - For customer lookups ("find customer...", "who is...", "look up..."): Call search_shopify_customers with the query
 - For data analysis requests: Call run_insights_analysis with the data
 - For current sales, velocity, "how are sales going?", "how fast are tickets selling?", heartbeat metrics, or live raffle performance: Call search_heartbeat_data. Use window parameter to focus on a specific time range, or "all" for a full overview.
+- For visualizing data: Call render_chart after you have retrieved the data. Use bar charts for comparisons, line charts for trends over time, pie/doughnut for proportions, horizontalBar for ranked lists. When the user asks to "show me", "graph", "chart", "visualize", or when numeric data would benefit from a visual, proactively render a chart.
 ${webSearch ? `- For ANY factual question, external topic, industry question, regulation, news, statistics, or "who/what/when/where" questions: You MUST call web_search. Do not rely on training data for factual claims — search first. The only exception is questions answerable from internal tools (KB, calendar, Shopify, Home Base).
 ` : ''}- For policy/procedure questions: Call search_knowledge_base
 - For team announcements, internal updates, or "what did the team post about X?": Call search_home_base with a query
