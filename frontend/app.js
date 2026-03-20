@@ -2274,9 +2274,6 @@ function showToolMenu() {
     if (typeof initShopifyDashboard === 'function') {
         initShopifyDashboard();
     }
-
-    // Render Tips & Tricks card
-    renderTipsTricksCard();
 }
 
 /* ---------- Lightspeed Tips & Tricks ---------- */
@@ -17519,6 +17516,9 @@ async function initShopifyDashboard() {
     if (liveDash) liveDash.style.display = 'block';
 
     await refreshFeedDashboard();
+
+    // Show Tips & Tricks after dashboard data has loaded
+    renderTipsTricksCard();
 
     // Auto-refresh every 2 minutes (matches backend cache TTL)
     stopShopifyDashPolling();
