@@ -3349,12 +3349,14 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
 
                 switch (event.type) {
                     case 'status':
+                        msgDiv.classList.add('als-has-content');
                         statusDiv.style.display = 'flex';
                         statusDiv.innerHTML = '<div class="als-tool-spinner"></div><span>' + escapeHtml(event.message) + '</span>';
                         chatArea.scrollTop = chatArea.scrollHeight;
                         break;
 
                     case 'text':
+                        msgDiv.classList.add('als-has-content');
                         statusDiv.style.display = 'none';
                         fullText += (fullText && event.content ? '\n' : '') + (event.content || '');
                         textDiv.innerHTML = renderAlsMarkdownWithCitations(fullText, alsKbEntries);
