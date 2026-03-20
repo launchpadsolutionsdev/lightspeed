@@ -62,6 +62,17 @@ async function loadAdminDashboard() {
     await loadAdminTab('overview');
 }
 
+// Clear auto-refresh when navigating away from admin page
+function cleanupAdminDashboard() {
+    if (adminAutoRefresh) {
+        clearInterval(adminAutoRefresh);
+        adminAutoRefresh = null;
+    }
+    // Destroy any active charts
+    Object.values(adminCharts).forEach(c => c?.destroy());
+    adminCharts = {};
+}
+
 function getAdminShell() {
     return `
         <div class="admin-header">
@@ -418,7 +429,7 @@ async function renderUsersTab(container) {
                         ${data.users.length ? data.users.map(user => `
                             <tr>
                                 <td class="name">
-                                    ${user.picture ? `<img src="${user.picture}" class="admin-user-avatar" alt="">` : `<span class="admin-user-avatar-placeholder">${(user.first_name || user.email)[0].toUpperCase()}</span>`}
+                                    ${user.picture ? `<img src="${escapeAttr(user.picture)}" class="admin-user-avatar" alt="">` : `<span class="admin-user-avatar-placeholder">${escapeHtmlAdmin((user.first_name || user.email)[0].toUpperCase())}</span>`}
                                     ${user.first_name || ''} ${user.last_name || ''}
                                     ${user.is_super_admin ? '<span class="admin-badge-super">ADMIN</span>' : ''}
                                 </td>
@@ -528,8 +539,8 @@ async function renderOrgsTab(container) {
                             return `
                             <tr class="admin-org-row">
                                 <td class="name">
-                                    <strong>${org.name}</strong>
-                                    ${org.slug ? `<span class="text-muted small-text">${org.slug}</span>` : ''}
+                                    <strong>${escapeHtmlAdmin(org.name)}</strong>
+                                    ${org.slug ? `<span class="text-muted small-text">${escapeHtmlAdmin(org.slug)}</span>` : ''}
                                 </td>
                                 <td>
                                     <span class="admin-setup-pill ${progress.done === progress.total ? 'complete' : progress.done >= progress.total / 2 ? 'partial' : 'empty'}" title="${progress.label}">
@@ -603,14 +614,17 @@ function getOrgHealthScore(org, progress) {
 }
 
 // Quick setup progress from the org list data (no extra API call)
+// Mirrors the 9-item backend checklist in /organizations/:orgId/setup
 function getQuickSetupProgress(org) {
     let done = 1; // org created
-    const total = 7;
+    const total = 9;
     if (org.website_url) done++;
     if (org.licence_number) done++;
     if (org.mission) done++;
     if (org.brand_terminology) done++;
     if (org.email_addons) done++;
+    if (parseInt(org.kb_count) > 0) done++;
+    if (parseInt(org.member_count) > 0) done++;
     if (org.support_email && org.ceo_name) done++;
     const remaining = total - done;
     const label = remaining === 0 ? 'Setup complete!' : `${remaining} item${remaining > 1 ? 's' : ''} remaining`;
@@ -1120,7 +1134,7 @@ async function renderCostsTab(container) {
                         <tbody>
                             ${costData.byOrg.length ? costData.byOrg.map(o => `
                                 <tr>
-                                    <td>${o.name}</td>
+                                    <td>${escapeHtmlAdmin(o.name)}</td>
                                     <td>${parseInt(o.requests).toLocaleString()}</td>
                                     <td>${parseInt(o.tokens).toLocaleString()}</td>
                                     <td class="cost">$${parseFloat(o.cost).toFixed(2)}</td>
@@ -1184,6 +1198,11 @@ function renderResponsesByOrgTable(responsesByOrg) {
 }
 
 function initCostCharts(costData) {
+    // Destroy existing cost charts to prevent memory leaks on re-render
+    ['costTrend', 'costByTool', 'responseVolume', 'approvalTrend'].forEach(key => {
+        if (adminCharts[key]) { adminCharts[key].destroy(); delete adminCharts[key]; }
+    });
+
     const trendCtx = document.getElementById('costTrendChart');
     if (trendCtx && costData.dailyTrend.length) {
         adminCharts.costTrend = new Chart(trendCtx, {
@@ -1281,18 +1300,18 @@ async function renderActivityTab(container) {
     const activities = [];
     data.recentSignups.forEach(u => activities.push({
         type: 'signup', time: u.created_at,
-        text: `<strong>${u.first_name || ''} ${u.last_name || ''}</strong> signed up`,
-        detail: u.email, icon: '🆕'
+        text: `<strong>${escapeHtmlAdmin(u.first_name || '')} ${escapeHtmlAdmin(u.last_name || '')}</strong> signed up`,
+        detail: escapeHtmlAdmin(u.email), icon: '🆕'
     }));
     data.recentLogins.forEach(u => activities.push({
         type: 'login', time: u.last_login_at,
-        text: `<strong>${u.first_name || ''} ${u.last_name || ''}</strong> logged in`,
-        detail: u.email, icon: '🔑'
+        text: `<strong>${escapeHtmlAdmin(u.first_name || '')} ${escapeHtmlAdmin(u.last_name || '')}</strong> logged in`,
+        detail: escapeHtmlAdmin(u.email), icon: '🔑'
     }));
     data.recentUsage.forEach(u => activities.push({
         type: 'usage', time: u.created_at,
-        text: `<strong>${u.first_name || ''} ${u.last_name || ''}</strong> used <strong>${formatToolName(u.tool)}</strong>`,
-        detail: `${u.organization_name || 'No org'} · ${(u.total_tokens || 0).toLocaleString()} tokens`,
+        text: `<strong>${escapeHtmlAdmin(u.first_name || '')} ${escapeHtmlAdmin(u.last_name || '')}</strong> used <strong>${formatToolName(u.tool)}</strong>`,
+        detail: `${escapeHtmlAdmin(u.organization_name || 'No org')} · ${(u.total_tokens || 0).toLocaleString()} tokens`,
         icon: '⚡'
     }));
 
@@ -1861,6 +1880,7 @@ function truncateText(text, maxLength) {
 
 // ==================== GLOBAL EXPORTS ====================
 window.loadAdminDashboard = loadAdminDashboard;
+window.cleanupAdminDashboard = cleanupAdminDashboard;
 window.loadAdminTab = loadAdminTab;
 window.exportAdminReport = exportAdminReport;
 window.initAdminDashboard = initAdminDashboard;
