@@ -4981,7 +4981,7 @@ function loadUserData(user) {
     if (!user.data) user.data = {};
 
     defaultName = user.settings.defaultName || (user.name ? user.name.split(" ")[0] : "User");
-    orgName = user.settings.orgName || "";
+    orgName = user.settings.orgName || user.organization?.name || "";
     responseLanguage = user.settings.responseLanguage || "en";
     customKnowledge = user.data.customKnowledge || [];
     supportKnowledge = [];
