@@ -904,118 +904,26 @@ async function executeSearchHeartbeatData(input) {
     }
 }
 
-// ─── Proactive Suggestions Engine ────────────────────────────────────
-
-function generateSuggestions(completedTool, toolInput, toolResult) {
-    const suggestions = [];
-
-    switch (completedTool) {
-        case 'draft_content':
-            if (toolInput.content_type === 'email')
-                suggestions.push({ label: 'Draft matching social posts', icon: '📱', prompt: `Draft social media posts about the same topic: ${toolInput.inquiry}` });
-            if (toolInput.content_type === 'social')
-                suggestions.push({ label: 'Draft matching email', icon: '✉️', prompt: `Draft an email newsletter about the same topic: ${toolInput.inquiry}` });
-            suggestions.push(
-                { label: 'Add dates to calendar', icon: '📅', prompt: 'Add any dates or deadlines from this content to the Runway calendar' },
-                { label: 'Save key info to KB', icon: '💾', prompt: 'Save the key facts from this draft to the Knowledge Base' }
-            );
-            if (toolInput.content_type === 'email')
-                suggestions.push({ label: 'Draft ad copy', icon: '📣', prompt: `Create Facebook ad variants promoting the same campaign: ${toolInput.inquiry}` });
-            break;
-
-        case 'create_runway_events':
-            suggestions.push(
-                { label: 'Draft announcement email', icon: '✉️', prompt: 'Draft an announcement email about the events we just added to the calendar' },
-                { label: 'Draft social posts', icon: '📱', prompt: 'Draft social media posts announcing the events we just scheduled' }
-            );
-            break;
-
-        case 'search_runway_events':
-            suggestions.push(
-                { label: 'Draft content for these', icon: '✏️', prompt: 'Draft promotional content for the upcoming events' },
-                { label: 'Add new events', icon: '➕', prompt: 'Add new events to the Runway calendar' }
-            );
-            break;
-
-        case 'search_knowledge_base':
-            if (toolResult && typeof toolResult === 'string' && toolResult.includes('No matching'))
-                suggestions.push({ label: 'Create KB entry for this', icon: '💾', prompt: 'Save an answer to this question in the Knowledge Base' });
-            suggestions.push(
-                { label: 'Draft a response using this', icon: '✉️', prompt: 'Draft a customer response using the information found' }
-            );
-            break;
-
-        case 'save_to_knowledge_base':
-            suggestions.push(
-                { label: 'Add more to KB', icon: '💾', prompt: 'Save another piece of information to the Knowledge Base' },
-                { label: 'Verify in KB', icon: '🔍', prompt: 'Search the Knowledge Base to verify the entry was saved correctly' }
-            );
-            break;
-
-        case 'run_insights_analysis':
-            suggestions.push(
-                { label: 'Draft board report', icon: '📊', prompt: 'Draft a board report summarizing these analysis findings' },
-                { label: 'Draft team update', icon: '📝', prompt: 'Write a team update post about these insights for Home Base' }
-            );
-            break;
-
-        case 'search_response_history':
-            suggestions.push(
-                { label: 'Draft updated version', icon: '✏️', prompt: 'Draft an updated version of the most relevant past response' }
-            );
-            break;
-
-        case 'search_home_base':
-            suggestions.push(
-                { label: 'Summarize key takeaways', icon: '📋', prompt: 'Summarize the key takeaways from these Home Base posts' }
-            );
-            break;
-
-        case 'search_shopify_orders':
-            suggestions.push(
-                { label: 'Search another order', icon: '🔍', prompt: 'Search for another Shopify order' },
-                { label: 'Look up customer', icon: '👤', prompt: 'Look up the customer details for this order' }
-            );
-            break;
-
-        case 'search_shopify_customers':
-            suggestions.push(
-                { label: 'View their orders', icon: '🛒', prompt: 'Show me the orders for this customer' },
-                { label: 'Search another customer', icon: '🔍', prompt: 'Search for another customer' }
-            );
-            break;
-
-        case 'search_heartbeat_data':
-            suggestions.push(
-                { label: 'Chart the sales data', icon: '📊', prompt: 'Create a chart visualizing the sales velocity data' },
-                { label: 'Draft sales update email', icon: '✉️', prompt: 'Draft an email update about current sales performance using the Heartbeat data' },
-                { label: 'Draft social post', icon: '📱', prompt: 'Draft a social media post highlighting the current sales momentum' },
-                { label: 'Check tier breakdown', icon: '📊', prompt: 'Show me the Heartbeat data with package tier breakdown included' }
-            );
-            break;
-    }
-
-    return suggestions.slice(0, 4);
-}
+// ─── Web Search Follow-up Suggestions ────────────────────────────────
 
 async function generateAISuggestions(userMessage, assistantResponse) {
     try {
         const response = await claudeService.generateResponse({
             messages: [{
                 role: 'user',
-                content: `Given this conversation, suggest 2-3 natural follow-up actions the user might want to take next.
+                content: `The user just did a web search. Suggest 2-3 follow-up web searches they might want to try next.
 
-USER ASKED: ${userMessage.slice(0, 500)}
+USER SEARCHED: ${userMessage.slice(0, 500)}
 
-ASSISTANT REPLIED: ${assistantResponse.slice(0, 1000)}
+RESULT SUMMARY: ${assistantResponse.slice(0, 1000)}
 
-Return ONLY a JSON array of objects, each with "label" (short button text, max 5 words), "icon" (single emoji), and "prompt" (the full question/request to send). The suggestions must be directly relevant to what was just discussed — do not suggest generic or unrelated actions. Focus on what would genuinely be useful as a next step given the specific topic.
+Return ONLY a JSON array of objects, each with "label" (short button text, max 5 words), "icon" (single emoji), and "prompt" (the full follow-up search question). Every suggestion must be a follow-up web search question — do NOT suggest drafting content, checking internal tools, or anything else. Only suggest searches that dig deeper into or expand on the topic.
 
-Example format: [{"label":"Draft email about this","icon":"✉️","prompt":"Draft an email about..."},{"label":"Dig deeper into X","icon":"🔍","prompt":"Tell me more about..."}]
+Example format: [{"label":"Compare provincial rules","icon":"🔍","prompt":"What are the provincial regulations for..."},{"label":"Find recent winners","icon":"🔍","prompt":"Who won the largest..."}]
 
 JSON array:`
             }],
-            system: 'You are a helpful assistant that generates contextual follow-up suggestions for a charitable gaming / nonprofit lottery platform called Lightspeed. Available tools the user can leverage: Knowledge Base search, Runway calendar, Draft Studio (email, social, ad copy), Shopify order/customer lookup, Heartbeat live sales monitor, Home Base team posts, Insights Engine data analysis, and web search. Only suggest tools that are relevant to the conversation — never suggest irrelevant ones. Return ONLY valid JSON, no markdown fences.',
+            system: 'You generate follow-up web search suggestions. Every suggestion must be a web search question — never suggest internal tools, drafting, or anything else. Keep suggestions tightly related to what was just searched. Return ONLY valid JSON, no markdown fences.',
             max_tokens: 300,
             model: 'claude-haiku-4-5-20251001'
         });
@@ -1194,24 +1102,13 @@ Web search is ENABLED. For any factual question, external topic, industry inform
             model: selectedModel
         });
 
-        // Track last executed tool for proactive suggestions
-        let lastExecutedTool = null;
-        let lastToolInput = null;
-
         // Process the response — handle tool_use blocks
-        await processResponse(response, messages, combinedSystem, organizationId, userId, selectedModel, sendEvent, (toolName, toolInput) => {
-            lastExecutedTool = toolName;
-            lastToolInput = toolInput;
-        }, requestTools);
+        await processResponse(response, messages, combinedSystem, organizationId, userId, selectedModel, sendEvent, () => {}, requestTools);
 
-        // Emit proactive suggestions based on what just happened
-        if (lastExecutedTool) {
-            const suggestions = generateSuggestions(lastExecutedTool, lastToolInput || {}, '');
-            if (suggestions.length > 0) sendEvent({ type: 'suggestions', items: suggestions });
-        } else {
+        // Emit follow-up suggestions only for web search conversations
+        if (webSearch === 'true') {
             const textContent = response.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
             if (textContent) {
-                // Extract the user's last message for context
                 const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
                 const userText = typeof lastUserMsg?.content === 'string'
                     ? lastUserMsg.content
