@@ -249,6 +249,43 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
             },
             required: []
         }
+    },
+    {
+        name: 'render_chart',
+        description: 'Render an interactive chart or graph inline in the conversation. Use this when data would be better understood visually — sales trends, comparisons, distributions, breakdowns, etc. The chart is rendered using Chart.js. Call this tool AFTER you have the data (from Heartbeat, Shopify, Insights, KB, or web search). You may call this alongside your text explanation.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                chart_type: {
+                    type: 'string',
+                    enum: ['bar', 'line', 'pie', 'doughnut', 'horizontalBar'],
+                    description: 'Chart type. Use bar for comparisons, line for trends over time, pie/doughnut for proportions, horizontalBar for ranked lists.'
+                },
+                title: {
+                    type: 'string',
+                    description: 'Chart title displayed above the chart'
+                },
+                labels: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'X-axis labels (categories, dates, names, etc.)'
+                },
+                datasets: {
+                    type: 'array',
+                    description: 'One or more data series to plot',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            label: { type: 'string', description: 'Dataset label (shown in legend)' },
+                            data: { type: 'array', items: { type: 'number' }, description: 'Numeric values corresponding to each label' },
+                            color: { type: 'string', description: 'Optional color name: blue, green, red, orange, purple, cyan, pink, yellow. Defaults to blue.' }
+                        },
+                        required: ['label', 'data']
+                    }
+                }
+            },
+            required: ['chart_type', 'title', 'labels', 'datasets']
+        }
     }
 ];
 
@@ -950,9 +987,9 @@ function generateSuggestions(completedTool, toolInput, toolResult) {
 
         case 'search_heartbeat_data':
             suggestions.push(
+                { label: 'Chart the sales data', icon: '📊', prompt: 'Create a chart visualizing the sales velocity data' },
                 { label: 'Draft sales update email', icon: '✉️', prompt: 'Draft an email update about current sales performance using the Heartbeat data' },
                 { label: 'Draft social post', icon: '📱', prompt: 'Draft a social media post highlighting the current sales momentum' },
-                { label: 'Compare with Shopify', icon: '🔍', prompt: 'Search Shopify for today\'s recent orders to cross-reference with Heartbeat data' },
                 { label: 'Check tier breakdown', icon: '📊', prompt: 'Show me the Heartbeat data with package tier breakdown included' }
             );
             break;
@@ -1585,6 +1622,35 @@ async function processResponse(response, messages, system, organizationId, userI
 
             await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
             return;
+
+        } else if (toolUse.name === 'render_chart') {
+            // Visual tool — send chart config to frontend for rendering
+            const { chart_type, title, labels, datasets } = toolUse.input;
+            sendEvent({
+                type: 'chart',
+                config: { chart_type, title, labels, datasets }
+            });
+
+            trackTool('render_chart');
+
+            // Tell Claude the chart was rendered so it can add commentary
+            const toolResult = `The ${chart_type} chart "${title}" has been rendered and displayed to the user. You may add a brief text summary or analysis of the data shown in the chart, but do NOT reproduce the raw numbers — the user can see them in the chart.`;
+            const followUpMessages = [
+                ...messages,
+                { role: 'assistant', content: response.content },
+                { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
+            ];
+
+            const followUp = await claudeService.generateResponse({
+                messages: followUpMessages,
+                system,
+                max_tokens: 2048,
+                tools: tools,
+                model
+            });
+
+            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            return;
         }
     }
 }
@@ -1805,7 +1871,10 @@ ${webSearch ? `WEB SEARCH (ENABLED):
 - The ONLY exceptions where you should skip web search: questions answered by the organization's own Knowledge Base, calendar, Shopify data, or Home Base. For those, use internal tools instead.
 - After using web search, your response will automatically include source links for the user.
 
-` : ''}ANALYSIS & HISTORY TOOLS:
+` : ''}VISUALIZATION:
+- render_chart: Render an interactive chart or graph inline in the conversation. Use this AFTER you have data to visualize — from Heartbeat, Shopify, Insights, KB, or web search. Supported types: bar, line, pie, doughnut, horizontalBar. Provide a title, labels array, and one or more datasets with numeric data. Use this proactively when data would be clearer as a visual — sales trends, comparisons, breakdowns, distributions. You can call render_chart and include text explanation in the same response.
+
+ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
 - run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
 
@@ -1823,6 +1892,7 @@ TOOL USAGE GUIDELINES:
 - For customer lookups ("find customer...", "who is...", "look up..."): Call search_shopify_customers with the query
 - For data analysis requests: Call run_insights_analysis with the data
 - For current sales, velocity, "how are sales going?", "how fast are tickets selling?", heartbeat metrics, or live raffle performance: Call search_heartbeat_data. Use window parameter to focus on a specific time range, or "all" for a full overview.
+- For visualizing data: Call render_chart after you have retrieved the data. Use bar charts for comparisons, line charts for trends over time, pie/doughnut for proportions, horizontalBar for ranked lists. When the user asks to "show me", "graph", "chart", "visualize", or when numeric data would benefit from a visual, proactively render a chart.
 ${webSearch ? `- For ANY factual question, external topic, industry question, regulation, news, statistics, or "who/what/when/where" questions: You MUST call web_search. Do not rely on training data for factual claims — search first. The only exception is questions answerable from internal tools (KB, calendar, Shopify, Home Base).
 ` : ''}- For policy/procedure questions: Call search_knowledge_base
 - For team announcements, internal updates, or "what did the team post about X?": Call search_home_base with a query

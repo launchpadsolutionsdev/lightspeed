@@ -3361,6 +3361,13 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
                         // Events were successfully created
                         break;
 
+                    case 'chart':
+                        msgDiv.classList.add('als-has-content');
+                        statusDiv.style.display = 'none';
+                        renderAlsChart(msgDiv, event.config);
+                        chatArea.scrollTop = chatArea.scrollHeight;
+                        break;
+
                     case 'sources':
                         if (event.items && event.items.length > 0) {
                             alsPendingSources = alsPendingSources.concat(event.items);
@@ -4408,6 +4415,114 @@ function sendAlsRefinement(instruction) {
 }
 
 // ===== PROACTIVE SUGGESTIONS =====
+
+/**
+ * Render a Chart.js chart inline in the chat message
+ */
+function renderAlsChart(msgDiv, config) {
+    const CHART_COLORS = {
+        blue:    { bg: 'rgba(99, 91, 255, 0.15)', border: '#635BFF' },
+        green:   { bg: 'rgba(16, 185, 129, 0.15)', border: '#10b981' },
+        red:     { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444' },
+        orange:  { bg: 'rgba(249, 115, 22, 0.15)', border: '#f97316' },
+        purple:  { bg: 'rgba(139, 92, 246, 0.15)', border: '#8b5cf6' },
+        cyan:    { bg: 'rgba(6, 182, 212, 0.15)', border: '#06b6d4' },
+        pink:    { bg: 'rgba(236, 72, 153, 0.15)', border: '#ec4899' },
+        yellow:  { bg: 'rgba(234, 179, 8, 0.15)', border: '#eab308' }
+    };
+    const COLOR_ORDER = ['blue', 'green', 'orange', 'purple', 'red', 'cyan', 'pink', 'yellow'];
+
+    const wrap = document.createElement('div');
+    wrap.className = 'als-chart-wrap';
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'als-chart-title';
+    titleEl.textContent = config.title || 'Chart';
+    wrap.appendChild(titleEl);
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'als-chart-canvas';
+    wrap.appendChild(canvas);
+
+    // Insert before the text div (so chart appears above any follow-up text)
+    const textDiv = msgDiv.querySelector('.als-agent-text');
+    if (textDiv) {
+        msgDiv.insertBefore(wrap, textDiv);
+    } else {
+        msgDiv.appendChild(wrap);
+    }
+
+    const isPie = config.chart_type === 'pie' || config.chart_type === 'doughnut';
+    const isHorizontalBar = config.chart_type === 'horizontalBar';
+    const chartType = isHorizontalBar ? 'bar' : config.chart_type;
+
+    const datasets = (config.datasets || []).map((ds, i) => {
+        const colorName = ds.color || COLOR_ORDER[i % COLOR_ORDER.length];
+        const c = CHART_COLORS[colorName] || CHART_COLORS.blue;
+
+        if (isPie) {
+            // Pie/doughnut: each slice gets its own color
+            const sliceColors = ds.data.map((_, j) => {
+                const cn = COLOR_ORDER[j % COLOR_ORDER.length];
+                return CHART_COLORS[cn] || CHART_COLORS.blue;
+            });
+            return {
+                label: ds.label,
+                data: ds.data,
+                backgroundColor: sliceColors.map(sc => sc.border),
+                borderColor: '#fff',
+                borderWidth: 2
+            };
+        }
+
+        return {
+            label: ds.label,
+            data: ds.data,
+            backgroundColor: chartType === 'line' ? 'transparent' : c.bg,
+            borderColor: c.border,
+            borderWidth: chartType === 'line' ? 2.5 : 1.5,
+            pointBackgroundColor: c.border,
+            pointRadius: chartType === 'line' ? 3 : 0,
+            tension: 0.3,
+            fill: chartType === 'line' ? false : true
+        };
+    });
+
+    new Chart(canvas, {
+        type: chartType,
+        data: { labels: config.labels || [], datasets },
+        options: {
+            indexAxis: isHorizontalBar ? 'y' : 'x',
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: datasets.length > 1 || isPie,
+                    position: isPie ? 'right' : 'top',
+                    labels: { font: { size: 11, family: 'inherit' }, padding: 12 }
+                },
+                tooltip: {
+                    backgroundColor: '#1a1a2e',
+                    titleFont: { size: 12 },
+                    bodyFont: { size: 11 },
+                    padding: 10,
+                    cornerRadius: 6
+                }
+            },
+            scales: isPie ? {} : {
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11 }, maxRotation: 45 }
+                },
+                y: {
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    ticks: { font: { size: 11 } },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
 
 function renderAlsWebSources(msgDiv, sources) {
     // Deduplicate by URL
