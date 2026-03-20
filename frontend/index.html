@@ -481,6 +481,68 @@
             font-weight: 400;
         }
 
+        /* ==================== TIPS & TRICKS CARD ==================== */
+        .tips-tricks-card {
+            width: 100%;
+            max-width: 960px;
+            background: #fff;
+            border: 1px solid #E8ECF1;
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin-top: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
+        }
+        .tips-tricks-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--brand-gradient, linear-gradient(135deg, #E91E8C, #F47B3A, #F5C623));
+            border-radius: 14px 14px 0 0;
+        }
+        .tips-tricks-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .tips-tricks-icon {
+            font-size: 1.2rem;
+        }
+        .tips-tricks-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #0A2540;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tips-tricks-text {
+            font-size: 0.95rem;
+            color: #425466;
+            line-height: 1.55;
+            margin: 0 0 16px 0;
+        }
+        .tips-tricks-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #fff;
+            background: var(--cta, #635BFF);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.15s ease;
+        }
+        .tips-tricks-btn:hover {
+            background: var(--cta-hover, #7A73FF);
+            transform: translateY(-1px);
+        }
+
         /* ==================== DASHBOARD BENTO GRID ==================== */
         #toolMenuPage .bento-grid {
             display: grid;
@@ -14465,6 +14527,17 @@
             </div>
 
             <!-- Tool cards removed — accessible via sidebar -->
+
+            <!-- Tips & Tricks -->
+            <div id="tipsTricksCard" class="tips-tricks-card" style="display:none;">
+                <div class="tips-tricks-header">
+                    <span class="tips-tricks-icon">💡</span>
+                    <span class="tips-tricks-title">Lightspeed Tips &amp; Tricks</span>
+                </div>
+                <p class="tips-tricks-text" id="tipsTricksText"></p>
+                <button class="tips-tricks-btn" id="tipsTricksBtn" onclick="">Take Me There</button>
+            </div>
+
         </div><!-- /.tool-menu-content -->
         <footer class="site-footer">
             <div class="footer-content">
