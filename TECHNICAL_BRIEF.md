@@ -2,7 +2,7 @@
 
 **Prepared for:** Technical Due Diligence Review
 **Date:** March 2026
-**Version:** 1.0
+**Version:** 1.1
 
 ---
 
@@ -10,7 +10,7 @@
 
 Lightspeed is an AI-powered SaaS productivity platform purpose-built for charitable lottery operators in Canada. It solves a specific and underserved problem: small-to-mid-size charitable organizations running lotteries, raffles, and 50/50 draws lack the in-house marketing, compliance, and operational expertise to run these programs efficiently. Lightspeed gives them an AI assistant that already knows their business — their products, their customers, their regulatory environment, and their brand voice.
 
-The platform provides five core AI tools: a **Response Assistant** for generating customer-facing replies, a **Draft Assistant** for creating marketing content (social posts, emails, press releases, ads), an **Insights Engine** for analyzing sales and operational data, a **List Normalizer** for cleaning messy data exports, and a **Compliance Assistant** that provides jurisdiction-specific regulatory guidance backed by verified knowledge bases. A sixth module, **Ask Lightspeed**, is an agentic AI interface that combines knowledge base search, calendar management, document analysis, and multi-turn conversation in a single natural-language interface.
+The platform provides five core AI tools: a **Response Assistant** for generating customer-facing replies, a **Draft Assistant** for creating marketing content (social posts, emails, press releases, ads), an **Insights Engine** for analyzing sales and operational data, a **List Normalizer** for cleaning messy data exports, and a **Compliance Assistant** that provides jurisdiction-specific regulatory guidance backed by verified knowledge bases. A sixth module, **Ask Lightspeed**, is an agentic AI interface that combines 12 internal tools (KB search, calendar management, content drafting, response history, Home Base search, Shopify queries, Heartbeat analytics, chart rendering, and more) plus server-managed **web search** in a single natural-language interface with AI-generated follow-up suggestions. Additional modules include **Raffle Heartbeat** for real-time sales velocity tracking, a **Rules of Play Generator** for jurisdiction-aware regulatory document drafting, and **Shared Prompts** for team-wide prompt libraries with activity tracking.
 
 Lightspeed is deployed as a multi-tenant SaaS application with organization-level isolation. Each organization maintains its own knowledge base, response rules, brand voice profile, and usage history. The platform integrates with Shopify for e-commerce analytics, Stripe for subscription billing, and supports Google and Microsoft OAuth for authentication. It is currently in production serving charitable lottery operators in Ontario, Canada.
 
@@ -51,7 +51,7 @@ Lightspeed is deployed as a multi-tenant SaaS application with organization-leve
 | Service | Model | Purpose |
 |---|---|---|
 | Anthropic Claude API | claude-sonnet-4-6 (primary) | Response generation, content drafting, analysis |
-| Anthropic Claude API | claude-haiku-4-5 | KB relevance picking, voice profiling, example filtering |
+| Anthropic Claude API | claude-haiku-4-5-20251001 | KB relevance picking, voice profiling, example filtering, web search follow-up suggestions |
 | Voyage AI | voyage-3-lite (512d) | Text embeddings for semantic search |
 
 ### Database
@@ -67,7 +67,7 @@ Lightspeed is deployed as a multi-tenant SaaS application with organization-leve
 | Vanilla JavaScript (ES2022) | Single-page application, no framework |
 | CSS3 (custom design system) | Styling with custom design tokens |
 | MSAL Browser SDK | Microsoft authentication in browser |
-| Chart.js (CDN) | Analytics visualizations |
+| Chart.js (CDN) | Analytics visualizations (dashboard + Ask Lightspeed inline charts) |
 
 ### Infrastructure & Deployment
 | Service | Purpose |
@@ -98,9 +98,13 @@ Lightspeed is deployed as a multi-tenant SaaS application with organization-leve
 │  │ Response  │ │  Draft   │ │ Insights │ │   Ask    │ │Compliance│ │
 │  │ Assistant │ │ Assistant│ │  Engine  │ │Lightspeed│ │ Assistant│ │
 │  └─────┬────┘ └─────┬────┘ └─────┬────┘ └─────┬────┘ └─────┬────┘ │
-└────────┼────────────┼────────────┼────────────┼────────────┼───────┘
-         │            │            │            │            │
-         ▼            ▼            ▼            ▼            ▼
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐                            │
+│  │Heartbeat │ │ Rules of │ │  Shared  │                            │
+│  │Dashboard │ │   Play   │ │  Prompts │                            │
+│  └─────┬────┘ └─────┬────┘ └─────┬────┘                            │
+└────────┼────────────┼────────────┼────────────────────────────┬─────┘
+         │            │            │                            │
+         ▼            ▼            ▼                            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     BACKEND API (Express)                           │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌─────────────┐  │
@@ -190,14 +194,29 @@ Lightspeed deploys as a **monorepo** with two Render services:
 
 ### 4.5 Ask Lightspeed (Agentic AI)
 
-**What it does:** A conversational AI assistant that can search the knowledge base, create and query calendar events, analyze uploaded documents, and maintain multi-turn conversation history. It's the "Swiss Army knife" tool.
+**What it does:** A conversational AI assistant with 12 internal tools plus server-managed web search. It can search the knowledge base, create and query calendar events, draft content, query response history, search Home Base posts, look up Shopify orders and customers, query Heartbeat sales velocity data, render interactive Chart.js visualizations, and perform live web searches with source attribution. It also generates AI-powered follow-up suggestions after web searches.
 
-**How it works:** Uses Anthropic's **tool_use** (function calling) feature. The backend defines tool schemas for KB search, calendar operations, and document analysis. Claude decides which tools to call based on the user's query. Write operations (calendar event creation) require a confirmation loop — Claude proposes the action, the frontend shows a confirmation dialog, and the user approves before execution. Conversations are persisted with auto-generated summaries for memory retrieval.
+**How it works:** Uses Anthropic's **tool_use** (function calling) feature. The backend defines 12 tool schemas plus a server-managed `web_search_20250305` tool (conditionally enabled). Claude decides which tools to call based on the user's query. Write operations (calendar event creation, KB saves) require a confirmation loop — Claude proposes the action, the frontend shows a confirmation dialog, and the user approves before execution. After web search responses, Haiku generates follow-up search suggestions. Conversations are persisted with auto-generated summaries for memory retrieval.
+
+**Tools:**
+1. `search_knowledge_base` — Search org KB for policies, procedures, FAQs
+2. `search_runway_events` — Search/query calendar events
+3. `create_runway_events` — Create calendar events (requires confirmation)
+4. `draft_content` — Generate marketing/communications content
+5. `save_to_knowledge_base` — Save information to KB (requires confirmation)
+6. `search_response_history` — Query past AI-generated responses
+7. `search_home_base` — Search team bulletin board/announcements
+8. `run_insights_analysis` — Data analysis on uploaded files
+9. `search_shopify_orders` — Query Shopify order data
+10. `search_shopify_customers` — Query Shopify customer data
+11. `search_heartbeat_data` — Query real-time raffle sales velocity data
+12. `render_chart` — Render interactive Chart.js visualizations (bar, line, pie, doughnut, horizontal bar)
+13. `web_search` (server-managed) — Live web search with source attribution (opt-in)
 
 **Key files:**
 - `backend/src/routes/askLightspeed.js` — Tool definitions, confirmation loop, conversation management
 - `backend/src/services/conversationMemory.js` — Conversation history and cross-tool context
-- `frontend/app.js` — Conversation UI with tool call rendering
+- `frontend/app.js` — Conversation UI with tool call rendering and chart display
 
 ### 4.6 Compliance Assistant
 
@@ -245,6 +264,34 @@ Lightspeed deploys as a **monorepo** with two Render services:
 - `backend/src/routes/admin.js` — Admin-only endpoints (requires `is_super_admin`)
 - `frontend/admin-dashboard.js` — Admin UI
 
+### 4.11 Raffle Heartbeat (Feed Dashboard)
+
+**What it does:** Real-time sales velocity monitoring for active raffles. Tracks sales data across 8 time windows (1m, 5m, 10m, 30m, 1h, 3h, 24h, 7d), detects surges, and calculates percent-change deltas. Also serves as the platform's "What's New" article feed.
+
+**How it works:** Background fetcher runs every 90 seconds to pull raffle data from the BUMP API, building a continuous timeline of velocity snapshots stored in PostgreSQL with 7-day retention and 2-minute caching. The Heartbeat data is also available as a tool in Ask Lightspeed (`search_heartbeat_data`).
+
+**Key files:**
+- `backend/src/routes/feedDashboard.js` — Feed parsing, velocity snapshots, What's New endpoint
+- `backend/migrations/053_velocity_snapshots_table.sql` — Velocity snapshots table
+- `frontend/app.js` — Heartbeat dashboard UI
+
+### 4.12 Rules of Play Generator
+
+**What it does:** AI-powered generation of Rules of Play documents for charitable lottery operators. Supports multiple raffle types (50/50, Catch the Ace, prize raffle, house lottery) with jurisdiction-aware regulatory content.
+
+**How it works:** Users select a raffle type and jurisdiction, optionally upload reference documents (DOCX/PDF). Claude generates a complete Rules of Play draft using the organization's profile and regulatory body information. Drafts are saved for iterative editing and can be exported to .doc format.
+
+**Key files:**
+- `backend/src/routes/rulesOfPlay.js` — CRUD, AI generation, reference document upload, .doc export
+- `backend/migrations/017_rules_of_play.sql` — Rules of Play drafts table
+
+### 4.13 Shared Prompts & Team Activity
+
+**What it does:** Organization-wide prompt library for sharing reusable prompts across the team, with usage tracking and a team activity feed showing recent AI usage.
+
+**Key files:**
+- `backend/src/routes/sharedPrompts.js` — Prompt CRUD, usage tracking, team activity endpoint
+
 ---
 
 ## 5. AI/LLM Integration
@@ -254,9 +301,9 @@ Lightspeed deploys as a **monorepo** with two Render services:
 Lightspeed uses two Claude models in a tiered architecture:
 
 - **Claude Sonnet 4.6** (`claude-sonnet-4-6`) — Primary generation model for all user-facing responses. Used for Response Assistant, Draft Assistant, Insights Engine, List Normalizer, Ask Lightspeed, and Compliance Assistant.
-- **Claude Haiku 4.5** (`claude-haiku-4-5-20251001`) — Lightweight model for internal processing tasks: KB relevance picking, rated example filtering, voice fingerprint analysis, and conversation summarization.
+- **Claude Haiku 4.5** (`claude-haiku-4-5-20251001`) — Lightweight model for internal processing tasks: KB relevance picking, rated example filtering, voice fingerprint analysis, conversation summarization, and web search follow-up suggestion generation.
 
-The model is configurable via the `ANTHROPIC_MODEL` environment variable. Haiku is used for operations where speed and cost matter more than output quality.
+The primary model is configurable via the `ANTHROPIC_MODEL` environment variable. Users can select between Sonnet and Opus via the model selector; Haiku is not user-selectable but is used internally for operations where speed and cost matter more than output quality.
 
 ### System Prompt Architecture
 
@@ -277,17 +324,24 @@ Lightspeed implements a **two-layer prompt architecture** designed for Anthropic
 
 ### Tool Definitions (Ask Lightspeed)
 
-Ask Lightspeed uses Anthropic's tool_use feature with these tool definitions:
+Ask Lightspeed uses Anthropic's tool_use feature with 12 internal tools plus a server-managed web search tool. See Section 4.5 for the complete tool list. Key architectural patterns:
 
-1. **search_knowledge_base** — Searches the org's KB with a query string. Returns title, content, and category.
-2. **search_calendar** — Queries upcoming calendar events by date range or keyword.
-3. **create_calendar_event** — Creates a new calendar event (requires user confirmation before execution).
-4. **analyze_document** — Analyzes content from an uploaded PDF, Excel, or CSV file.
+- **Confirmation loop:** Write operations (`create_runway_events`, `save_to_knowledge_base`) require frontend confirmation before execution
+- **Server-managed tools:** Web search (`web_search_20250305`) is conditionally enabled and managed by Anthropic's API
+- **Chart rendering:** The `render_chart` tool returns Chart.js configurations that the frontend renders as interactive visualizations
+- **Follow-up suggestions:** After web search responses, Haiku generates follow-up search suggestions asynchronously
 
 ### Caching Strategy
 
-- Static prompt layers use Anthropic's `cache_control: { type: 'ephemeral' }` for prompt prefix caching
-- In-memory TTL cache on the backend for KB entries (2 min), response rules (2 min), auth/org mappings (5 min), usage counts (60s), voice profiles (1 hour), and analytics (2 min)
+Lightspeed implements a **3-tier prompt caching strategy** using Anthropic's `cache_control: { type: 'ephemeral' }`:
+
+1. **Tools array** — Tool definitions are cached (marker on last tool in array), shared across all requests for the same tool set
+2. **Static system prompt** — Base persona, instructions, and formatting rules are cached as a separate system block
+3. **Dynamic system prompt** — Organization-specific context (KB, rules, memory) is cached as a second system block, enabling partial cache hits when only the user message changes
+
+Cache performance is logged per request (`cache_read_input_tokens`, `cache_creation_input_tokens`).
+
+- In-memory TTL cache on the backend for KB entries (2 min), response rules (2 min), auth/org mappings (5 min), usage counts (60s), voice profiles (1 hour), analytics (2 min), and velocity snapshots (2 min)
 - Haiku relevance picking results are not cached (they depend on the inquiry)
 
 ### Hallucination Guardrails
@@ -417,6 +471,9 @@ Three levels of authorization middleware:
 | `home_base_posts` | Internal communications | org_id, author_id, content, category, scheduled_at |
 | `favorites` | User-saved responses | user_id, response_history_id |
 | `feedback` | Response ratings | user_id, response_history_id, rating, correction |
+| `velocity_snapshots` | Raffle sales velocity data | org_id, snapshot_data (JSONB), 7-day retention |
+| `rules_of_play_drafts` | Rules of Play document drafts | org_id, raffle_type, jurisdiction, content, status |
+| `shared_prompts` | Team-shared prompt templates | org_id, user_id, title, prompt_text, use_count |
 
 ### Key Relationships
 
@@ -565,19 +622,37 @@ organizations → home_base_posts
 
 ### Test Coverage
 
-**Backend unit tests** (Jest) cover these modules:
-- `middleware/auth` — JWT verification, role-based access control, rate limiting
-- `middleware/usageLimit` — Subscription tier enforcement (currently skipped — see audit report)
+**Backend unit tests** (Jest) cover 24 test files across three categories:
+
+**Route tests (8 files):**
+- `routes/admin` — Admin dashboard endpoints
+- `routes/auth` — Authentication flows (Google, Microsoft)
+- `routes/askLightspeed` — Agentic AI endpoint integration tests
+- `routes/billing` — Stripe billing and subscription management
+- `routes/compliance` — Compliance assistant endpoints
+- `routes/export` — Data export functionality
+- `routes/homeBase` — Internal communications CRUD
+- `routes/knowledgeBase` — KB entry management
+
+**Service tests (14 files):**
+- `services/auditLog` — Security-sensitive action logging
 - `services/budgetAllocator` — Complexity classification and budget allocation
 - `services/cache` — TTL-based caching, invalidation, cleanup
 - `services/chunkingService` — Text splitting at natural boundaries
+- `services/claude` — Anthropic API client, streaming, prompt caching
+- `services/compliancePromptBuilder` — Compliance prompt construction and KB-only constraints
+- `services/conversationMemory` — Conversation history and cross-tool context
 - `services/embeddingService` — Embedding generation and pgvector formatting
 - `services/logger` — Structured logging output
 - `services/outputValidator` — Prompt leakage, PII detection, format compliance
+- `services/promptBuilder` — Context injection orchestrator
 - `services/systemPromptBuilder` — Prompt construction and injection detection
 - `services/tokenCounter` — Token estimation and budget checking
-- `routes/askLightspeed` — Agentic AI endpoint integration tests
-- `routes/export` — Data export functionality
+- `services/voiceFingerprint` — Voice profile analysis and fingerprinting
+
+**Middleware tests (2 files):**
+- `middleware/auth` — JWT verification, role-based access control, rate limiting
+- `middleware/usageLimit` — Subscription tier enforcement (currently skipped — see audit report)
 
 **Frontend tests:** None. The frontend is vanilla JavaScript without a test framework.
 
@@ -623,7 +698,7 @@ organizations → home_base_posts
 
 ### Testing
 
-9. **No frontend tests.** The 19,000+ line `app.js` has zero test coverage. Critical user flows (authentication, AI generation, data handling) are tested only through manual QA.
+9. **No frontend tests.** The 22,000+ line `app.js` has zero test coverage. Critical user flows (authentication, AI generation, data handling) are tested only through manual QA.
 
 10. **Usage limit tests skipped.** The entire `checkUsageLimit` test suite is disabled via `describe.skip()`, meaning there is no automated verification of billing enforcement logic.
 
@@ -631,7 +706,7 @@ organizations → home_base_posts
 
 ### Performance
 
-12. **Large monolithic frontend file.** `app.js` is ~19,500 lines. This should be split into modules for maintainability, though it doesn't cause runtime performance issues due to browser caching.
+12. **Large monolithic frontend file.** `app.js` is ~22,400 lines. This should be split into modules for maintainability, though it doesn't cause runtime performance issues due to browser caching.
 
 13. **No CDN for static assets.** Frontend assets are served directly from Render's static hosting without a CDN layer. Adding CloudFront or similar would improve global load times.
 
