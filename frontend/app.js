@@ -2274,6 +2274,71 @@ function showToolMenu() {
     if (typeof initShopifyDashboard === 'function') {
         initShopifyDashboard();
     }
+
+    // Render Tips & Tricks card
+    renderTipsTricksCard();
+}
+
+/* ---------- Lightspeed Tips & Tricks ---------- */
+const TIPS_AND_TRICKS = [
+    {
+        text: 'Upload BUMP raw data reports into Insights Engine to visualize data and receive AI analysis by clicking "Generate Analysis".',
+        action: function() { openTool('data-analysis'); }
+    },
+    {
+        text: 'Use Ask Lightspeed to get instant answers about your organization\'s rules and policies.',
+        action: function() { openTool('ask-lightspeed'); }
+    },
+    {
+        text: 'Draft professional communications with Draft Assistant — just describe what you need and get a polished draft in seconds.',
+        action: function() { openTool('draft-assistant'); }
+    },
+    {
+        text: 'Response Assistant generates responses based on full email threads — paste a conversation and get a polished reply.',
+        action: function() { openTool('customer-response'); }
+    },
+    {
+        text: 'Update your organization\'s campaign/draw schedule in Runway to keep your team on track.',
+        action: function() { showPage('content-calendar'); }
+    },
+    {
+        text: 'Check your operations against Rules of Play regulations with the compliance checker.',
+        action: function() { openTool('rules-of-play'); }
+    },
+    {
+        text: 'Compare current numbers to past jackpot performance inside Heartbeat.',
+        action: function() { openTool('heartbeat'); }
+    },
+    {
+        text: 'Use the Knowledge Base in Ask Lightspeed to teach it your org-specific information.',
+        action: function() { openTool('ask-lightspeed'); }
+    },
+    {
+        text: 'Track your team\'s sales velocity trends across different time windows right here on the dashboard.',
+        action: null
+    }
+];
+
+function renderTipsTricksCard() {
+    const card = document.getElementById('tipsTricksCard');
+    const textEl = document.getElementById('tipsTricksText');
+    const btnEl = document.getElementById('tipsTricksBtn');
+    if (!card || !textEl || !btnEl) return;
+
+    const tip = TIPS_AND_TRICKS[Math.floor(Math.random() * TIPS_AND_TRICKS.length)];
+    textEl.textContent = tip.text;
+
+    // Clone button to remove old listeners, then attach new one
+    const newBtn = btnEl.cloneNode(true);
+    btnEl.parentNode.replaceChild(newBtn, btnEl);
+    if (tip.action) {
+        newBtn.addEventListener('click', tip.action);
+        newBtn.style.display = '';
+    } else {
+        newBtn.style.display = 'none';
+    }
+
+    card.style.display = '';
 }
 
 function openTool(toolId) {
