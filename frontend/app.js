@@ -5245,8 +5245,26 @@ function loadSettings() {
     if (threadStaffNameEl && defaultName) {
         threadStaffNameEl.value = defaultName;
     }
-    if (orgNameEl && orgName) {
-        orgNameEl.value = orgName;
+    if (orgNameEl) {
+        if (orgName) {
+            orgNameEl.value = orgName;
+        } else {
+            // Fetch org name from backend if not already set
+            fetch(`${API_BASE_URL}/api/organizations/my`, { headers: getAuthHeaders() })
+                .then(r => r.json())
+                .then(data => {
+                    const org = data.organizations?.[0] || data.organization || null;
+                    if (org?.name) {
+                        orgName = org.name;
+                        orgNameEl.value = org.name;
+                        if (currentUser) {
+                            currentUser.settings.orgName = org.name;
+                            saveUserData();
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
     }
     const langEl = document.getElementById("responseLanguage");
     if (langEl) {
