@@ -1095,30 +1095,43 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
 
         // Build system prompt with full org profile (always use server-built prompt)
         const orgProfile = await fetchOrgProfile(organizationId);
-        const systemPrompt = buildAgenticSystemPrompt(orgProfile, { language, webSearch: webSearch === 'true' });
+        const staticSystem = buildAgenticSystemPrompt(orgProfile, { language, webSearch: webSearch === 'true' });
 
-        // Build messages array
+        // Build messages array with cache_control on conversation history
+        // Mark the last history message with cache_control so multi-turn
+        // conversations cache all prior turns (system + tools + history).
+        const historyMessages = conversationHistory.map(m => ({ role: m.role, content: m.content }));
+        if (historyMessages.length > 0) {
+            const last = historyMessages[historyMessages.length - 1];
+            // Wrap string content in a content block array to attach cache_control
+            if (typeof last.content === 'string') {
+                last.content = [{ type: 'text', text: last.content, cache_control: { type: 'ephemeral' } }];
+            } else if (Array.isArray(last.content) && last.content.length > 0) {
+                const lastBlock = last.content[last.content.length - 1];
+                last.content[last.content.length - 1] = { ...lastBlock, cache_control: { type: 'ephemeral' } };
+            }
+        }
         const messages = [
-            ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
+            ...historyMessages,
             { role: 'user', content: userMessage }
         ];
 
-        // Enhance with KB, rules, etc.
-        let { system: enhancedSystem } = await buildEnhancedPrompt(
-            systemPrompt, message || '', organizationId,
+        // Enhance with KB, rules, etc. — this becomes the dynamic system layer
+        let { system: dynamicSystem } = await buildEnhancedPrompt(
+            '', message || '', organizationId,
             { kb_type: 'all', userId, tool: 'ask_lightspeed', includeCitations: true }
         );
 
         // Reinforce tool usage after all context injection (KB, rules, memory, etc.)
         // This must come LAST so it isn't buried by appended context.
-        enhancedSystem += `\n\nCRITICAL REMINDER — TOOL USAGE:
+        dynamicSystem += `\n\nCRITICAL REMINDER — TOOL USAGE:
 When the user asks about a specific customer, email address, order, or purchase, you MUST call the search_shopify_orders or search_shopify_customers tool to look up the data. Do NOT tell the user to check Shopify Admin manually. Do NOT say you only have aggregate data. You have real-time Shopify lookup tools — use them.
 
 When the user asks about current sales, velocity, how tickets are selling, revenue pace, sales trends, or Heartbeat data, you MUST call search_heartbeat_data. Do NOT say you don't have access to live sales data — you do.`;
 
         // Reinforce web search when enabled
         if (webSearch === 'true') {
-            enhancedSystem += `\n\nCRITICAL REMINDER — WEB SEARCH:
+            dynamicSystem += `\n\nCRITICAL REMINDER — WEB SEARCH:
 Web search is ENABLED. For any factual question, external topic, industry information, statistics, regulations, news, or "who/what/when/where" question, you MUST use the web_search tool BEFORE answering. Do NOT answer from memory or training data alone — search the web first to provide accurate, current, and sourced information. The user turned on web search because they want verified, up-to-date answers with sources.`;
         }
 
@@ -1129,12 +1142,16 @@ Web search is ENABLED. For any factual question, external topic, industry inform
         // Include web search tool only when explicitly enabled by the user
         const requestTools = webSearch === 'true' ? ALL_TOOLS : TOOLS;
 
-        // Call Claude with tools
+        // Build combined system for tool-use follow-up calls (single string for processResponse)
+        const combinedSystem = staticSystem + dynamicSystem;
+
+        // Call Claude with tools — split system for caching
         sendEvent({ type: 'status', message: 'Thinking...' });
 
         const response = await claudeService.generateResponse({
             messages,
-            system: enhancedSystem,
+            staticSystem,
+            dynamicSystem,
             max_tokens: 4096,
             tools: requestTools,
             model: selectedModel
@@ -1145,7 +1162,7 @@ Web search is ENABLED. For any factual question, external topic, industry inform
         let lastToolInput = null;
 
         // Process the response — handle tool_use blocks
-        await processResponse(response, messages, enhancedSystem, organizationId, userId, selectedModel, sendEvent, (toolName, toolInput) => {
+        await processResponse(response, messages, combinedSystem, organizationId, userId, selectedModel, sendEvent, (toolName, toolInput) => {
             lastExecutedTool = toolName;
             lastToolInput = toolInput;
         }, requestTools);
