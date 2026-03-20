@@ -59,13 +59,22 @@ async function generateResponse({ messages, system, max_tokens = 1024, tools, mo
     // (system prompt, messages, KB entries, org profile, conversation history, etc.)
     const jsonBody = sanitizeJsonString(JSON.stringify(body));
 
+    // Check if any tools require server-side execution (e.g., web search)
+    const hasServerTools = body.tools && body.tools.some(t => t.type === 'web_search_20250305');
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+    };
+
+    if (hasServerTools) {
+        headers['anthropic-beta'] = 'web-search-2025-03-05';
+    }
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01'
-        },
+        headers,
         body: jsonBody
     });
 

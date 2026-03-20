@@ -564,6 +564,15 @@ describe('Tool Definitions', () => {
         expect(schemaCount).toBe(11);
     });
 
+    it('defines web_search server tool', () => {
+        expect(source).toContain("name: 'web_search'");
+        expect(source).toContain("type: 'web_search_20250305'");
+    });
+
+    it('merges custom and server tools into ALL_TOOLS', () => {
+        expect(source).toContain('const ALL_TOOLS = [...TOOLS, ...SERVER_TOOLS]');
+    });
+
     it('requires confirmation for write tools (create_runway_events, save_to_knowledge_base)', () => {
         // The processResponse function should send 'confirm' events for write tools
         expect(source).toContain("type: 'confirm'");
