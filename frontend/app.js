@@ -1,6 +1,14 @@
 // Lightspeed by Launchpad Solutions v3.0
 // Multi-Tool Platform with Customer Response & Data Analysis
 
+// ==================== DARK MODE (early init to prevent flash) ====================
+(function initDarkMode() {
+    const saved = localStorage.getItem('lightspeed_dark_mode');
+    if (saved === 'true') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+})();
+
 // ==================== STICKY CTA & BACK TO TOP ====================
 function initScrollUI() {
     var stickyCta = document.getElementById('stickyCta');
@@ -1135,6 +1143,8 @@ async function processGoogleUser(googleUser, credential, accessToken) {
             user.isSuperAdmin = data.user?.isSuperAdmin || false;
             user.organization = data.organization || null;
             user.needsOrganization = data.needsOrganization || false;
+            user.backendCreatedAt = data.user?.createdAt || user.createdAt;
+            user.picture = data.user?.picture || user.picture;
 
             localStorage.setItem("lightspeed_users", JSON.stringify(users));
 
@@ -1260,6 +1270,7 @@ async function handleMicrosoftAuthResponse(response, email, name, account) {
         user.organization = data.organization || null;
         user.needsOrganization = data.needsOrganization || false;
         user.picture = data.user?.picture || user.picture;
+        user.backendCreatedAt = data.user?.createdAt || user.createdAt;
 
         localStorage.setItem("lightspeed_users", JSON.stringify(users));
 
@@ -4890,12 +4901,22 @@ function loginUser(user, showMessage = true) {
 
     // Update UI (defensive against missing name)
     const displayName = user.name || user.email || "User";
-    document.getElementById("userAvatar").textContent = displayName.charAt(0).toUpperCase();
+    const avatarInitial = displayName.charAt(0).toUpperCase();
     document.getElementById("userName").textContent = displayName.split(" ")[0];
-    // Sync sidebar user menu
+
+    // Set avatar with profile picture or initial
+    const headerAvatar = document.getElementById("userAvatar");
     const sidebarAvatar = document.getElementById("sidebarUserAvatar");
     const sidebarName = document.getElementById("sidebarUserName");
-    if (sidebarAvatar) sidebarAvatar.textContent = displayName.charAt(0).toUpperCase();
+
+    if (user.picture) {
+        const imgHtml = `<img src="${user.picture}" alt="" class="user-avatar-img" referrerpolicy="no-referrer">`;
+        if (headerAvatar) headerAvatar.innerHTML = imgHtml;
+        if (sidebarAvatar) sidebarAvatar.innerHTML = imgHtml;
+    } else {
+        if (headerAvatar) headerAvatar.textContent = avatarInitial;
+        if (sidebarAvatar) sidebarAvatar.textContent = avatarInitial;
+    }
     if (sidebarName) sidebarName.textContent = displayName.split(" ")[0];
 
     // Hide auth pages, show tool menu
@@ -5238,6 +5259,107 @@ function loadSettings() {
     const langEl = document.getElementById("responseLanguage");
     if (langEl) {
         langEl.value = responseLanguage || 'en';
+    }
+
+    // --- Profile section ---
+    if (currentUser) {
+        const fullNameEl = document.getElementById("settingsFullName");
+        const emailEl = document.getElementById("settingsEmail");
+        const roleEl = document.getElementById("settingsRole");
+        const profilePicEl = document.getElementById("settingsProfilePic");
+
+        if (fullNameEl) fullNameEl.textContent = currentUser.name || 'User';
+        if (emailEl) emailEl.textContent = currentUser.email || '';
+
+        // Role badge
+        if (roleEl) {
+            const role = currentUserRole || currentUser.organization?.role || 'member';
+            roleEl.textContent = role;
+            if (role === 'owner') {
+                roleEl.style.background = '#dcfce7';
+                roleEl.style.color = '#166534';
+                roleEl.style.borderColor = '#bbf7d0';
+            } else if (role === 'admin') {
+                roleEl.style.background = '#dbeafe';
+                roleEl.style.color = '#1e40af';
+                roleEl.style.borderColor = '#bfdbfe';
+            }
+        }
+
+        // Profile picture in settings
+        if (profilePicEl) {
+            if (currentUser.picture) {
+                profilePicEl.innerHTML = `<img src="${currentUser.picture}" alt="" class="user-avatar-img" referrerpolicy="no-referrer">`;
+            } else {
+                profilePicEl.textContent = (currentUser.name || 'U').charAt(0).toUpperCase();
+            }
+        }
+    }
+
+    // --- Timezone ---
+    const tzEl = document.getElementById("settingsTimezone");
+    if (tzEl) {
+        const tz = currentUser?.organization?.timezone || 'America/Toronto';
+        tzEl.value = tz;
+        const canEditTz = ['owner', 'admin'].includes(currentUserRole);
+        tzEl.disabled = !canEditTz;
+        tzEl.title = canEditTz ? '' : 'Only admins can change the timezone';
+        tzEl.style.opacity = canEditTz ? '1' : '0.6';
+    }
+
+    // --- Dark mode toggle ---
+    const darkToggle = document.getElementById("darkModeToggle");
+    if (darkToggle) {
+        darkToggle.checked = localStorage.getItem('lightspeed_dark_mode') === 'true';
+        // Remove old listener by cloning
+        const newToggle = darkToggle.cloneNode(true);
+        darkToggle.parentNode.replaceChild(newToggle, darkToggle);
+        newToggle.addEventListener('change', function() {
+            const isDark = this.checked;
+            localStorage.setItem('lightspeed_dark_mode', isDark ? 'true' : 'false');
+            if (isDark) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        });
+    }
+
+    // --- Notification preferences ---
+    const emailNotifToggle = document.getElementById("emailNotificationsToggle");
+    if (emailNotifToggle) {
+        emailNotifToggle.checked = currentUser?.settings?.emailNotifications !== false;
+    }
+    const usageReportsToggle = document.getElementById("usageReportsToggle");
+    if (usageReportsToggle) {
+        usageReportsToggle.checked = currentUser?.settings?.usageReports === true;
+    }
+
+    // --- Account info: member since, plan, status ---
+    const memberSinceEl = document.getElementById("settingsMemberSince");
+    if (memberSinceEl) {
+        const createdAt = currentUser?.backendCreatedAt || currentUser?.createdAt;
+        if (createdAt) {
+            try {
+                const d = new Date(createdAt);
+                memberSinceEl.textContent = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            } catch { memberSinceEl.textContent = '—'; }
+        }
+    }
+
+    const planEl = document.getElementById("settingsSubscriptionPlan");
+    if (planEl) {
+        const plan = currentUser?.organization?.subscription_plan;
+        planEl.textContent = plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'Free';
+    }
+
+    const statusEl = document.getElementById("settingsSubscriptionStatus");
+    if (statusEl) {
+        const status = currentUser?.organization?.subscription_status || 'trial';
+        const labels = { trial: 'Trial', active: 'Active', cancelled: 'Cancelled', past_due: 'Past Due' };
+        const colors = { trial: '#635BFF', active: '#30B130', cancelled: '#6B7C93', past_due: '#f59e0b' };
+        statusEl.textContent = labels[status] || status;
+        statusEl.style.color = colors[status] || 'var(--text-primary)';
     }
 
     // Show compliance toggle for org admins/owners
@@ -9799,20 +9921,46 @@ function saveSettings() {
     orgName = document.getElementById("orgName").value.trim();
     responseLanguage = document.getElementById("responseLanguage").value || "en";
 
+    // Save notification preferences
+    if (currentUser) {
+        if (!currentUser.settings) currentUser.settings = {};
+        const emailNotifToggle = document.getElementById("emailNotificationsToggle");
+        if (emailNotifToggle) currentUser.settings.emailNotifications = emailNotifToggle.checked;
+        const usageReportsToggle = document.getElementById("usageReportsToggle");
+        if (usageReportsToggle) currentUser.settings.usageReports = usageReportsToggle.checked;
+    }
+
     // Save to user data (handles localStorage automatically)
     saveUserData();
 
-    // Save compliance toggle if visible (org admin/owner only)
+    // Save timezone and compliance toggle to org (admin/owner only)
+    const orgPatch = {};
     const complianceToggle = document.getElementById('complianceEnabledToggle');
     const complianceToggleGroup = document.getElementById('complianceToggleGroup');
-    if (complianceToggle && complianceToggleGroup && complianceToggleGroup.style.display !== 'none' && currentOrgId) {
+    if (complianceToggle && complianceToggleGroup && complianceToggleGroup.style.display !== 'none') {
+        orgPatch.complianceEnabled = complianceToggle.checked;
+    }
+
+    // Save timezone if user is admin/owner
+    const tzEl = document.getElementById('settingsTimezone');
+    if (tzEl && ['owner', 'admin'].includes(currentUserRole)) {
+        orgPatch.timezone = tzEl.value;
+    }
+
+    if (Object.keys(orgPatch).length > 0 && currentOrgId) {
         fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}`, {
             method: 'PATCH',
             headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-            body: JSON.stringify({ complianceEnabled: complianceToggle.checked })
+            body: JSON.stringify(orgPatch)
         })
-        .then(() => initComplianceNav())
-        .catch(err => console.error('Failed to update compliance setting:', err));
+        .then(() => {
+            if (orgPatch.complianceEnabled !== undefined) initComplianceNav();
+            if (orgPatch.timezone && currentUser?.organization) {
+                currentUser.organization.timezone = orgPatch.timezone;
+                startFooterClock();
+            }
+        })
+        .catch(err => console.error('Failed to update org settings:', err));
     }
 
     document.getElementById("staffName").value = defaultName;
