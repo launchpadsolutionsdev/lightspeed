@@ -542,6 +542,184 @@
             transform: translateY(-1px);
         }
 
+        /* ==================== DASHBOARD WIDGET CARDS ==================== */
+        .dash-widget-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .dash-widget-card {
+            background: #fff;
+            border: 1px solid #E8ECF1;
+            border-radius: 14px;
+            padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+        }
+        .dash-widget-full {
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .dash-widget-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .dash-widget-icon {
+            font-size: 1.15rem;
+        }
+        .dash-widget-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #0A2540;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .dash-widget-body {
+            flex: 1;
+            margin-bottom: 14px;
+        }
+        .dash-widget-empty {
+            font-size: 0.88rem;
+            color: #8492A6;
+            margin: 0;
+        }
+        .dash-widget-desc {
+            font-size: 0.95rem;
+            color: #425466;
+            line-height: 1.55;
+            margin: 0 0 16px 0;
+        }
+
+        /* Runway event rows */
+        .runway-event-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #F6F9FC;
+            margin-bottom: 6px;
+        }
+        .runway-event-row:last-child { margin-bottom: 0; }
+        .runway-event-date {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #635BFF;
+            white-space: nowrap;
+            min-width: 70px;
+        }
+        .runway-event-title {
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: #0A2540;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .runway-event-cat {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: rgba(99,91,255,0.08);
+            color: #635BFF;
+            white-space: nowrap;
+        }
+
+        /* Home Base post rows */
+        .hb-post-row {
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #F6F9FC;
+            margin-bottom: 6px;
+        }
+        .hb-post-row:last-child { margin-bottom: 0; }
+        .hb-post-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .hb-post-author {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #0A2540;
+        }
+        .hb-post-time {
+            font-size: 0.72rem;
+            color: #8492A6;
+        }
+        .hb-post-pin {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: #E91E8C;
+        }
+        .hb-post-body {
+            font-size: 0.85rem;
+            color: #425466;
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .stat-item {
+            padding: 12px;
+            border-radius: 8px;
+            background: #F6F9FC;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #0A2540;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 0.72rem;
+            color: #8492A6;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* KB Health list */
+        .kb-health-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .kb-health-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #F6F9FC;
+            font-size: 0.85rem;
+        }
+        .kb-health-label { color: #425466; }
+        .kb-health-value { font-weight: 700; color: #0A2540; }
+
+        @media (max-width: 700px) {
+            .dash-widget-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* ==================== DASHBOARD BENTO GRID ==================== */
         #toolMenuPage .bento-grid {
             display: grid;
@@ -14527,14 +14705,75 @@
 
             <!-- Tool cards removed — accessible via sidebar -->
 
-            <!-- Tips & Tricks -->
-            <div id="tipsTricksCard" class="tips-tricks-card" style="display:none;">
-                <div class="tips-tricks-header">
-                    <span class="tips-tricks-icon">💡</span>
-                    <span class="tips-tricks-title">Lightspeed Tips &amp; Tricks</span>
+            <!-- Dashboard Widget Cards -->
+            <div id="dashboardWidgets" style="display:none;">
+
+                <!-- Two-column row: Upcoming on Runway + Team Activity -->
+                <div class="dash-widget-row">
+                    <div id="runwayWidget" class="dash-widget-card">
+                        <div class="dash-widget-header">
+                            <span class="dash-widget-icon">📅</span>
+                            <span class="dash-widget-title">Upcoming on Runway</span>
+                        </div>
+                        <div class="dash-widget-body" id="runwayWidgetBody">
+                            <p class="dash-widget-empty">No upcoming events</p>
+                        </div>
+                        <button class="tips-tricks-btn" onclick="showPage('content-calendar')">Open Runway</button>
+                    </div>
+                    <div id="teamActivityWidget" class="dash-widget-card">
+                        <div class="dash-widget-header">
+                            <span class="dash-widget-icon">📣</span>
+                            <span class="dash-widget-title">Team Activity</span>
+                        </div>
+                        <div class="dash-widget-body" id="teamActivityWidgetBody">
+                            <p class="dash-widget-empty">No recent posts</p>
+                        </div>
+                        <button class="tips-tricks-btn" onclick="showPage('home-base')">Open Home Base</button>
+                    </div>
                 </div>
-                <p class="tips-tricks-text" id="tipsTricksText"></p>
-                <button class="tips-tricks-btn" id="tipsTricksBtn" onclick="">Take Me There</button>
+
+                <!-- Two-column row: Your Stats + KB Health -->
+                <div class="dash-widget-row">
+                    <div id="yourStatsWidget" class="dash-widget-card">
+                        <div class="dash-widget-header">
+                            <span class="dash-widget-icon">📊</span>
+                            <span class="dash-widget-title">Your Stats</span>
+                        </div>
+                        <div class="dash-widget-body" id="yourStatsWidgetBody">
+                            <p class="dash-widget-empty">Loading...</p>
+                        </div>
+                    </div>
+                    <div id="kbHealthWidget" class="dash-widget-card">
+                        <div class="dash-widget-header">
+                            <span class="dash-widget-icon">🧠</span>
+                            <span class="dash-widget-title">Knowledge Base Health</span>
+                        </div>
+                        <div class="dash-widget-body" id="kbHealthWidgetBody">
+                            <p class="dash-widget-empty">Loading...</p>
+                        </div>
+                        <button class="tips-tricks-btn" onclick="openTool('customer-response'); setTimeout(function(){ showPage('knowledge'); }, 200);">Open Knowledge Base</button>
+                    </div>
+                </div>
+
+                <!-- Ask Lightspeed Quick Action -->
+                <div id="askLightspeedWidget" class="dash-widget-card dash-widget-full">
+                    <div class="dash-widget-header">
+                        <span class="dash-widget-icon">⚡</span>
+                        <span class="dash-widget-title">Ask Lightspeed</span>
+                    </div>
+                    <p class="dash-widget-desc">Have a question about your organization's rules, policies, or procedures? Ask Lightspeed uses your Knowledge Base to deliver instant, accurate answers — no searching required. Just type your question and get a response grounded in your own documentation.</p>
+                    <button class="tips-tricks-btn" onclick="openTool('ask-lightspeed')">Ask a Question</button>
+                </div>
+
+                <!-- Tips & Tricks -->
+                <div id="tipsTricksCard" class="tips-tricks-card">
+                    <div class="tips-tricks-header">
+                        <span class="tips-tricks-icon">💡</span>
+                        <span class="tips-tricks-title">Lightspeed Tips &amp; Tricks</span>
+                    </div>
+                    <p class="tips-tricks-text" id="tipsTricksText"></p>
+                    <button class="tips-tricks-btn" id="tipsTricksBtn" onclick="">Take Me There</button>
+                </div>
             </div>
 
         </div><!-- /.tool-menu-content -->

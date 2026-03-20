@@ -2334,8 +2334,177 @@ function renderTipsTricksCard() {
     } else {
         newBtn.style.display = 'none';
     }
+}
 
-    card.style.display = '';
+/**
+ * Render all dashboard widget cards at once after feed data loads.
+ */
+function renderDashboardWidgets() {
+    const wrapper = document.getElementById('dashboardWidgets');
+    if (!wrapper) return;
+
+    // Render tips immediately (no fetch needed)
+    renderTipsTricksCard();
+
+    // Fetch widget data in parallel, then show everything at once
+    Promise.all([
+        fetchRunwayWidget(),
+        fetchTeamActivityWidget(),
+        fetchStatsWidgets()
+    ]).then(function() {
+        wrapper.style.display = '';
+    }).catch(function() {
+        wrapper.style.display = '';
+    });
+}
+
+/**
+ * Fetch upcoming Runway events and render into widget.
+ */
+async function fetchRunwayWidget() {
+    const body = document.getElementById('runwayWidgetBody');
+    if (!body) return;
+    try {
+        const now = new Date();
+        const res = await fetch(
+            `${API_BASE_URL}/api/content-calendar?year=${now.getFullYear()}&month=${now.getMonth() + 1}&view=all`,
+            { headers: getAuthHeaders() }
+        );
+        if (!res.ok) return;
+        const events = await res.json();
+
+        // Filter to upcoming events (today or future), sort by date, take first 3
+        const todayStr = now.toISOString().split('T')[0];
+        const upcoming = events
+            .filter(function(e) { return e.event_date >= todayStr; })
+            .sort(function(a, b) { return a.event_date.localeCompare(b.event_date); })
+            .slice(0, 3);
+
+        if (upcoming.length === 0) {
+            body.innerHTML = '<p class="dash-widget-empty">No upcoming events</p>';
+            return;
+        }
+
+        body.innerHTML = upcoming.map(function(e) {
+            const d = new Date(e.event_date + 'T12:00:00');
+            const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const cat = e.category || '';
+            const catHtml = cat ? '<span class="runway-event-cat">' + escapeHtml(cat) + '</span>' : '';
+            return '<div class="runway-event-row">'
+                + '<span class="runway-event-date">' + dateStr + '</span>'
+                + '<span class="runway-event-title">' + escapeHtml(e.title) + '</span>'
+                + catHtml
+                + '</div>';
+        }).join('');
+    } catch (err) {
+        // Silent fail — widget stays with default empty state
+    }
+}
+
+/**
+ * Fetch latest Home Base posts and render into widget.
+ */
+async function fetchTeamActivityWidget() {
+    const body = document.getElementById('teamActivityWidgetBody');
+    if (!body) return;
+    try {
+        const res = await fetch(
+            `${API_BASE_URL}/api/home-base/posts?category=all`,
+            { headers: getAuthHeaders() }
+        );
+        if (!res.ok) return;
+        const posts = await res.json();
+
+        // Take latest 2 posts (pinned first, then recent)
+        const latest = (Array.isArray(posts) ? posts : []).slice(0, 2);
+
+        if (latest.length === 0) {
+            body.innerHTML = '<p class="dash-widget-empty">No recent posts</p>';
+            return;
+        }
+
+        body.innerHTML = latest.map(function(p) {
+            var name = ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || 'Team Member';
+            var ago = timeAgoShort(p.created_at);
+            var pinBadge = p.pinned ? ' <span class="hb-post-pin">📌 Pinned</span>' : '';
+            var bodyText = (p.body || '').replace(/(<([^>]+)>)/gi, '').substring(0, 120);
+            return '<div class="hb-post-row">'
+                + '<div class="hb-post-meta">'
+                + '<span class="hb-post-author">' + escapeHtml(name) + '</span>'
+                + '<span class="hb-post-time">' + ago + '</span>'
+                + pinBadge
+                + '</div>'
+                + '<div class="hb-post-body">' + escapeHtml(bodyText) + '</div>'
+                + '</div>';
+        }).join('');
+    } catch (err) {
+        // Silent fail
+    }
+}
+
+/**
+ * Short time-ago helper for dashboard widgets.
+ */
+function timeAgoShort(dateStr) {
+    if (!dateStr) return '';
+    var diff = Date.now() - new Date(dateStr).getTime();
+    var mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    var hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    var days = Math.floor(hrs / 24);
+    if (days < 7) return days + 'd ago';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/**
+ * Fetch response stats + KB health and render both widgets.
+ */
+async function fetchStatsWidgets() {
+    var statsBody = document.getElementById('yourStatsWidgetBody');
+    var kbBody = document.getElementById('kbHealthWidgetBody');
+    try {
+        var res = await fetch(
+            `${API_BASE_URL}/api/response-history/stats`,
+            { headers: getAuthHeaders() }
+        );
+        if (!res.ok) {
+            if (statsBody) statsBody.innerHTML = '<p class="dash-widget-empty">Stats unavailable</p>';
+            if (kbBody) kbBody.innerHTML = '<p class="dash-widget-empty">Stats unavailable</p>';
+            return;
+        }
+        var data = await res.json();
+
+        // Your Stats widget
+        if (statsBody) {
+            var positiveRate = data.positiveRate || 0;
+            statsBody.innerHTML =
+                '<div class="stats-grid">'
+                + '<div class="stat-item"><div class="stat-value">' + (data.total || 0).toLocaleString() + '</div><div class="stat-label">Total Responses</div></div>'
+                + '<div class="stat-item"><div class="stat-value">' + (data.today || 0) + '</div><div class="stat-label">Today</div></div>'
+                + '<div class="stat-item"><div class="stat-value">' + positiveRate + '%</div><div class="stat-label">Positive Rate</div></div>'
+                + '<div class="stat-item"><div class="stat-value">' + (data.leaderboard ? data.leaderboard.length : 0) + '</div><div class="stat-label">Active Users</div></div>'
+                + '</div>';
+        }
+
+        // KB Health widget
+        if (kbBody && data.kbHealth) {
+            var kb = data.kbHealth;
+            kbBody.innerHTML =
+                '<div class="kb-health-list">'
+                + '<div class="kb-health-row"><span class="kb-health-label">Total Entries</span><span class="kb-health-value">' + (kb.totalEntries || 0) + '</span></div>'
+                + '<div class="kb-health-row"><span class="kb-health-label">Categories</span><span class="kb-health-value">' + (kb.categoryCount || 0) + '</span></div>'
+                + '<div class="kb-health-row"><span class="kb-health-label">Auto-Corrections</span><span class="kb-health-value">' + (kb.autoCorrections || 0) + '</span></div>'
+                + '<div class="kb-health-row"><span class="kb-health-label">Manual Entries</span><span class="kb-health-value">' + (kb.manualEntries || 0) + '</span></div>'
+                + '</div>';
+        } else if (kbBody) {
+            kbBody.innerHTML = '<p class="dash-widget-empty">No Knowledge Base data yet</p>';
+        }
+    } catch (err) {
+        if (statsBody) statsBody.innerHTML = '<p class="dash-widget-empty">Stats unavailable</p>';
+        if (kbBody) kbBody.innerHTML = '<p class="dash-widget-empty">Stats unavailable</p>';
+    }
 }
 
 function openTool(toolId) {
@@ -17517,8 +17686,8 @@ async function initShopifyDashboard() {
 
     await refreshFeedDashboard();
 
-    // Show Tips & Tricks after dashboard data has loaded
-    renderTipsTricksCard();
+    // Render all dashboard widget cards (tips, runway, stats, etc.)
+    renderDashboardWidgets();
 
     // Auto-refresh every 2 minutes (matches backend cache TTL)
     stopShopifyDashPolling();
@@ -17677,12 +17846,6 @@ function renderRaffleDashboard(data) {
         <div class="raffle-kpi-label">Total Jackpot</div>
         <div class="raffle-kpi-value">${escapeHtml(data.poolFormatted)}</div>
         <div class="raffle-kpi-sub">50/50 jackpot</div>
-    </div>`;
-
-    html += `<div class="raffle-kpi-card">
-        <div class="raffle-kpi-label">Winner Takes</div>
-        <div class="raffle-kpi-value">${escapeHtml(data.prizeFormatted)}</div>
-        <div class="raffle-kpi-sub">Half the jackpot</div>
     </div>`;
 
     // Additional KPI cards from sales feed
