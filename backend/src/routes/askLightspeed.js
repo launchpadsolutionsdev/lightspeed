@@ -961,23 +961,44 @@ function generateSuggestions(completedTool, toolInput, toolResult) {
     return suggestions.slice(0, 4);
 }
 
-function generateTextSuggestions(text) {
-    const suggestions = [];
-    const lower = text.toLowerCase();
-    if (lower.includes('draw') || lower.includes('jackpot') || lower.includes('prize'))
-        suggestions.push({ label: 'Draft draw announcement', icon: '✉️', prompt: 'Draft an announcement email about this draw' });
-    if (lower.includes('event') || lower.includes('schedule') || lower.includes('date'))
-        suggestions.push({ label: 'Check Runway calendar', icon: '📅', prompt: 'Search the Runway calendar for related events' });
-    if (lower.includes('policy') || lower.includes('procedure') || lower.includes('rule'))
-        suggestions.push({ label: 'Search KB for policy', icon: '🔍', prompt: 'Search the Knowledge Base for related policies' });
-    if (lower.includes('sales') || lower.includes('velocity') || lower.includes('ticket') || lower.includes('revenue') || lower.includes('heartbeat'))
-        suggestions.push({ label: 'Check Heartbeat sales', icon: '📊', prompt: 'Show me the current sales velocity from Heartbeat' });
-    if (suggestions.length === 0)
-        suggestions.push(
-            { label: 'Search Knowledge Base', icon: '🔍', prompt: 'Search the Knowledge Base for more information about this' },
-            { label: 'Draft content about this', icon: '✏️', prompt: 'Help me draft content about this topic' }
-        );
-    return suggestions.slice(0, 3);
+async function generateAISuggestions(userMessage, assistantResponse) {
+    try {
+        const response = await claudeService.generateResponse({
+            messages: [{
+                role: 'user',
+                content: `Given this conversation, suggest 2-3 natural follow-up actions the user might want to take next.
+
+USER ASKED: ${userMessage.slice(0, 500)}
+
+ASSISTANT REPLIED: ${assistantResponse.slice(0, 1000)}
+
+Return ONLY a JSON array of objects, each with "label" (short button text, max 5 words), "icon" (single emoji), and "prompt" (the full question/request to send). The suggestions must be directly relevant to what was just discussed — do not suggest generic or unrelated actions. Focus on what would genuinely be useful as a next step given the specific topic.
+
+Example format: [{"label":"Draft email about this","icon":"✉️","prompt":"Draft an email about..."},{"label":"Dig deeper into X","icon":"🔍","prompt":"Tell me more about..."}]
+
+JSON array:`
+            }],
+            system: 'You are a helpful assistant that generates contextual follow-up suggestions for a charitable gaming / nonprofit lottery platform called Lightspeed. Available tools the user can leverage: Knowledge Base search, Runway calendar, Draft Studio (email, social, ad copy), Shopify order/customer lookup, Heartbeat live sales monitor, Home Base team posts, Insights Engine data analysis, and web search. Only suggest tools that are relevant to the conversation — never suggest irrelevant ones. Return ONLY valid JSON, no markdown fences.',
+            max_tokens: 300,
+            model: 'claude-haiku-4-5-20251001'
+        });
+
+        const text = response.content?.[0]?.text || '';
+        // Parse JSON — handle possible markdown fences
+        const cleaned = text.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+        const suggestions = JSON.parse(cleaned);
+        if (Array.isArray(suggestions) && suggestions.length > 0) {
+            return suggestions.slice(0, 3).map(s => ({
+                label: String(s.label || '').slice(0, 40),
+                icon: String(s.icon || '💡').slice(0, 2),
+                prompt: String(s.prompt || s.label || '')
+            }));
+        }
+        return [];
+    } catch (err) {
+        log.warn('AI suggestion generation failed', { error: err.message });
+        return [];
+    }
 }
 
 // ─── Duplicate Detection ─────────────────────────────────────────────
@@ -1136,7 +1157,14 @@ Web search is ENABLED. For any factual question, external topic, industry inform
         } else {
             const textContent = response.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
             if (textContent) {
-                const suggestions = generateTextSuggestions(textContent);
+                // Extract the user's last message for context
+                const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+                const userText = typeof lastUserMsg?.content === 'string'
+                    ? lastUserMsg.content
+                    : Array.isArray(lastUserMsg?.content)
+                        ? lastUserMsg.content.filter(b => b.type === 'text').map(b => b.text).join(' ')
+                        : '';
+                const suggestions = await generateAISuggestions(userText, textContent);
                 if (suggestions.length > 0) sendEvent({ type: 'suggestions', items: suggestions });
             }
         }
