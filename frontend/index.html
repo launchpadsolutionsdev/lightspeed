@@ -2531,6 +2531,63 @@
             stroke: #fff;
         }
 
+        /* Web search sources */
+        .als-web-sources {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        .als-source-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 100px;
+            background: rgba(14, 165, 233, 0.08);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            color: #0369a1;
+            font-size: 0.72rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            max-width: 280px;
+            overflow: hidden;
+        }
+
+        .als-source-pill span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .als-source-pill svg {
+            flex-shrink: 0;
+            stroke: #0ea5e9;
+        }
+
+        .als-source-pill:hover {
+            background: rgba(14, 165, 233, 0.15);
+            border-color: rgba(14, 165, 233, 0.35);
+        }
+
+        .als-source-more {
+            background: rgba(0, 0, 0, 0.04);
+            border-color: var(--border);
+            color: var(--text-muted);
+            font-family: inherit;
+        }
+
+        .als-source-more:hover {
+            background: rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 0, 0, 0.2);
+            color: var(--text-primary);
+        }
+
         /* Input row */
         .als-input-row {
             display: flex;
