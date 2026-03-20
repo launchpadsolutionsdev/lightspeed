@@ -1,14 +1,6 @@
 // Lightspeed by Launchpad Solutions v3.0
 // Multi-Tool Platform with Customer Response & Data Analysis
 
-// ==================== DARK MODE (early init to prevent flash) ====================
-(function initDarkMode() {
-    const saved = localStorage.getItem('lightspeed_dark_mode');
-    if (saved === 'true') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    }
-})();
-
 // ==================== STICKY CTA & BACK TO TOP ====================
 function initScrollUI() {
     var stickyCta = document.getElementById('stickyCta');
@@ -5305,24 +5297,6 @@ function loadSettings() {
         tzEl.disabled = !canEditTz;
         tzEl.title = canEditTz ? '' : 'Only admins can change the timezone';
         tzEl.style.opacity = canEditTz ? '1' : '0.6';
-    }
-
-    // --- Dark mode toggle ---
-    const darkToggle = document.getElementById("darkModeToggle");
-    if (darkToggle) {
-        darkToggle.checked = localStorage.getItem('lightspeed_dark_mode') === 'true';
-        // Remove old listener by cloning
-        const newToggle = darkToggle.cloneNode(true);
-        darkToggle.parentNode.replaceChild(newToggle, darkToggle);
-        newToggle.addEventListener('change', function() {
-            const isDark = this.checked;
-            localStorage.setItem('lightspeed_dark_mode', isDark ? 'true' : 'false');
-            if (isDark) {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-            }
-        });
     }
 
     // --- Notification preferences ---

@@ -20,8 +20,6 @@
     <meta name="twitter:image" content="https://www.lightspeedutility.ca/Social-Share-Image.jpg">
     <!-- FOUC guard: hide body until external CSS loads and overrides this -->
     <style>body{opacity:0}</style>
-    <!-- Dark mode early init to prevent flash -->
-    <script>if(localStorage.getItem('lightspeed_dark_mode')==='true')document.documentElement.setAttribute('data-theme','dark');</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -19110,19 +19108,6 @@
             <!-- Preferences -->
             <div style="margin-bottom: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
                 <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px;">Preferences</div>
-
-                <div class="form-group" style="margin-bottom: 14px;">
-                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-size: 0.85rem; font-weight: 500; color: var(--text-primary);">
-                        <div>
-                            <div>Dark Mode</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 2px;">Switch to a darker color scheme</div>
-                        </div>
-                        <label class="settings-toggle" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0;">
-                            <input type="checkbox" id="darkModeToggle" style="opacity: 0; width: 0; height: 0;">
-                            <span class="settings-toggle-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--border); border-radius: 24px; transition: 0.3s;"></span>
-                        </label>
-                    </label>
-                </div>
 
                 <div class="form-group" style="margin-bottom: 14px;">
                     <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-size: 0.85rem; font-weight: 500; color: var(--text-primary);">
