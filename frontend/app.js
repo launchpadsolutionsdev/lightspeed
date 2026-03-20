@@ -5233,7 +5233,7 @@ function generateUserId() {
 function loadSettings() {
     const defaultNameEl = document.getElementById("defaultName");
     const staffNameEl = document.getElementById("staffName");
-    const orgNameEl = document.getElementById("orgName");
+    const orgNameEl = document.getElementById("accountOrgName");
 
     if (defaultNameEl && defaultName) {
         defaultNameEl.value = defaultName;
@@ -9911,7 +9911,7 @@ window.copyInviteLink = copyInviteLink;
 // ==================== SETTINGS ====================
 function saveSettings() {
     defaultName = document.getElementById("defaultName").value.trim() || "Bella";
-    orgName = document.getElementById("orgName").value.trim();
+    orgName = document.getElementById("accountOrgName").value.trim();
     responseLanguage = document.getElementById("responseLanguage").value || "en";
 
     // Save notification preferences
