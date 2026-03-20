@@ -35,24 +35,40 @@ function sanitizeJsonString(jsonStr) {
  * @param {string} options.model - Optional model override
  * @returns {Promise<Object>} API response
  */
-async function generateResponse({ messages, system, max_tokens = 1024, tools, model }) {
+async function generateResponse({ messages, system, staticSystem, dynamicSystem, max_tokens = 1024, tools, model }) {
     if (!ANTHROPIC_API_KEY) {
         throw new Error('ANTHROPIC_API_KEY not configured');
+    }
+
+    // Build system blocks with prompt caching
+    // When staticSystem + dynamicSystem are provided, cache the static portion
+    // (base instructions, tool docs) and leave dynamic portion (KB, rules, memory) uncached.
+    let systemBlocks;
+    if (staticSystem !== null && staticSystem !== undefined && dynamicSystem !== undefined) {
+        systemBlocks = [
+            { type: 'text', text: staticSystem, cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: dynamicSystem, cache_control: { type: 'ephemeral' } }
+        ];
+    } else {
+        systemBlocks = system ? [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }] : '';
     }
 
     const body = {
         model: model || ANTHROPIC_MODEL,
         max_tokens,
-        system: system ? [{
-            type: 'text',
-            text: system,
-            cache_control: { type: 'ephemeral' }
-        }] : '',
+        system: systemBlocks,
         messages
     };
 
+    // Add tools with cache_control on the last tool definition
+    // Tools are static across requests so caching saves re-processing them
     if (tools && tools.length > 0) {
-        body.tools = tools;
+        body.tools = tools.map((tool, i) => {
+            if (i === tools.length - 1) {
+                return { ...tool, cache_control: { type: 'ephemeral' } };
+            }
+            return tool;
+        });
     }
 
     // Sanitize the final JSON to strip any lone surrogates from all fields
@@ -84,7 +100,19 @@ async function generateResponse({ messages, system, max_tokens = 1024, tools, mo
         throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
     }
 
-    return response.json();
+    const data = await response.json();
+
+    // Log cache performance when prompt caching is active
+    if (data.usage && (data.usage.cache_creation_input_tokens || data.usage.cache_read_input_tokens)) {
+        log.info('Prompt cache usage', {
+            model: body.model,
+            cache_read: data.usage.cache_read_input_tokens || 0,
+            cache_write: data.usage.cache_creation_input_tokens || 0,
+            input_tokens: data.usage.input_tokens || 0
+        });
+    }
+
+    return data;
 }
 
 /**
@@ -385,23 +413,15 @@ async function streamResponse({ messages, system, staticSystem, dynamicSystem, m
     }
 
     // Layer 1 (static) is cached across all requests via cache_control.
-    // Layer 2+3 (dynamic: org, tone, language, KB, rules, Shopify) is uncached since it varies per request.
+    // Layer 2 (dynamic: org, tone, language, KB, rules, Shopify) also gets cache_control
+    // so that within a single conversation the dynamic context is cached too.
     let systemBlocks;
     if (staticSystem !== null && staticSystem !== undefined && dynamicSystem !== undefined) {
-        // Split-prompt path: two blocks — static cached, dynamic uncached
         systemBlocks = [
-            {
-                type: 'text',
-                text: staticSystem,
-                cache_control: { type: 'ephemeral' }
-            },
-            {
-                type: 'text',
-                text: dynamicSystem
-            }
+            { type: 'text', text: staticSystem, cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: dynamicSystem, cache_control: { type: 'ephemeral' } }
         ];
     } else {
-        // Legacy path: single block with cache applied to the whole thing
         const systemText = system || dynamicSystem || '';
         systemBlocks = systemText ? [{
             type: 'text',
@@ -465,6 +485,15 @@ async function streamResponse({ messages, system, staticSystem, dynamicSystem, m
                         usage.output_tokens = event.usage.output_tokens || 0;
                     } else if (event.type === 'message_start' && event.message?.usage) {
                         usage.input_tokens = event.message.usage.input_tokens || 0;
+                        // Log cache performance from streaming responses
+                        const u = event.message.usage;
+                        if (u.cache_creation_input_tokens || u.cache_read_input_tokens) {
+                            log.info('Prompt cache usage (stream)', {
+                                cache_read: u.cache_read_input_tokens || 0,
+                                cache_write: u.cache_creation_input_tokens || 0,
+                                input_tokens: u.input_tokens || 0
+                            });
+                        }
                     }
                 } catch (e) {
                     // Skip unparseable lines (event: lines, empty lines, etc.)
