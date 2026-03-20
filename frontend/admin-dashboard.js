@@ -12,27 +12,21 @@ let adminUsersSearch = '';
 let adminOrgsSearch = '';
 let adminOrgsStatusFilter = '';
 let adminAllOrgs = null; // cached org list for dropdowns
+let adminAuditPage = 1;
+let adminAuditActionFilter = '';
+let adminAuditOrgFilter = '';
 
-// Check if current user is super admin
-async function checkSuperAdmin() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/dashboard`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        return response.ok;
-    } catch (error) {
-        return false;
-    }
+// Check if current user is super admin using the in-memory user object
+// (avoids a wasteful full dashboard API call on every page load)
+function checkSuperAdmin() {
+    return !!(typeof currentUser !== 'undefined' && currentUser && currentUser.isSuperAdmin);
 }
 
 // Initialize admin dashboard if user is super admin
 async function initAdminDashboard() {
     if (adminDashboardInitialized) return;
 
-    const isSuperAdmin = await checkSuperAdmin();
+    const isSuperAdmin = checkSuperAdmin();
 
     if (isSuperAdmin) {
         const adminNavBtn = document.getElementById('adminNavBtn');
@@ -85,6 +79,9 @@ function getAdminShell() {
                     <input type="checkbox" id="adminAutoRefreshToggle">
                     <span>Auto-refresh (30s)</span>
                 </label>
+                <button onclick="exportAdminReport()" class="admin-btn admin-btn-secondary">
+                    <span>↓</span> Export
+                </button>
                 <button onclick="loadAdminTab(adminCurrentTab)" class="admin-btn admin-btn-secondary">
                     <span>↻</span> Refresh
                 </button>
@@ -171,6 +168,7 @@ async function renderOverviewTab(container) {
             ${statCard('🏢', 'Organizations', overview.totalOrganizations, `+${overview.newOrgsThisWeek} this week`, 'positive')}
             ${statCard('🔥', 'Active (7d)', overview.activeUsers7Days, `${overview.activeUsersToday} today`, '', true)}
             ${statCard('⚡', 'Requests (30d)', overview.totalRequests30Days, `${overview.requestsToday} today`)}
+            ${statCard('⏱️', 'Avg Response', overview.avgResponseTimeMs > 0 ? (overview.avgResponseTimeMs / 1000).toFixed(1) + 's' : '—', '')}
             ${statCard('✅', 'Success Rate', overview.successRate + '%', '')}
         </div>
 
@@ -830,6 +828,7 @@ function renderOrgSetupPanel(panel, data) {
             <div style="padding: 1.25rem; border-top: 1px solid #e5e7eb;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <h4 style="margin: 0; font-size: 0.95rem; color: #374151;">Content Templates <span class="text-muted" style="font-weight:400;">(${data.templateCount} templates)</span></h4>
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="adminImportAllTemplates('${org.id}')">Import All from Library</button>
                 </div>
                 <div id="adminTemplateList" style="max-height: 200px; overflow-y: auto;">
                     <div class="text-muted" style="padding: 0.5rem; font-size: 0.85rem;">Loading templates...</div>
@@ -1914,57 +1913,100 @@ window.toggleAdminKBForm = toggleAdminKBForm;
 window.addAdminKBEntry = addAdminKBEntry;
 window.deleteAdminKBEntry = deleteAdminKBEntry;
 window.adminImportAllTemplates = adminImportAllTemplates;
+// Audit log exports
+window.adminFilterAuditAction = adminFilterAuditAction;
+window.adminFilterAuditOrg = adminFilterAuditOrg;
+window.adminClearAuditFilters = adminClearAuditFilters;
+window.adminAuditGoToPage = adminAuditGoToPage;
 
 // ==================== AUDIT LOG TAB ====================
+const AUDIT_ACTION_LABELS = {
+    'ORG_SETTINGS_UPDATED': 'Updated org settings',
+    'MEMBER_INVITED': 'Invited member',
+    'MEMBER_JOINED': 'Member joined',
+    'MEMBER_REMOVED': 'Removed member',
+    'MEMBER_ROLE_CHANGED': 'Changed member role',
+    'KB_ENTRY_CREATED': 'Created KB entry',
+    'KB_ENTRY_UPDATED': 'Updated KB entry',
+    'KB_ENTRY_DELETED': 'Deleted KB entry',
+    'KB_BULK_IMPORTED': 'Bulk imported KB entries',
+    'KB_DOC_UPLOADED': 'Uploaded document to KB',
+    'SUPER_ADMIN_TOGGLED': 'Toggled super admin',
+    'ADMIN_USER_ASSIGNED_TO_ORG': 'Assigned user to org',
+    'ADMIN_USER_ROLE_CHANGED': 'Changed user role (admin)',
+    'ADMIN_USER_REMOVED_FROM_ORG': 'Removed user from org (admin)',
+    'ADMIN_ORG_CREATED': 'Created organization',
+    'ADMIN_USER_DELETED': 'Deleted user',
+    'ADMIN_ORGANIZATION_DELETED': 'Deleted organization',
+    'ADMIN_ORG_UPDATED': 'Updated organization (admin)',
+    'SUBSCRIPTION_ACTIVATED': 'Subscription activated',
+    'SUBSCRIPTION_CANCELLED': 'Subscription cancelled',
+    'ORG_DATA_EXPORTED': 'Exported org data'
+};
+
 async function renderAuditTab(container) {
-    const data = await fetchAdminData('/api/admin/audit-logs?limit=200');
+    const pageSize = 50;
+    const offset = (adminAuditPage - 1) * pageSize;
 
-    const ACTION_LABELS = {
-        'ORG_SETTINGS_UPDATED': 'Updated org settings',
-        'MEMBER_INVITED': 'Invited member',
-        'MEMBER_JOINED': 'Member joined',
-        'MEMBER_REMOVED': 'Removed member',
-        'MEMBER_ROLE_CHANGED': 'Changed member role',
-        'KB_ENTRY_CREATED': 'Created KB entry',
-        'KB_ENTRY_UPDATED': 'Updated KB entry',
-        'KB_ENTRY_DELETED': 'Deleted KB entry',
-        'KB_BULK_IMPORTED': 'Bulk imported KB entries',
-        'KB_DOC_UPLOADED': 'Uploaded document to KB',
-        'SUPER_ADMIN_TOGGLED': 'Toggled super admin',
-        'ADMIN_USER_ASSIGNED_TO_ORG': 'Assigned user to org',
-        'ADMIN_USER_ROLE_CHANGED': 'Changed user role (admin)',
-        'ADMIN_USER_REMOVED_FROM_ORG': 'Removed user from org (admin)',
-        'ADMIN_ORG_CREATED': 'Created organization',
-        'ADMIN_USER_DELETED': 'Deleted user',
-        'ADMIN_ORGANIZATION_DELETED': 'Deleted organization',
-        'ADMIN_ORG_UPDATED': 'Updated organization (admin)',
-        'SUBSCRIPTION_ACTIVATED': 'Subscription activated',
-        'SUBSCRIPTION_CANCELLED': 'Subscription cancelled',
-        'ORG_DATA_EXPORTED': 'Exported org data'
-    };
+    let url = `/api/admin/audit-logs?limit=${pageSize}&offset=${offset}`;
+    if (adminAuditActionFilter) url += `&action=${encodeURIComponent(adminAuditActionFilter)}`;
+    if (adminAuditOrgFilter) url += `&org_id=${encodeURIComponent(adminAuditOrgFilter)}`;
 
-    const rows = (data.logs || []).map(log => {
-        const actor = log.actor_email || 'System';
-        const label = ACTION_LABELS[log.action] || log.action;
-        const org = log.org_name || '—';
-        const time = new Date(log.created_at).toLocaleString();
-        const changesStr = log.changes ? `<code>${JSON.stringify(log.changes).substring(0, 120)}</code>` : '—';
+    // Fetch audit data and org list in parallel (for org filter dropdown)
+    const [data, orgs] = await Promise.all([
+        fetchAdminData(url),
+        fetchAllOrgs().catch(() => [])
+    ]);
+
+    const totalPages = Math.ceil((data.total || 0) / pageSize);
+
+    // Build action options from the known labels
+    const actionOptions = Object.entries(AUDIT_ACTION_LABELS)
+        .map(([value, label]) => `<option value="${value}" ${adminAuditActionFilter === value ? 'selected' : ''}>${label}</option>`)
+        .join('');
+
+    // Build org options
+    const orgOptions = (Array.isArray(orgs) ? orgs : [])
+        .map(o => `<option value="${o.id}" ${adminAuditOrgFilter === o.id ? 'selected' : ''}>${escapeHtmlAdmin(o.name)}</option>`)
+        .join('');
+
+    const rows = (data.logs || []).map(entry => {
+        const actor = escapeHtmlAdmin(entry.actor_email || 'System');
+        const label = AUDIT_ACTION_LABELS[entry.action] || entry.action;
+        const org = escapeHtmlAdmin(entry.org_name || '—');
+        const time = new Date(entry.created_at).toLocaleString();
+        const changesStr = entry.changes ? `<code>${escapeHtmlAdmin(JSON.stringify(entry.changes).substring(0, 120))}</code>` : '—';
         return `<tr>
-            <td>${time}</td>
-            <td>${actor}</td>
-            <td><span class="admin-badge">${label}</span></td>
+            <td style="white-space:nowrap;">${time}</td>
+            <td class="email">${actor}</td>
+            <td><span class="admin-role-badge">${escapeHtmlAdmin(label)}</span></td>
             <td>${org}</td>
-            <td>${log.resource_type}${log.resource_id ? ` (${log.resource_id.substring(0, 8)}...)` : ''}</td>
+            <td>${escapeHtmlAdmin(entry.resource_type || '')}${entry.resource_id ? ` <span class="text-muted">(${entry.resource_id.substring(0, 8)}...)</span>` : ''}</td>
             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${changesStr}</td>
         </tr>`;
     }).join('');
 
     container.innerHTML = `
-        <div class="admin-section">
-            <h2>Audit Log</h2>
-            <p style="color:var(--text-secondary);margin-bottom:16px;">Complete trail of all sensitive operations across the platform. Total: ${data.total || 0} events.</p>
-            <div class="admin-table-wrapper">
-                <table class="admin-table">
+        <div class="admin-toolbar">
+            <div class="admin-toolbar-left">
+                <select id="adminAuditActionFilter" class="admin-select" onchange="adminFilterAuditAction(this.value)">
+                    <option value="">All Actions</option>
+                    ${actionOptions}
+                </select>
+                <select id="adminAuditOrgFilter" class="admin-select" onchange="adminFilterAuditOrg(this.value)">
+                    <option value="">All Organizations</option>
+                    ${orgOptions}
+                </select>
+                ${adminAuditActionFilter || adminAuditOrgFilter ? `<button onclick="adminClearAuditFilters()" class="admin-btn admin-btn-secondary admin-btn-sm">Clear Filters</button>` : ''}
+            </div>
+            <div class="admin-toolbar-right">
+                <span class="admin-count">${data.total || 0} events</span>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="admin-table-container">
+                <table class="admin-table admin-table-full">
                     <thead>
                         <tr>
                             <th>Time</th>
@@ -1975,10 +2017,45 @@ async function renderAuditTab(container) {
                             <th>Details</th>
                         </tr>
                     </thead>
-                    <tbody>${rows || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-secondary);">No audit logs yet</td></tr>'}</tbody>
+                    <tbody>
+                        ${rows || '<tr><td colspan="6" class="text-center text-muted">No audit logs found</td></tr>'}
+                    </tbody>
                 </table>
             </div>
-        </div>`;
+
+            ${totalPages > 1 ? `
+                <div class="admin-pagination">
+                    <button onclick="adminAuditGoToPage(${adminAuditPage - 1})" class="admin-btn admin-btn-secondary admin-btn-sm" ${adminAuditPage <= 1 ? 'disabled' : ''}>← Prev</button>
+                    <span class="admin-page-info">Page ${adminAuditPage} of ${totalPages}</span>
+                    <button onclick="adminAuditGoToPage(${adminAuditPage + 1})" class="admin-btn admin-btn-secondary admin-btn-sm" ${adminAuditPage >= totalPages ? 'disabled' : ''}>Next →</button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function adminFilterAuditAction(value) {
+    adminAuditActionFilter = value;
+    adminAuditPage = 1;
+    loadAdminTab('audit');
+}
+
+function adminFilterAuditOrg(value) {
+    adminAuditOrgFilter = value;
+    adminAuditPage = 1;
+    loadAdminTab('audit');
+}
+
+function adminClearAuditFilters() {
+    adminAuditActionFilter = '';
+    adminAuditOrgFilter = '';
+    adminAuditPage = 1;
+    loadAdminTab('audit');
+}
+
+function adminAuditGoToPage(page) {
+    adminAuditPage = page;
+    loadAdminTab('audit');
 }
 
 // Auto-init on page load
