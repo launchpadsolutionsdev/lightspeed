@@ -159,7 +159,8 @@ router.post('/google', async (req, res) => {
                 firstName: user.first_name,
                 lastName: user.last_name,
                 picture: user.picture,
-                isSuperAdmin: user.is_super_admin
+                isSuperAdmin: user.is_super_admin,
+                createdAt: user.created_at
             },
             organization,
             isNewUser,
@@ -333,7 +334,8 @@ router.post('/microsoft', async (req, res) => {
                 firstName: user.first_name,
                 lastName: user.last_name,
                 picture: user.picture,
-                isSuperAdmin: user.is_super_admin
+                isSuperAdmin: user.is_super_admin,
+                createdAt: user.created_at
             },
             organization,
             isNewUser,
@@ -369,7 +371,8 @@ router.get('/me', authenticate, async (req, res) => {
                 firstName: req.user.first_name,
                 lastName: req.user.last_name,
                 picture: req.user.picture,
-                isSuperAdmin: req.user.is_super_admin
+                isSuperAdmin: req.user.is_super_admin,
+                createdAt: req.user.created_at
             },
             organization,
             needsOrganization: !organization
