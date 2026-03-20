@@ -1095,8 +1095,14 @@ When the user asks about a specific customer, email address, order, or purchase,
 
 When the user asks about current sales, velocity, how tickets are selling, revenue pace, sales trends, or Heartbeat data, you MUST call search_heartbeat_data. Do NOT say you don't have access to live sales data — you do.`;
 
+        // Reinforce web search when enabled
+        if (webSearch === 'true') {
+            enhancedSystem += `\n\nCRITICAL REMINDER — WEB SEARCH:
+Web search is ENABLED. For any factual question, external topic, industry information, statistics, regulations, news, or "who/what/when/where" question, you MUST use the web_search tool BEFORE answering. Do NOT answer from memory or training data alone — search the web first to provide accurate, current, and sourced information. The user turned on web search because they want verified, up-to-date answers with sources.`;
+        }
+
         // Whitelist models
-        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
+        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6'];
         const selectedModel = model && ALLOWED_MODELS.includes(model) ? model : undefined;
 
         // Include web search tool only when explicitly enabled by the user
@@ -1162,6 +1168,12 @@ When the user asks about current sales, velocity, how tickets are selling, reven
  */
 async function processResponse(response, messages, system, organizationId, userId, model, sendEvent, trackTool, tools) {
     const content = response.content || [];
+
+    // Log content block types for debugging web search
+    const blockTypes = content.map(b => b.type);
+    if (blockTypes.some(t => t === 'server_tool_use' || t === 'web_search_tool_result')) {
+        log.info('Web search blocks detected', { blockTypes });
+    }
 
     // Collect text, tool_use, and web search source blocks
     let textParts = [];
@@ -1596,7 +1608,7 @@ router.post('/confirm-action', authenticate, async (req, res) => {
         }
 
         // Let Claude compose a nice response
-        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'];
+        const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6'];
         const selectedModel = model && ALLOWED_MODELS.includes(model) ? model : undefined;
 
         const response = await claudeService.generateResponse({
@@ -1742,8 +1754,11 @@ SHOPIFY TOOLS:
 HEARTBEAT (LIVE RAFFLE MONITOR):
 - search_heartbeat_data: Query real-time raffle sales data from the Heartbeat monitor. Returns current totals (revenue, tickets, numbers sold), sales velocity across time windows (1m to 7d), surge detection, and optionally package tier breakdowns. Use when the user asks about current sales, velocity, how fast tickets are selling, revenue performance, sales trends, or anything related to live raffle metrics.
 
-${webSearch ? `WEB SEARCH:
-- web_search: Search the internet for current information. This is a server-managed tool — you can call it like any other tool, and the results will be provided automatically. Use this when the user asks about external topics relevant to charitable gaming, lottery regulations, industry news, best practices, or anything where up-to-date web information would be helpful. Do NOT use web search for questions that should be answered from the organization's own Knowledge Base, calendar, or Shopify data — always check internal tools first.
+${webSearch ? `WEB SEARCH (ENABLED):
+- web_search: Search the internet for current, verified information. This is a server-managed tool — call it and the results are provided automatically.
+- CRITICAL: The user has enabled web search for this conversation. You MUST use web_search for ANY question about facts, events, statistics, organizations, regulations, news, best practices, or anything that benefits from up-to-date or verifiable information. Do NOT answer factual questions from memory alone — always search first to provide accurate, sourced answers.
+- The ONLY exceptions where you should skip web search: questions answered by the organization's own Knowledge Base, calendar, Shopify data, or Home Base. For those, use internal tools instead.
+- After using web search, your response will automatically include source links for the user.
 
 ` : ''}ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
@@ -1763,7 +1778,7 @@ TOOL USAGE GUIDELINES:
 - For customer lookups ("find customer...", "who is...", "look up..."): Call search_shopify_customers with the query
 - For data analysis requests: Call run_insights_analysis with the data
 - For current sales, velocity, "how are sales going?", "how fast are tickets selling?", heartbeat metrics, or live raffle performance: Call search_heartbeat_data. Use window parameter to focus on a specific time range, or "all" for a full overview.
-${webSearch ? `- For external/industry questions ("what are the regulations for...", "best practices for...", "latest news about..."): Call web_search — but only AFTER checking the Knowledge Base first. Internal data always takes priority.
+${webSearch ? `- For ANY factual question, external topic, industry question, regulation, news, statistics, or "who/what/when/where" questions: You MUST call web_search. Do not rely on training data for factual claims — search first. The only exception is questions answerable from internal tools (KB, calendar, Shopify, Home Base).
 ` : ''}- For policy/procedure questions: Call search_knowledge_base
 - For team announcements, internal updates, or "what did the team post about X?": Call search_home_base with a query
 - For "latest post", "recent posts", "what's new in home base", or "summarize home base": Call search_home_base WITHOUT a query to browse recent posts
