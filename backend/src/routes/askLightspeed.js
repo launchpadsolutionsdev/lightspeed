@@ -1031,7 +1031,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
     };
 
     try {
-        const { message, conversation, model, tone, language, webSearch } = req.body;
+        const { message, conversation, model, language, webSearch } = req.body;
         const file = req.file;
         const organizationId = req.organizationId;
         const userId = req.userId;
@@ -1074,7 +1074,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
 
         // Build system prompt with full org profile (always use server-built prompt)
         const orgProfile = await fetchOrgProfile(organizationId);
-        const systemPrompt = buildAgenticSystemPrompt(orgProfile, { tone, language, webSearch: webSearch === 'true' });
+        const systemPrompt = buildAgenticSystemPrompt(orgProfile, { language, webSearch: webSearch === 'true' });
 
         // Build messages array
         const messages = [
@@ -1639,15 +1639,10 @@ async function fetchOrgProfile(organizationId) {
 
 function buildAgenticSystemPrompt(org, options = {}) {
     const orgName = org.name || 'your organization';
-    const { tone, language, webSearch } = options;
+    const { language, webSearch } = options;
 
-    // Build tone/language instructions
-    const TONE_MAP = {
-        professional: 'professional and helpful',
-        friendly: 'warm, friendly, and conversational',
-        casual: 'casual and relaxed'
-    };
-    const toneDesc = TONE_MAP[tone] || TONE_MAP.professional;
+    // Tone is always professional
+    const toneDesc = 'professional and helpful';
 
     const LANG_MAP = {
         fr: '\nLANGUAGE: You MUST write your entire response in French (Français). The customer inquiry may be in any language, but your response must always be in French.\n',
