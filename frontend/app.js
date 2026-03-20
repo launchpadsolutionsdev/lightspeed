@@ -2409,6 +2409,7 @@ const ASK_SAMPLE_PROMPTS = [
 let askConversation = [];
 let askTone = 'professional';
 let alsModel = 'claude-sonnet-4-6';
+let alsWebSearch = false;
 let askListenersSetup = false;
 let alsStreamController = null;
 let alsQueuedMessage = null;
@@ -3277,6 +3278,11 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
     formData.append('tone', askTone || 'professional');
     formData.append('language', responseLanguage || 'en');
 
+    // Pass web search toggle state
+    if (alsWebSearch) {
+        formData.append('webSearch', 'true');
+    }
+
     // Attach the server-parsed file (first one — API accepts one file)
     const serverFile = attachments.find(att => att.isServerParsed);
     if (serverFile) {
@@ -3667,6 +3673,15 @@ function initAskLightspeedPage() {
                 saveAskConversation();
             });
         });
+
+        // Web search toggle
+        const webSearchToggle = document.getElementById('alsWebSearchToggle');
+        if (webSearchToggle) {
+            webSearchToggle.addEventListener('click', () => {
+                alsWebSearch = !alsWebSearch;
+                webSearchToggle.classList.toggle('active', alsWebSearch);
+            });
+        }
 
         // Send button
         document.getElementById('alsSendBtn').addEventListener('click', sendAlsMessage);
@@ -4206,7 +4221,7 @@ Keep responses concise but thorough.`;
 
         // Check if we should use the agentic endpoint (server-parsed files)
         // Use agentic endpoint when server-parsed files are attached or message likely needs tools
-        const useAgentic = alsHasServerParsedFiles(currentAttachments) || alsNeedsAgenticMode(message) || alsConversationUsedAgentic;
+        const useAgentic = alsHasServerParsedFiles(currentAttachments) || alsNeedsAgenticMode(message) || alsConversationUsedAgentic || alsWebSearch;
         let aiText = '';
 
         if (useAgentic) {
