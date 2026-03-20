@@ -16467,7 +16467,9 @@ let ropState = {
     selectedType: null,
     selectedJurisdictionId: null,
     initialized: false,
-    saveTimeout: null
+    saveTimeout: null,
+    versions: [],
+    outputMode: 'edit'
 };
 
 function initRulesOfPlay() {
@@ -16494,9 +16496,52 @@ function setupRopEventListeners() {
     document.getElementById('ropGenerateBtn').addEventListener('click', ropGenerate);
     document.getElementById('ropRegenerateBtn').addEventListener('click', ropGenerate);
     document.getElementById('ropCopyBtn').addEventListener('click', ropCopyOutput);
-    document.getElementById('ropExportBtn').addEventListener('click', ropExport);
     document.getElementById('ropSaveOutputBtn').addEventListener('click', ropSaveOutput);
     document.getElementById('ropNotifyBtn').addEventListener('click', ropNotifyMe);
+
+    // Export dropdown
+    document.getElementById('ropExportBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('ropExportMenu').classList.toggle('open');
+    });
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('ropExportMenu');
+        if (menu) menu.classList.remove('open');
+    });
+    document.querySelectorAll('.rop-export-option').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('ropExportMenu').classList.remove('open');
+            ropExport(btn.dataset.format);
+        });
+    });
+
+    // Edit/Preview toggle
+    document.querySelectorAll('.rop-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.rop-mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            ropState.outputMode = btn.dataset.mode;
+            ropToggleOutputMode();
+        });
+    });
+
+    // Refinement buttons
+    document.querySelectorAll('.rop-refine-btn').forEach(btn => {
+        btn.addEventListener('click', () => ropRefineOutput(btn.dataset.refine));
+    });
+
+    // Version history
+    document.getElementById('ropVersionHistoryBtn').addEventListener('click', ropShowVersionHistory);
+    document.getElementById('ropBackFromHistory').addEventListener('click', () => {
+        ropShowOutput(document.getElementById('ropOutputText').value);
+    });
+    document.getElementById('ropRestoreVersionBtn').addEventListener('click', ropRestoreVersion);
+
+    // Workflow buttons
+    document.getElementById('ropSubmitForReviewBtn').addEventListener('click', () => ropUpdateWorkflowStatus('in_review'));
+    document.getElementById('ropApproveBtn').addEventListener('click', () => ropUpdateWorkflowStatus('approved'));
+    document.getElementById('ropRejectBtn').addEventListener('click', () => ropUpdateWorkflowStatus('draft'));
 
     // Type card selection
     document.getElementById('ropTypeCards').addEventListener('click', (e) => {
@@ -16545,6 +16590,7 @@ function ropRenderDraftsList() {
         return;
     }
 
+    const statusLabels = { draft: 'Draft', generated: 'Generated', finalized: 'Finalized', in_review: 'In Review', approved: 'Approved' };
     container.innerHTML = `
         <table class="rop-table">
             <thead>
@@ -16563,9 +16609,12 @@ function ropRenderDraftsList() {
                         <td class="rop-draft-name">${escapeHtml(d.name)}</td>
                         <td><span class="rop-type-badge" style="--type-color: ${ROP_TYPE_COLORS[d.raffle_type] || '#888'}">${ROP_TYPE_LABELS[d.raffle_type] || d.raffle_type}</span></td>
                         <td>${d.province_state_name || '—'}</td>
-                        <td><span class="rop-status-badge rop-status-${d.status}">${d.status}</span></td>
+                        <td><span class="rop-status-badge rop-status-${d.status}">${statusLabels[d.status] || d.status}</span></td>
                         <td>${new Date(d.updated_at).toLocaleDateString()}</td>
-                        <td><button class="rop-delete-btn" data-id="${d.id}" title="Delete">&#128465;</button></td>
+                        <td>
+                            <button class="rop-clone-btn" data-id="${d.id}" title="Clone draft">&#128203;</button>
+                            <button class="rop-delete-btn" data-id="${d.id}" title="Delete">&#128465;</button>
+                        </td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -16574,8 +16623,16 @@ function ropRenderDraftsList() {
     // Row click -> open form
     container.querySelectorAll('.rop-draft-row').forEach(row => {
         row.addEventListener('click', (e) => {
-            if (e.target.closest('.rop-delete-btn')) return;
+            if (e.target.closest('.rop-delete-btn') || e.target.closest('.rop-clone-btn')) return;
             ropShowForm(row.dataset.id);
+        });
+    });
+
+    // Clone buttons
+    container.querySelectorAll('.rop-clone-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await ropCloneDraft(btn.dataset.id);
         });
     });
 
@@ -16739,6 +16796,8 @@ async function ropShowForm(draftId) {
         badge.style.setProperty('--type-color', ROP_TYPE_COLORS[ropState.currentDraft.raffle_type] || '#888');
 
         ropRenderForm();
+        ropUpdateProgress();
+        ropUpdateWorkflowUI(ropState.currentDraft.status || 'draft');
     } catch (err) {
         showToast('Failed to load draft', 'error');
         ropShowList();
@@ -17023,6 +17082,7 @@ function ropAttachFormListeners() {
             document.getElementById('ropSaveStatus').textContent = 'Unsaved changes';
             clearTimeout(ropState.saveTimeout);
             ropState.saveTimeout = setTimeout(ropSaveDraft, 3000);
+            ropUpdateProgress();
         }
     });
 
@@ -17197,6 +17257,12 @@ async function ropGenerate() {
     // Save current form data first
     await ropSaveDraft();
 
+    // Save current output as a version before regenerating
+    const currentText = document.getElementById('ropOutputText').value;
+    if (currentText && currentText.trim()) {
+        ropSaveVersion(currentText, 'Before regeneration');
+    }
+
     ropSwitchView('ropGeneratingView');
 
     try {
@@ -17208,6 +17274,10 @@ async function ropGenerate() {
         if (!resp.ok) await handleApiError(resp);
 
         const data = await resp.json();
+
+        // Save the new generation as a version
+        ropSaveVersion(data.generated_document, 'Generated');
+
         ropShowOutput(data.generated_document);
     } catch (err) {
         if (err.message === 'TRIAL_EXPIRED') {
@@ -17229,6 +17299,13 @@ function ropShowOutput(text) {
         badge.style.setProperty('--type-color', ROP_TYPE_COLORS[d.raffle_type] || '#888');
     }
     document.getElementById('ropOutputText').value = text || '';
+
+    // Reset to edit mode
+    ropState.outputMode = 'edit';
+    document.querySelectorAll('.rop-mode-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.rop-mode-btn[data-mode="edit"]').classList.add('active');
+    document.getElementById('ropOutputText').style.display = '';
+    document.getElementById('ropOutputPreview').style.display = 'none';
 }
 
 function ropCopyOutput() {
@@ -17240,16 +17317,34 @@ function ropCopyOutput() {
     });
 }
 
-async function ropExport() {
+async function ropExport(format) {
     if (!ropState.currentDraftId) return;
+    format = format || 'docx';
     // Save any edits first
     await ropSaveOutput();
+
+    if (format === 'txt') {
+        // Plain text export - client side
+        const text = document.getElementById('ropOutputText').value;
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Rules_of_Play.txt`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Text file exported');
+        return;
+    }
 
     try {
         const token = localStorage.getItem('authToken');
         const resp = await fetch(`${API_BASE_URL}/api/rules-of-play/${ropState.currentDraftId}/export`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ format })
         });
         if (!resp.ok) throw new Error('Export failed');
 
@@ -17257,12 +17352,13 @@ async function ropExport() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Rules_of_Play.doc`;
+        const ext = format === 'pdf' ? 'pdf' : 'doc';
+        a.download = `Rules_of_Play.${ext}`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        showToast('Document exported');
+        showToast('Document exported as ' + format.toUpperCase());
     } catch (err) {
         showToast('Export failed', 'error');
     }
@@ -17280,6 +17376,361 @@ async function ropSaveOutput() {
         showToast('Document saved');
     } catch (err) {
         showToast('Save failed', 'error');
+    }
+}
+
+// --- Clone Draft ---
+
+async function ropCloneDraft(draftId) {
+    try {
+        // Load the source draft
+        const resp = await fetch(`${API_BASE_URL}/api/rules-of-play/${draftId}`, { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error('Failed to load draft');
+        const source = await resp.json();
+
+        // Create a new draft with cloned data
+        const createResp = await fetch(`${API_BASE_URL}/api/rules-of-play`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                name: source.name + ' (Copy)',
+                raffle_type: source.raffle_type,
+                jurisdiction_id: source.jurisdiction_id,
+                form_data: source.form_data || {}
+            })
+        });
+        if (!createResp.ok) throw new Error('Failed to clone draft');
+        showToast('Draft cloned successfully');
+        ropShowList();
+    } catch (err) {
+        showToast('Failed to clone draft', 'error');
+    }
+}
+
+// --- Edit / Preview Toggle ---
+
+function ropToggleOutputMode() {
+    const textarea = document.getElementById('ropOutputText');
+    const preview = document.getElementById('ropOutputPreview');
+
+    if (ropState.outputMode === 'preview') {
+        textarea.style.display = 'none';
+        preview.style.display = '';
+        preview.innerHTML = ropRenderMarkdown(textarea.value);
+    } else {
+        textarea.style.display = '';
+        preview.style.display = 'none';
+    }
+}
+
+function ropRenderMarkdown(text) {
+    if (!text) return '<p style="color: var(--text-muted);">No content to preview.</p>';
+
+    let html = escapeHtml(text);
+
+    // Headers: ### -> h3, ## -> h2, # -> h1
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Bold: **text**
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Italic: *text*
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    // Horizontal rules
+    html = html.replace(/^---+$/gm, '<hr>');
+
+    // Unordered lists
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+    // Numbered lists
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+    // Tables (simple pipe format)
+    html = html.replace(/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/gm, (match, header, sep, rows) => {
+        const ths = header.split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
+        const trs = rows.trim().split('\n').map(row => {
+            const tds = row.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
+            return `<tr>${tds}</tr>`;
+        }).join('');
+        return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+    });
+
+    // Paragraphs: double newlines
+    html = html.replace(/\n\n+/g, '</p><p>');
+    html = '<p>' + html + '</p>';
+
+    // Single newlines to <br> (within paragraphs only)
+    html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
+
+    // Clean up empty paragraphs
+    html = html.replace(/<p>\s*<\/p>/g, '');
+    // Move block elements out of paragraphs
+    html = html.replace(/<p>(<(?:h[1-3]|ul|ol|table|hr)[^]*?<\/(?:h[1-3]|ul|ol|table)>|<hr>)<\/p>/g, '$1');
+
+    return html;
+}
+
+// --- Refinement ---
+
+async function ropRefineOutput(type) {
+    if (!ropState.currentDraftId) return;
+    const text = document.getElementById('ropOutputText').value;
+    if (!text || !text.trim()) {
+        showToast('No document to refine', 'error');
+        return;
+    }
+
+    // Save current version before refinement
+    ropSaveVersion(text, 'Before refinement: ' + type);
+
+    // Disable buttons while refining
+    document.querySelectorAll('.rop-refine-btn').forEach(b => { b.classList.add('loading'); b.disabled = true; });
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/rules-of-play/${ropState.currentDraftId}/refine`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ refinement_type: type, current_document: text })
+        });
+
+        if (!resp.ok) await handleApiError(resp);
+
+        const data = await resp.json();
+        const refined = data.refined_document || data.generated_document;
+
+        // Save refined version
+        ropSaveVersion(refined, 'Refined: ' + type);
+
+        document.getElementById('ropOutputText').value = refined;
+        if (ropState.outputMode === 'preview') ropToggleOutputMode();
+        showToast('Document refined');
+    } catch (err) {
+        if (err.message === 'TRIAL_EXPIRED') return;
+        showToast('Refinement failed: ' + err.message, 'error');
+    } finally {
+        document.querySelectorAll('.rop-refine-btn').forEach(b => { b.classList.remove('loading'); b.disabled = false; });
+    }
+}
+
+// --- Version History ---
+
+function ropSaveVersion(text, label) {
+    if (!text || !text.trim()) return;
+    const draftId = ropState.currentDraftId;
+    if (!draftId) return;
+
+    // Load existing versions from localStorage
+    const storageKey = `rop_versions_${draftId}`;
+    const versions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+    // Don't save duplicate of last version
+    if (versions.length > 0 && versions[versions.length - 1].text === text) return;
+
+    versions.push({
+        id: Date.now(),
+        label: label || 'Version ' + (versions.length + 1),
+        text: text,
+        timestamp: new Date().toISOString()
+    });
+
+    // Keep max 20 versions
+    if (versions.length > 20) versions.splice(0, versions.length - 20);
+
+    localStorage.setItem(storageKey, JSON.stringify(versions));
+    ropState.versions = versions;
+}
+
+function ropShowVersionHistory() {
+    const draftId = ropState.currentDraftId;
+    if (!draftId) return;
+
+    const storageKey = `rop_versions_${draftId}`;
+    ropState.versions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+    ropSwitchView('ropVersionHistory');
+
+    const list = document.getElementById('ropVersionList');
+    const diffPanel = document.getElementById('ropVersionDiff');
+    diffPanel.style.display = 'none';
+
+    if (ropState.versions.length === 0) {
+        list.innerHTML = '<div class="rop-empty-state"><p>No versions yet. Generate or refine a document to create versions.</p></div>';
+        return;
+    }
+
+    list.innerHTML = ropState.versions.slice().reverse().map((v, i) => {
+        const actualIdx = ropState.versions.length - 1 - i;
+        const isCurrent = actualIdx === ropState.versions.length - 1;
+        return `
+            <div class="rop-version-card ${isCurrent ? 'active' : ''}" data-version-idx="${actualIdx}">
+                <div class="rop-version-info">
+                    <span class="rop-version-label">${escapeHtml(v.label)}</span>
+                    <span class="rop-version-meta">${new Date(v.timestamp).toLocaleString()}</span>
+                </div>
+                <div class="rop-version-actions">
+                    ${isCurrent ? '<span class="rop-version-badge current">Current</span>' : '<span class="rop-version-badge">v' + (actualIdx + 1) + '</span>'}
+                </div>
+            </div>`;
+    }).join('');
+
+    // Click to show diff
+    list.querySelectorAll('.rop-version-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const idx = parseInt(card.dataset.versionIdx);
+            ropShowVersionDiff(idx);
+        });
+    });
+}
+
+function ropShowVersionDiff(versionIdx) {
+    const versions = ropState.versions;
+    if (!versions[versionIdx]) return;
+
+    const selected = versions[versionIdx];
+    const current = document.getElementById('ropOutputText').value;
+    ropState._restoreVersionIdx = versionIdx;
+
+    const diffPanel = document.getElementById('ropVersionDiff');
+    diffPanel.style.display = '';
+
+    document.getElementById('ropDiffTitle').textContent = `${selected.label} — ${new Date(selected.timestamp).toLocaleString()}`;
+
+    // Simple line-by-line diff
+    const oldLines = selected.text.split('\n');
+    const newLines = current.split('\n');
+    const maxLen = Math.max(oldLines.length, newLines.length);
+    let diffHtml = '';
+
+    for (let i = 0; i < maxLen; i++) {
+        const oldLine = oldLines[i];
+        const newLine = newLines[i];
+        if (oldLine === undefined) {
+            diffHtml += `<div class="rop-diff-add">+ ${escapeHtml(newLine)}</div>`;
+        } else if (newLine === undefined) {
+            diffHtml += `<div class="rop-diff-remove">- ${escapeHtml(oldLine)}</div>`;
+        } else if (oldLine !== newLine) {
+            diffHtml += `<div class="rop-diff-remove">- ${escapeHtml(oldLine)}</div>`;
+            diffHtml += `<div class="rop-diff-add">+ ${escapeHtml(newLine)}</div>`;
+        } else {
+            diffHtml += `<div>  ${escapeHtml(oldLine)}</div>`;
+        }
+    }
+
+    document.getElementById('ropDiffContent').innerHTML = diffHtml;
+}
+
+function ropRestoreVersion() {
+    const idx = ropState._restoreVersionIdx;
+    if (idx === undefined || !ropState.versions[idx]) return;
+
+    const currentText = document.getElementById('ropOutputText').value;
+    if (currentText && currentText.trim()) {
+        ropSaveVersion(currentText, 'Before restore');
+    }
+
+    const restoredText = ropState.versions[idx].text;
+    document.getElementById('ropOutputText').value = restoredText;
+    ropSaveVersion(restoredText, 'Restored from: ' + ropState.versions[idx].label);
+
+    showToast('Version restored');
+    ropShowOutput(restoredText);
+}
+
+// --- Progress Indicator ---
+
+function ropUpdateProgress() {
+    const body = document.getElementById('ropFormBody');
+    if (!body) return;
+
+    const fields = body.querySelectorAll('.rop-field:not([type="checkbox"]), .rop-repeat-input, .rop-draw-field');
+    let filled = 0;
+    let total = 0;
+
+    fields.forEach(f => {
+        total++;
+        if (f.value && f.value.trim()) filled++;
+    });
+
+    const pct = total === 0 ? 0 : Math.round((filled / total) * 100);
+    const pctEl = document.getElementById('ropProgressPct');
+    const fillEl = document.getElementById('ropProgressFill');
+    if (pctEl) pctEl.textContent = pct + '%';
+    if (fillEl) fillEl.style.width = pct + '%';
+
+    // Per-section completion indicators
+    body.querySelectorAll('.rop-form-section').forEach(section => {
+        const sectionFields = section.querySelectorAll('.rop-field:not([type="checkbox"]), .rop-repeat-input, .rop-draw-field');
+        let sFilled = 0;
+        let sTotal = 0;
+        sectionFields.forEach(f => {
+            sTotal++;
+            if (f.value && f.value.trim()) sFilled++;
+        });
+
+        const header = section.querySelector('.rop-section-header h3');
+        if (!header) return;
+        let check = header.querySelector('.rop-section-check');
+        if (sTotal > 0 && sFilled === sTotal) {
+            if (!check) {
+                check = document.createElement('span');
+                check.className = 'rop-section-check';
+                header.appendChild(check);
+            }
+            check.textContent = ' \u2713';
+        } else if (check) {
+            check.remove();
+        }
+    });
+}
+
+// --- Workflow / Approval ---
+
+function ropUpdateWorkflowUI(status) {
+    const steps = document.querySelectorAll('.rop-wf-step');
+    const statusOrder = ['draft', 'generated', 'in_review', 'approved'];
+    const currentIdx = statusOrder.indexOf(status);
+
+    steps.forEach(step => {
+        const stepStatus = step.dataset.status;
+        const stepIdx = statusOrder.indexOf(stepStatus);
+        step.classList.remove('active', 'completed');
+        if (stepIdx < currentIdx) {
+            step.classList.add('completed');
+        } else if (stepIdx === currentIdx) {
+            step.classList.add('active');
+        }
+    });
+
+    // Show/hide workflow action buttons
+    const submitBtn = document.getElementById('ropSubmitForReviewBtn');
+    const approveBtn = document.getElementById('ropApproveBtn');
+    const rejectBtn = document.getElementById('ropRejectBtn');
+
+    submitBtn.style.display = (status === 'generated') ? '' : 'none';
+    approveBtn.style.display = (status === 'in_review') ? '' : 'none';
+    rejectBtn.style.display = (status === 'in_review') ? '' : 'none';
+}
+
+async function ropUpdateWorkflowStatus(newStatus) {
+    if (!ropState.currentDraftId) return;
+
+    try {
+        await fetch(`${API_BASE_URL}/api/rules-of-play/${ropState.currentDraftId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        if (ropState.currentDraft) ropState.currentDraft.status = newStatus;
+        ropUpdateWorkflowUI(newStatus);
+        const labels = { draft: 'Draft', generated: 'Generated', in_review: 'In Review', approved: 'Approved' };
+        showToast('Status updated to ' + (labels[newStatus] || newStatus));
+    } catch (err) {
+        showToast('Failed to update status', 'error');
     }
 }
 
