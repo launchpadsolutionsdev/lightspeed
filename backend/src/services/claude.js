@@ -97,6 +97,11 @@ async function generateResponse({ messages, system, staticSystem, dynamicSystem,
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         log.error('Claude API error', { status: response.status, error: errorData });
+        if (response.status === 429) {
+            const retryAfter = response.headers.get('retry-after');
+            const waitSec = retryAfter ? parseInt(retryAfter, 10) : 60;
+            throw new Error(`Rate limited — please wait ${waitSec}s and try again, or reduce the data size.`);
+        }
         throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
     }
 
@@ -449,6 +454,11 @@ async function streamResponse({ messages, system, staticSystem, dynamicSystem, m
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         log.error('Claude streaming API error', { status: response.status, error: errorData });
+        if (response.status === 429) {
+            const retryAfter = response.headers.get('retry-after');
+            const waitSec = retryAfter ? parseInt(retryAfter, 10) : 60;
+            throw new Error(`Rate limited — please wait ${waitSec}s and try again, or reduce the data size.`);
+        }
         throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
     }
 

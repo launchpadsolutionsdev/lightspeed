@@ -7308,9 +7308,10 @@ function sampleRawData(data) {
     const columns = Object.keys(data[0]);
     const totalRows = data.length;
 
-    // Take first 150 rows, then evenly spaced samples from the rest
-    const FIRST_N = 150;
-    const SAMPLE_N = 350;
+    // Take first 50 rows, then evenly spaced samples from the rest
+    // Keep total modest to stay within API token rate limits
+    const FIRST_N = 50;
+    const SAMPLE_N = 100;
     const sampleRows = [];
 
     // First batch: rows 0..49
@@ -7420,7 +7421,7 @@ function buildAnalysisSystemPrompt(reportType, data) {
 
     // ── Metrics and data ────────────────────────────────────────────────
     prompt += `COMPUTED METRICS (from the dashboard):\n`;
-    prompt += JSON.stringify(metrics, null, 2);
+    prompt += JSON.stringify(metrics);
 
     if (rawData && rawData.csv) {
         prompt += `\n\nRAW DATA (${rawData.totalRows.toLocaleString()} total rows, showing ${rawData.sampleCount} representative rows):\n`;
@@ -7583,7 +7584,12 @@ async function streamIapResponse() {
 
         if (err.name !== 'AbortError') {
             msgEl.style.display = '';
-            msgEl.innerHTML = `<p style="color: var(--danger, #ef4444);">Unable to generate analysis. ${escapeHtml(err.message)}</p>`;
+            const isRateLimit = /rate.?limit|429|too many|wait.*try again/i.test(err.message);
+            if (isRateLimit) {
+                msgEl.innerHTML = `<p style="color: var(--danger, #ef4444);">Analysis rate limit reached. Please wait a minute and try again with a smaller dataset if possible.</p><button class="iap-retry-btn" onclick="this.parentNode.remove(); openAnalysisPanel(iapCurrentReport);" style="margin-top:8px; padding:6px 16px; border-radius:6px; border:1px solid var(--border); cursor:pointer; background:var(--surface, #fff);">Retry</button>`;
+            } else {
+                msgEl.innerHTML = `<p style="color: var(--danger, #ef4444);">Unable to generate analysis. ${escapeHtml(err.message)}</p>`;
+            }
             if (!msgEl.parentNode) messagesEl.appendChild(msgEl);
         }
     } finally {

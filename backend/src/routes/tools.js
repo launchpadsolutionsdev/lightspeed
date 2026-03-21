@@ -14,6 +14,7 @@ const { buildEnhancedPrompt } = require('../services/promptBuilder');
 const { buildResponseAssistantPrompt, buildCalendarContext } = require('../services/systemPromptBuilder');
 const { validateOutput, validateFormatCompliance } = require('../services/outputValidator');
 const log = require('../services/logger');
+const { estimateTokens } = require('../services/tokenCounter');
 
 /**
  * POST /api/response-assistant/generate
@@ -383,7 +384,7 @@ When referencing organization-specific terminology, programs, events, or campaig
 3. Recommendations for improvement
 
 Data:
-${JSON.stringify(data, null, 2)}`;
+${JSON.stringify(data)}`;
                 break;
 
             case 'sellers':
@@ -393,7 +394,7 @@ ${JSON.stringify(data, null, 2)}`;
 3. Recommendations for seller support
 
 Data:
-${JSON.stringify(data, null, 2)}`;
+${JSON.stringify(data)}`;
                 break;
 
             case 'payment_tickets':
@@ -403,7 +404,7 @@ ${JSON.stringify(data, null, 2)}`;
 3. Recommendations for follow-up
 
 Data:
-${JSON.stringify(data, null, 2)}`;
+${JSON.stringify(data)}`;
                 break;
 
             case 'shopify':
@@ -417,14 +418,14 @@ ${JSON.stringify(data, null, 2)}`;
 7. Actionable recommendations to improve store performance
 
 Data:
-${JSON.stringify(data, null, 2)}`;
+${JSON.stringify(data)}`;
                 break;
 
             default:
                 userPrompt = `Analyze this data and provide insights and recommendations:
 
 Data:
-${JSON.stringify(data, null, 2)}`;
+${JSON.stringify(data)}`;
         }
 
         if (additionalContext) {
@@ -441,6 +442,19 @@ ${JSON.stringify(data, null, 2)}`;
                 _injectCalendar: true
             }
         );
+
+        // Token budget guard – truncate data if the prompt is too large
+        const MAX_INPUT_TOKENS = 25000; // stay well under typical org rate limits
+        const estimatedTokens = estimateTokens(enhancedSystem) + estimateTokens(userPrompt);
+        if (estimatedTokens > MAX_INPUT_TOKENS) {
+            log.warn('[INSIGHTS] Prompt too large, truncating data', { estimated: estimatedTokens, limit: MAX_INPUT_TOKENS });
+            // Re-serialize data compactly and truncate to fit
+            const dataStr = JSON.stringify(data);
+            const overageChars = (estimatedTokens - MAX_INPUT_TOKENS) * 4; // tokens → chars
+            const allowedDataChars = Math.max(2000, dataStr.length - overageChars);
+            const truncatedData = dataStr.substring(0, allowedDataChars) + '...[truncated]';
+            userPrompt = userPrompt.replace(dataStr, truncatedData);
+        }
 
         // Call Claude API
         const startTime = Date.now();
