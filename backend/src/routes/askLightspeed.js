@@ -19,6 +19,7 @@ const { buildEnhancedPrompt } = require('../services/promptBuilder');
 const { DRAFT_STATIC_PROMPT, buildDraftDynamicPrompt, buildDraftUserPrompt, getMaxTokensForContentType } = require('../services/draftPromptBuilder');
 const shopifyService = require('../services/shopify');
 const log = require('../services/logger');
+const { estimateTokens } = require('../services/tokenCounter');
 
 // Multer config: in-memory storage, 10MB limit
 const upload = multer({
@@ -748,8 +749,20 @@ Use markdown formatting for readability.`;
     );
 
     try {
+        // Token budget guard – truncate data if the prompt is too large
+        let dataStr = JSON.stringify(data);
+        const MAX_INPUT_TOKENS = 25000;
+        const userContent = `Please analyze this data:\n\n${dataStr}${additionalCtx}`;
+        const estimatedTokens = estimateTokens(enhancedSystem) + estimateTokens(userContent);
+        if (estimatedTokens > MAX_INPUT_TOKENS) {
+            log.warn('[INSIGHTS] Prompt too large, truncating data', { estimated: estimatedTokens, limit: MAX_INPUT_TOKENS });
+            const overageChars = (estimatedTokens - MAX_INPUT_TOKENS) * 4;
+            const allowedDataChars = Math.max(2000, dataStr.length - overageChars);
+            dataStr = dataStr.substring(0, allowedDataChars) + '...[truncated]';
+        }
+
         const response = await claudeService.generateResponse({
-            messages: [{ role: 'user', content: `Please analyze this data:\n\n${JSON.stringify(data, null, 2)}${additionalCtx}` }],
+            messages: [{ role: 'user', content: `Please analyze this data:\n\n${dataStr}${additionalCtx}` }],
             system: enhancedSystem,
             max_tokens: 2048
         });

@@ -7222,8 +7222,8 @@ function collectReportData(reportType) {
         return el ? el.textContent.trim() : '';
     };
 
-    // Include a representative sample of the raw uploaded data
-    const rawDataContext = sampleRawData(dataPendingFileData);
+    // Build a compact pre-aggregated digest instead of raw data sampling
+    const dataDigest = buildDataDigest(dataPendingFileData, reportType);
 
     if (reportType === 'customer-purchases') {
         return {
@@ -7241,7 +7241,7 @@ function collectReportData(reportType) {
             summaryTotalCustomers: getText('summaryTotalCustomers'),
             summaryAvgOrderPerCustomer: getText('summaryAvgOrderPerCustomer'),
             summaryAvgSalesPerCustomer: getText('summaryAvgSalesPerCustomer'),
-            rawData: rawDataContext
+            dataDigest
         };
     }
 
@@ -7255,7 +7255,7 @@ function collectReportData(reportType) {
             cityTable: extractTableData('data-page-customers-overview', 'table'),
             postalTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(2)'),
             areaCodeTable: extractTableData('data-page-customers-overview', '.data-tables-grid table:nth-child(3)'),
-            rawData: rawDataContext
+            dataDigest
         };
     }
 
@@ -7271,7 +7271,7 @@ function collectReportData(reportType) {
             shopifyRevenue: getText('dataPTShopifyRevenue'),
             inPersonRevenue: getText('dataPTInPersonRevenue'),
             sellerTable: extractTableData('data-page-payment-tickets-overview', 'table'),
-            rawData: rawDataContext
+            dataDigest
         };
     }
 
@@ -7295,11 +7295,11 @@ function collectReportData(reportType) {
             ipCCPct: getText('dataSellersIPCCPct'),
             ipDebitTotal: getText('dataSellersIPDebitTotal'),
             ipDebitPct: getText('dataSellersIPDebitPct'),
-            rawData: rawDataContext
+            dataDigest
         };
     }
 
-    return { rawData: rawDataContext };
+    return { dataDigest };
 }
 
 function sampleRawData(data) {
@@ -7308,9 +7308,10 @@ function sampleRawData(data) {
     const columns = Object.keys(data[0]);
     const totalRows = data.length;
 
-    // Take first 150 rows, then evenly spaced samples from the rest
-    const FIRST_N = 150;
-    const SAMPLE_N = 350;
+    // Take first 50 rows, then evenly spaced samples from the rest
+    // Keep total modest to stay within API token rate limits
+    const FIRST_N = 50;
+    const SAMPLE_N = 100;
     const sampleRows = [];
 
     // First batch: rows 0..49
@@ -7340,6 +7341,134 @@ function sampleRawData(data) {
         sampleCount: sampleRows.length,
         csv: header + '\n' + rows.join('\n')
     };
+}
+
+/**
+ * Build a compact pre-aggregated data digest from raw uploaded data.
+ * Produces dense summary stats (~2-3K tokens) instead of raw CSV rows (~8-15K),
+ * giving Claude more signal per token and staying within API rate limits.
+ */
+function buildDataDigest(data, reportType) {
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+
+    const columns = Object.keys(data[0]);
+    const totalRows = data.length;
+
+    const findCol = (exactMatches, partialMatches = []) => {
+        for (const exact of exactMatches) {
+            const found = columns.find(c => c.toLowerCase().trim() === exact.toLowerCase());
+            if (found) return found;
+        }
+        for (const partial of partialMatches) {
+            const found = columns.find(c => c.toLowerCase().includes(partial.toLowerCase()));
+            if (found) return found;
+        }
+        return null;
+    };
+
+    const digest = { totalRows, columns };
+
+    const spentCol = findCol(['total spent', 'amount', 'total', 'spent', 'revenue', 'purchase total', 'total purchases', 'paid', 'sales'], ['spent', 'amount', 'revenue', 'paid', 'price', 'sales']);
+    const emailCol = findCol(['e-mail', 'email', 'email address'], ['email']);
+    const nameCol = findCol(['customer', 'customer name', 'name', 'full name', 'buyer'], ['customer', 'buyer', 'name']);
+    const cityCol = findCol(['city'], ['city']);
+    const dateCol = findCol(['date', 'order date', 'purchase date', 'created at', 'created_at'], ['date']);
+
+    // Revenue distribution by amount tier
+    if (spentCol) {
+        const amounts = data.map(r => parseCurrency(r[spentCol])).filter(v => v > 0);
+        const total = amounts.reduce((s, v) => s + v, 0);
+        amounts.sort((a, b) => a - b);
+        digest.revenue = {
+            total: Math.round(total),
+            min: amounts[0],
+            max: amounts[amounts.length - 1],
+            median: amounts[Math.floor(amounts.length / 2)],
+            mean: Math.round(total / amounts.length * 100) / 100
+        };
+
+        // Package tier breakdown
+        const tiers = {};
+        amounts.forEach(v => {
+            const bucket = v <= 10 ? '$10' : v <= 20 ? '$20' : v <= 50 ? '$50' : v <= 75 ? '$75' : v <= 100 ? '$100' : '$100+';
+            if (!tiers[bucket]) tiers[bucket] = { count: 0, revenue: 0 };
+            tiers[bucket].count++;
+            tiers[bucket].revenue += v;
+        });
+        digest.tierBreakdown = tiers;
+    }
+
+    // Top buyers
+    if (spentCol && (emailCol || nameCol)) {
+        const buyers = {};
+        data.forEach(r => {
+            const key = (r[emailCol] || r[nameCol] || '').toString().trim().toLowerCase();
+            if (!key) return;
+            if (!buyers[key]) buyers[key] = { name: r[nameCol] || r[emailCol] || key, total: 0, orders: 0 };
+            buyers[key].total += parseCurrency(r[spentCol]);
+            buyers[key].orders++;
+        });
+        digest.topBuyers = Object.values(buyers)
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 15)
+            .map(b => ({ name: b.name, total: Math.round(b.total), orders: b.orders }));
+        digest.uniqueCustomers = Object.keys(buyers).length;
+        const orderCounts = Object.values(buyers).map(b => b.orders);
+        digest.repeatBuyers = orderCounts.filter(c => c > 1).length;
+    }
+
+    // City distribution
+    if (cityCol) {
+        const cities = {};
+        data.forEach(r => {
+            const city = (r[cityCol] || '').toString().trim();
+            if (!city) return;
+            const key = city.toLowerCase();
+            if (!cities[key]) cities[key] = { name: city, count: 0, revenue: 0 };
+            cities[key].count++;
+            if (spentCol) cities[key].revenue += parseCurrency(r[spentCol]);
+        });
+        digest.topCities = Object.values(cities)
+            .sort((a, b) => b.revenue - a.revenue || b.count - a.count)
+            .slice(0, 20)
+            .map(c => ({ city: c.name, customers: c.count, revenue: Math.round(c.revenue) }));
+        digest.totalCities = Object.keys(cities).length;
+    }
+
+    // Date-based sales curve (group by date)
+    if (dateCol && spentCol) {
+        const daily = {};
+        data.forEach(r => {
+            const raw = (r[dateCol] || '').toString().trim();
+            if (!raw) return;
+            const d = new Date(raw);
+            if (isNaN(d)) return;
+            const key = d.toISOString().slice(0, 10);
+            if (!daily[key]) daily[key] = { sales: 0, revenue: 0 };
+            daily[key].sales++;
+            daily[key].revenue += parseCurrency(r[spentCol]);
+        });
+        const sorted = Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0]));
+        if (sorted.length > 0) {
+            // Summarize into weekly buckets if more than 14 days
+            if (sorted.length > 14) {
+                const weekly = [];
+                for (let i = 0; i < sorted.length; i += 7) {
+                    const chunk = sorted.slice(i, i + 7);
+                    const weekStart = chunk[0][0];
+                    const weekEnd = chunk[chunk.length - 1][0];
+                    const sales = chunk.reduce((s, [, d]) => s + d.sales, 0);
+                    const revenue = chunk.reduce((s, [, d]) => s + d.revenue, 0);
+                    weekly.push({ period: `${weekStart} to ${weekEnd}`, sales, revenue: Math.round(revenue) });
+                }
+                digest.salesCurve = weekly;
+            } else {
+                digest.salesCurve = sorted.map(([date, d]) => ({ date, sales: d.sales, revenue: Math.round(d.revenue) }));
+            }
+        }
+    }
+
+    return digest;
 }
 
 function extractTableData(pageId, tableSelector) {
@@ -7385,10 +7514,10 @@ function buildAnalysisSystemPrompt(reportType, data) {
         'sellers': 'Sellers'
     };
 
-    // Separate raw data from computed metrics for clearer prompt structure
-    const rawData = data.rawData;
+    // Separate pre-aggregated digest from computed metrics for clearer prompt structure
+    const dataDigest = data.dataDigest;
     const metrics = { ...data };
-    delete metrics.rawData;
+    delete metrics.dataDigest;
 
     let prompt = `You are an expert data analyst specializing in charitable gaming — specifically 50/50 raffles, Catch The Ace, Fixed Prize Lotteries, and House Lotteries run by nonprofits. You are analyzing a "${reportNames[reportType]}" report from their Insights Engine.\n\n`;
 
@@ -7408,7 +7537,7 @@ function buildAnalysisSystemPrompt(reportType, data) {
     prompt += `6. TONE: These are charitable organizations, not Fortune 500 companies. Be encouraging and constructive. Small variations are normal — don't over-alarm on minor fluctuations. Frame recommendations as opportunities, not problems. Be professional but warm.\n\n`;
 
     // ── Data limitations guidance ────────────────────────────────────────
-    prompt += `7. DATA LIMITATIONS: You are working with the dashboard's computed metrics plus a sample of the raw data (not the full dataset). If the user asks a follow-up question that requires more data than what was provided (e.g., "show me the top 100 cities" when only the top 20 are shown), be upfront about it. Say something like: "That's a great question! Unfortunately, I only have access to a summary of the data right now and can't break it down that far. A couple of quick ways to get that: you could use Excel's COUNTIF or pivot table features on the original export, or check if your Raffle Service Provider dashboard has that breakdown built in." Always try to provide a helpful alternative.\n\n`;
+    prompt += `7. DATA LIMITATIONS: You are working with the dashboard's computed metrics plus a pre-aggregated digest of the full dataset (top buyers, city distributions, tier breakdowns, sales curves, etc.). This digest covers the entire dataset but only includes the top entries per category (e.g., top 15 buyers, top 20 cities). If the user asks for more granularity (e.g., "show me the top 100 cities" when only the top 20 are provided), be upfront about it. Say something like: "That's a great question! I have aggregate data for the top 20 cities but can't break it down further. A couple of quick ways to get that: you could use Excel's COUNTIF or pivot table features on the original export, or check if your Raffle Service Provider dashboard has that breakdown built in." Always try to provide a helpful alternative.\n\n`;
 
     // ── Report-specific instructions ────────────────────────────────────
     if (reportType === 'customer-purchases') {
@@ -7420,12 +7549,11 @@ function buildAnalysisSystemPrompt(reportType, data) {
 
     // ── Metrics and data ────────────────────────────────────────────────
     prompt += `COMPUTED METRICS (from the dashboard):\n`;
-    prompt += JSON.stringify(metrics, null, 2);
+    prompt += JSON.stringify(metrics);
 
-    if (rawData && rawData.csv) {
-        prompt += `\n\nRAW DATA (${rawData.totalRows.toLocaleString()} total rows, showing ${rawData.sampleCount} representative rows):\n`;
-        prompt += `Columns: ${rawData.columns.join(', ')}\n\n`;
-        prompt += rawData.csv;
+    if (dataDigest) {
+        prompt += `\n\nPRE-AGGREGATED DATA DIGEST (${dataDigest.totalRows.toLocaleString()} total rows, fully analyzed):\n`;
+        prompt += JSON.stringify(dataDigest);
     }
 
     prompt += `\n\nProvide a thorough yet concise analysis including:\n`;
@@ -7583,7 +7711,12 @@ async function streamIapResponse() {
 
         if (err.name !== 'AbortError') {
             msgEl.style.display = '';
-            msgEl.innerHTML = `<p style="color: var(--danger, #ef4444);">Unable to generate analysis. ${escapeHtml(err.message)}</p>`;
+            const isRateLimit = /rate.?limit|429|too many|wait.*try again/i.test(err.message);
+            if (isRateLimit) {
+                msgEl.innerHTML = `<p style="color: var(--danger, #ef4444);">Analysis rate limit reached. Please wait a minute and try again with a smaller dataset if possible.</p><button class="iap-retry-btn" onclick="this.parentNode.remove(); openAnalysisPanel(iapCurrentReport);" style="margin-top:8px; padding:6px 16px; border-radius:6px; border:1px solid var(--border); cursor:pointer; background:var(--surface, #fff);">Retry</button>`;
+            } else {
+                msgEl.innerHTML = `<p style="color: var(--danger, #ef4444);">Unable to generate analysis. ${escapeHtml(err.message)}</p>`;
+            }
             if (!msgEl.parentNode) messagesEl.appendChild(msgEl);
         }
     } finally {
