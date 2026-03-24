@@ -17,10 +17,11 @@ const { authenticate } = require('../middleware/auth');
 const log = require('../services/logger');
 const pool = require('../../config/database');
 
-// Legacy env-var feed URLs — used as fallback when an org has no DB-configured URLs.
-const ENV_FEED_URL = process.env.DASHBOARD_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/dak';
-const ENV_WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/winners';
-const ENV_SALES_FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/event-details';
+// Optional env-var feed URLs — only used as fallback during migration period.
+// No hardcoded defaults; orgs must configure their own URLs via Teams > BUMP Feed Configuration.
+const ENV_FEED_URL = process.env.DASHBOARD_FEED_URL || null;
+const ENV_WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || null;
+const ENV_SALES_FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || null;
 const FEED_CACHE_TTL = 2 * 60 * 1000; // 2-minute cache for near-real-time pool updates
 
 // Per-org caches: Map<orgId, { data, cacheTime }>
@@ -694,9 +695,7 @@ async function backgroundFetchAllOrgs() {
         );
         await Promise.allSettled(promises);
     } catch (err) {
-        // Query itself failed (e.g. migration not yet applied) — fall back to env vars
-        log.warn('Background fetch org query failed, using env fallback', { error: err.message });
-        fetchFeed('_legacy', ENV_FEED_URL, ENV_WINNERS_FEED_URL, ENV_SALES_FEED_URL).catch(() => { _bgFetchFails++; });
+        log.warn('Background fetch org query failed', { error: err.message });
     }
 }
 

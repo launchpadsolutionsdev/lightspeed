@@ -577,7 +577,7 @@ const REPORT_TYPES = {
     },
     'payment-tickets': {
         name: 'Payment Tickets',
-        description: 'Analyze sales by seller/channel. Shows Shopify (online) vs in-person sales breakdown, with detailed metrics for Foundation Donation Office and Thunder Bay 50/50 Store sellers.',
+        description: 'Analyze sales by seller/channel. Shows Shopify (online) vs in-person sales breakdown, with detailed metrics per seller location.',
         uploadTitle: 'Upload Payment Tickets Report',
         uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
     },
@@ -1354,7 +1354,7 @@ function _renderWizardStep1() {
             <form id="wizardForm1" class="wizard-form">
                 <div class="wizard-field-group">
                     <label for="wizOrgName">Organization Name <span class="required">*</span></label>
-                    <input type="text" id="wizOrgName" placeholder="e.g., Thunder Bay Regional Health Sciences Foundation" required>
+                    <input type="text" id="wizOrgName" placeholder="e.g., Your Organization Name" required>
                     <span class="wizard-hint">Your nonprofit or charity name</span>
                 </div>
                 <div class="wizard-field-row">
@@ -6631,7 +6631,7 @@ function analyzeDataFull(data) {
             if (isRSU) {
                 rsuRevenue += amount;
                 rsuCount++;
-                rawCity = 'Thunder Bay';
+                rawCity = 'Local';
             }
         }
 
@@ -8115,12 +8115,12 @@ function analyzePaymentTicketsReport(data) {
         }
 
         const sellerLower = seller.toLowerCase();
-        // Foundation Donation Office: Seller 1 and Seller 2
+        // Primary sellers: Seller 1 and Seller 2
         if (sellerLower === 'seller 1' || sellerLower === 'seller 2' ||
             sellerLower === 'seller1' || sellerLower === 'seller2') {
             foundationSellers[seller] = data;
         } else {
-            // Thunder Bay 50/50 Store: all other sellers
+            // Other in-person sellers
             storeSellers[seller] = data;
         }
     });

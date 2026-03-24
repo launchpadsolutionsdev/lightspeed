@@ -883,12 +883,13 @@ async function executeSearchHeartbeatData(input, organizationId) {
 
         // Always fetch live feed for tier breakdown and accurate numbers data
         try {
-            // Look up org's configured sales feed URL, fall back to env var
-            let FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/event-details';
+            // Look up org's configured sales feed URL
+            let FEED_URL = null;
             try {
                 const orgFeedResult = await pool.query('SELECT bump_sales_feed_url FROM organizations WHERE id = $1', [organizationId]);
-                if (orgFeedResult.rows[0]?.bump_sales_feed_url) FEED_URL = orgFeedResult.rows[0].bump_sales_feed_url;
-            } catch (_e) { /* use fallback */ }
+                FEED_URL = orgFeedResult.rows[0]?.bump_sales_feed_url || process.env.DASHBOARD_SALES_FEED_URL || null;
+            } catch (_e) { /* no feed URL available */ }
+            if (!FEED_URL) throw new Error('No sales feed URL configured');
             const { XMLParser } = require('fast-xml-parser');
             const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '_', parseTagValue: true, trimValues: true, isArray: (name) => name === 'node' });
             const controller = new AbortController();
