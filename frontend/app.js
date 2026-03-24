@@ -18805,7 +18805,51 @@ function renderTickerPriceBlock(win, samples) {
 }
 
 /**
- * Render SVG sparkline for the ticker card with green/red coloring.
+ * Format a dollar value for Y-axis labels (compact: $1.2M, $450K, $3,200).
+ */
+function fmtAxisDollar(val) {
+    if (val >= 1000000) return '$' + (val / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (val >= 10000) return '$' + (val / 1000).toFixed(0) + 'K';
+    if (val >= 1000) return '$' + (val / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return '$' + val.toLocaleString();
+}
+
+/**
+ * Format a timestamp for X-axis labels based on the selected window duration.
+ */
+function fmtAxisTime(ts, windowKey) {
+    const d = new Date(ts);
+    const opts = { timeZone: 'America/New_York' };
+    if (['7d', '24h'].includes(windowKey)) {
+        return d.toLocaleString('en-US', { ...opts, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', '');
+    }
+    return d.toLocaleString('en-US', { ...opts, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).replace(' ', '');
+}
+
+/**
+ * Compute nice Y-axis tick values (4 gridlines including min/max).
+ */
+function niceAxisTicks(minVal, maxVal, count) {
+    if (maxVal === minVal) {
+        return [minVal - 1, minVal, minVal + 1];
+    }
+    const rawStep = (maxVal - minVal) / (count - 1);
+    const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const nice = [1, 2, 2.5, 5, 10];
+    let step = nice.find(n => n * mag >= rawStep) * mag;
+    const niceMin = Math.floor(minVal / step) * step;
+    const ticks = [];
+    for (let v = niceMin; v <= maxVal + step * 0.01; v += step) {
+        ticks.push(Math.round(v * 100) / 100);
+    }
+    // Ensure we have at least count ticks
+    while (ticks.length < count) ticks.push(ticks[ticks.length - 1] + step);
+    return ticks;
+}
+
+/**
+ * Render enhanced area chart with Y-axis labels, gridlines, X-axis time labels,
+ * and hover tooltips for the velocity ticker.
  */
 function renderTickerSparkline(samples, win) {
     if (samples.length < 2) {
@@ -18816,16 +18860,22 @@ function renderTickerSparkline(samples, win) {
     }
 
     const salesValues = samples.map(s => s.sales);
-    const minVal = Math.min(...salesValues);
-    const maxVal = Math.max(...salesValues);
-    const range = maxVal - minVal || 1;
-    const w = 500;
-    const h = 80;
-    const pad = 4;
+    const rawMin = Math.min(...salesValues);
+    const rawMax = Math.max(...salesValues);
+
+    // Compute nice ticks for Y-axis (4 ticks)
+    const ticks = niceAxisTicks(rawMin, rawMax, 4);
+    const axisMin = ticks[0];
+    const axisMax = ticks[ticks.length - 1];
+    const range = axisMax - axisMin || 1;
+
+    const w = 600;
+    const h = 160;
+    const pad = 6;
 
     const points = samples.map((s, i) => {
         const x = pad + (i / (samples.length - 1)) * (w - 2 * pad);
-        const y = h - pad - ((s.sales - minVal) / range) * (h - 2 * pad);
+        const y = h - pad - ((s.sales - axisMin) / range) * (h - 2 * pad);
         return { x: parseFloat(x.toFixed(1)), y: parseFloat(y.toFixed(1)) };
     });
 
@@ -18833,24 +18883,138 @@ function renderTickerSparkline(samples, win) {
     const isUp = salesValues[salesValues.length - 1] >= salesValues[0];
     const strokeColor = isUp ? '#00C853' : '#FF1744';
     const gradId = 'tickerGrad_' + _velocitySelectedWindow;
+    const chartId = 'velChart_' + _velocitySelectedWindow;
+    const windowKey = win ? win.key : _velocitySelectedWindow;
 
-    let html = `<div class="velocity-ticker-chart">`;
+    // Y-axis labels (top to bottom = max to min)
+    const reversedTicks = [...ticks].reverse();
+
+    let html = `<div class="velocity-ticker-chart" id="${chartId}">`;
+    html += '<div class="velocity-ticker-chart-inner">';
+
+    // Y-axis
+    html += '<div class="velocity-ticker-yaxis">';
+    reversedTicks.forEach(t => {
+        html += `<span class="velocity-ticker-yaxis-label">${fmtAxisDollar(t)}</span>`;
+    });
+    html += '</div>';
+
+    // SVG wrapper
+    html += '<div class="velocity-ticker-svg-wrap">';
     html += `<svg class="velocity-ticker-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">`;
     html += `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">`;
-    html += `<stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.25"/>`;
+    html += `<stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.18"/>`;
     html += `<stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.02"/>`;
     html += `</linearGradient></defs>`;
-    html += `<polygon points="${pad},${h} ${pointsStr} ${points[points.length - 1].x},${h}" fill="url(#${gradId})"/>`;
-    html += `<polyline points="${pointsStr}" fill="none" stroke="${strokeColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+    // Grid lines
+    ticks.forEach(t => {
+        const gy = h - pad - ((t - axisMin) / range) * (h - 2 * pad);
+        html += `<line x1="${pad}" y1="${gy.toFixed(1)}" x2="${w - pad}" y2="${gy.toFixed(1)}" class="velocity-ticker-gridline"/>`;
+    });
+
+    // Area fill
+    html += `<polygon points="${pad},${h - pad} ${pointsStr} ${points[points.length - 1].x},${h - pad}" fill="url(#${gradId})"/>`;
+
+    // Line
+    html += `<polyline points="${pointsStr}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+    // Hover crosshair line + dot (hidden, shown via JS)
+    html += `<line id="${chartId}_hline" class="velocity-ticker-hover-line" x1="0" y1="${pad}" x2="0" y2="${h - pad}"/>`;
+    html += `<circle id="${chartId}_hdot" class="velocity-ticker-hover-dot" cx="0" cy="0" r="5" fill="${strokeColor}" stroke="#fff" stroke-width="2"/>`;
 
     // Live dot at the last point
     const last = points[points.length - 1];
     html += `<circle cx="${last.x}" cy="${last.y}" r="4" fill="${strokeColor}" class="velocity-live-dot"/>`;
     html += `<circle cx="${last.x}" cy="${last.y}" r="4" fill="${strokeColor}" class="velocity-live-dot-ping"/>`;
 
+    // Invisible hit-area rects for hover (one per sample)
+    const slotWidth = (w - 2 * pad) / Math.max(samples.length - 1, 1);
+    samples.forEach((s, i) => {
+        const rx = points[i].x - slotWidth / 2;
+        html += `<rect x="${rx.toFixed(1)}" y="0" width="${slotWidth.toFixed(1)}" height="${h}" fill="transparent" `
+            + `data-idx="${i}" data-sales="${s.sales}" data-ts="${s.ts}" data-px="${points[i].x.toFixed(1)}" data-py="${points[i].y.toFixed(1)}" `
+            + `class="velocity-chart-hitarea" style="cursor:crosshair"/>`;
+    });
+
     html += '</svg>';
+
+    // Tooltip div (positioned via JS)
+    html += `<div id="${chartId}_tooltip" class="velocity-ticker-tooltip">`;
+    html += '<div class="velocity-ticker-tooltip-amount"></div>';
+    html += '<div class="velocity-ticker-tooltip-time"></div>';
     html += '</div>';
+
+    // X-axis time labels (5 evenly spaced)
+    html += '<div class="velocity-ticker-xaxis">';
+    const xLabelCount = Math.min(5, samples.length);
+    for (let i = 0; i < xLabelCount; i++) {
+        const idx = Math.round(i * (samples.length - 1) / (xLabelCount - 1));
+        html += `<span class="velocity-ticker-xaxis-label">${fmtAxisTime(samples[idx].ts, windowKey)}</span>`;
+    }
+    html += '</div>';
+
+    html += '</div>'; // svg-wrap
+    html += '</div>'; // chart-inner
+    html += '</div>'; // chart
+
+    // Attach hover listeners after a tick (DOM must exist)
+    setTimeout(() => _attachChartHover(chartId, windowKey), 0);
+
     return html;
+}
+
+/**
+ * Attach mouse/touch hover listeners to the velocity chart for tooltips.
+ */
+function _attachChartHover(chartId, windowKey) {
+    const wrap = document.getElementById(chartId);
+    if (!wrap) return;
+    const svg = wrap.querySelector('.velocity-ticker-svg');
+    const tooltip = document.getElementById(chartId + '_tooltip');
+    const hline = document.getElementById(chartId + '_hline');
+    const hdot = document.getElementById(chartId + '_hdot');
+    if (!svg || !tooltip) return;
+
+    const hitAreas = svg.querySelectorAll('.velocity-chart-hitarea');
+
+    function showTip(rect) {
+        const sales = parseFloat(rect.getAttribute('data-sales'));
+        const ts = parseInt(rect.getAttribute('data-ts'), 10);
+        const px = parseFloat(rect.getAttribute('data-px'));
+        const py = parseFloat(rect.getAttribute('data-py'));
+
+        // Position tooltip relative to svg-wrap
+        const svgWrap = wrap.querySelector('.velocity-ticker-svg-wrap');
+        const svgRect = svg.getBoundingClientRect();
+        const wrapRect = svgWrap.getBoundingClientRect();
+        const xRatio = px / parseFloat(svg.getAttribute('viewBox').split(' ')[2]);
+        const yRatio = py / parseFloat(svg.getAttribute('viewBox').split(' ')[3]);
+        const tipX = xRatio * svgRect.width;
+        const tipY = yRatio * svgRect.height;
+
+        tooltip.querySelector('.velocity-ticker-tooltip-amount').textContent = '$' + sales.toLocaleString();
+        tooltip.querySelector('.velocity-ticker-tooltip-time').textContent = fmtAxisTime(ts, windowKey);
+        tooltip.style.left = tipX + 'px';
+        tooltip.style.top = tipY + 'px';
+        tooltip.classList.add('visible');
+
+        if (hline) { hline.setAttribute('x1', px); hline.setAttribute('x2', px); hline.style.opacity = '1'; }
+        if (hdot) { hdot.setAttribute('cx', px); hdot.setAttribute('cy', py); hdot.style.opacity = '1'; }
+    }
+
+    function hideTip() {
+        tooltip.classList.remove('visible');
+        if (hline) hline.style.opacity = '0';
+        if (hdot) hdot.style.opacity = '0';
+    }
+
+    hitAreas.forEach(rect => {
+        rect.addEventListener('mouseenter', () => showTip(rect));
+        rect.addEventListener('touchstart', (e) => { e.preventDefault(); showTip(rect); }, { passive: false });
+    });
+    svg.addEventListener('mouseleave', hideTip);
+    svg.addEventListener('touchend', hideTip);
 }
 
 /**

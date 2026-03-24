@@ -1980,17 +1980,99 @@
         /* Chart area */
         .velocity-ticker-chart {
             margin: 8px 0;
+            position: relative;
+        }
+        .velocity-ticker-chart-inner {
+            display: flex;
+            align-items: stretch;
+        }
+        .velocity-ticker-yaxis {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 4px 0;
+            min-width: 62px;
+            text-align: right;
+            padding-right: 8px;
+            flex-shrink: 0;
+        }
+        .velocity-ticker-yaxis-label {
+            font-size: 10px;
+            color: #8A94A6;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+        .velocity-ticker-svg-wrap {
+            flex: 1;
+            min-width: 0;
+            position: relative;
         }
         .velocity-ticker-svg {
             width: 100%;
-            height: 80px;
+            height: 160px;
             display: block;
         }
+        .velocity-ticker-xaxis {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 4px 0;
+        }
+        .velocity-ticker-xaxis-label {
+            font-size: 10px;
+            color: #8A94A6;
+        }
         .velocity-ticker-chart-placeholder {
-            height: 80px;
+            height: 160px;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        .velocity-ticker-gridline {
+            stroke: #E2E8F0;
+            stroke-width: 0.8;
+            stroke-dasharray: 4 3;
+        }
+
+        /* Tooltip on hover */
+        .velocity-ticker-tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: #1A202C;
+            color: #fff;
+            font-size: 11px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
+            transform: translate(-50%, -110%);
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+        }
+        .velocity-ticker-tooltip.visible {
+            opacity: 1;
+        }
+        .velocity-ticker-tooltip-amount {
+            font-weight: 600;
+        }
+        .velocity-ticker-tooltip-time {
+            color: #A0AEC0;
+            margin-top: 2px;
+        }
+
+        /* Hover hit areas */
+        .velocity-ticker-hover-dot {
+            opacity: 0;
+            transition: opacity 0.15s;
+            pointer-events: none;
+        }
+        .velocity-ticker-hover-line {
+            stroke: #CBD5E0;
+            stroke-width: 1;
+            stroke-dasharray: 3 2;
+            opacity: 0;
+            transition: opacity 0.15s;
+            pointer-events: none;
         }
 
         /* Live dot pulse at the end of the sparkline */
