@@ -20397,7 +20397,7 @@ function skeletonRows(count) {
         { id: 'response', label: 'Response Assistant', desc: 'Generate customer responses', icon: '⚡', group: 'Tools', action: function() { openTool('customer-response'); switchPage('response'); } },
         { id: 'draft', label: 'Draft Assistant', desc: 'Create marketing content', icon: '✏️', group: 'Tools', action: function() { openTool('draft-assistant'); } },
         { id: 'data', label: 'Insights Engine', desc: 'Analyze data and charts', icon: '📊', group: 'Tools', action: function() { openTool('data-analysis'); } },
-        { id: 'normalizer', label: 'Data Agent', desc: 'Clean and format lists', icon: '📋', group: 'Tools', action: function() { openTool('data-agent'); } },
+        { id: 'normalizer', label: 'Data Agent', desc: 'Clean and format lists', icon: '🤖', group: 'Tools', action: function() { openTool('data-agent'); } },
         { id: 'ask', label: 'Ask Lightspeed', desc: 'Chat with your AI assistant', icon: '💬', group: 'Tools', action: function() { openTool('ask-lightspeed'); } },
         { id: 'rop', label: 'Rules of Play', desc: 'Generate rules of play documents', icon: '📜', group: 'Tools', action: function() { openTool('rules-of-play'); } },
         { id: 'compliance', label: 'Compliance Assistant', desc: 'Get compliance guidance for lottery regulations', icon: '🤖', group: 'Tools', action: function() { openTool('compliance'); } },
