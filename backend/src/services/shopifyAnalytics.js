@@ -1447,8 +1447,8 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
     }
 
     // Run all queries in parallel — all hit local DB tables
-    const [todayKpis, yesterdayKpis, topCities, topRegions, topProducts, topCustomers, discounts] = await Promise.all([
-        // Today's KPIs
+    const [todayKpis, yesterdayKpis, topCities, topRegions, topProducts, topCustomers, discounts, recentOrdersFallback] = await Promise.all([
+        // Today's KPIs from aggregated table
         pool.query(
             `SELECT COALESCE(SUM(net_sales_cents), 0) AS revenue_cents,
                     COALESCE(SUM(total_orders), 0) AS orders,
@@ -1525,12 +1525,67 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
              ORDER BY uses DESC LIMIT 8`,
             [organizationId, todayStr]
         ).catch(() => ({ rows: [] })), // Table may not exist yet
+        // Fallback: derive KPIs from dashboard_recent_orders (always has data from GraphQL sync)
+        pool.query(
+            `SELECT COALESCE(SUM(total_price_cents), 0) AS revenue_cents,
+                    COUNT(*) AS orders,
+                    province, country, line_items_summary
+             FROM dashboard_recent_orders
+             WHERE organization_id = $1 AND created_at >= (NOW() - INTERVAL '24 hours')
+             GROUP BY province, country, line_items_summary`,
+            [organizationId]
+        ),
     ]);
 
     const t = todayKpis.rows[0];
     const y = yesterdayKpis.rows[0];
-    const tRevenue = parseInt(t.revenue_cents) || 0;
-    const tOrders = parseInt(t.orders) || 0;
+    let tRevenue = parseInt(t.revenue_cents) || 0;
+    let tOrders = parseInt(t.orders) || 0;
+    let tUnits = parseInt(t.units) || 0;
+
+    // If aggregated tables have no data, derive from dashboard_recent_orders
+    const useFallback = tOrders === 0 && recentOrdersFallback.rows.length > 0;
+    let fallbackCities = [];
+    let fallbackProducts = [];
+
+    if (useFallback) {
+        tRevenue = 0;
+        tOrders = 0;
+        tUnits = 0;
+        const cityMap = {};
+        const productMap = {};
+
+        for (const row of recentOrdersFallback.rows) {
+            const rowRevenue = parseInt(row.revenue_cents) || 0;
+            const rowOrders = parseInt(row.orders) || 0;
+            tRevenue += rowRevenue;
+            tOrders += rowOrders;
+
+            // Aggregate by province/country for geo fallback
+            const region = (row.province || 'Unknown') + '|' + (row.country || 'Unknown');
+            if (!cityMap[region]) cityMap[region] = { province: row.province || 'Unknown', country: row.country || 'Unknown', revenue_cents: 0, order_count: 0 };
+            cityMap[region].revenue_cents += rowRevenue;
+            cityMap[region].order_count += rowOrders;
+
+            // Parse line_items_summary for product fallback
+            try {
+                const items = typeof row.line_items_summary === 'string' ? JSON.parse(row.line_items_summary) : (row.line_items_summary || []);
+                for (const item of items) {
+                    const title = item.title || item.name || 'Unknown';
+                    const qty = item.quantity || item.qty || 1;
+                    const price = Math.round((parseFloat(item.price) || 0) * 100) * qty;
+                    tUnits += qty;
+                    if (!productMap[title]) productMap[title] = { title, revenue_cents: 0, units: 0 };
+                    productMap[title].revenue_cents += price;
+                    productMap[title].units += qty;
+                }
+            } catch { /* ignore parse errors */ }
+        }
+
+        fallbackCities = Object.values(cityMap).sort((a, b) => b.revenue_cents - a.revenue_cents).slice(0, 10);
+        fallbackProducts = Object.values(productMap).sort((a, b) => b.revenue_cents - a.revenue_cents).slice(0, 8);
+    }
+
     const yRevenue = parseInt(y.revenue_cents) || 0;
     const yOrders = parseInt(y.orders) || 0;
     const tAov = tOrders > 0 ? Math.round(tRevenue / tOrders) : 0;
@@ -1547,12 +1602,17 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
     }
     if (hoursElapsed < 0.5) hoursElapsed = 0.5; // avoid division by tiny numbers early in the day
 
+    // Use aggregated tables if available, otherwise fallback to recent orders data
+    const finalTopCities = topCities.rows.length > 0 ? topCities.rows : [];
+    const finalTopRegions = topRegions.rows.length > 0 ? topRegions.rows : (useFallback ? fallbackCities : []);
+    const finalTopProducts = topProducts.rows.length > 0 ? topProducts.rows : [];
+
     return {
         date: todayStr,
         kpis: {
             revenue: tRevenue / 100,
             orders: tOrders,
-            units: parseInt(t.units) || 0,
+            units: tUnits,
             aov: tAov / 100,
             refunds_count: parseInt(t.refunded_orders) || 0,
             refunds_total: (parseInt(t.refunds_cents) || 0) / 100,
@@ -1565,23 +1625,23 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
             aov_pct: pctChange(tAov, yAov),
             refunds_pct: pctChange(parseInt(t.refunded_orders) || 0, parseInt(y.refunded_orders) || 0),
         },
-        topCities: topCities.rows.map(r => ({
-            city: r.city,
+        topCities: (finalTopCities.length > 0 ? finalTopCities : fallbackCities).map(r => ({
+            city: r.city || r.province,
             province: r.province,
             country: r.country,
             revenue: (parseInt(r.revenue_cents) || 0) / 100,
             orders: parseInt(r.order_count) || 0,
         })),
-        topRegions: topRegions.rows.map(r => ({
+        topRegions: finalTopRegions.map(r => ({
             province: r.province,
             country: r.country,
             revenue: (parseInt(r.revenue_cents) || 0) / 100,
             orders: parseInt(r.order_count) || 0,
         })),
-        topProducts: topProducts.rows.map(r => {
-            const units = parseInt(r.units_sold) || 0;
+        topProducts: (finalTopProducts.length > 0 ? finalTopProducts : fallbackProducts).map(r => {
+            const units = parseInt(r.units_sold || r.units) || 0;
             return {
-                title: r.product_title,
+                title: r.product_title || r.title,
                 revenue: (parseInt(r.revenue_cents) || 0) / 100,
                 units,
                 velocity: Math.round((units / hoursElapsed) * 10) / 10,
