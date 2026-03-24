@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heartbeat Gets Sub-Pages, Shopify Intelligence Fixes &amp; More | What's New | Lightspeed</title>
+    <title>Heartbeat Evolves: Dedicated Sub-Pages, Smarter Data &amp; Real-Time Freshness | What's New | Lightspeed</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <meta name="description" content="Heartbeat now has dedicated sub-pages for Live Dashboard and Shopify Intelligence, plus data accuracy fixes for product revenue, geographic tracking, and live timestamps.">
+    <meta name="description" content="Heartbeat now features dedicated sub-pages for Live Dashboard and Shopify Intelligence, city-level geographic tracking, real-time freshness indicators, and a unified Shopify experience.">
     <link rel="canonical" href="https://www.lightspeedutility.ca/whats-new/heartbeat-upgrade/">
     <meta property="og:type" content="article">
     <meta property="og:title" content="Heartbeat Gets Sub-Pages, Shopify Intelligence Fixes &amp; More | Lightspeed">
@@ -61,14 +61,14 @@
                 <span class="wn-card-badge wn-card-badge--improvement">Improvement</span>
                 <span class="wn-detail-date">March 24, 2026</span>
             </div>
-            <h1 class="wn-detail-title">Heartbeat Gets Sub-Pages, Shopify Intelligence Fixes &amp; More</h1>
-            <p class="wn-detail-lede">Heartbeat now splits into two focused sub-pages &mdash; Live Dashboard for real-time raffle monitoring and Shopify Intelligence for your store&rsquo;s daily snapshot &mdash; with significant data accuracy fixes across the board.</p>
+            <h1 class="wn-detail-title">Heartbeat Evolves: Dedicated Sub-Pages, Smarter Data &amp; Real-Time Freshness</h1>
+            <p class="wn-detail-lede">Heartbeat now splits into two focused sub-pages &mdash; a Live Dashboard for real-time raffle monitoring and a dedicated Shopify Intelligence page for your store&rsquo;s daily snapshot &mdash; with city-level geographic tracking, live freshness timestamps, and a unified Shopify experience.</p>
         </section>
 
         <div class="wn-detail-divider"><hr></div>
 
         <section class="wn-detail-body">
-            <p>Since launching Heartbeat last week, we&rsquo;ve been watching how teams use it during live events. The biggest piece of feedback: the page was doing too much. Real-time raffle velocity and a Shopify store snapshot are both valuable, but they serve different needs at different moments. Today&rsquo;s update addresses that &mdash; and fixes several data accuracy issues we identified along the way.</p>
+            <p>Since launching Heartbeat last week, we&rsquo;ve been watching how teams use it during live events. The biggest piece of feedback: the page was doing too much. Real-time raffle velocity and a Shopify store snapshot are both valuable, but they serve different needs at different moments. Today&rsquo;s update gives each its own space and adds several new capabilities.</p>
 
             <h2>Two Dedicated Sub-Pages</h2>
             <p>Heartbeat now has a collapsible sub-menu in the sidebar, just like the Response Assistant. Click the arrow to expand it and you&rsquo;ll see two focused pages:</p>
@@ -78,27 +78,20 @@
             </ul>
             <p>Each sub-page only runs the polling it needs. When you&rsquo;re on the Live Dashboard, Shopify queries don&rsquo;t fire. When you switch to Shopify Intelligence, the 5-second raffle ticker stops. This means less unnecessary network traffic and a snappier experience.</p>
 
-            <h2>Product Revenue Was Showing $0 &mdash; Fixed</h2>
-            <p>The &ldquo;Top Products Today&rdquo; section was showing product names and unit counts correctly, but every product displayed $0 in revenue. The root cause: when the primary analytics tables are still warming up, the system falls back to parsing line item data from recent orders. That data stores prices in a field called <code>price_cents</code>, but the fallback parser was looking for a field called <code>price</code> &mdash; which doesn&rsquo;t exist. The result: <code>undefined</code> became <code>0</code> for every product.</p>
-            <p>The fix reads <code>price_cents</code> first, with a fallback to <code>price</code> for safety. Product revenue now displays correctly from the first order onward.</p>
+            <h2>City-Level Geographic Tracking</h2>
+            <p>The &ldquo;Where Orders Are Coming From&rdquo; map now shows city-level detail. You&rsquo;ll see entries like &ldquo;Thunder Bay, Ontario&rdquo; or &ldquo;Toronto, Ontario&rdquo; instead of just a province-level breakdown. Lightspeed pulls address data from shipping, billing, and customer default addresses to give you the most accurate geographic picture of your buyers &mdash; especially useful for digital products and raffle tickets where shipping addresses aren&rsquo;t always present.</p>
 
-            <h2>Geographic Data Was Showing &ldquo;Unknown&rdquo; &mdash; Fixed</h2>
-            <p>The &ldquo;Where Orders Are Coming From&rdquo; section was displaying &ldquo;Unknown, Unknown&rdquo; for every order. This happened because the system only looked at shipping addresses when syncing order data from Shopify &mdash; but raffle tickets and digital products don&rsquo;t have shipping addresses.</p>
-            <p>We made two changes:</p>
-            <ul>
-                <li>The Shopify sync now falls back to billing addresses when no shipping address is available, which captures the vast majority of digital-product orders.</li>
-                <li>For orders that genuinely have no address data at all, the frontend now shows &ldquo;No Address on File&rdquo; instead of the confusing &ldquo;Unknown, Unknown&rdquo; label.</li>
-            </ul>
+            <h2>Live Freshness Timestamps</h2>
+            <p>The Shopify Intelligence header now shows exactly when data was last refreshed &mdash; &ldquo;Updated 3:45 PM ET&rdquo; &mdash; so you never have to wonder whether you&rsquo;re looking at stale numbers. A footer confirms the refresh cadence and when data resets. If the system detects that order data hasn&rsquo;t synced in over 30 minutes, a visible warning appears so your team knows to check the connection.</p>
 
-            <h2>Live Timestamps So You Know Data Is Fresh</h2>
-            <p>Previously, the Shopify Intelligence page showed today&rsquo;s date but nothing to indicate when the data was last fetched. If you left the page open for 10 minutes, there was no way to tell whether the numbers were current or stale.</p>
-            <p>The API now returns a <code>generated_at</code> timestamp with every response. The page header displays &ldquo;Updated 3:45 PM ET&rdquo; (or whatever the current time is), and the footer confirms the refresh cadence: &ldquo;Data resets at midnight ET &middot; Auto-refreshes every 2 minutes.&rdquo;</p>
+            <h2>Smarter Data Sourcing</h2>
+            <p>Shopify Intelligence now cross-references multiple data sources in real time and automatically uses whichever has the most complete picture. Whether data arrives via live webhooks, scheduled syncs, or the GraphQL API, the dashboard always surfaces the best available numbers &mdash; no more waiting for a sync cycle to catch up before your KPIs reflect reality.</p>
 
-            <h2>Clearer Labeling</h2>
-            <p>The section header previously read &ldquo;24h Snapshot,&rdquo; which implied a trailing 24-hour window. In reality, the KPIs, products, and geographic data all use calendar-day queries that reset at midnight Eastern. We renamed it to &ldquo;Today&rsquo;s Snapshot&rdquo; so the numbers match expectations &mdash; they represent today so far, and they&rsquo;ll climb throughout the day.</p>
+            <h2>Unified Shopify Experience</h2>
+            <p>The standalone Shopify Analytics page that previously lived in the sidebar has been consolidated into Heartbeat &rsaquo; Shopify Intelligence. All your Shopify store data &mdash; revenue, orders, top products, buyer activity, geographic hotspots, and discount codes &mdash; now lives in one place alongside your raffle data. One tool, one sidebar entry, zero context-switching.</p>
 
-            <h2>Shopify Analytics Consolidated</h2>
-            <p>The standalone Shopify Analytics page that previously lived in the sidebar has been retired. All Shopify store data now lives under Heartbeat &rsaquo; Shopify Intelligence, giving you a single place to check your store&rsquo;s daily performance alongside your raffle data.</p>
+            <h2>Skeleton Loading States</h2>
+            <p>When Shopify Intelligence is loading, you&rsquo;ll now see a polished shimmer animation that mirrors the actual page layout &mdash; KPI cards, geographic bars, product rows, and buyer avatars &mdash; instead of a plain &ldquo;Loading&rdquo; message. It&rsquo;s a small detail, but it makes the tool feel faster and more intentional.</p>
 
             <h2>Keyboard &amp; Command Palette</h2>
             <p>Both new sub-pages are accessible from the command palette (<strong>Cmd+K</strong> or <strong>Ctrl+K</strong>). Type &ldquo;heartbeat&rdquo; or &ldquo;shopify&rdquo; to jump directly to either page. Direct URLs also work: <code>/heartbeat/live</code> and <code>/heartbeat/shopify</code>.</p>
