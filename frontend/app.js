@@ -19896,11 +19896,8 @@ function renderShopifyIntelSkeleton() {
     h += '</div>';
     h += '</div>';
 
-    // Two-column skeleton (buyers + discounts)
-    h += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">';
-
     // Buyers skeleton
-    h += '<div class="raffle-card" style="margin-bottom:0;padding:16px;">';
+    h += '<div class="raffle-card" style="margin-bottom:16px;padding:16px;">';
     h += '<div class="skeleton-shimmer" style="width:130px;height:14px;margin-bottom:16px;"></div>';
     for (let i = 0; i < 5; i++) {
         h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
@@ -19909,19 +19906,6 @@ function renderShopifyIntelSkeleton() {
         h += '<div class="skeleton-shimmer" style="width:55px;height:14px;"></div>';
         h += '</div>';
     }
-    h += '</div>';
-
-    // Discounts skeleton
-    h += '<div class="raffle-card" style="margin-bottom:0;padding:16px;">';
-    h += '<div class="skeleton-shimmer" style="width:110px;height:14px;margin-bottom:16px;"></div>';
-    for (let i = 0; i < 3; i++) {
-        h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">';
-        h += '<div class="skeleton-shimmer" style="width:70px;height:22px;border-radius:4px;"></div>';
-        h += '<div class="skeleton-shimmer" style="flex:1;height:12px;"></div>';
-        h += '<div class="skeleton-shimmer" style="width:50px;height:14px;"></div>';
-        h += '</div>';
-    }
-    h += '</div>';
     h += '</div>';
 
     h += '</div>'; // close raffle-card
@@ -20017,52 +20001,209 @@ function renderHbShopifyIntel(snap) {
         html += '</div>';
     }
 
-    // --- C: Top Buyers + Discount Codes (side by side) ---
+    // --- C: Top Buyers ---
     const hasCustomers = snap.topCustomers && snap.topCustomers.length > 0;
-    const hasDiscounts = snap.discounts && snap.discounts.length > 0;
-    if (hasCustomers || hasDiscounts) {
-        html += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;">';
-
-        // Top buyers
-        html += '<div class="raffle-card" style="margin-bottom:0;">';
+    if (hasCustomers) {
+        html += '<div class="raffle-card" style="margin-bottom:16px;">';
         html += '<div class="raffle-card-title" style="margin-bottom:10px;">Top Buyers Today</div>';
-        if (hasCustomers) {
-            snap.topCustomers.forEach(c => {
-                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                    <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#635BFF,#E91E8C);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">${escapeHtml((c.name || '?')[0].toUpperCase())}</div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;font-weight:600;color:var(--text-primary,#1A1F36);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.name)}</div>
-                        <div style="font-size:11px;color:var(--text-muted,#6B7C93);">${c.orders} order${c.orders !== 1 ? 's' : ''}</div>
+        snap.topCustomers.forEach(c => {
+            html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#635BFF,#E91E8C);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">${escapeHtml((c.name || '?')[0].toUpperCase())}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:600;color:var(--text-primary,#1A1F36);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.name)}</div>
+                    <div style="font-size:11px;color:var(--text-muted,#6B7C93);">${c.orders} order${c.orders !== 1 ? 's' : ''}</div>
+                </div>
+                <div style="font-size:13px;font-weight:700;color:var(--text-primary,#1A1F36);">$${c.total_spent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
+    // --- D: Hourly Sales Heatmap ---
+    if (snap.hourlySales && snap.hourlySales.length > 0) {
+        html += '<div class="raffle-card" style="margin-bottom:16px;">';
+        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Sales by Hour</div>';
+        const maxHourOrders = Math.max(...snap.hourlySales.map(h => h.orders), 1);
+        html += '<div style="display:flex;align-items:flex-end;gap:2px;height:80px;padding:0 4px;">';
+        snap.hourlySales.forEach(h => {
+            const pct = (h.orders / maxHourOrders * 100);
+            const barH = Math.max(pct, 2);
+            const isActive = h.orders > 0;
+            const tooltip = `${h.hour === 0 ? '12 AM' : h.hour < 12 ? h.hour + ' AM' : h.hour === 12 ? '12 PM' : (h.hour - 12) + ' PM'}: ${h.orders} orders, $${h.revenue.toLocaleString()}`;
+            html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="${tooltip}">
+                <div style="width:100%;height:${barH}%;min-height:2px;background:${isActive ? 'linear-gradient(180deg,#635BFF,#8B83FF)' : 'var(--bg-secondary,#F0F0F0)'};border-radius:2px 2px 0 0;transition:height 0.3s;"></div>
+            </div>`;
+        });
+        html += '</div>';
+        // Hour labels (show every 3 hours)
+        html += '<div style="display:flex;gap:2px;padding:4px 4px 0;">';
+        snap.hourlySales.forEach(h => {
+            const showLabel = h.hour % 3 === 0;
+            const label = h.hour === 0 ? '12a' : h.hour < 12 ? h.hour + 'a' : h.hour === 12 ? '12p' : (h.hour - 12) + 'p';
+            html += `<div style="flex:1;text-align:center;font-size:9px;color:var(--text-muted,#6B7C93);">${showLabel ? label : ''}</div>`;
+        });
+        html += '</div>';
+        html += '</div>';
+    }
+
+    // --- E: Revenue by Price Point + Order Distribution (side by side) ---
+    const hasPricePoints = snap.pricePoints && snap.pricePoints.length > 0;
+    const hasDistribution = snap.orderDistribution && snap.orderDistribution.length > 0;
+    if (hasPricePoints || hasDistribution) {
+        html += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">';
+
+        // Price points
+        if (hasPricePoints) {
+            html += '<div class="raffle-card" style="margin-bottom:0;">';
+            html += '<div class="raffle-card-title" style="margin-bottom:10px;">Revenue by Ticket Price</div>';
+            const maxPpRev = snap.pricePoints[0]?.revenue || 1;
+            snap.pricePoints.forEach(pp => {
+                const pct = (pp.revenue / maxPpRev * 100).toFixed(1);
+                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <div style="width:50px;font-size:12px;font-weight:700;color:var(--text-primary,#1A1F36);">${pp.label}</div>
+                    <div style="flex:1;height:16px;background:var(--bg-secondary,#F6F8FA);border-radius:4px;overflow:hidden;">
+                        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#36B37E,#57D9A3);border-radius:4px;"></div>
                     </div>
-                    <div style="font-size:13px;font-weight:700;color:var(--text-primary,#1A1F36);">$${c.total_spent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div style="width:80px;text-align:right;font-size:11px;color:var(--text-muted,#6B7C93);">${pp.units.toLocaleString()} sold</div>
+                    <div style="width:70px;text-align:right;font-size:12px;font-weight:600;color:var(--text-primary,#1A1F36);">$${pp.revenue.toLocaleString()}</div>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        // Order distribution
+        if (hasDistribution) {
+            html += '<div class="raffle-card" style="margin-bottom:0;">';
+            html += '<div class="raffle-card-title" style="margin-bottom:4px;">Buyer Loyalty</div>';
+            html += `<div style="font-size:11px;color:var(--text-muted,#6B7C93);margin-bottom:10px;">Avg ${snap.avgUnitsPerOrder || 0} tickets per order</div>`;
+            snap.orderDistribution.forEach(d => {
+                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <div style="width:70px;font-size:12px;color:var(--text-secondary,#4F5B67);">${d.bucket}</div>
+                    <div style="flex:1;height:16px;background:var(--bg-secondary,#F6F8FA);border-radius:4px;overflow:hidden;">
+                        <div style="height:100%;width:${d.pct}%;background:linear-gradient(90deg,#FF6B35,#FFA366);border-radius:4px;min-width:2px;"></div>
+                    </div>
+                    <div style="width:40px;text-align:right;font-size:12px;font-weight:600;color:var(--text-primary,#1A1F36);">${d.count}</div>
+                    <div style="width:45px;text-align:right;font-size:11px;color:var(--text-muted,#6B7C93);">${d.pct}%</div>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        html += '</div>';
+    }
+
+    // --- F: Repeat Buyers ---
+    if (snap.repeatBuyers && snap.repeatBuyers.length > 0) {
+        html += '<div class="raffle-card" style="margin-bottom:16px;">';
+        html += `<div class="raffle-card-title" style="margin-bottom:10px;">Repeat Buyers <span style="font-weight:400;font-size:12px;color:var(--text-muted,#6B7C93);">${snap.repeatBuyers.length} supporters with 2+ orders</span></div>`;
+        snap.repeatBuyers.forEach(c => {
+            html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#FF6B35,#FFA366);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">${escapeHtml((c.name || '?')[0].toUpperCase())}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:600;color:var(--text-primary,#1A1F36);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.name)}</div>
+                    <div style="font-size:11px;color:var(--text-muted,#6B7C93);">${c.orders} orders</div>
+                </div>
+                <div style="font-size:13px;font-weight:700;color:var(--text-primary,#1A1F36);">$${c.total_spent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
+    // --- G: Payment Methods + Fulfillment + Risk (three columns) ---
+    const hasPayments = snap.paymentMethods && snap.paymentMethods.length > 0;
+    const hasFulfillment = snap.fulfillmentBreakdown && snap.fulfillmentBreakdown.length > 0;
+    const hasRisk = snap.riskSummary && (snap.riskSummary.high > 0 || snap.riskSummary.medium > 0);
+    if (hasPayments || hasFulfillment || hasRisk) {
+        html += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:16px;">';
+
+        // Payment methods
+        html += '<div class="raffle-card" style="margin-bottom:0;">';
+        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Payment Methods</div>';
+        if (hasPayments) {
+            snap.paymentMethods.forEach(pm => {
+                html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                    <div style="flex:1;font-size:12px;color:var(--text-secondary,#4F5B67);">${escapeHtml(pm.name)}</div>
+                    <div style="font-size:12px;font-weight:600;color:var(--text-primary,#1A1F36);">${pm.count}</div>
+                    <div style="width:40px;text-align:right;font-size:11px;color:var(--text-muted,#6B7C93);">${pm.pct}%</div>
                 </div>`;
             });
         } else {
-            html += '<div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">No customer data yet today.</div>';
+            html += '<div style="text-align:center;padding:16px 0;color:var(--text-muted,#6B7C93);font-size:12px;">No data</div>';
         }
         html += '</div>';
 
-        // Discount codes
+        // Fulfillment status
         html += '<div class="raffle-card" style="margin-bottom:0;">';
-        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Discount Codes</div>';
-        if (hasDiscounts) {
-            snap.discounts.forEach(d => {
-                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                    <div style="padding:3px 8px;border-radius:4px;background:var(--bg-secondary,#F6F8FA);font-size:12px;font-weight:700;font-family:monospace;color:#635BFF;">${escapeHtml(d.code)}</div>
-                    <div style="flex:1;font-size:12px;color:var(--text-muted,#6B7C93);">${d.uses} use${d.uses !== 1 ? 's' : ''}</div>
-                    <div style="font-size:13px;font-weight:700;color:#E91E8C;">-$${d.total_savings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Fulfillment Status</div>';
+        if (hasFulfillment) {
+            snap.fulfillmentBreakdown.forEach(f => {
+                const statusColor = f.status === 'Fulfilled' ? '#36B37E' : f.status === 'Unfulfilled' ? '#FF6B35' : '#6B7C93';
+                html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                    <div style="width:8px;height:8px;border-radius:50%;background:${statusColor};flex-shrink:0;"></div>
+                    <div style="flex:1;font-size:12px;color:var(--text-secondary,#4F5B67);">${escapeHtml(f.status)}</div>
+                    <div style="font-size:12px;font-weight:600;color:var(--text-primary,#1A1F36);">${f.count}</div>
+                    <div style="width:40px;text-align:right;font-size:11px;color:var(--text-muted,#6B7C93);">${f.pct}%</div>
                 </div>`;
             });
         } else {
-            html += '<div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">No discount codes used today.</div>';
+            html += '<div style="text-align:center;padding:16px 0;color:var(--text-muted,#6B7C93);font-size:12px;">No data</div>';
+        }
+        html += '</div>';
+
+        // Risk flags
+        html += '<div class="raffle-card" style="margin-bottom:0;">';
+        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Order Risk</div>';
+        if (snap.riskSummary) {
+            const total = (snap.riskSummary.high || 0) + (snap.riskSummary.medium || 0) + (snap.riskSummary.low || 0);
+            if (snap.riskSummary.high > 0) {
+                html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                    <div style="width:8px;height:8px;border-radius:50%;background:#E91E63;flex-shrink:0;"></div>
+                    <div style="flex:1;font-size:12px;color:#E91E63;font-weight:600;">High Risk</div>
+                    <div style="font-size:14px;font-weight:700;color:#E91E63;">${snap.riskSummary.high}</div>
+                </div>`;
+            }
+            if (snap.riskSummary.medium > 0) {
+                html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                    <div style="width:8px;height:8px;border-radius:50%;background:#FF9800;flex-shrink:0;"></div>
+                    <div style="flex:1;font-size:12px;color:#FF9800;font-weight:600;">Medium Risk</div>
+                    <div style="font-size:14px;font-weight:700;color:#FF9800;">${snap.riskSummary.medium}</div>
+                </div>`;
+            }
+            html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:#36B37E;flex-shrink:0;"></div>
+                <div style="flex:1;font-size:12px;color:var(--text-secondary,#4F5B67);">Low / None</div>
+                <div style="font-size:14px;font-weight:700;color:#36B37E;">${snap.riskSummary.low || 0}</div>
+            </div>`;
+            if (total > 0 && snap.riskSummary.high === 0 && snap.riskSummary.medium === 0) {
+                html += '<div style="text-align:center;padding:8px 0;font-size:12px;color:#36B37E;font-weight:600;">All clear — no flagged orders</div>';
+            }
         }
         html += '</div>';
 
         html += '</div>';
     }
 
+    // --- H: Sales Channels ---
+    if (snap.salesChannels && snap.salesChannels.length > 1) {
+        html += '<div class="raffle-card" style="margin-bottom:16px;">';
+        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Sales Channels</div>';
+        const maxChRev = snap.salesChannels[0]?.revenue || 1;
+        snap.salesChannels.forEach(ch => {
+            const pct = (ch.revenue / maxChRev * 100).toFixed(1);
+            html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <div style="width:110px;font-size:12px;color:var(--text-secondary,#4F5B67);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(ch.name)}</div>
+                <div style="flex:1;height:16px;background:var(--bg-secondary,#F6F8FA);border-radius:4px;overflow:hidden;">
+                    <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#0065FF,#4C9AFF);border-radius:4px;"></div>
+                </div>
+                <div style="width:50px;text-align:right;font-size:11px;color:var(--text-muted,#6B7C93);">${ch.orders}</div>
+                <div style="width:70px;text-align:right;font-size:12px;font-weight:600;color:var(--text-primary,#1A1F36);">$${ch.revenue.toLocaleString()}</div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
     // Footer
-    html += `<div class="feed-dash-updated" style="margin-top:12px;">Data resets at midnight ET &middot; Auto-refreshes every 2 minutes &middot; ${updatedLabel}</div>`;
+    html += `<div class="feed-dash-updated" style="margin-top:12px;">Data resets at midnight ET &middot; ${updatedLabel}</div>`;
 
     html += '</div>'; // close main raffle-card
     return html;
