@@ -18887,8 +18887,11 @@ function updateVelocityTickerCard(card, velocity) {
 
 let _heartbeatPollTimer = null;
 let _hbOrdersPollTimer = null;
+let _hbShopifyIntelTimer = null;
 let _hbOrdersData = null;
 let _hbOrdersLastFetch = 0;
+let _hbShopifySnapshot = null;
+let _hbShopifySnapshotLastFetch = 0;
 let _heartbeatSelectedWindow = '1h';
 let _heartbeatLastData = null;   // salesVelocity object (for ticker compat)
 let _heartbeatFullData = null;   // full API response
@@ -18919,10 +18922,12 @@ function initHeartbeat() {
 
     refreshHeartbeat();
     refreshHbOrders(); // Initial orders fetch
+    refreshHbShopifySnapshot(); // Initial Shopify Intelligence fetch
 
     stopHeartbeatPolling();
     _heartbeatPollTimer = setInterval(refreshHeartbeat, 5000);
     _hbOrdersPollTimer = setInterval(refreshHbOrders, 120000); // Every 2 minutes
+    _hbShopifyIntelTimer = setInterval(refreshHbShopifySnapshot, 120000); // Every 2 minutes
 }
 
 function stopHeartbeatPolling() {
@@ -18933,6 +18938,10 @@ function stopHeartbeatPolling() {
     if (_hbOrdersPollTimer) {
         clearInterval(_hbOrdersPollTimer);
         _hbOrdersPollTimer = null;
+    }
+    if (_hbShopifyIntelTimer) {
+        clearInterval(_hbShopifyIntelTimer);
+        _hbShopifyIntelTimer = null;
     }
 }
 
@@ -18975,6 +18984,15 @@ async function refreshHeartbeat() {
                     ordersFeed.innerHTML = renderHbLiveOrders(_hbOrdersData);
                 } else {
                     refreshHbOrders();
+                }
+            }
+            // Re-inject cached Shopify Intelligence into the fresh placeholder
+            const intelContainer = document.getElementById('hbShopifyIntel');
+            if (intelContainer) {
+                if (_hbShopifySnapshot) {
+                    intelContainer.innerHTML = renderHbShopifyIntel(_hbShopifySnapshot);
+                } else {
+                    refreshHbShopifySnapshot();
                 }
             }
         } else {
@@ -19038,6 +19056,9 @@ function renderHeartbeatPage(data) {
     if (wh && wh.grandPrizeWinners && wh.grandPrizeWinners.length > 0) {
         html += renderHbJackpotComparison(data);
     }
+
+    // 9 — Shopify Intelligence (async-filled placeholder)
+    html += '<div id="hbShopifyIntel"></div>';
 
     // Footer
     html += `<div class="feed-dash-updated">Last tick: Just now &middot; ${formatEasternTime()} &middot; Velocity ticker live every 5s</div>`;
@@ -19719,6 +19740,181 @@ function renderHbJackpotComparison(data) {
 
     html += '</div>';
     return html;
+}
+
+// ---------------------------------------------------------------------------
+// 11. Shopify Intelligence — 24h Snapshot (fetched independently every 2 min)
+// ---------------------------------------------------------------------------
+
+async function refreshHbShopifySnapshot() {
+    const container = document.getElementById('hbShopifyIntel');
+    if (!container) return;
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/dashboard/shopify-snapshot`, {
+            headers: getAuthHeaders()
+        });
+        if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+
+        const data = await resp.json();
+        _hbShopifySnapshot = data;
+        _hbShopifySnapshotLastFetch = Date.now();
+        container.innerHTML = renderHbShopifyIntel(data);
+    } catch (err) {
+        console.warn('Shopify Intelligence fetch failed:', err.message);
+        if (!_hbShopifySnapshot) {
+            container.innerHTML = '';
+        }
+    }
+}
+
+function renderHbShopifyIntel(snap) {
+    if (!snap || !snap.kpis) return '';
+    const k = snap.kpis;
+    const ch = snap.changes || {};
+
+    // Check if we have any meaningful data
+    if (k.revenue === 0 && k.orders === 0 && (!snap.topCities || snap.topCities.length === 0)) return '';
+
+    let html = '';
+
+    // Section header
+    html += '<div class="raffle-card" style="margin-bottom:20px;">';
+    html += '<div class="raffle-card-header">';
+    html += '<div class="raffle-card-title">Shopify Intelligence &mdash; 24h Snapshot</div>';
+    html += `<span class="hb-orders-updated">${snap.date || 'Today'}</span>`;
+    html += '</div>';
+
+    // --- A: KPI Row ---
+    html += '<div class="raffle-kpi-grid" style="margin-bottom:16px;">';
+    html += hbIntelKpiCard('Revenue', '$' + k.revenue.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}), ch.revenue_pct, false);
+    html += hbIntelKpiCard('Orders', k.orders.toLocaleString(), ch.orders_pct, false);
+    html += hbIntelKpiCard('Avg Order', '$' + k.aov.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}), ch.aov_pct, false);
+    html += hbIntelKpiCard('Refunds', k.refunds_count + (k.refunds_total > 0 ? ' ($' + k.refunds_total.toLocaleString() + ')' : ''), ch.refunds_pct, true);
+    html += '</div>';
+
+    // --- B: Geographic Hotspots + Top Products (side by side) ---
+    const hasCities = snap.topCities && snap.topCities.length > 0;
+    const hasProducts = snap.topProducts && snap.topProducts.length > 0;
+    if (hasCities || hasProducts) {
+        html += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">';
+
+        // Cities
+        if (hasCities) {
+            html += '<div class="raffle-card" style="margin-bottom:0;">';
+            html += '<div class="raffle-card-title" style="margin-bottom:10px;">Where Orders Are Coming From</div>';
+            const maxCityRev = snap.topCities[0]?.revenue || 1;
+            snap.topCities.forEach(c => {
+                const pct = (c.revenue / maxCityRev * 100).toFixed(1);
+                const label = c.city + (c.province ? ', ' + c.province : '');
+                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <div style="width:130px;font-size:12px;color:var(--text-secondary,#4F5B67);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(label + ', ' + (c.country || ''))}">${escapeHtml(label)}</div>
+                    <div style="flex:1;height:16px;background:var(--bg-secondary,#F6F8FA);border-radius:4px;overflow:hidden;">
+                        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#635BFF,#8B83FF);border-radius:4px;"></div>
+                    </div>
+                    <div style="width:70px;text-align:right;font-size:12px;font-weight:600;color:var(--text-primary,#1A1F36);">$${c.revenue.toLocaleString()}</div>
+                </div>`;
+            });
+            html += '</div>';
+        } else {
+            html += '<div class="raffle-card" style="margin-bottom:0;"><div class="raffle-card-title">Where Orders Are Coming From</div><div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">No geographic data yet today.</div></div>';
+        }
+
+        // Products
+        if (hasProducts) {
+            html += '<div class="raffle-card" style="margin-bottom:0;">';
+            html += '<div class="raffle-card-title" style="margin-bottom:10px;">Top Products Today</div>';
+            snap.topProducts.forEach((p, i) => {
+                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <div style="width:18px;font-size:12px;font-weight:700;color:var(--text-muted,#6B7C93);">${i + 1}.</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:600;color:var(--text-primary,#1A1F36);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.title)}</div>
+                        <div style="font-size:11px;color:var(--text-muted,#6B7C93);">${p.units} sold &middot; ${p.velocity}/hr</div>
+                    </div>
+                    <div style="font-size:13px;font-weight:700;color:var(--text-primary,#1A1F36);">$${p.revenue.toLocaleString()}</div>
+                </div>`;
+            });
+            html += '</div>';
+        } else {
+            html += '<div class="raffle-card" style="margin-bottom:0;"><div class="raffle-card-title">Top Products Today</div><div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">No product data yet today.</div></div>';
+        }
+
+        html += '</div>';
+    }
+
+    // --- C: Top Buyers + Discount Codes (side by side) ---
+    const hasCustomers = snap.topCustomers && snap.topCustomers.length > 0;
+    const hasDiscounts = snap.discounts && snap.discounts.length > 0;
+    if (hasCustomers || hasDiscounts) {
+        html += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;">';
+
+        // Top buyers
+        html += '<div class="raffle-card" style="margin-bottom:0;">';
+        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Top Buyers Today</div>';
+        if (hasCustomers) {
+            snap.topCustomers.forEach(c => {
+                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#635BFF,#E91E8C);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">${escapeHtml((c.name || '?')[0].toUpperCase())}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:600;color:var(--text-primary,#1A1F36);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.name)}</div>
+                        <div style="font-size:11px;color:var(--text-muted,#6B7C93);">${c.orders} order${c.orders !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div style="font-size:13px;font-weight:700;color:var(--text-primary,#1A1F36);">$${c.total_spent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                </div>`;
+            });
+        } else {
+            html += '<div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">No customer data yet today.</div>';
+        }
+        html += '</div>';
+
+        // Discount codes
+        html += '<div class="raffle-card" style="margin-bottom:0;">';
+        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Discount Codes</div>';
+        if (hasDiscounts) {
+            snap.discounts.forEach(d => {
+                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <div style="padding:3px 8px;border-radius:4px;background:var(--bg-secondary,#F6F8FA);font-size:12px;font-weight:700;font-family:monospace;color:#635BFF;">${escapeHtml(d.code)}</div>
+                    <div style="flex:1;font-size:12px;color:var(--text-muted,#6B7C93);">${d.uses} use${d.uses !== 1 ? 's' : ''}</div>
+                    <div style="font-size:13px;font-weight:700;color:#E91E8C;">-$${d.total_savings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                </div>`;
+            });
+        } else {
+            html += '<div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">No discount codes used today.</div>';
+        }
+        html += '</div>';
+
+        html += '</div>';
+    }
+
+    html += '</div>'; // close main raffle-card
+    return html;
+}
+
+function hbIntelKpiCard(label, value, changePct, invertColor) {
+    let changeHtml = '';
+    if (changePct !== undefined && changePct !== null) {
+        const isPositive = changePct > 0;
+        const isNeutral = changePct === 0;
+        let color;
+        if (isNeutral) {
+            color = 'var(--text-muted,#6B7C93)';
+        } else if (invertColor) {
+            // For refunds: up = bad (red), down = good (green)
+            color = isPositive ? '#E91E8C' : '#30B130';
+        } else {
+            color = isPositive ? '#30B130' : '#E91E8C';
+        }
+        const arrow = isPositive ? '&#9650;' : (changePct < 0 ? '&#9660;' : '');
+        changeHtml = `<div class="raffle-kpi-sub" style="color:${color};">${arrow} ${Math.abs(changePct)}% vs yesterday</div>`;
+    } else {
+        changeHtml = '<div class="raffle-kpi-sub">vs yesterday</div>';
+    }
+
+    return `<div class="raffle-kpi-card">
+        <div class="raffle-kpi-label">${label}</div>
+        <div class="raffle-kpi-value">${value}</div>
+        ${changeHtml}
+    </div>`;
 }
 
 /**

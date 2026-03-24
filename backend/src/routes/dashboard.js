@@ -233,6 +233,20 @@ router.get('/price-points', authenticate, async (req, res) => {
     }
 });
 
+// GET /api/dashboard/shopify-snapshot — 24h intelligence snapshot for Heartbeat
+router.get('/shopify-snapshot', authenticate, async (req, res) => {
+    try {
+        const org = await getOrgId(req.userId);
+        if (!org) return res.status(403).json({ error: 'No organization found' });
+
+        const snapshot = await analyticsService.getShopifySnapshot(org.organizationId, org.timezone);
+        res.json(snapshot);
+    } catch (error) {
+        log.error('Shopify snapshot error', { error: error.message || error });
+        res.status(500).json({ error: 'Failed to fetch shopify snapshot' });
+    }
+});
+
 // POST /api/dashboard/sync — Trigger a manual sync
 router.post('/sync', authenticate, async (req, res) => {
     try {

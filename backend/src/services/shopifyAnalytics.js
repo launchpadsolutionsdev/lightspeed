@@ -1079,13 +1079,31 @@ async function handleOrderWebhook(organizationId, topic, payload) {
             ]
         );
 
-        // Trim to 100 recent orders
+        // Trim recent orders: keep last 24h, max 500
         await pool.query(
-            `DELETE FROM dashboard_recent_orders WHERE organization_id = $1 AND id NOT IN (
-                SELECT id FROM dashboard_recent_orders WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 100
+            `DELETE FROM dashboard_recent_orders WHERE organization_id = $1
+             AND created_at < NOW() - INTERVAL '24 hours'
+             AND id NOT IN (
+                SELECT id FROM dashboard_recent_orders WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 500
             )`,
             [organizationId]
         );
+
+        // Store discount codes for the Shopify Intelligence section
+        const discountCodes = payload.discount_codes || [];
+        for (const dc of discountCodes) {
+            if (!dc.code) continue;
+            try {
+                await pool.query(
+                    `INSERT INTO order_discount_codes (organization_id, order_date, discount_code, discount_amount_cents, discount_type)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [organizationId, date, dc.code, toCents(dc.amount), dc.type || 'fixed_amount']
+                );
+            } catch (dcErr) {
+                // Table may not exist yet — silently skip
+                log.debug('Discount code insert skipped', { error: dcErr.message });
+            }
+        }
     }
 
     if (topic === 'orders/cancelled') {
@@ -1407,6 +1425,182 @@ async function getPricePoints(organizationId, startDate, endDate) {
     };
 }
 
+// ─── Shopify Intelligence Snapshot (Heartbeat) ─────────────────────
+
+/**
+ * Returns a 24h intelligence snapshot for the Heartbeat dashboard.
+ * Queries EXISTING pre-computed tables filtered to today/yesterday.
+ * No Shopify API calls — all data comes from webhook-populated tables.
+ */
+async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') {
+    let todayStr, yesterdayStr;
+    try {
+        todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const yd = new Date();
+        yd.setDate(yd.getDate() - 1);
+        yesterdayStr = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(yd);
+    } catch {
+        todayStr = new Date().toISOString().substring(0, 10);
+        const yd = new Date();
+        yd.setDate(yd.getDate() - 1);
+        yesterdayStr = yd.toISOString().substring(0, 10);
+    }
+
+    // Run all queries in parallel — all hit local DB tables
+    const [todayKpis, yesterdayKpis, topCities, topRegions, topProducts, topCustomers, discounts] = await Promise.all([
+        // Today's KPIs
+        pool.query(
+            `SELECT COALESCE(SUM(net_sales_cents), 0) AS revenue_cents,
+                    COALESCE(SUM(total_orders), 0) AS orders,
+                    COALESCE(SUM(total_units_sold), 0) AS units,
+                    COALESCE(SUM(refunds_cents), 0) AS refunds_cents,
+                    COALESCE(SUM(refunded_orders), 0) AS refunded_orders,
+                    COALESCE(SUM(new_customers), 0) AS new_customers,
+                    COALESCE(SUM(returning_customers), 0) AS returning_customers
+             FROM daily_sales_metrics WHERE organization_id = $1 AND date = $2`,
+            [organizationId, todayStr]
+        ),
+        // Yesterday's KPIs (for comparison)
+        pool.query(
+            `SELECT COALESCE(SUM(net_sales_cents), 0) AS revenue_cents,
+                    COALESCE(SUM(total_orders), 0) AS orders,
+                    COALESCE(SUM(total_units_sold), 0) AS units,
+                    COALESCE(SUM(refunds_cents), 0) AS refunds_cents,
+                    COALESCE(SUM(refunded_orders), 0) AS refunded_orders
+             FROM daily_sales_metrics WHERE organization_id = $1 AND date = $2`,
+            [organizationId, yesterdayStr]
+        ),
+        // Top 10 cities today
+        pool.query(
+            `SELECT city, province, country,
+                    SUM(revenue_cents) AS revenue_cents,
+                    SUM(order_count) AS order_count
+             FROM sales_by_city
+             WHERE organization_id = $1 AND date = $2
+             GROUP BY city, province, country
+             ORDER BY revenue_cents DESC LIMIT 10`,
+            [organizationId, todayStr]
+        ),
+        // Top 10 regions today
+        pool.query(
+            `SELECT province, country,
+                    SUM(revenue_cents) AS revenue_cents,
+                    SUM(order_count) AS order_count
+             FROM sales_by_region
+             WHERE organization_id = $1 AND date = $2
+             GROUP BY province, country
+             ORDER BY revenue_cents DESC LIMIT 10`,
+            [organizationId, todayStr]
+        ),
+        // Top 8 products today
+        pool.query(
+            `SELECT product_title,
+                    SUM(revenue_cents) AS revenue_cents,
+                    SUM(units_sold) AS units_sold
+             FROM product_sales_metrics
+             WHERE organization_id = $1 AND date = $2
+             GROUP BY product_title
+             ORDER BY revenue_cents DESC LIMIT 8`,
+            [organizationId, todayStr]
+        ),
+        // Top buyers today (from recent orders, grouped by email)
+        pool.query(
+            `SELECT customer_name, customer_email,
+                    COUNT(*) AS order_count,
+                    SUM(total_price_cents) AS total_spent_cents
+             FROM dashboard_recent_orders
+             WHERE organization_id = $1 AND created_at >= (NOW() - INTERVAL '24 hours') AND customer_email IS NOT NULL
+             GROUP BY customer_name, customer_email
+             ORDER BY total_spent_cents DESC LIMIT 8`,
+            [organizationId]
+        ),
+        // Discount codes today
+        pool.query(
+            `SELECT discount_code,
+                    COUNT(*) AS uses,
+                    SUM(discount_amount_cents) AS total_savings_cents
+             FROM order_discount_codes
+             WHERE organization_id = $1 AND order_date = $2
+             GROUP BY discount_code
+             ORDER BY uses DESC LIMIT 8`,
+            [organizationId, todayStr]
+        ).catch(() => ({ rows: [] })), // Table may not exist yet
+    ]);
+
+    const t = todayKpis.rows[0];
+    const y = yesterdayKpis.rows[0];
+    const tRevenue = parseInt(t.revenue_cents) || 0;
+    const tOrders = parseInt(t.orders) || 0;
+    const yRevenue = parseInt(y.revenue_cents) || 0;
+    const yOrders = parseInt(y.orders) || 0;
+    const tAov = tOrders > 0 ? Math.round(tRevenue / tOrders) : 0;
+    const yAov = yOrders > 0 ? Math.round(yRevenue / yOrders) : 0;
+
+    // Compute hours elapsed today for velocity calculation
+    let hoursElapsed;
+    try {
+        const nowInTz = new Date().toLocaleString('en-US', { timeZone: timezone });
+        const nowDate = new Date(nowInTz);
+        hoursElapsed = nowDate.getHours() + nowDate.getMinutes() / 60;
+    } catch {
+        hoursElapsed = new Date().getHours() + new Date().getMinutes() / 60;
+    }
+    if (hoursElapsed < 0.5) hoursElapsed = 0.5; // avoid division by tiny numbers early in the day
+
+    return {
+        date: todayStr,
+        kpis: {
+            revenue: tRevenue / 100,
+            orders: tOrders,
+            units: parseInt(t.units) || 0,
+            aov: tAov / 100,
+            refunds_count: parseInt(t.refunded_orders) || 0,
+            refunds_total: (parseInt(t.refunds_cents) || 0) / 100,
+            new_customers: parseInt(t.new_customers) || 0,
+            returning_customers: parseInt(t.returning_customers) || 0,
+        },
+        changes: {
+            revenue_pct: pctChange(tRevenue, yRevenue),
+            orders_pct: pctChange(tOrders, yOrders),
+            aov_pct: pctChange(tAov, yAov),
+            refunds_pct: pctChange(parseInt(t.refunded_orders) || 0, parseInt(y.refunded_orders) || 0),
+        },
+        topCities: topCities.rows.map(r => ({
+            city: r.city,
+            province: r.province,
+            country: r.country,
+            revenue: (parseInt(r.revenue_cents) || 0) / 100,
+            orders: parseInt(r.order_count) || 0,
+        })),
+        topRegions: topRegions.rows.map(r => ({
+            province: r.province,
+            country: r.country,
+            revenue: (parseInt(r.revenue_cents) || 0) / 100,
+            orders: parseInt(r.order_count) || 0,
+        })),
+        topProducts: topProducts.rows.map(r => {
+            const units = parseInt(r.units_sold) || 0;
+            return {
+                title: r.product_title,
+                revenue: (parseInt(r.revenue_cents) || 0) / 100,
+                units,
+                velocity: Math.round((units / hoursElapsed) * 10) / 10,
+            };
+        }),
+        topCustomers: topCustomers.rows.map(r => ({
+            name: r.customer_name,
+            email: r.customer_email,
+            orders: parseInt(r.order_count) || 0,
+            total_spent: (parseInt(r.total_spent_cents) || 0) / 100,
+        })),
+        discounts: discounts.rows.map(r => ({
+            code: r.discount_code,
+            uses: parseInt(r.uses) || 0,
+            total_savings: (parseInt(r.total_savings_cents) || 0) / 100,
+        })),
+    };
+}
+
 // ─── Scheduled Sync ─────────────────────────────────────────────────
 
 /**
@@ -1477,6 +1671,7 @@ module.exports = {
     getRecentOrders,
     getSyncStatus,
     getPricePoints,
+    getShopifySnapshot,
     shopifyGraphQL,
     runShopifyQL,
 };
