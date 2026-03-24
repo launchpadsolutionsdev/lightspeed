@@ -1497,18 +1497,6 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
     const todayMetrics = computeSnapshotMetrics(todayOrders, timezone);
     const yesterdayMetrics = computeSnapshotMetrics(yesterdayOrders, timezone);
 
-    // Also fetch discount codes from local table (populated by webhooks, lightweight query)
-    const discounts = await pool.query(
-        `SELECT discount_code,
-                COUNT(*) AS uses,
-                SUM(discount_amount_cents) AS total_savings_cents
-         FROM order_discount_codes
-         WHERE organization_id = $1 AND order_date = $2
-         GROUP BY discount_code
-         ORDER BY uses DESC LIMIT 8`,
-        [organizationId, todayStr]
-    ).catch(() => ({ rows: [] }));
-
     const snapshot = {
         date: todayStr,
         generated_at: new Date().toISOString(),
@@ -1537,11 +1525,6 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
         topRegions: todayMetrics.topRegions,
         topProducts: todayMetrics.topProducts,
         topCustomers: todayMetrics.topCustomers,
-        discounts: discounts.rows.map(r => ({
-            code: r.discount_code,
-            uses: parseInt(r.uses) || 0,
-            total_savings: (parseInt(r.total_savings_cents) || 0) / 100,
-        })),
     };
 
     // Cache it
@@ -1702,12 +1685,12 @@ function computeSnapshotMetrics(orders, timezone = 'America/Toronto') {
 
     const topCities = Object.values(cityMap)
         .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 10)
+        .slice(0, 20)
         .map(c => ({ city: c.city, province: c.province, country: c.country, revenue: c.revenue / 100, orders: c.orders }));
 
     const topRegions = Object.values(regionMap)
         .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 10)
+        .slice(0, 20)
         .map(r => ({ province: r.province, country: r.country, revenue: r.revenue / 100, orders: r.orders }));
 
     const topProducts = Object.values(productMap)

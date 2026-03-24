@@ -19896,11 +19896,8 @@ function renderShopifyIntelSkeleton() {
     h += '</div>';
     h += '</div>';
 
-    // Two-column skeleton (buyers + discounts)
-    h += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">';
-
     // Buyers skeleton
-    h += '<div class="raffle-card" style="margin-bottom:0;padding:16px;">';
+    h += '<div class="raffle-card" style="margin-bottom:16px;padding:16px;">';
     h += '<div class="skeleton-shimmer" style="width:130px;height:14px;margin-bottom:16px;"></div>';
     for (let i = 0; i < 5; i++) {
         h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
@@ -19909,19 +19906,6 @@ function renderShopifyIntelSkeleton() {
         h += '<div class="skeleton-shimmer" style="width:55px;height:14px;"></div>';
         h += '</div>';
     }
-    h += '</div>';
-
-    // Discounts skeleton
-    h += '<div class="raffle-card" style="margin-bottom:0;padding:16px;">';
-    h += '<div class="skeleton-shimmer" style="width:110px;height:14px;margin-bottom:16px;"></div>';
-    for (let i = 0; i < 3; i++) {
-        h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">';
-        h += '<div class="skeleton-shimmer" style="width:70px;height:22px;border-radius:4px;"></div>';
-        h += '<div class="skeleton-shimmer" style="flex:1;height:12px;"></div>';
-        h += '<div class="skeleton-shimmer" style="width:50px;height:14px;"></div>';
-        h += '</div>';
-    }
-    h += '</div>';
     h += '</div>';
 
     h += '</div>'; // close raffle-card
@@ -20017,47 +20001,21 @@ function renderHbShopifyIntel(snap) {
         html += '</div>';
     }
 
-    // --- C: Top Buyers + Discount Codes (side by side) ---
+    // --- C: Top Buyers ---
     const hasCustomers = snap.topCustomers && snap.topCustomers.length > 0;
-    const hasDiscounts = snap.discounts && snap.discounts.length > 0;
-    if (hasCustomers || hasDiscounts) {
-        html += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;">';
-
-        // Top buyers
-        html += '<div class="raffle-card" style="margin-bottom:0;">';
+    if (hasCustomers) {
+        html += '<div class="raffle-card" style="margin-bottom:16px;">';
         html += '<div class="raffle-card-title" style="margin-bottom:10px;">Top Buyers Today</div>';
-        if (hasCustomers) {
-            snap.topCustomers.forEach(c => {
-                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                    <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#635BFF,#E91E8C);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">${escapeHtml((c.name || '?')[0].toUpperCase())}</div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;font-weight:600;color:var(--text-primary,#1A1F36);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.name)}</div>
-                        <div style="font-size:11px;color:var(--text-muted,#6B7C93);">${c.orders} order${c.orders !== 1 ? 's' : ''}</div>
-                    </div>
-                    <div style="font-size:13px;font-weight:700;color:var(--text-primary,#1A1F36);">$${c.total_spent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                </div>`;
-            });
-        } else {
-            html += '<div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">No customer data yet today.</div>';
-        }
-        html += '</div>';
-
-        // Discount codes
-        html += '<div class="raffle-card" style="margin-bottom:0;">';
-        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Discount Codes</div>';
-        if (hasDiscounts) {
-            snap.discounts.forEach(d => {
-                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                    <div style="padding:3px 8px;border-radius:4px;background:var(--bg-secondary,#F6F8FA);font-size:12px;font-weight:700;font-family:monospace;color:#635BFF;">${escapeHtml(d.code)}</div>
-                    <div style="flex:1;font-size:12px;color:var(--text-muted,#6B7C93);">${d.uses} use${d.uses !== 1 ? 's' : ''}</div>
-                    <div style="font-size:13px;font-weight:700;color:#E91E8C;">-$${d.total_savings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                </div>`;
-            });
-        } else {
-            html += '<div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">No discount codes used today.</div>';
-        }
-        html += '</div>';
-
+        snap.topCustomers.forEach(c => {
+            html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#635BFF,#E91E8C);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">${escapeHtml((c.name || '?')[0].toUpperCase())}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:600;color:var(--text-primary,#1A1F36);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.name)}</div>
+                    <div style="font-size:11px;color:var(--text-muted,#6B7C93);">${c.orders} order${c.orders !== 1 ? 's' : ''}</div>
+                </div>
+                <div style="font-size:13px;font-weight:700;color:var(--text-primary,#1A1F36);">$${c.total_spent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>`;
+        });
         html += '</div>';
     }
 

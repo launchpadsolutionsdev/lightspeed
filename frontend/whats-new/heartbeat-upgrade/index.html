@@ -74,7 +74,7 @@
             <p>Heartbeat now has a collapsible sub-menu in the sidebar, just like the Response Assistant. Click the arrow to expand it and you&rsquo;ll see two focused pages:</p>
             <ul>
                 <li><strong>Live Dashboard</strong> &mdash; Everything related to your active raffle: sales velocity ticker, vital signs, surge detection, payment breakdown, package performance, hourly heatmaps, jackpot comparisons, and the live orders feed. Polls every 5 seconds for real-time data.</li>
-                <li><strong>Shopify Intelligence</strong> &mdash; Your Shopify store&rsquo;s daily snapshot: revenue, orders, average order value, refunds, geographic hotspots, top products, top buyers, and discount code tracking. Auto-refreshes every 2 minutes.</li>
+                <li><strong>Shopify Intelligence</strong> &mdash; Your Shopify store&rsquo;s daily snapshot: revenue, orders, average order value, refunds, geographic hotspots, top products, and top buyers. Fetches live from Shopify every time you open the page.</li>
             </ul>
             <p>Each sub-page only runs the polling it needs. When you&rsquo;re on the Live Dashboard, Shopify queries don&rsquo;t fire. When you switch to Shopify Intelligence, the 5-second raffle ticker stops. This means less unnecessary network traffic and a snappier experience.</p>
 
@@ -88,7 +88,7 @@
             <p>Shopify Intelligence now pulls data directly from the Shopify API every time you open the page &mdash; up to 10,000 of your most recent orders, computed on the fly and cached for two minutes. No more waiting for sync cycles, no more stale pre-computed tables, no more mismatched numbers. What you see is what Shopify has, period.</p>
 
             <h2>Unified Shopify Experience</h2>
-            <p>The standalone Shopify Analytics page that previously lived in the sidebar has been consolidated into Heartbeat &rsaquo; Shopify Intelligence. All your Shopify store data &mdash; revenue, orders, top products, buyer activity, geographic hotspots, and discount codes &mdash; now lives in one place alongside your raffle data. One tool, one sidebar entry, zero context-switching.</p>
+            <p>The standalone Shopify Analytics page that previously lived in the sidebar has been consolidated into Heartbeat &rsaquo; Shopify Intelligence. All your Shopify store data &mdash; revenue, orders, top products, buyer activity, and geographic hotspots &mdash; now lives in one place alongside your raffle data. One tool, one sidebar entry, zero context-switching.</p>
 
             <h2>Keyboard &amp; Command Palette</h2>
             <p>Both new sub-pages are accessible from the command palette (<strong>Cmd+K</strong> or <strong>Ctrl+K</strong>). Type &ldquo;heartbeat&rdquo; or &ldquo;shopify&rdquo; to jump directly to either page. Direct URLs also work: <code>/heartbeat/live</code> and <code>/heartbeat/shopify</code>.</p>
