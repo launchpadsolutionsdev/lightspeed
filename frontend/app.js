@@ -20193,9 +20193,104 @@ function renderHbShopifyIntel(snap) {
 // ---------------------------------------------------------------------------
 
 const _hbAiState = {
-    live: { conversation: [], model: 'claude-sonnet-4-6', controller: null },
-    shopify: { conversation: [], model: 'claude-sonnet-4-6', controller: null },
+    live: { conversation: [], model: 'claude-sonnet-4-6', controller: null, attachments: [] },
+    shopify: { conversation: [], model: 'claude-sonnet-4-6', controller: null, attachments: [] },
 };
+
+// ===== Heartbeat AI Panel — Attachment Helpers =====
+
+function hbAiFilesSelected(page, inputEl) {
+    const files = Array.from(inputEl.files);
+    files.forEach(f => addHbAiAttachment(page, f));
+    inputEl.value = ''; // reset so same file can be re-selected
+}
+
+async function addHbAiAttachment(page, file) {
+    const state = _hbAiState[page];
+    if (state.attachments.length >= 5) {
+        showToast('Maximum 5 attachments per message', 'error');
+        return;
+    }
+
+    const isImage = IMAGE_TYPES.includes(file.type);
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isServerParsed = SERVER_PARSED_EXTENSIONS.includes(ext);
+    const isTextFile = TEXT_EXTENSIONS.includes(ext);
+
+    if (isImage && file.size > 5 * 1024 * 1024) { showToast('Images must be under 5 MB', 'error'); return; }
+    if (isServerParsed && file.size > 10 * 1024 * 1024) { showToast('Files must be under 10 MB', 'error'); return; }
+    if (!isImage && !isServerParsed && file.size > 1 * 1024 * 1024) { showToast('Text files must be under 1 MB', 'error'); return; }
+    if (!isImage && !isTextFile && !isServerParsed) { showToast('Unsupported file type. Use images, text, PDF, Excel, or CSV files.', 'error'); return; }
+
+    let base64 = null;
+    let textContent = null;
+
+    if (isImage) {
+        base64 = await fileToBase64(file);
+    } else if (!isServerParsed) {
+        textContent = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
+    }
+
+    state.attachments.push({
+        file, base64, textContent,
+        mediaType: file.type || 'application/octet-stream',
+        name: file.name, size: file.size,
+        isImage, isServerParsed,
+        previewUrl: isImage ? URL.createObjectURL(file) : null
+    });
+
+    renderHbAiAttachments(page);
+}
+
+function removeHbAiAttachment(page, index) {
+    const att = _hbAiState[page].attachments[index];
+    if (att && att.previewUrl) URL.revokeObjectURL(att.previewUrl);
+    _hbAiState[page].attachments.splice(index, 1);
+    renderHbAiAttachments(page);
+}
+
+function renderHbAiAttachments(page) {
+    const container = document.getElementById(page === 'live' ? 'hbAiAttachmentsLive' : 'hbAiAttachmentsShopify');
+    if (!container) return;
+    container.innerHTML = _hbAiState[page].attachments.map((att, i) => {
+        const thumb = att.isImage
+            ? '<img class="hb-ai-attachment-thumb" src="' + att.previewUrl + '" alt="">'
+            : '<div class="hb-ai-attachment-icon">' + getFileExtension(att.name) + '</div>';
+        return '<div class="hb-ai-attachment-item">' +
+            thumb +
+            '<div class="hb-ai-attachment-info">' +
+                '<span class="hb-ai-attachment-name">' + escapeHtml(att.name) + '</span>' +
+                '<span class="hb-ai-attachment-size">' + formatFileSize(att.size) + '</span>' +
+            '</div>' +
+            '<button class="hb-ai-attachment-remove" onclick="removeHbAiAttachment(\'' + page + '\',' + i + ')">&times;</button>' +
+        '</div>';
+    }).join('');
+}
+
+function clearHbAiAttachments(page) {
+    _hbAiState[page].attachments.forEach(att => { if (att.previewUrl) URL.revokeObjectURL(att.previewUrl); });
+    _hbAiState[page].attachments = [];
+    renderHbAiAttachments(page);
+}
+
+function buildHbAiUserContent(text, attachments) {
+    if (!attachments || attachments.length === 0) return text;
+    const content = [];
+    for (const att of attachments) {
+        if (att.isImage) {
+            content.push({ type: 'image', source: { type: 'base64', media_type: att.mediaType, data: att.base64 } });
+        } else if (att.textContent) {
+            content.push({ type: 'text', text: '--- File: ' + att.name + ' ---\n' + att.textContent + '\n--- End of file ---' });
+        }
+    }
+    content.push({ type: 'text', text: text });
+    return content;
+}
 
 function toggleHbAiPanel(page) {
     const panel = document.getElementById(page === 'live' ? 'hbAiPanelLive' : 'hbAiPanelShopify');
@@ -20257,6 +20352,7 @@ function clearHbAiChat(page) {
         _hbAiState[page].controller.abort();
         _hbAiState[page].controller = null;
     }
+    clearHbAiAttachments(page);
     renderHbAiWelcome(page);
     const sendBtn = document.getElementById(page === 'live' ? 'hbAiSendLive' : 'hbAiSendShopify');
     if (sendBtn) sendBtn.disabled = false;
@@ -20340,7 +20436,8 @@ async function sendHbAiMessage(page) {
     if (!inputEl || !messagesEl) return;
 
     const message = inputEl.value.trim();
-    if (!message) return;
+    const currentAttachments = [..._hbAiState[page].attachments];
+    if (!message && currentAttachments.length === 0) return;
 
     const state = _hbAiState[page];
 
@@ -20351,19 +20448,42 @@ async function sendHbAiMessage(page) {
     const welcome = messagesEl.querySelector('.hb-ai-welcome');
     if (welcome) welcome.remove();
 
-    // Append user message
+    // Build display text
+    const displayText = message || (currentAttachments.length > 0 ? '(attached ' + currentAttachments.length + ' file' + (currentAttachments.length > 1 ? 's' : '') + ')' : '');
+
+    // Append user message with attachment previews
     const userDiv = document.createElement('div');
     userDiv.className = 'hb-ai-msg hb-ai-msg-user';
-    userDiv.textContent = message;
+    let userHtml = '';
+    if (currentAttachments.length > 0) {
+        for (const att of currentAttachments) {
+            if (att.isImage && att.previewUrl) {
+                userHtml += '<img class="hb-ai-msg-image" src="' + att.previewUrl + '" alt="' + escapeHtml(att.name) + '">';
+            } else {
+                userHtml += '<div class="hb-ai-msg-file-badge">' + getFileExtension(att.name) + ' ' + escapeHtml(att.name) + '</div>';
+            }
+        }
+    }
+    userHtml += escapeHtml(displayText);
+    userDiv.innerHTML = userHtml;
     messagesEl.appendChild(userDiv);
     messagesEl.scrollTop = messagesEl.scrollHeight;
 
+    // Store text-only version in conversation history
+    const textForHistory = currentAttachments.length > 0
+        ? (currentAttachments.filter(a => !a.isImage).map(a => '[File: ' + a.name + ']\n' + (a.textContent || '')).join('\n') + '\n' + message).trim()
+        : message;
+
     inputEl.value = '';
     inputEl.style.height = 'auto';
+    clearHbAiAttachments(page);
     if (sendBtn) sendBtn.disabled = true;
 
     // Add to conversation
-    state.conversation.push({ role: 'user', content: message });
+    state.conversation.push({ role: 'user', content: textForHistory });
+
+    // Build API content (with image blocks for Claude)
+    const apiContent = buildHbAiUserContent(message || 'Please analyze the attached file(s).', currentAttachments);
 
     // Show typing indicator
     const typingEl = document.createElement('div');
@@ -20377,13 +20497,24 @@ async function sendHbAiMessage(page) {
     const dashboardContext = getHbAiContext(page);
 
     const formData = new FormData();
-    formData.append('message', message);
+    formData.append('message', message || 'Please analyze the attached file(s).');
     formData.append('conversation', JSON.stringify(state.conversation.slice(0, -1)));
     formData.append('model', state.model);
     formData.append('tone', 'professional');
     formData.append('language', responseLanguage || 'en');
     if (dashboardContext) {
         formData.append('dashboardContext', dashboardContext);
+    }
+
+    // Attach server-parsed file (Excel, PDF, CSV — API accepts one file)
+    const serverFile = currentAttachments.find(att => att.isServerParsed);
+    if (serverFile) {
+        formData.append('file', serverFile.file);
+    }
+
+    // For images and text files, include as content blocks via the content field
+    if (currentAttachments.some(att => att.isImage || att.textContent) && typeof apiContent !== 'string') {
+        formData.append('content', JSON.stringify(apiContent));
     }
 
     try {
@@ -20461,7 +20592,7 @@ async function sendHbAiMessage(page) {
     }
 }
 
-// Auto-grow textareas + Enter-to-send
+// Auto-grow textareas + Enter-to-send + drag-and-drop
 document.addEventListener('DOMContentLoaded', () => {
     ['hbAiInputLive', 'hbAiInputShopify'].forEach(id => {
         const el = document.getElementById(id);
@@ -20476,6 +20607,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 const page = id.includes('Live') ? 'live' : 'shopify';
                 sendHbAiMessage(page);
             }
+        });
+    });
+
+    // Drag-and-drop for both panels
+    ['live', 'shopify'].forEach(page => {
+        const panel = document.getElementById(page === 'live' ? 'hbAiPanelLive' : 'hbAiPanelShopify');
+        const overlay = document.getElementById(page === 'live' ? 'hbAiDropOverlayLive' : 'hbAiDropOverlayShopify');
+        if (!panel || !overlay) return;
+
+        let dragCounter = 0;
+        panel.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            dragCounter++;
+            overlay.classList.add('visible');
+        });
+        panel.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dragCounter--;
+            if (dragCounter <= 0) { dragCounter = 0; overlay.classList.remove('visible'); }
+        });
+        panel.addEventListener('dragover', (e) => e.preventDefault());
+        panel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragCounter = 0;
+            overlay.classList.remove('visible');
+            const files = Array.from(e.dataTransfer.files);
+            files.forEach(f => addHbAiAttachment(page, f));
         });
     });
 });

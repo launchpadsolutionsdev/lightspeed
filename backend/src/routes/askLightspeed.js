@@ -1010,12 +1010,18 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
     };
 
     try {
-        const { message, conversation, model, language, webSearch, dashboardContext } = req.body;
+        const { message, conversation, model, language, webSearch, dashboardContext, content: rawContent } = req.body;
         const file = req.file;
         const organizationId = req.organizationId;
         const userId = req.userId;
 
-        if (!message && !file) {
+        // Parse structured content blocks (images + text) from form data
+        let contentBlocks = null;
+        if (rawContent) {
+            try { contentBlocks = JSON.parse(rawContent); } catch (_e) { /* ignore */ }
+        }
+
+        if (!message && !file && !contentBlocks) {
             sendEvent({ type: 'error', error: 'Message or file required' });
             return res.end();
         }
@@ -1046,10 +1052,19 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
             }
         }
 
-        // Build the user message with file content
-        const userMessage = fileContext
-            ? (message || 'Please analyze the uploaded file.') + fileContext
-            : message;
+        // Build the user message with file content and/or structured content blocks
+        let userMessage;
+        if (contentBlocks && Array.isArray(contentBlocks)) {
+            // Structured content (images + text) — append file context to the last text block
+            if (fileContext) {
+                contentBlocks.push({ type: 'text', text: fileContext });
+            }
+            userMessage = contentBlocks;
+        } else {
+            userMessage = fileContext
+                ? (message || 'Please analyze the uploaded file.') + fileContext
+                : message;
+        }
 
         // Build system prompt with full org profile (always use server-built prompt)
         const orgProfile = await fetchOrgProfile(organizationId);
