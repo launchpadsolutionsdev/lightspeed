@@ -498,7 +498,7 @@ async function exportCustomersFromRecentOrders(organizationId) {
     const domain = cleanShopDomain(store.shop_domain);
     const accessToken = store.access_token;
     const collected = [];
-    const TARGET = 1000;
+    const TARGET = 5000;
     let url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/orders.json?status=any&limit=250&fields=customer,email&order=created_at+desc`;
 
     while (url && collected.length < TARGET) {
