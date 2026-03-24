@@ -20025,33 +20025,6 @@ function renderHbShopifyIntel(snap) {
         html += '</div>';
     }
 
-    // --- D: Hourly Sales Heatmap ---
-    if (snap.hourlySales && snap.hourlySales.length > 0) {
-        html += '<div class="raffle-card" style="margin-bottom:16px;">';
-        html += '<div class="raffle-card-title" style="margin-bottom:10px;">Sales by Hour</div>';
-        const maxHourOrders = Math.max(...snap.hourlySales.map(h => h.orders), 1);
-        html += '<div style="display:flex;align-items:flex-end;gap:2px;height:80px;padding:0 4px;">';
-        snap.hourlySales.forEach(h => {
-            const pct = (h.orders / maxHourOrders * 100);
-            const barH = Math.max(pct, 2);
-            const isActive = h.orders > 0;
-            const tooltip = `${h.hour === 0 ? '12 AM' : h.hour < 12 ? h.hour + ' AM' : h.hour === 12 ? '12 PM' : (h.hour - 12) + ' PM'}: ${h.orders} orders, $${h.revenue.toLocaleString()}`;
-            html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="${tooltip}">
-                <div style="width:100%;height:${barH}%;min-height:2px;background:${isActive ? 'linear-gradient(180deg,#635BFF,#8B83FF)' : 'var(--bg-secondary,#F0F0F0)'};border-radius:2px 2px 0 0;transition:height 0.3s;"></div>
-            </div>`;
-        });
-        html += '</div>';
-        // Hour labels (show every 3 hours)
-        html += '<div style="display:flex;gap:2px;padding:4px 4px 0;">';
-        snap.hourlySales.forEach(h => {
-            const showLabel = h.hour % 3 === 0;
-            const label = h.hour === 0 ? '12a' : h.hour < 12 ? h.hour + 'a' : h.hour === 12 ? '12p' : (h.hour - 12) + 'p';
-            html += `<div style="flex:1;text-align:center;font-size:9px;color:var(--text-muted,#6B7C93);">${showLabel ? label : ''}</div>`;
-        });
-        html += '</div>';
-        html += '</div>';
-    }
-
     // --- E: Revenue by Price Point + Order Distribution (side by side) ---
     const hasPricePoints = snap.pricePoints && snap.pricePoints.length > 0;
     const hasDistribution = snap.orderDistribution && snap.orderDistribution.length > 0;
