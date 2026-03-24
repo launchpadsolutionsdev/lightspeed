@@ -204,7 +204,7 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
     },
     {
         name: 'run_insights_analysis',
-        description: 'Run an Insights Engine analysis on provided data. Use this when the user asks for analysis of sales data, customer data, seller performance, or any structured data they\'ve shared in the conversation. The data should already be available from an uploaded file or conversation context.',
+        description: 'Run an Insights Engine analysis on data the user has uploaded or shared. Use ONLY for analyzing file uploads, spreadsheets, or structured data already provided in the conversation. Do NOT use this for general "how are sales" questions — use search_heartbeat_data instead for live sales performance.',
         input_schema: {
             type: 'object',
             properties: {
@@ -1090,7 +1090,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
         dynamicSystem += `\n\nCRITICAL REMINDER — TOOL USAGE:
 When the user asks about a specific customer, email address, order, or purchase, you MUST call the search_shopify_orders or search_shopify_customers tool to look up the data. Do NOT tell the user to check Shopify Admin manually. Do NOT say you only have aggregate data. You have real-time Shopify lookup tools — use them.
 
-When the user asks about current sales, velocity, how tickets are selling, revenue pace, sales trends, or Heartbeat data, you MUST call search_heartbeat_data. Do NOT say you don't have access to live sales data — you do.`;
+When the user asks about current sales, velocity, how tickets are selling, revenue pace, sales performance, sales trends, "how are sales", "how are sales today", "how is the raffle doing", or Heartbeat data, you MUST call search_heartbeat_data FIRST. This is the ONLY tool that provides real-time, live sales data. Do NOT call run_insights_analysis or search_shopify_orders for general "how are sales" questions — those tools do not have live velocity data. Do NOT say you don't have access to live sales data — you do via search_heartbeat_data.`;
 
         // Reinforce web search when enabled
         if (webSearch === 'true') {
@@ -1791,7 +1791,7 @@ ${webSearch ? `WEB SEARCH (ENABLED):
 
 ANALYSIS & HISTORY TOOLS:
 - search_response_history: Search past AI-generated content across all Lightspeed tools
-- run_insights_analysis: Analyze data (sales, customers, sellers, etc.) using the Insights Engine
+- run_insights_analysis: Analyze uploaded or user-provided data (spreadsheets, file uploads, etc.) using the Insights Engine. NOT for general "how are sales" questions — use search_heartbeat_data for that.
 
 TOOL USAGE GUIDELINES:
 - For file uploads with draw schedules: Parse carefully, then call create_runway_events with all events immediately. The system will show the user a confirmation dialog — you do NOT need to ask for confirmation in text.
@@ -1806,7 +1806,7 @@ TOOL USAGE GUIDELINES:
 - For order lookups ("any orders under...", "order #1042", "what did X buy?"): Call search_shopify_orders with the appropriate parameter (orderNumber, email, or customerName)
 - For customer lookups ("find customer...", "who is...", "look up..."): Call search_shopify_customers with the query
 - For data analysis requests: Call run_insights_analysis with the data
-- For current sales, velocity, "how are sales going?", "how fast are tickets selling?", heartbeat metrics, or live raffle performance: Call search_heartbeat_data. Use window parameter to focus on a specific time range, or "all" for a full overview.
+- For current sales, velocity, "how are sales going?", "how are sales today?", "how is the raffle doing?", "how fast are tickets selling?", heartbeat metrics, sales performance, or live raffle performance: Call search_heartbeat_data FIRST. This is your go-to tool for any general "how are sales" question. Use window parameter to focus on a specific time range, or "all" for a full overview. Do NOT use run_insights_analysis or Shopify tools for these questions.
 - For visualizing data: Call render_chart after you have retrieved the data. Use bar charts for comparisons, line charts for trends over time, pie/doughnut for proportions, horizontalBar for ranked lists. When the user asks to "show me", "graph", "chart", "visualize", or when numeric data would benefit from a visual, proactively render a chart.
 ${webSearch ? `- For ANY factual question, external topic, industry question, regulation, news, statistics, or "who/what/when/where" questions: You MUST call web_search. Do not rely on training data for factual claims — search first. The only exception is questions answerable from internal tools (KB, calendar, Shopify, Home Base).
 ` : ''}- For policy/procedure questions: Call search_knowledge_base
