@@ -19750,11 +19750,16 @@ async function refreshHbShopifySnapshot() {
     const container = document.getElementById('hbShopifyIntel');
     if (!container) return;
 
+    // Show loading state on first fetch
+    if (!_hbShopifySnapshot) {
+        container.innerHTML = '<div class="raffle-card" style="margin-bottom:20px;"><div class="raffle-card-header"><div class="raffle-card-title">Shopify Intelligence &mdash; 24h Snapshot</div></div><div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">Loading Shopify data&hellip;</div></div>';
+    }
+
     try {
         const resp = await fetch(`${API_BASE_URL}/api/dashboard/shopify-snapshot`, {
             headers: getAuthHeaders()
         });
-        if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+        if (!resp.ok) throw new Error(`API ${resp.status}: ${resp.statusText}`);
 
         const data = await resp.json();
         _hbShopifySnapshot = data;
@@ -19763,7 +19768,7 @@ async function refreshHbShopifySnapshot() {
     } catch (err) {
         console.warn('Shopify Intelligence fetch failed:', err.message);
         if (!_hbShopifySnapshot) {
-            container.innerHTML = '';
+            container.innerHTML = '<div class="raffle-card" style="margin-bottom:20px;"><div class="raffle-card-header"><div class="raffle-card-title">Shopify Intelligence &mdash; 24h Snapshot</div></div><div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">Unable to load &mdash; ' + escapeHtml(err.message) + '</div></div>';
         }
     }
 }
@@ -19772,9 +19777,6 @@ function renderHbShopifyIntel(snap) {
     if (!snap || !snap.kpis) return '';
     const k = snap.kpis;
     const ch = snap.changes || {};
-
-    // Check if we have any meaningful data
-    if (k.revenue === 0 && k.orders === 0 && (!snap.topCities || snap.topCities.length === 0)) return '';
 
     let html = '';
 
