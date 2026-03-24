@@ -18992,6 +18992,12 @@ function initHeartbeatShopify() {
     if (!container) return;
 
     stopHeartbeatPolling();
+
+    // Show skeleton immediately so the user sees the loading animation
+    if (!_hbShopifySnapshot) {
+        container.innerHTML = renderShopifyIntelSkeleton();
+    }
+
     refreshHbShopifySnapshot();
     _hbShopifyIntelTimer = setInterval(refreshHbShopifySnapshot, 120000);
 }
