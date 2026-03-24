@@ -204,7 +204,6 @@ async function fetchFeed(orgId, feedUrl, winnersFeedUrl, salesFeedUrl) {
     await loadSnapshots(orgId);
     const now = Date.now();
     const cached = _feedCaches.get(orgId);
-    const snapshots = _salesSnapshotsByOrg.get(orgId) || [];
 
     if (cached && (now - cached.cacheTime) < FEED_CACHE_TTL) {
         // Still record a time-stamped snapshot and recompute velocity on cache hits

@@ -289,6 +289,10 @@ describe('Auth Routes', () => {
             pool.query.mockResolvedValueOnce({ rowCount: 1 });
             // INSERT membership
             pool.query.mockResolvedValueOnce({ rowCount: 1 });
+            // seedOrgStarterContent: INSERT templates from system library
+            pool.query.mockResolvedValueOnce({ rowCount: 5 });
+            // seedOrgStarterContent: INSERT starter response rules
+            pool.query.mockResolvedValueOnce({ rowCount: 2 });
             // SELECT created org
             pool.query.mockResolvedValueOnce({
                 rows: [{ id: 'mock-uuid', name: 'New Org', slug: 'new-org', subscription_status: 'trial' }]
