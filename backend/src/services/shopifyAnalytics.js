@@ -1525,6 +1525,16 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
         topRegions: todayMetrics.topRegions,
         topProducts: todayMetrics.topProducts,
         topCustomers: todayMetrics.topCustomers,
+        // New insights
+        hourlySales: todayMetrics.hourlySales,
+        pricePoints: todayMetrics.pricePoints,
+        repeatBuyers: todayMetrics.repeatBuyers,
+        orderDistribution: todayMetrics.orderDistribution,
+        avgUnitsPerOrder: todayMetrics.avgUnitsPerOrder,
+        paymentMethods: todayMetrics.paymentMethods,
+        salesChannels: todayMetrics.salesChannels,
+        fulfillmentBreakdown: todayMetrics.fulfillmentBreakdown,
+        riskSummary: todayMetrics.riskSummary,
     };
 
     // Cache it
@@ -1550,12 +1560,16 @@ async function fetchRecentOrders(store, sinceDate) {
                     node {
                         createdAt
                         displayFinancialStatus
+                        displayFulfillmentStatus
                         totalPriceSet { shopMoney { amount currencyCode } }
                         subtotalPriceSet { shopMoney { amount } }
                         totalTaxSet { shopMoney { amount } }
                         totalDiscountsSet { shopMoney { amount } }
                         totalShippingPriceSet { shopMoney { amount } }
                         totalRefundedSet { shopMoney { amount } }
+                        paymentGatewayNames
+                        riskLevel
+                        channelInformation { channelDefinition { channelName } }
                         shippingAddress { city province country }
                         billingAddress { city province country }
                         customer { email defaultAddress { city province country } }
@@ -1588,6 +1602,7 @@ async function fetchRecentOrders(store, sinceDate) {
 
             orders.push({
                 date,
+                createdAt: o.createdAt,
                 totalCents: toCents(o.totalPriceSet?.shopMoney?.amount),
                 subtotalCents: toCents(o.subtotalPriceSet?.shopMoney?.amount),
                 taxCents: toCents(o.totalTaxSet?.shopMoney?.amount),
@@ -1595,6 +1610,10 @@ async function fetchRecentOrders(store, sinceDate) {
                 shippingCents: toCents(o.totalShippingPriceSet?.shopMoney?.amount),
                 refundedCents: toCents(o.totalRefundedSet?.shopMoney?.amount),
                 isRefunded: o.displayFinancialStatus === 'REFUNDED' || o.displayFinancialStatus === 'PARTIALLY_REFUNDED',
+                fulfillmentStatus: o.displayFulfillmentStatus || 'UNFULFILLED',
+                paymentGateways: o.paymentGatewayNames || [],
+                riskLevel: o.riskLevel || 'NONE',
+                channel: o.channelInformation?.channelDefinition?.channelName || 'Online Store',
                 city: addr?.city || null,
                 province: addr?.province || 'No Address on File',
                 country: addr?.country || '',
@@ -1628,6 +1647,12 @@ function computeSnapshotMetrics(orders, timezone = 'America/Toronto') {
     const productMap = {};
     const customerMap = {};
     const customerEmails = new Set();
+    const hourlyMap = {};        // hour (0-23) → { orders, revenue }
+    const pricePointMap = {};    // price in dollars → { label, units, revenue }
+    const paymentMap = {};       // gateway name → count
+    const channelMap = {};       // channel name → { orders, revenue }
+    const fulfillmentMap = {};   // status → count
+    let riskHigh = 0, riskMedium = 0, riskLow = 0;
 
     for (const o of orders) {
         revenue += o.subtotalCents;
@@ -1637,6 +1662,41 @@ function computeSnapshotMetrics(orders, timezone = 'America/Toronto') {
             refundsCents += o.refundedCents;
         }
 
+        // Hourly heatmap — parse hour from createdAt in the org's timezone
+        let hour = 0;
+        try {
+            const d = new Date(o.createdAt);
+            const hStr = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false }).format(d);
+            hour = parseInt(hStr) || 0;
+        } catch {
+            hour = new Date(o.createdAt).getHours();
+        }
+        if (!hourlyMap[hour]) hourlyMap[hour] = { orders: 0, revenue: 0 };
+        hourlyMap[hour].orders++;
+        hourlyMap[hour].revenue += o.subtotalCents;
+
+        // Payment gateways
+        for (const gw of o.paymentGateways) {
+            const name = gw || 'Unknown';
+            paymentMap[name] = (paymentMap[name] || 0) + 1;
+        }
+
+        // Sales channel
+        const ch = o.channel;
+        if (!channelMap[ch]) channelMap[ch] = { orders: 0, revenue: 0 };
+        channelMap[ch].orders++;
+        channelMap[ch].revenue += o.subtotalCents;
+
+        // Fulfillment status
+        const fs = o.fulfillmentStatus;
+        fulfillmentMap[fs] = (fulfillmentMap[fs] || 0) + 1;
+
+        // Risk level
+        if (o.riskLevel === 'HIGH') riskHigh++;
+        else if (o.riskLevel === 'MEDIUM') riskMedium++;
+        else riskLow++;
+
+        // Customers
         if (o.customerEmail) {
             customerEmails.add(o.customerEmail);
             if (!customerMap[o.customerEmail]) {
@@ -1662,13 +1722,20 @@ function computeSnapshotMetrics(orders, timezone = 'America/Toronto') {
         regionMap[rKey].revenue += o.totalCents;
         regionMap[rKey].orders++;
 
-        // Products
+        // Products + price points
         for (const item of o.lineItems) {
             units += item.quantity;
             const lineRevenue = item.unitPriceCents * item.quantity;
             if (!productMap[item.title]) productMap[item.title] = { title: item.title, revenue: 0, units: 0 };
             productMap[item.title].revenue += lineRevenue;
             productMap[item.title].units += item.quantity;
+
+            // Price point bucketing (round to nearest dollar)
+            const priceDollars = Math.round(item.unitPriceCents / 100);
+            const ppKey = priceDollars;
+            if (!pricePointMap[ppKey]) pricePointMap[ppKey] = { price: priceDollars, label: '$' + priceDollars, units: 0, revenue: 0 };
+            pricePointMap[ppKey].units += item.quantity;
+            pricePointMap[ppKey].revenue += lineRevenue;
         }
     }
 
@@ -1703,7 +1770,102 @@ function computeSnapshotMetrics(orders, timezone = 'America/Toronto') {
         .slice(0, 8)
         .map(c => ({ name: c.name || c.email.split('@')[0], email: c.email, orders: c.orders, total_spent: c.totalCents / 100 }));
 
-    return { revenue, orders: orders.length, units, refundsCount, refundsCents, customerEmails, topCities, topRegions, topProducts, topCustomers };
+    // Hourly heatmap — full 24 hours
+    const hourlySales = [];
+    for (let h = 0; h < 24; h++) {
+        const d = hourlyMap[h] || { orders: 0, revenue: 0 };
+        hourlySales.push({ hour: h, orders: d.orders, revenue: d.revenue / 100 });
+    }
+
+    // Price points — sorted by revenue descending
+    const pricePoints = Object.values(pricePointMap)
+        .sort((a, b) => b.revenue - a.revenue)
+        .map(p => ({ label: p.label, price: p.price, units: p.units, revenue: p.revenue / 100 }));
+
+    // Repeat buyers — customers with 2+ orders
+    const allCustomers = Object.values(customerMap);
+    const repeatBuyers = allCustomers
+        .filter(c => c.orders >= 2)
+        .sort((a, b) => b.totalCents - a.totalCents)
+        .slice(0, 10)
+        .map(c => ({ name: c.name || c.email.split('@')[0], email: c.email, orders: c.orders, total_spent: c.totalCents / 100 }));
+
+    // Order distribution — how many customers bought 1, 2, 3+ times
+    const distMap = {};
+    for (const c of allCustomers) {
+        const bucket = c.orders >= 5 ? '5+' : String(c.orders);
+        distMap[bucket] = (distMap[bucket] || 0) + 1;
+    }
+    const orderDistribution = Object.entries(distMap)
+        .sort((a, b) => {
+            const aNum = a[0] === '5+' ? 5 : parseInt(a[0]);
+            const bNum = b[0] === '5+' ? 5 : parseInt(b[0]);
+            return aNum - bNum;
+        })
+        .map(([bucket, count]) => ({ bucket: bucket + (bucket === '1' ? ' order' : ' orders'), count, pct: allCustomers.length > 0 ? Math.round(count / allCustomers.length * 1000) / 10 : 0 }));
+
+    // Average units per order
+    const avgUnitsPerOrder = orders.length > 0 ? Math.round(units / orders.length * 10) / 10 : 0;
+
+    // Payment methods — sorted by count descending
+    const paymentMethods = Object.entries(paymentMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name: formatGatewayName(name), count, pct: orders.length > 0 ? Math.round(count / orders.length * 1000) / 10 : 0 }));
+
+    // Sales channels — sorted by revenue descending
+    const salesChannels = Object.entries(channelMap)
+        .sort((a, b) => b[1].revenue - a[1].revenue)
+        .map(([name, d]) => ({ name, orders: d.orders, revenue: d.revenue / 100 }));
+
+    // Fulfillment breakdown
+    const fulfillmentBreakdown = Object.entries(fulfillmentMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([status, count]) => ({ status: formatFulfillmentStatus(status), count, pct: orders.length > 0 ? Math.round(count / orders.length * 1000) / 10 : 0 }));
+
+    // Risk summary
+    const riskSummary = { high: riskHigh, medium: riskMedium, low: riskLow };
+
+    return {
+        revenue, orders: orders.length, units, refundsCount, refundsCents, customerEmails,
+        topCities, topRegions, topProducts, topCustomers,
+        hourlySales, pricePoints, repeatBuyers, orderDistribution, avgUnitsPerOrder,
+        paymentMethods, salesChannels, fulfillmentBreakdown, riskSummary,
+    };
+}
+
+/**
+ * Format Shopify payment gateway names for display.
+ */
+function formatGatewayName(name) {
+    const map = {
+        'shopify_payments': 'Credit Card',
+        'paypal': 'PayPal',
+        'manual': 'Manual Payment',
+        'gift_card': 'Gift Card',
+        'cash': 'Cash',
+        'bank_deposit': 'Bank Deposit',
+        'money_order': 'Money Order',
+        'shop_pay_installments': 'Shop Pay Installments',
+    };
+    if (map[name]) return map[name];
+    // Title case unknown gateways
+    return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Format fulfillment status for display.
+ */
+function formatFulfillmentStatus(status) {
+    const map = {
+        'FULFILLED': 'Fulfilled',
+        'UNFULFILLED': 'Unfulfilled',
+        'PARTIALLY_FULFILLED': 'Partial',
+        'RESTOCKED': 'Restocked',
+        'IN_PROGRESS': 'In Progress',
+        'ON_HOLD': 'On Hold',
+        'SCHEDULED': 'Scheduled',
+    };
+    return map[status] || status;
 }
 
 // ─── Scheduled Sync ─────────────────────────────────────────────────
