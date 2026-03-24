@@ -803,6 +803,7 @@ async function syncRecentOrders(store, organizationId) {
                         displayFulfillmentStatus
                         customer { firstName lastName email }
                         shippingAddress { province country }
+                        billingAddress { province country }
                         lineItems(first: 5) {
                             edges {
                                 node { title quantity originalUnitPriceSet { shopMoney { amount } } }
@@ -847,8 +848,8 @@ async function syncRecentOrders(store, organizationId) {
                     order.displayFulfillmentStatus,
                     [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' ') || 'Guest',
                     order.customer?.email,
-                    order.shippingAddress?.province,
-                    order.shippingAddress?.country,
+                    (order.shippingAddress || order.billingAddress)?.province,
+                    (order.shippingAddress || order.billingAddress)?.country,
                     JSON.stringify(lineItems),
                 ]
             );
@@ -1573,10 +1574,12 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
                 for (const item of items) {
                     const title = item.title || item.name || 'Unknown';
                     const qty = item.quantity || item.qty || 1;
-                    const price = Math.round((parseFloat(item.price) || 0) * 100) * qty;
+                    // price_cents is stored by both GraphQL sync and webhook paths
+                    const priceCents = parseInt(item.price_cents) || Math.round((parseFloat(item.price) || 0) * 100);
+                    const lineTotal = priceCents * qty;
                     tUnits += qty;
                     if (!productMap[title]) productMap[title] = { title, revenue_cents: 0, units: 0 };
-                    productMap[title].revenue_cents += price;
+                    productMap[title].revenue_cents += lineTotal;
                     productMap[title].units += qty;
                 }
             } catch { /* ignore parse errors */ }
@@ -1609,6 +1612,7 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
 
     return {
         date: todayStr,
+        generated_at: new Date().toISOString(),
         kpis: {
             revenue: tRevenue / 100,
             orders: tOrders,

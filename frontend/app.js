@@ -19866,11 +19866,18 @@ function renderHbShopifyIntel(snap) {
 
     let html = '';
 
-    // Section header
+    // Section header with last-updated timestamp
+    let updatedLabel = snap.date || 'Today';
+    if (snap.generated_at) {
+        try {
+            const d = new Date(snap.generated_at);
+            updatedLabel = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' }) + ' ET';
+        } catch { /* keep date fallback */ }
+    }
     html += '<div class="raffle-card" style="margin-bottom:20px;">';
     html += '<div class="raffle-card-header">';
-    html += '<div class="raffle-card-title">Shopify Intelligence &mdash; 24h Snapshot</div>';
-    html += `<span class="hb-orders-updated">${snap.date || 'Today'}</span>`;
+    html += '<div class="raffle-card-title">Shopify Intelligence &mdash; Today\'s Snapshot</div>';
+    html += `<span class="hb-orders-updated">Updated ${updatedLabel}</span>`;
     html += '</div>';
 
     // --- A: KPI Row ---
@@ -19894,7 +19901,8 @@ function renderHbShopifyIntel(snap) {
             const maxCityRev = snap.topCities[0]?.revenue || 1;
             snap.topCities.forEach(c => {
                 const pct = (c.revenue / maxCityRev * 100).toFixed(1);
-                const label = c.city + (c.province ? ', ' + c.province : '');
+                const isUnknown = (!c.city || c.city === 'Unknown') && (!c.province || c.province === 'Unknown');
+                const label = isUnknown ? 'No Address on File' : (c.city + (c.province ? ', ' + c.province : ''));
                 html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <div style="width:130px;font-size:12px;color:var(--text-secondary,#4F5B67);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(label + ', ' + (c.country || ''))}">${escapeHtml(label)}</div>
                     <div style="flex:1;height:16px;background:var(--bg-secondary,#F6F8FA);border-radius:4px;overflow:hidden;">
@@ -19973,6 +19981,9 @@ function renderHbShopifyIntel(snap) {
 
         html += '</div>';
     }
+
+    // Footer
+    html += `<div class="feed-dash-updated" style="margin-top:12px;">Data resets at midnight ET &middot; Auto-refreshes every 2 minutes &middot; ${updatedLabel}</div>`;
 
     html += '</div>'; // close main raffle-card
     return html;
