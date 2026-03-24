@@ -19830,9 +19830,9 @@ async function refreshHbShopifySnapshot() {
     const container = document.getElementById('hbShopifyIntelPage');
     if (!container) return;
 
-    // Show loading state on first fetch
+    // Show skeleton loading state on first fetch
     if (!_hbShopifySnapshot) {
-        container.innerHTML = '<div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading Shopify data&hellip;</div></div>';
+        container.innerHTML = renderShopifyIntelSkeleton();
     }
 
     try {
@@ -19853,6 +19853,81 @@ async function refreshHbShopifySnapshot() {
     }
 }
 
+function renderShopifyIntelSkeleton() {
+    let h = '<div class="raffle-card" style="margin-bottom:20px;">';
+    h += '<div class="raffle-card-header"><div class="raffle-card-title">Shopify Intelligence &mdash; Today\'s Snapshot</div></div>';
+
+    // KPI skeleton row
+    h += '<div class="raffle-kpi-grid" style="margin-bottom:16px;">';
+    for (let i = 0; i < 4; i++) {
+        h += '<div style="padding:16px;border-radius:10px;border:1px solid var(--border,#E3E8EE);">';
+        h += '<div class="skeleton-shimmer" style="width:60px;height:12px;margin-bottom:10px;"></div>';
+        h += '<div class="skeleton-shimmer" style="width:100px;height:28px;margin-bottom:8px;"></div>';
+        h += '<div class="skeleton-shimmer" style="width:80px;height:12px;"></div>';
+        h += '</div>';
+    }
+    h += '</div>';
+
+    // Two-column skeleton (geo + products)
+    h += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">';
+
+    // Geo skeleton
+    h += '<div class="raffle-card" style="margin-bottom:0;padding:16px;">';
+    h += '<div class="skeleton-shimmer" style="width:200px;height:14px;margin-bottom:16px;"></div>';
+    for (let i = 0; i < 4; i++) {
+        h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">';
+        h += '<div class="skeleton-shimmer" style="width:100px;height:12px;"></div>';
+        h += '<div class="skeleton-shimmer" style="flex:1;height:16px;border-radius:4px;"></div>';
+        h += '<div class="skeleton-shimmer" style="width:55px;height:12px;"></div>';
+        h += '</div>';
+    }
+    h += '</div>';
+
+    // Products skeleton
+    h += '<div class="raffle-card" style="margin-bottom:0;padding:16px;">';
+    h += '<div class="skeleton-shimmer" style="width:140px;height:14px;margin-bottom:16px;"></div>';
+    for (let i = 0; i < 4; i++) {
+        h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+        h += '<div class="skeleton-shimmer" style="width:20px;height:20px;border-radius:50%;"></div>';
+        h += '<div class="skeleton-shimmer" style="flex:1;height:12px;"></div>';
+        h += '<div class="skeleton-shimmer" style="width:50px;height:14px;"></div>';
+        h += '</div>';
+    }
+    h += '</div>';
+    h += '</div>';
+
+    // Two-column skeleton (buyers + discounts)
+    h += '<div class="raffle-metrics-grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">';
+
+    // Buyers skeleton
+    h += '<div class="raffle-card" style="margin-bottom:0;padding:16px;">';
+    h += '<div class="skeleton-shimmer" style="width:130px;height:14px;margin-bottom:16px;"></div>';
+    for (let i = 0; i < 5; i++) {
+        h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+        h += '<div class="skeleton-shimmer" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>';
+        h += '<div style="flex:1;"><div class="skeleton-shimmer" style="width:120px;height:12px;margin-bottom:4px;"></div><div class="skeleton-shimmer" style="width:60px;height:10px;"></div></div>';
+        h += '<div class="skeleton-shimmer" style="width:55px;height:14px;"></div>';
+        h += '</div>';
+    }
+    h += '</div>';
+
+    // Discounts skeleton
+    h += '<div class="raffle-card" style="margin-bottom:0;padding:16px;">';
+    h += '<div class="skeleton-shimmer" style="width:110px;height:14px;margin-bottom:16px;"></div>';
+    for (let i = 0; i < 3; i++) {
+        h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">';
+        h += '<div class="skeleton-shimmer" style="width:70px;height:22px;border-radius:4px;"></div>';
+        h += '<div class="skeleton-shimmer" style="flex:1;height:12px;"></div>';
+        h += '<div class="skeleton-shimmer" style="width:50px;height:14px;"></div>';
+        h += '</div>';
+    }
+    h += '</div>';
+    h += '</div>';
+
+    h += '</div>'; // close raffle-card
+    return h;
+}
+
 function renderHbShopifyIntel(snap) {
     if (!snap || !snap.kpis) return '';
     const k = snap.kpis;
@@ -19868,11 +19943,21 @@ function renderHbShopifyIntel(snap) {
             updatedLabel = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' }) + ' ET';
         } catch { /* keep date fallback */ }
     }
+    // Data staleness warning
+    let staleWarning = '';
+    if (snap.data_age_seconds && snap.data_age_seconds > 1800) {
+        const mins = Math.round(snap.data_age_seconds / 60);
+        staleWarning = `<div style="background:#FFF3CD;border:1px solid #FFECB5;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#856404;display:flex;align-items:center;gap:8px;">&#9888; Order data hasn't synced in ${mins} minutes. Numbers may be incomplete. A sync is scheduled every 15 minutes.</div>`;
+    }
+
     html += '<div class="raffle-card" style="margin-bottom:20px;">';
     html += '<div class="raffle-card-header">';
     html += '<div class="raffle-card-title">Shopify Intelligence &mdash; Today\'s Snapshot</div>';
     html += `<span class="hb-orders-updated">Updated ${updatedLabel}</span>`;
     html += '</div>';
+
+    // Stale data warning (if applicable)
+    html += staleWarning;
 
     // --- A: KPI Row ---
     html += '<div class="raffle-kpi-grid" style="margin-bottom:16px;">';
