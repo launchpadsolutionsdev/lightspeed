@@ -19163,7 +19163,278 @@
             color: #E91E8C;
         }
 
+        /* ── Ask Lightspeed Panel ── */
+        .hb-split-layout {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .hb-ai-panel {
+            width: 0;
+            flex-shrink: 0;
+            overflow: hidden;
+            border-left: 1px solid transparent;
+            background: var(--bg-alt, #F7F8FA);
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s cubic-bezier(.4,0,.2,1), border-color 0.3s ease;
+        }
+        .hb-ai-panel.open {
+            width: 420px;
+            border-left-color: var(--border, #E3E8EE);
+        }
+        .hb-ai-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border, #E3E8EE);
+            flex-shrink: 0;
+            min-width: 420px;
+        }
+        .hb-ai-panel-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary, #1A1F36);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hb-ai-panel-title span {
+            background: linear-gradient(135deg, #E91E8C, #635BFF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hb-ai-close {
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            border: 1px solid var(--border, #E3E8EE);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--text-muted, #6B7C93);
+            transition: background 0.15s;
+        }
+        .hb-ai-close:hover { background: var(--bg-secondary, #F0F0F0); }
+        .hb-ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 420px;
+            scroll-behavior: smooth;
+        }
+        .hb-ai-welcome {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 32px 24px;
+            min-width: 420px;
+            gap: 12px;
+        }
+        .hb-ai-welcome-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary, #1A1F36);
+        }
+        .hb-ai-welcome-sub {
+            font-size: 12px;
+            color: var(--text-muted, #6B7C93);
+            line-height: 1.5;
+        }
+        .hb-ai-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .hb-ai-chip {
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border, #E3E8EE);
+            background: #fff;
+            font-size: 11px;
+            color: var(--text-secondary, #4F5B67);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .hb-ai-chip:hover {
+            border-color: #E91E8C;
+            color: #E91E8C;
+            background: rgba(233,30,140,0.04);
+        }
+        .hb-ai-msg {
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 92%;
+            word-wrap: break-word;
+            animation: fadeInUp 0.2s ease-out;
+        }
+        .hb-ai-msg-user {
+            background: var(--text-primary, #1A1F36);
+            color: #fff;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .hb-ai-msg-ai {
+            background: #fff;
+            border: 1px solid var(--border, #E3E8EE);
+            color: var(--text-secondary, #4F5B67);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .hb-ai-msg-ai.hb-ai-streaming {
+            -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 2em), transparent 100%);
+            mask-image: linear-gradient(to bottom, black calc(100% - 2em), transparent 100%);
+        }
+        .hb-ai-typing {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            align-self: flex-start;
+        }
+        .hb-ai-typing-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted, #6B7C93);
+            animation: hbAiDotPulse 1.4s infinite ease-in-out;
+        }
+        .hb-ai-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .hb-ai-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes hbAiDotPulse {
+            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1); }
+        }
+        .hb-ai-input-area {
+            flex-shrink: 0;
+            padding: 12px 16px;
+            border-top: 1px solid var(--border, #E3E8EE);
+            background: var(--bg-alt, #F7F8FA);
+            min-width: 420px;
+        }
+        .hb-ai-input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        .hb-ai-input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--border, #E3E8EE);
+            background: #fff;
+            color: var(--text-primary, #1A1F36);
+            font-size: 13px;
+            resize: none;
+            outline: none;
+            max-height: 120px;
+            line-height: 1.4;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .hb-ai-input:focus {
+            border-color: #E91E8C;
+            box-shadow: 0 0 0 3px rgba(233,30,140,0.08);
+        }
+        .hb-ai-input::placeholder { color: var(--text-muted, #6B7C93); }
+        .hb-ai-send {
+            width: 38px; height: 38px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #E91E8C, #635BFF);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .hb-ai-send:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(233,30,140,0.3); }
+        .hb-ai-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+        .hb-ai-send svg { width: 16px; height: 16px; }
+        .hb-ai-model-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .hb-ai-model {
+            padding: 3px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border, #E3E8EE);
+            background: transparent;
+            font-size: 11px;
+            cursor: pointer;
+            color: var(--text-muted, #6B7C93);
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .hb-ai-model.active {
+            background: var(--text-primary, #1A1F36);
+            border-color: transparent;
+            color: #fff;
+        }
+        .hb-ai-new-chat {
+            margin-left: auto;
+            padding: 3px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border, #E3E8EE);
+            background: transparent;
+            font-size: 11px;
+            cursor: pointer;
+            color: var(--text-muted, #6B7C93);
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .hb-ai-new-chat:hover { border-color: #E91E8C; color: #E91E8C; }
+        /* Ask Lightspeed trigger button in page header */
+        .hb-ask-btn {
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border, #E3E8EE);
+            background: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary, #4F5B67);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .hb-ask-btn:hover {
+            border-color: #E91E8C;
+            color: #E91E8C;
+            box-shadow: 0 2px 8px rgba(233,30,140,0.1);
+        }
+        .hb-ask-btn.active {
+            background: linear-gradient(135deg, #E91E8C, #635BFF);
+            color: #fff;
+            border-color: transparent;
+        }
+
         /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .hb-ai-panel.open { width: 100%; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; border-left: none; }
+            .hb-ai-panel-header, .hb-ai-messages, .hb-ai-welcome, .hb-ai-input-area { min-width: 0; }
+        }
         @media (max-width: 768px) {
             .hb-heatmap { grid-template-columns: repeat(6, 1fr); }
             .heartbeat-container .raffle-metrics-grid[style] {
@@ -19188,29 +19459,81 @@
         <div class="container">
             <!-- Page: Live Dashboard (raffle feed) -->
             <div class="page active" id="page-heartbeat-live">
-                <div class="heartbeat-container">
-                    <div class="data-page-header">
-                        <div class="data-page-header-text">
-                            <h1>Heartbeat</h1>
-                            <p>Live sales velocity, real-time revenue tracking, goal projections, payment breakdowns, package tier performance, hourly heatmaps, and jackpot comparisons — all updating in real time to give you a complete pulse on your raffle.</p>
+                <div class="hb-split-layout">
+                    <div class="heartbeat-container">
+                        <div class="data-page-header">
+                            <div class="data-page-header-text">
+                                <h1>Heartbeat</h1>
+                                <p>Live sales velocity, real-time revenue tracking, goal projections, payment breakdowns, package tier performance, hourly heatmaps, and jackpot comparisons — all updating in real time to give you a complete pulse on your raffle.</p>
+                            </div>
+                            <button class="hb-ask-btn" id="hbAskBtnLive" onclick="toggleHbAiPanel('live')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                                Ask Lightspeed
+                            </button>
+                        </div>
+                        <div id="heartbeatContent">
+                            <div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading Heartbeat data...</div></div>
                         </div>
                     </div>
-                    <div id="heartbeatContent">
-                        <div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading Heartbeat data...</div></div>
+                    <div class="hb-ai-panel" id="hbAiPanelLive">
+                        <div class="hb-ai-panel-header">
+                            <div class="hb-ai-panel-title"><span>Ask Lightspeed</span></div>
+                            <button class="hb-ai-close" onclick="toggleHbAiPanel('live')" title="Close">&times;</button>
+                        </div>
+                        <div class="hb-ai-messages" id="hbAiMessagesLive"></div>
+                        <div class="hb-ai-input-area">
+                            <div class="hb-ai-model-row">
+                                <button class="hb-ai-model active" data-model="claude-sonnet-4-6" onclick="selectHbAiModel(this,'live')">Sonnet</button>
+                                <button class="hb-ai-model" data-model="claude-opus-4-6" onclick="selectHbAiModel(this,'live')">Opus</button>
+                                <button class="hb-ai-new-chat" onclick="clearHbAiChat('live')">+ New</button>
+                            </div>
+                            <div class="hb-ai-input-row">
+                                <textarea class="hb-ai-input" id="hbAiInputLive" placeholder="Ask about your live raffle data…" rows="1"></textarea>
+                                <button class="hb-ai-send" id="hbAiSendLive" onclick="sendHbAiMessage('live')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Page: Shopify Intelligence -->
             <div class="page" id="page-heartbeat-shopify">
-                <div class="heartbeat-container">
-                    <div class="data-page-header">
-                        <div class="data-page-header-text">
-                            <h1>Shopify Intelligence</h1>
-                            <p>24-hour snapshot of your Shopify store — revenue, orders, geographic hotspots, top products, customer activity, and discount code tracking. Auto-refreshes every 2 minutes.</p>
+                <div class="hb-split-layout">
+                    <div class="heartbeat-container">
+                        <div class="data-page-header">
+                            <div class="data-page-header-text">
+                                <h1>Shopify Intelligence</h1>
+                                <p>24-hour snapshot of your Shopify store — revenue, orders, geographic hotspots, top products, customer activity, and discount code tracking. Auto-refreshes every 2 minutes.</p>
+                            </div>
+                            <button class="hb-ask-btn" id="hbAskBtnShopify" onclick="toggleHbAiPanel('shopify')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                                Ask Lightspeed
+                            </button>
+                        </div>
+                        <div id="hbShopifyIntelPage">
                         </div>
                     </div>
-                    <div id="hbShopifyIntelPage">
+                    <div class="hb-ai-panel" id="hbAiPanelShopify">
+                        <div class="hb-ai-panel-header">
+                            <div class="hb-ai-panel-title"><span>Ask Lightspeed</span></div>
+                            <button class="hb-ai-close" onclick="toggleHbAiPanel('shopify')" title="Close">&times;</button>
+                        </div>
+                        <div class="hb-ai-messages" id="hbAiMessagesShopify"></div>
+                        <div class="hb-ai-input-area">
+                            <div class="hb-ai-model-row">
+                                <button class="hb-ai-model active" data-model="claude-sonnet-4-6" onclick="selectHbAiModel(this,'shopify')">Sonnet</button>
+                                <button class="hb-ai-model" data-model="claude-opus-4-6" onclick="selectHbAiModel(this,'shopify')">Opus</button>
+                                <button class="hb-ai-new-chat" onclick="clearHbAiChat('shopify')">+ New</button>
+                            </div>
+                            <div class="hb-ai-input-row">
+                                <textarea class="hb-ai-input" id="hbAiInputShopify" placeholder="Ask about your Shopify data…" rows="1"></textarea>
+                                <button class="hb-ai-send" id="hbAiSendShopify" onclick="sendHbAiMessage('shopify')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

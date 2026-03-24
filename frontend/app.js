@@ -20188,6 +20188,298 @@ function renderHbShopifyIntel(snap) {
     return html;
 }
 
+// ---------------------------------------------------------------------------
+// 12. Ask Lightspeed Panel — embedded AI chat for Heartbeat pages
+// ---------------------------------------------------------------------------
+
+const _hbAiState = {
+    live: { conversation: [], model: 'claude-sonnet-4-6', controller: null },
+    shopify: { conversation: [], model: 'claude-sonnet-4-6', controller: null },
+};
+
+function toggleHbAiPanel(page) {
+    const panel = document.getElementById(page === 'live' ? 'hbAiPanelLive' : 'hbAiPanelShopify');
+    const btn = document.getElementById(page === 'live' ? 'hbAskBtnLive' : 'hbAskBtnShopify');
+    if (!panel) return;
+
+    const isOpen = panel.classList.toggle('open');
+    if (btn) btn.classList.toggle('active', isOpen);
+
+    if (isOpen) {
+        const messagesEl = document.getElementById(page === 'live' ? 'hbAiMessagesLive' : 'hbAiMessagesShopify');
+        if (messagesEl && messagesEl.children.length === 0) {
+            renderHbAiWelcome(page);
+        }
+        setTimeout(() => {
+            const input = document.getElementById(page === 'live' ? 'hbAiInputLive' : 'hbAiInputShopify');
+            if (input) input.focus();
+        }, 350);
+    }
+}
+
+function renderHbAiWelcome(page) {
+    const messagesEl = document.getElementById(page === 'live' ? 'hbAiMessagesLive' : 'hbAiMessagesShopify');
+    if (!messagesEl) return;
+
+    const chips = page === 'live'
+        ? ['How are sales trending?', 'Which package is selling best?', 'Summarize the raffle so far', 'Compare to last event']
+        : ['Which city has highest AOV?', 'Summarize today\u2019s performance', 'Who are my repeat buyers?', 'Which product is trending?'];
+
+    let html = '<div class="hb-ai-welcome">';
+    html += '<div class="hb-ai-welcome-title">Ask anything about your data</div>';
+    html += '<div class="hb-ai-welcome-sub">I can see everything on your dashboard right now.</div>';
+    html += '<div class="hb-ai-chips">';
+    chips.forEach(c => {
+        html += `<button class="hb-ai-chip" onclick="hbAiChipClick('${page}', this)">${escapeHtml(c)}</button>`;
+    });
+    html += '</div></div>';
+    messagesEl.innerHTML = html;
+}
+
+function hbAiChipClick(page, el) {
+    const input = document.getElementById(page === 'live' ? 'hbAiInputLive' : 'hbAiInputShopify');
+    if (input) {
+        input.value = el.textContent;
+        sendHbAiMessage(page);
+    }
+}
+
+function selectHbAiModel(btn, page) {
+    const row = btn.parentElement;
+    row.querySelectorAll('.hb-ai-model').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _hbAiState[page].model = btn.dataset.model;
+}
+
+function clearHbAiChat(page) {
+    _hbAiState[page].conversation = [];
+    if (_hbAiState[page].controller) {
+        _hbAiState[page].controller.abort();
+        _hbAiState[page].controller = null;
+    }
+    renderHbAiWelcome(page);
+    const sendBtn = document.getElementById(page === 'live' ? 'hbAiSendLive' : 'hbAiSendShopify');
+    if (sendBtn) sendBtn.disabled = false;
+}
+
+function getHbAiContext(page) {
+    if (page === 'live' && _heartbeatFullData) {
+        const d = _heartbeatFullData;
+        const parts = [];
+        if (d.salesVelocity) {
+            const sv = d.salesVelocity;
+            parts.push(`LIVE RAFFLE DATA:\nEvent: ${sv.event_title || 'Current'}\nTotal Revenue: $${sv.total_revenue?.toLocaleString() || 0}\nTotal Orders: ${sv.total_orders || 0}\nTotal Units: ${sv.total_units || 0}\nVelocity: ${sv.orders_per_minute || 0} orders/min, $${sv.revenue_per_minute || 0}/min`);
+            if (sv.packages && sv.packages.length > 0) {
+                parts.push('PACKAGES:\n' + sv.packages.map(p => `- ${p.title}: ${p.units_sold} sold, $${p.revenue?.toLocaleString()}`).join('\n'));
+            }
+            if (sv.payment_breakdown) {
+                parts.push('PAYMENTS:\n' + Object.entries(sv.payment_breakdown).map(([k, v]) => `- ${k}: ${v}`).join('\n'));
+            }
+        }
+        if (d.recentOrders && d.recentOrders.length > 0) {
+            parts.push(`RECENT ORDERS (last ${d.recentOrders.length}):\n` + d.recentOrders.slice(0, 20).map(o => `- ${o.customer_name || 'Guest'}: $${o.total || 0} (${o.items || 1} items)`).join('\n'));
+        }
+        return parts.join('\n\n');
+    }
+
+    if (page === 'shopify' && _hbShopifySnapshot) {
+        const s = _hbShopifySnapshot;
+        const parts = [];
+        if (s.kpis) {
+            parts.push(`SHOPIFY DAILY SNAPSHOT (${s.date || 'today'}):\nRevenue: $${s.kpis.revenue?.toLocaleString() || 0}\nOrders: ${s.kpis.orders || 0}\nUnits: ${s.kpis.units || 0}\nAOV: $${s.kpis.aov || 0}\nRefunds: ${s.kpis.refunds_count || 0} ($${s.kpis.refunds_total || 0})\nNew Customers: ${s.kpis.new_customers || 0}`);
+        }
+        if (s.changes) {
+            parts.push(`VS YESTERDAY: Revenue ${s.changes.revenue_pct || 0}%, Orders ${s.changes.orders_pct || 0}%, AOV ${s.changes.aov_pct || 0}%`);
+        }
+        if (s.topProducts && s.topProducts.length > 0) {
+            parts.push('TOP PRODUCTS:\n' + s.topProducts.map(p => `- ${p.title}: ${p.units} units, $${p.revenue?.toLocaleString()}`).join('\n'));
+        }
+        if (s.topRegions && s.topRegions.length > 0) {
+            parts.push('TOP REGIONS:\n' + s.topRegions.map(r => `- ${r.province}, ${r.country}: ${r.orders} orders, $${r.revenue?.toLocaleString()}`).join('\n'));
+        }
+        if (s.topCities && s.topCities.length > 0) {
+            parts.push('TOP CITIES:\n' + s.topCities.map(c => `- ${c.city}, ${c.province}: ${c.orders} orders, $${c.revenue?.toLocaleString()}`).join('\n'));
+        }
+        if (s.topCustomers && s.topCustomers.length > 0) {
+            parts.push('TOP CUSTOMERS:\n' + s.topCustomers.map(c => `- ${c.name}: ${c.orders} orders, $${c.total_spent?.toLocaleString()}`).join('\n'));
+        }
+        if (s.repeatBuyers && s.repeatBuyers.length > 0) {
+            parts.push('REPEAT BUYERS:\n' + s.repeatBuyers.map(c => `- ${c.name}: ${c.orders} orders, $${c.total_spent?.toLocaleString()}`).join('\n'));
+        }
+        if (s.paymentMethods && s.paymentMethods.length > 0) {
+            parts.push('PAYMENT METHODS:\n' + s.paymentMethods.map(p => `- ${p.name}: ${p.count} (${p.pct}%)`).join('\n'));
+        }
+        if (s.salesChannels && s.salesChannels.length > 0) {
+            parts.push('SALES CHANNELS:\n' + s.salesChannels.map(c => `- ${c.name}: ${c.orders} orders, $${c.revenue?.toLocaleString()}`).join('\n'));
+        }
+        if (s.fulfillmentBreakdown && s.fulfillmentBreakdown.length > 0) {
+            parts.push('FULFILLMENT:\n' + s.fulfillmentBreakdown.map(f => `- ${f.status}: ${f.count} (${f.pct}%)`).join('\n'));
+        }
+        if (s.riskSummary) {
+            parts.push(`RISK: High=${s.riskSummary.high || 0}, Medium=${s.riskSummary.medium || 0}, Low=${s.riskSummary.low || 0}`);
+        }
+        if (s.pricePoints && s.pricePoints.length > 0) {
+            parts.push('PRICE POINTS:\n' + s.pricePoints.map(p => `- ${p.label}: ${p.units} units, $${p.revenue?.toLocaleString()}`).join('\n'));
+        }
+        if (s.orderDistribution && s.orderDistribution.length > 0) {
+            parts.push('ORDER DISTRIBUTION:\n' + s.orderDistribution.map(d => `- ${d.bucket}: ${d.count} customers (${d.pct}%)`).join('\n'));
+        }
+        if (s.avgUnitsPerOrder) {
+            parts.push(`AVG UNITS PER ORDER: ${s.avgUnitsPerOrder}`);
+        }
+        return parts.join('\n\n');
+    }
+
+    return '';
+}
+
+async function sendHbAiMessage(page) {
+    const inputEl = document.getElementById(page === 'live' ? 'hbAiInputLive' : 'hbAiInputShopify');
+    const messagesEl = document.getElementById(page === 'live' ? 'hbAiMessagesLive' : 'hbAiMessagesShopify');
+    const sendBtn = document.getElementById(page === 'live' ? 'hbAiSendLive' : 'hbAiSendShopify');
+    if (!inputEl || !messagesEl) return;
+
+    const message = inputEl.value.trim();
+    if (!message) return;
+
+    const state = _hbAiState[page];
+
+    // If already streaming, ignore
+    if (state.controller) return;
+
+    // Clear welcome if present
+    const welcome = messagesEl.querySelector('.hb-ai-welcome');
+    if (welcome) welcome.remove();
+
+    // Append user message
+    const userDiv = document.createElement('div');
+    userDiv.className = 'hb-ai-msg hb-ai-msg-user';
+    userDiv.textContent = message;
+    messagesEl.appendChild(userDiv);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    if (sendBtn) sendBtn.disabled = true;
+
+    // Add to conversation
+    state.conversation.push({ role: 'user', content: message });
+
+    // Show typing indicator
+    const typingEl = document.createElement('div');
+    typingEl.className = 'hb-ai-typing';
+    typingEl.innerHTML = '<div class="hb-ai-typing-dot"></div><div class="hb-ai-typing-dot"></div><div class="hb-ai-typing-dot"></div>';
+    messagesEl.appendChild(typingEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    // Build request
+    state.controller = new AbortController();
+    const dashboardContext = getHbAiContext(page);
+
+    const formData = new FormData();
+    formData.append('message', message);
+    formData.append('conversation', JSON.stringify(state.conversation.slice(0, -1)));
+    formData.append('model', state.model);
+    formData.append('tone', 'professional');
+    formData.append('language', responseLanguage || 'en');
+    if (dashboardContext) {
+        formData.append('dashboardContext', dashboardContext);
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/ask-lightspeed/agent`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
+            body: formData,
+            signal: state.controller.signal
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        // Remove typing indicator, add AI message
+        if (typingEl.parentNode) typingEl.remove();
+        const aiDiv = document.createElement('div');
+        aiDiv.className = 'hb-ai-msg hb-ai-msg-ai hb-ai-streaming';
+        messagesEl.appendChild(aiDiv);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullText = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr || jsonStr === '[DONE]') continue;
+
+                let event;
+                try { event = JSON.parse(jsonStr); } catch (_e) { continue; }
+
+                if (event.type === 'text' && event.content) {
+                    fullText += (fullText ? '\n' : '') + event.content;
+                    aiDiv.innerHTML = renderSimpleMarkdown(fullText);
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
+                } else if (event.type === 'status') {
+                    // Show tool status inside the AI message
+                    aiDiv.innerHTML = '<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted,#6B7C93);"><div class="hb-ai-typing-dot" style="animation-duration:0.8s;"></div>' + escapeHtml(event.message) + '</div>';
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
+                }
+            }
+        }
+
+        aiDiv.classList.remove('hb-ai-streaming');
+        if (fullText) {
+            aiDiv.innerHTML = renderSimpleMarkdown(fullText);
+            state.conversation.push({ role: 'assistant', content: fullText });
+        } else {
+            aiDiv.innerHTML = '<em style="color:var(--text-muted);">No response generated.</em>';
+        }
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    } catch (err) {
+        if (typingEl.parentNode) typingEl.remove();
+        if (err.name !== 'AbortError') {
+            const errDiv = document.createElement('div');
+            errDiv.className = 'hb-ai-msg hb-ai-msg-ai';
+            errDiv.innerHTML = '<span style="color:#E91E8C;">Something went wrong — please try again.</span>';
+            messagesEl.appendChild(errDiv);
+        }
+    } finally {
+        state.controller = null;
+        if (sendBtn) sendBtn.disabled = false;
+        inputEl.focus();
+    }
+}
+
+// Auto-grow textareas + Enter-to-send
+document.addEventListener('DOMContentLoaded', () => {
+    ['hbAiInputLive', 'hbAiInputShopify'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        });
+        el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const page = id.includes('Live') ? 'live' : 'shopify';
+                sendHbAiMessage(page);
+            }
+        });
+    });
+});
+
 function hbIntelKpiCard(label, value, changePct, invertColor) {
     let changeHtml = '';
     if (changePct !== undefined && changePct !== null) {
