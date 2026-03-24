@@ -801,9 +801,9 @@ async function syncRecentOrders(store, organizationId) {
                         totalPriceSet { shopMoney { amount currencyCode } }
                         displayFinancialStatus
                         displayFulfillmentStatus
-                        customer { firstName lastName email }
-                        shippingAddress { province country }
-                        billingAddress { province country }
+                        customer { firstName lastName email defaultAddress { city province country } }
+                        shippingAddress { city province country }
+                        billingAddress { city province country }
                         lineItems(first: 5) {
                             edges {
                                 node { title quantity originalUnitPriceSet { shopMoney { amount } } }
@@ -817,9 +817,7 @@ async function syncRecentOrders(store, organizationId) {
         const data = await shopifyGraphQL(store.shop_domain, store.access_token, query);
         const orders = data?.orders?.edges || [];
 
-        // Clear old orders and insert new ones
-        await pool.query('DELETE FROM dashboard_recent_orders WHERE organization_id = $1', [organizationId]);
-
+        // UPSERT each order — preserves webhook-delivered orders not in this batch
         for (const { node: order } of orders) {
             const lineItems = (order.lineItems?.edges || []).map(e => ({
                 title: e.node.title,
@@ -827,15 +825,22 @@ async function syncRecentOrders(store, organizationId) {
                 price_cents: toCents(e.node.originalUnitPriceSet?.shopMoney?.amount),
             }));
 
+            // Resolve address: shipping → billing → customer default
+            const addr = order.shippingAddress || order.billingAddress || order.customer?.defaultAddress;
+
             await pool.query(
-                `INSERT INTO dashboard_recent_orders (organization_id, shopify_order_id, order_number, created_at, total_price_cents, currency_code, financial_status, fulfillment_status, customer_name, customer_email, province, country, line_items_summary)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                `INSERT INTO dashboard_recent_orders (organization_id, shopify_order_id, order_number, created_at, total_price_cents, currency_code, financial_status, fulfillment_status, customer_name, customer_email, city, province, country, line_items_summary)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                  ON CONFLICT (organization_id, shopify_order_id) DO UPDATE SET
                     order_number = EXCLUDED.order_number,
                     total_price_cents = EXCLUDED.total_price_cents,
                     financial_status = EXCLUDED.financial_status,
                     fulfillment_status = EXCLUDED.fulfillment_status,
                     customer_name = EXCLUDED.customer_name,
+                    city = COALESCE(EXCLUDED.city, dashboard_recent_orders.city),
+                    province = COALESCE(EXCLUDED.province, dashboard_recent_orders.province),
+                    country = COALESCE(EXCLUDED.country, dashboard_recent_orders.country),
+                    line_items_summary = EXCLUDED.line_items_summary,
                     updated_at = NOW()`,
                 [
                     organizationId,
@@ -848,12 +853,19 @@ async function syncRecentOrders(store, organizationId) {
                     order.displayFulfillmentStatus,
                     [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' ') || 'Guest',
                     order.customer?.email,
-                    (order.shippingAddress || order.billingAddress)?.province,
-                    (order.shippingAddress || order.billingAddress)?.country,
+                    addr?.city || null,
+                    addr?.province || null,
+                    addr?.country || null,
                     JSON.stringify(lineItems),
                 ]
             );
         }
+
+        // Trim orders older than 48 hours to prevent unbounded growth
+        await pool.query(
+            `DELETE FROM dashboard_recent_orders WHERE organization_id = $1 AND created_at < NOW() - INTERVAL '48 hours'`,
+            [organizationId]
+        );
 
         return orders.length;
     } catch (err) {
@@ -1056,12 +1068,17 @@ async function handleOrderWebhook(organizationId, topic, payload) {
             title: li.title, quantity: li.quantity, price_cents: toCents(li.price),
         }));
 
+        const whAddr = payload.shipping_address || payload.billing_address || payload.customer?.default_address;
+
         await pool.query(
-            `INSERT INTO dashboard_recent_orders (organization_id, shopify_order_id, order_number, created_at, total_price_cents, currency_code, financial_status, fulfillment_status, customer_name, customer_email, province, country, line_items_summary)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            `INSERT INTO dashboard_recent_orders (organization_id, shopify_order_id, order_number, created_at, total_price_cents, currency_code, financial_status, fulfillment_status, customer_name, customer_email, city, province, country, line_items_summary)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              ON CONFLICT (organization_id, shopify_order_id) DO UPDATE SET
                 financial_status = EXCLUDED.financial_status,
                 fulfillment_status = EXCLUDED.fulfillment_status,
+                city = COALESCE(EXCLUDED.city, dashboard_recent_orders.city),
+                province = COALESCE(EXCLUDED.province, dashboard_recent_orders.province),
+                country = COALESCE(EXCLUDED.country, dashboard_recent_orders.country),
                 updated_at = NOW()`,
             [
                 organizationId,
@@ -1074,8 +1091,9 @@ async function handleOrderWebhook(organizationId, topic, payload) {
                 payload.fulfillment_status,
                 customerName,
                 payload.customer?.email || payload.email,
-                (payload.shipping_address || payload.billing_address)?.province,
-                (payload.shipping_address || payload.billing_address)?.country,
+                whAddr?.city || null,
+                whAddr?.province || null,
+                whAddr?.country || null,
                 JSON.stringify(lineItemsSummary),
             ]
         );
@@ -1448,7 +1466,7 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
     }
 
     // Run all queries in parallel — all hit local DB tables
-    const [todayKpis, yesterdayKpis, topCities, topRegions, topProducts, topCustomers, discounts, recentOrdersFallback] = await Promise.all([
+    const [todayKpis, yesterdayKpis, topCities, topRegions, topProducts, topCustomers, discounts, recentOrdersFallback, freshness] = await Promise.all([
         // Today's KPIs from aggregated table
         pool.query(
             `SELECT COALESCE(SUM(net_sales_cents), 0) AS revenue_cents,
@@ -1526,16 +1544,23 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
              ORDER BY uses DESC LIMIT 8`,
             [organizationId, todayStr]
         ).catch(() => ({ rows: [] })), // Table may not exist yet
-        // Fallback: derive KPIs from dashboard_recent_orders (always has data from GraphQL sync)
+        // Cross-check: derive KPIs from dashboard_recent_orders (always has data from webhooks + GraphQL sync)
         pool.query(
             `SELECT COALESCE(SUM(total_price_cents), 0) AS revenue_cents,
                     COUNT(*) AS orders,
-                    province, country, line_items_summary
+                    city, province, country, line_items_summary
              FROM dashboard_recent_orders
              WHERE organization_id = $1 AND created_at >= (NOW() - INTERVAL '24 hours')
-             GROUP BY province, country, line_items_summary`,
+             GROUP BY city, province, country, line_items_summary`,
             [organizationId]
         ),
+        // Data freshness: most recent order timestamp
+        pool.query(
+            `SELECT MAX(updated_at) AS last_updated, MAX(created_at) AS newest_order
+             FROM dashboard_recent_orders
+             WHERE organization_id = $1`,
+            [organizationId]
+        ).catch(() => ({ rows: [{}] })),
     ]);
 
     const t = todayKpis.rows[0];
@@ -1544,49 +1569,53 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
     let tOrders = parseInt(t.orders) || 0;
     let tUnits = parseInt(t.units) || 0;
 
-    // If aggregated tables have no data, derive from dashboard_recent_orders
-    const useFallback = tOrders === 0 && recentOrdersFallback.rows.length > 0;
+    // Always compute fallback data from dashboard_recent_orders for cross-check
+    let fbRevenue = 0, fbOrders = 0, fbUnits = 0;
     let fallbackCities = [];
     let fallbackProducts = [];
+    const cityMap = {};
+    const productMap = {};
 
+    for (const row of recentOrdersFallback.rows) {
+        const rowRevenue = parseInt(row.revenue_cents) || 0;
+        const rowOrders = parseInt(row.orders) || 0;
+        fbRevenue += rowRevenue;
+        fbOrders += rowOrders;
+
+        // Aggregate by city/province/country for geo fallback
+        const cityName = row.city || '';
+        const prov = row.province || 'Unknown';
+        const ctry = row.country || 'Unknown';
+        const geoKey = (cityName || prov) + '|' + prov + '|' + ctry;
+        if (!cityMap[geoKey]) cityMap[geoKey] = { city: cityName, province: prov, country: ctry, revenue_cents: 0, order_count: 0 };
+        cityMap[geoKey].revenue_cents += rowRevenue;
+        cityMap[geoKey].order_count += rowOrders;
+
+        // Parse line_items_summary for product fallback
+        try {
+            const items = typeof row.line_items_summary === 'string' ? JSON.parse(row.line_items_summary) : (row.line_items_summary || []);
+            for (const item of items) {
+                const title = item.title || item.name || 'Unknown';
+                const qty = item.quantity || item.qty || 1;
+                const priceCents = parseInt(item.price_cents) || Math.round((parseFloat(item.price) || 0) * 100);
+                const lineTotal = priceCents * qty;
+                fbUnits += qty;
+                if (!productMap[title]) productMap[title] = { title, revenue_cents: 0, units: 0 };
+                productMap[title].revenue_cents += lineTotal;
+                productMap[title].units += qty;
+            }
+        } catch { /* ignore parse errors */ }
+    }
+
+    fallbackCities = Object.values(cityMap).sort((a, b) => b.revenue_cents - a.revenue_cents).slice(0, 10);
+    fallbackProducts = Object.values(productMap).sort((a, b) => b.revenue_cents - a.revenue_cents).slice(0, 8);
+
+    // Use whichever source has higher totals (handles partial/stale aggregation tables)
+    const useFallback = fbOrders > tOrders || fbRevenue > tRevenue;
     if (useFallback) {
-        tRevenue = 0;
-        tOrders = 0;
-        tUnits = 0;
-        const cityMap = {};
-        const productMap = {};
-
-        for (const row of recentOrdersFallback.rows) {
-            const rowRevenue = parseInt(row.revenue_cents) || 0;
-            const rowOrders = parseInt(row.orders) || 0;
-            tRevenue += rowRevenue;
-            tOrders += rowOrders;
-
-            // Aggregate by province/country for geo fallback
-            const region = (row.province || 'Unknown') + '|' + (row.country || 'Unknown');
-            if (!cityMap[region]) cityMap[region] = { province: row.province || 'Unknown', country: row.country || 'Unknown', revenue_cents: 0, order_count: 0 };
-            cityMap[region].revenue_cents += rowRevenue;
-            cityMap[region].order_count += rowOrders;
-
-            // Parse line_items_summary for product fallback
-            try {
-                const items = typeof row.line_items_summary === 'string' ? JSON.parse(row.line_items_summary) : (row.line_items_summary || []);
-                for (const item of items) {
-                    const title = item.title || item.name || 'Unknown';
-                    const qty = item.quantity || item.qty || 1;
-                    // price_cents is stored by both GraphQL sync and webhook paths
-                    const priceCents = parseInt(item.price_cents) || Math.round((parseFloat(item.price) || 0) * 100);
-                    const lineTotal = priceCents * qty;
-                    tUnits += qty;
-                    if (!productMap[title]) productMap[title] = { title, revenue_cents: 0, units: 0 };
-                    productMap[title].revenue_cents += lineTotal;
-                    productMap[title].units += qty;
-                }
-            } catch { /* ignore parse errors */ }
-        }
-
-        fallbackCities = Object.values(cityMap).sort((a, b) => b.revenue_cents - a.revenue_cents).slice(0, 10);
-        fallbackProducts = Object.values(productMap).sort((a, b) => b.revenue_cents - a.revenue_cents).slice(0, 8);
+        tRevenue = fbRevenue;
+        tOrders = fbOrders;
+        tUnits = fbUnits;
     }
 
     const yRevenue = parseInt(y.revenue_cents) || 0;
@@ -1610,9 +1639,16 @@ async function getShopifySnapshot(organizationId, timezone = 'America/Toronto') 
     const finalTopRegions = topRegions.rows.length > 0 ? topRegions.rows : (useFallback ? fallbackCities : []);
     const finalTopProducts = topProducts.rows.length > 0 ? topProducts.rows : [];
 
+    // Compute data freshness
+    const fRow = freshness.rows[0] || {};
+    const lastUpdated = fRow.last_updated ? new Date(fRow.last_updated) : null;
+    const dataAgeSecs = lastUpdated ? Math.round((Date.now() - lastUpdated.getTime()) / 1000) : null;
+
     return {
         date: todayStr,
         generated_at: new Date().toISOString(),
+        data_age_seconds: dataAgeSecs,
+        data_source: useFallback ? 'recent_orders' : 'aggregated',
         kpis: {
             revenue: tRevenue / 100,
             orders: tOrders,
