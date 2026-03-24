@@ -30,7 +30,16 @@ router.get('/my', authenticate, async (req, res) => {
             [req.userId]
         );
 
-        res.json({ organizations: result.rows });
+        // Strip sensitive feed URLs for non-admin members
+        const FEED_URL_FIELDS = ['bump_feed_url', 'bump_winners_feed_url', 'bump_sales_feed_url'];
+        const orgs = result.rows.map(org => {
+            if (org.role === 'owner' || org.role === 'admin') return org;
+            const sanitized = { ...org };
+            for (const field of FEED_URL_FIELDS) delete sanitized[field];
+            return sanitized;
+        });
+
+        res.json({ organizations: orgs });
 
     } catch (error) {
         log.error('Get organizations error', { error: error.message || error });
@@ -49,13 +58,16 @@ router.get('/:orgId', authenticate, requireOrganization, async (req, res) => {
             [req.organization.id]
         );
 
-        res.json({
-            organization: {
-                ...req.organization,
-                role: req.memberRole,
-                memberCount: parseInt(memberCount.rows[0].count)
-            }
-        });
+        const org = { ...req.organization, role: req.memberRole, memberCount: parseInt(memberCount.rows[0].count) };
+
+        // Strip sensitive feed URLs for non-admin members
+        if (req.memberRole !== 'owner' && req.memberRole !== 'admin') {
+            delete org.bump_feed_url;
+            delete org.bump_winners_feed_url;
+            delete org.bump_sales_feed_url;
+        }
+
+        res.json({ organization: org });
 
     } catch (error) {
         log.error('Get organization error', { error: error.message || error });

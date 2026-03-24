@@ -16241,7 +16241,10 @@
                             <div class="org-profile-row">
                                 <div class="form-group" style="flex: 1;">
                                     <label for="orgBumpFeedUrl">Main Raffle Feed URL</label>
-                                    <input type="url" id="orgBumpFeedUrl" placeholder="https://yourorg-api.bumpcbnraffle.net/api/feeds/dak" class="invite-input">
+                                    <div style="position: relative;">
+                                        <input type="password" id="orgBumpFeedUrl" placeholder="https://yourorg-api.bumpcbnraffle.net/api/feeds/dak" class="invite-input" style="padding-right: 48px;">
+                                        <button type="button" class="bump-url-toggle" onclick="this.previousElementSibling.type = this.previousElementSibling.type === 'password' ? 'url' : 'password'; this.textContent = this.previousElementSibling.type === 'password' ? 'Show' : 'Hide';" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: 1px solid var(--border-color, #444); border-radius: 4px; color: var(--text-secondary, #888); font-size: 0.7rem; padding: 2px 8px; cursor: pointer;">Show</button>
+                                    </div>
                                     <p style="font-size: 0.7rem; color: var(--text-secondary, #888); margin-top: 4px;">
                                         Primary feed — provides jackpot pool, prizes, raffle status, and draw schedule.
                                     </p>
@@ -16250,7 +16253,10 @@
                             <div class="org-profile-row">
                                 <div class="form-group" style="flex: 1;">
                                     <label for="orgBumpWinnersFeedUrl">Winners Feed URL</label>
-                                    <input type="url" id="orgBumpWinnersFeedUrl" placeholder="https://yourorg-api.bumpcbnraffle.net/api/feeds/winners" class="invite-input">
+                                    <div style="position: relative;">
+                                        <input type="password" id="orgBumpWinnersFeedUrl" placeholder="https://yourorg-api.bumpcbnraffle.net/api/feeds/winners" class="invite-input" style="padding-right: 48px;">
+                                        <button type="button" class="bump-url-toggle" onclick="this.previousElementSibling.type = this.previousElementSibling.type === 'password' ? 'url' : 'password'; this.textContent = this.previousElementSibling.type === 'password' ? 'Show' : 'Hide';" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: 1px solid var(--border-color, #444); border-radius: 4px; color: var(--text-secondary, #888); font-size: 0.7rem; padding: 2px 8px; cursor: pointer;">Show</button>
+                                    </div>
                                     <p style="font-size: 0.7rem; color: var(--text-secondary, #888); margin-top: 4px;">
                                         Historical draw results and claim status for secondary prizes.
                                     </p>
@@ -16259,7 +16265,10 @@
                             <div class="org-profile-row">
                                 <div class="form-group" style="flex: 1;">
                                     <label for="orgBumpSalesFeedUrl">Sales Breakdown Feed URL</label>
-                                    <input type="url" id="orgBumpSalesFeedUrl" placeholder="https://yourorg-api.bumpcbnraffle.net/api/feeds/event-details" class="invite-input">
+                                    <div style="position: relative;">
+                                        <input type="password" id="orgBumpSalesFeedUrl" placeholder="https://yourorg-api.bumpcbnraffle.net/api/feeds/event-details" class="invite-input" style="padding-right: 48px;">
+                                        <button type="button" class="bump-url-toggle" onclick="this.previousElementSibling.type = this.previousElementSibling.type === 'password' ? 'url' : 'password'; this.textContent = this.previousElementSibling.type === 'password' ? 'Show' : 'Hide';" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: 1px solid var(--border-color, #444); border-radius: 4px; color: var(--text-secondary, #888); font-size: 0.7rem; padding: 2px 8px; cursor: pointer;">Show</button>
+                                    </div>
                                     <p style="font-size: 0.7rem; color: var(--text-secondary, #888); margin-top: 4px;">
                                         Ticket sales, revenue, payment method breakdown, and package tier data.
                                     </p>
