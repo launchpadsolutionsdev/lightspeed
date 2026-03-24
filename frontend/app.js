@@ -20321,7 +20321,7 @@ function renderHbAiWelcome(page) {
         : ['Which city has highest AOV?', 'Summarize today\u2019s performance', 'Who are my repeat buyers?', 'Which product is trending?'];
 
     let html = '<div class="hb-ai-welcome">';
-    html += '<div class="hb-ai-welcome-title">Ask anything about your data</div>';
+    html += '<div class="hb-ai-welcome-title">&#10024; Ask anything about your data</div>';
     html += '<div class="hb-ai-welcome-sub">I can see everything on your dashboard right now.</div>';
     html += '<div class="hb-ai-chips">';
     chips.forEach(c => {
