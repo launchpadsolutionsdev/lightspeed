@@ -18870,7 +18870,7 @@ function renderTickerSparkline(samples, win) {
     const range = axisMax - axisMin || 1;
 
     const w = 600;
-    const h = 160;
+    const h = 320;
     const pad = 6;
 
     const points = samples.map((s, i) => {
