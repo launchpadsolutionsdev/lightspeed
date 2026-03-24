@@ -20372,6 +20372,14 @@ function getHbAiContext(page) {
                 parts.push('PAYMENTS:\n' + Object.entries(sv.payment_breakdown).map(([k, v]) => `- ${k}: ${v}`).join('\n'));
             }
         }
+        // Include numbers data from salesBreakdown for accurate odds calculations
+        if (d.salesBreakdown) {
+            const sb = d.salesBreakdown;
+            parts.push(`NUMBERS & ODDS DATA:\nTotal Tickets Sold: ${sb.totalTickets?.toLocaleString() || 0}\nTotal Numbers Sold (Draw Pool Size): ${sb.totalNumbers?.toLocaleString() || 0}\nIMPORTANT: "Tickets" are purchases. "Numbers" are individual entries in the draw. Each ticket contains multiple numbers depending on the package tier. Odds of winning are based on NUMBERS, not tickets.`);
+            if (sb.tiers && sb.tiers.length > 0) {
+                parts.push('PACKAGE TIERS (numbers per ticket):\n' + sb.tiers.map(t => `- $${t.price?.toFixed(2)} package: ${t.numbersPerTicket} numbers per ticket, ${t.tickets?.toLocaleString()} tickets sold = ${t.numbers?.toLocaleString()} numbers, $${t.sales?.toLocaleString()} revenue`).join('\n'));
+            }
+        }
         if (d.recentOrders && d.recentOrders.length > 0) {
             parts.push(`RECENT ORDERS (last ${d.recentOrders.length}):\n` + d.recentOrders.slice(0, 20).map(o => `- ${o.customer_name || 'Guest'}: $${o.total || 0} (${o.items || 1} items)`).join('\n'));
         }
@@ -23450,37 +23458,20 @@ document.addEventListener('click', function(e) {
 // ==================== COMPLIANCE NAV INIT ====================
 async function initComplianceNav() {
     try {
-        // Check if org has compliance enabled
-        const orgResp = await fetch(`${API_BASE_URL}/api/organizations/my`, {
-            headers: getAuthHeaders()
-        });
-        if (!orgResp.ok) return;
-
-        const orgData = await orgResp.json();
-        const org = orgData.organizations?.[0] || orgData.organization || null;
-
         const complianceNavBtn = document.getElementById('complianceNavBtn');
         if (!complianceNavBtn) return;
 
-        // Show compliance nav for orgs with compliance enabled OR super admins
-        const isSuperAdmin = await checkSuperAdmin().catch(() => false);
-        const showCompliance = org?.compliance_enabled || isSuperAdmin;
-        complianceNavBtn.style.display = showCompliance ? 'flex' : 'none';
-
-        if (showCompliance && !complianceNavBtn._listenerAdded) {
+        // Compliance is available for everyone — just wire up the click handler
+        if (!complianceNavBtn._listenerAdded) {
             complianceNavBtn.addEventListener('click', () => {
                 openTool('compliance');
             });
             complianceNavBtn._listenerAdded = true;
         }
 
-        // Show/hide bento card on tool menu
-        const bentoCard = document.getElementById('toolCompliance');
-        if (bentoCard) bentoCard.style.display = showCompliance ? '' : 'none';
-
-        // Show compliance admin nav for super admins
+        // Show compliance admin nav for super admins only
+        const isSuperAdmin = await checkSuperAdmin().catch(() => false);
         if (isSuperAdmin) {
-            // Add compliance admin to sidebar after Knowledge Base
             const knowledgeNavBtn = document.querySelector('.sidebar-btn[data-page="knowledge"]');
             if (knowledgeNavBtn && !document.getElementById('complianceAdminNavBtn')) {
                 const compAdminBtn = document.createElement('button');
