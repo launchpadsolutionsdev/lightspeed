@@ -23450,37 +23450,20 @@ document.addEventListener('click', function(e) {
 // ==================== COMPLIANCE NAV INIT ====================
 async function initComplianceNav() {
     try {
-        // Check if org has compliance enabled
-        const orgResp = await fetch(`${API_BASE_URL}/api/organizations/my`, {
-            headers: getAuthHeaders()
-        });
-        if (!orgResp.ok) return;
-
-        const orgData = await orgResp.json();
-        const org = orgData.organizations?.[0] || orgData.organization || null;
-
         const complianceNavBtn = document.getElementById('complianceNavBtn');
         if (!complianceNavBtn) return;
 
-        // Show compliance nav for orgs with compliance enabled OR super admins
-        const isSuperAdmin = await checkSuperAdmin().catch(() => false);
-        const showCompliance = org?.compliance_enabled || isSuperAdmin;
-        complianceNavBtn.style.display = showCompliance ? 'flex' : 'none';
-
-        if (showCompliance && !complianceNavBtn._listenerAdded) {
+        // Compliance is available for everyone — just wire up the click handler
+        if (!complianceNavBtn._listenerAdded) {
             complianceNavBtn.addEventListener('click', () => {
                 openTool('compliance');
             });
             complianceNavBtn._listenerAdded = true;
         }
 
-        // Show/hide bento card on tool menu
-        const bentoCard = document.getElementById('toolCompliance');
-        if (bentoCard) bentoCard.style.display = showCompliance ? '' : 'none';
-
-        // Show compliance admin nav for super admins
+        // Show compliance admin nav for super admins only
+        const isSuperAdmin = await checkSuperAdmin().catch(() => false);
         if (isSuperAdmin) {
-            // Add compliance admin to sidebar after Knowledge Base
             const knowledgeNavBtn = document.querySelector('.sidebar-btn[data-page="knowledge"]');
             if (knowledgeNavBtn && !document.getElementById('complianceAdminNavBtn')) {
                 const compAdminBtn = document.createElement('button');
