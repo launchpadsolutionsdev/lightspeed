@@ -19164,21 +19164,35 @@
             display: flex;
             flex: 1;
             min-height: 0;
-            overflow: hidden;
+            overflow: visible;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        .hb-split-layout > .heartbeat-container {
+            flex: 1;
+            min-width: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .hb-ai-panel {
             width: 0;
+            min-width: 0;
+            opacity: 0;
             flex-shrink: 0;
             overflow: hidden;
-            border-left: 1px solid transparent;
-            background: var(--bg-alt, #F7F8FA);
             display: flex;
             flex-direction: column;
-            transition: width 0.3s cubic-bezier(.4,0,.2,1), border-color 0.3s ease;
+            transition: width 0.4s cubic-bezier(.4,0,.2,1),
+                        min-width 0.4s cubic-bezier(.4,0,.2,1),
+                        opacity 0.4s cubic-bezier(.4,0,.2,1);
+            position: sticky;
+            top: 80px;
+            height: calc(100vh - 100px);
+            align-self: flex-start;
         }
         .hb-ai-panel.open {
             width: 420px;
-            border-left-color: var(--border, #E3E8EE);
+            min-width: 380px;
+            opacity: 1;
         }
         .hb-ai-panel-header {
             display: flex;
@@ -19186,8 +19200,10 @@
             justify-content: space-between;
             padding: 14px 16px;
             border-bottom: 1px solid var(--border, #E3E8EE);
+            background: white;
             flex-shrink: 0;
-            min-width: 420px;
+            min-width: 380px;
+            border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
         }
         .hb-ai-panel-title {
             font-size: 14px;
@@ -19224,7 +19240,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            min-width: 420px;
+            min-width: 380px;
             scroll-behavior: smooth;
         }
         .hb-ai-welcome {
@@ -19235,7 +19251,7 @@
             justify-content: center;
             text-align: center;
             padding: 32px 24px;
-            min-width: 420px;
+            min-width: 380px;
             gap: 12px;
         }
         .hb-ai-welcome-title {
@@ -19320,7 +19336,8 @@
             padding: 12px 16px;
             border-top: 1px solid var(--border, #E3E8EE);
             background: var(--bg-alt, #F7F8FA);
-            min-width: 420px;
+            min-width: 380px;
+            border-radius: 0 0 var(--radius-xl, 16px) var(--radius-xl, 16px);
         }
         .hb-ai-input-row {
             display: flex;
@@ -19428,8 +19445,19 @@
 
         /* ── Responsive ── */
         @media (max-width: 900px) {
-            .hb-ai-panel.open { width: 100%; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; border-left: none; }
+            .hb-split-layout { flex-direction: column; gap: 0; }
+            .hb-ai-panel.open {
+                width: 100%;
+                min-width: 100%;
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                z-index: 1000;
+                border-radius: 0;
+                height: 100%;
+            }
             .hb-ai-panel-header, .hb-ai-messages, .hb-ai-welcome, .hb-ai-input-area { min-width: 0; }
+            .hb-ai-panel-header { border-radius: 0; }
+            .hb-ai-input-area { border-radius: 0; }
         }
         @media (max-width: 768px) {
             .hb-heatmap { grid-template-columns: repeat(6, 1fr); }
@@ -19471,7 +19499,7 @@
                             <div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading Heartbeat data...</div></div>
                         </div>
                     </div>
-                    <div class="hb-ai-panel" id="hbAiPanelLive">
+                    <div class="hb-ai-panel nested-card" id="hbAiPanelLive">
                         <div class="hb-ai-panel-header">
                             <div class="hb-ai-panel-title"><span>Ask Lightspeed</span></div>
                             <button class="hb-ai-close" onclick="toggleHbAiPanel('live')" title="Close">&times;</button>
@@ -19511,7 +19539,7 @@
                         <div id="hbShopifyIntelPage">
                         </div>
                     </div>
-                    <div class="hb-ai-panel" id="hbAiPanelShopify">
+                    <div class="hb-ai-panel nested-card" id="hbAiPanelShopify">
                         <div class="hb-ai-panel-header">
                             <div class="hb-ai-panel-title"><span>Ask Lightspeed</span></div>
                             <button class="hb-ai-close" onclick="toggleHbAiPanel('shopify')" title="Close">&times;</button>
