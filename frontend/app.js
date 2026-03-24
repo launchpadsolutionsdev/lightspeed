@@ -23692,18 +23692,18 @@ async function initComplianceNav() {
 function openBugReportModal() {
     const modal = document.getElementById('bugReportModal');
     if (!modal) return;
-    modal.style.display = 'flex';
+    modal.classList.add('show');
     document.getElementById('bugReportTitle').value = '';
     document.getElementById('bugReportDescription').value = '';
     document.getElementById('bugReportCategory').value = 'bug';
     document.getElementById('bugReportSeverity').value = 'medium';
-    document.getElementById('bugReportTitle').focus();
+    setTimeout(() => document.getElementById('bugReportTitle')?.focus(), 100);
 }
 window.openBugReportModal = openBugReportModal;
 
 function closeBugReportModal() {
     const modal = document.getElementById('bugReportModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 window.closeBugReportModal = closeBugReportModal;
 
@@ -23748,14 +23748,14 @@ window.submitBugReport = submitBugReport;
 function openMyBugReports() {
     closeBugReportModal();
     const modal = document.getElementById('myBugReportsModal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) modal.classList.add('show');
     loadMyBugReports();
 }
 window.openMyBugReports = openMyBugReports;
 
 function closeMyBugReports() {
     const modal = document.getElementById('myBugReportsModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 window.closeMyBugReports = closeMyBugReports;
 
