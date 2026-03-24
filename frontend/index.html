@@ -14887,7 +14887,18 @@
                     <button class="sidebar-btn" data-tool="heartbeat">
                         <span class="sidebar-btn-icon">&#128200;</span>
                         <span class="sidebar-btn-label">Heartbeat</span>
+                        <span class="sidebar-btn-expand">&#9654;</span>
                     </button>
+                    <div class="sidebar-sub-menu" id="sidebarHeartbeatPages">
+                        <button class="sidebar-btn" data-page="heartbeat-live">
+                            <span class="sidebar-btn-icon">&#128147;</span>
+                            <span class="sidebar-btn-label">Live Dashboard</span>
+                        </button>
+                        <button class="sidebar-btn" data-page="heartbeat-shopify">
+                            <span class="sidebar-btn-icon">&#128722;</span>
+                            <span class="sidebar-btn-label">Shopify Intelligence</span>
+                        </button>
+                    </div>
                     <button class="sidebar-btn" data-page="shopify-dashboard" id="shopifyDashNavBtn">
                         <span class="sidebar-btn-icon">&#128176;</span>
                         <span class="sidebar-btn-label">Shopify Analytics</span>
@@ -19179,18 +19190,33 @@
         </header>
 
         <div class="container">
-            <div class="heartbeat-container">
-                <!-- Page Header -->
-                <div class="data-page-header">
-                    <div class="data-page-header-text">
-                        <h1>Heartbeat</h1>
-                        <p>Live sales velocity, real-time revenue tracking, goal projections, payment breakdowns, package tier performance, hourly heatmaps, and jackpot comparisons — all updating in real time to give you a complete pulse on your raffle.</p>
+            <!-- Page: Live Dashboard (raffle feed) -->
+            <div class="page active" id="page-heartbeat-live">
+                <div class="heartbeat-container">
+                    <div class="data-page-header">
+                        <div class="data-page-header-text">
+                            <h1>Heartbeat</h1>
+                            <p>Live sales velocity, real-time revenue tracking, goal projections, payment breakdowns, package tier performance, hourly heatmaps, and jackpot comparisons — all updating in real time to give you a complete pulse on your raffle.</p>
+                        </div>
+                    </div>
+                    <div id="heartbeatContent">
+                        <div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading Heartbeat data...</div></div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Velocity ticker card rendered here by JS -->
-                <div id="heartbeatContent">
-                    <div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading Heartbeat data...</div></div>
+            <!-- Page: Shopify Intelligence -->
+            <div class="page" id="page-heartbeat-shopify">
+                <div class="heartbeat-container">
+                    <div class="data-page-header">
+                        <div class="data-page-header-text">
+                            <h1>Shopify Intelligence</h1>
+                            <p>24-hour snapshot of your Shopify store — revenue, orders, geographic hotspots, top products, customer activity, and discount code tracking. Auto-refreshes every 2 minutes.</p>
+                        </div>
+                    </div>
+                    <div id="hbShopifyIntelPage">
+                        <div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading Shopify data...</div></div>
+                    </div>
                 </div>
             </div>
         </div>

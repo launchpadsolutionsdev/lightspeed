@@ -2586,6 +2586,30 @@ function updateSidebarForTool(toolId) {
         }
     }
 
+    // Expand/collapse Heartbeat sub-menu
+    const heartbeatPages = document.getElementById("sidebarHeartbeatPages");
+    const hbExpandArrow = document.querySelector('.sidebar-btn[data-tool="heartbeat"] .sidebar-btn-expand');
+    if (heartbeatPages) {
+        heartbeatPages.style.display = '';
+        if (toolId === 'heartbeat') {
+            heartbeatPages.classList.add('expanded');
+            if (hbExpandArrow) hbExpandArrow.classList.add('rotated');
+        } else {
+            heartbeatPages.classList.remove('expanded');
+            if (hbExpandArrow) hbExpandArrow.classList.remove('rotated');
+        }
+    }
+
+    // If switching to Heartbeat, activate Live Dashboard by default
+    if (toolId === 'heartbeat') {
+        const hbLiveBtn = document.querySelector('.sidebar-btn[data-page="heartbeat-live"]');
+        if (hbLiveBtn) hbLiveBtn.classList.add("active");
+        const hbLivePage = document.getElementById('page-heartbeat-live');
+        if (hbLivePage) hbLivePage.classList.add("active");
+        const hbShopifyPage = document.getElementById('page-heartbeat-shopify');
+        if (hbShopifyPage) hbShopifyPage.classList.remove("active");
+    }
+
     // If switching to Response Assistant, activate Generator by default
     if (toolId === 'customer-response') {
         document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
@@ -5782,6 +5806,14 @@ function setupEventListeners() {
                 if (arrow) arrow.classList.toggle('rotated');
                 return;
             }
+            // Toggle sub-menu if Heartbeat is already active
+            if (btn.dataset.tool === 'heartbeat' && currentTool === 'heartbeat') {
+                const subMenu = document.getElementById("sidebarHeartbeatPages");
+                const arrow = btn.querySelector('.sidebar-btn-expand');
+                if (subMenu) subMenu.classList.toggle('expanded');
+                if (arrow) arrow.classList.toggle('rotated');
+                return;
+            }
             openTool(btn.dataset.tool);
             closeSidebar(); // Close mobile sidebar after tool switch
         });
@@ -5802,6 +5834,11 @@ function setupEventListeners() {
                 const arrow = document.querySelector('.sidebar-btn[data-tool="customer-response"] .sidebar-btn-expand');
                 if (subMenu) subMenu.classList.remove('expanded');
                 if (arrow) arrow.classList.remove('rotated');
+                // Collapse Heartbeat sub-menu
+                const hbSub = document.getElementById("sidebarHeartbeatPages");
+                const hbArrow = document.querySelector('.sidebar-btn[data-tool="heartbeat"] .sidebar-btn-expand');
+                if (hbSub) hbSub.classList.remove('expanded');
+                if (hbArrow) hbArrow.classList.remove('rotated');
                 // Make sure mainApp is visible (Runway lives inside it)
                 currentTool = 'customer-response';
                 document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
@@ -5821,6 +5858,16 @@ function setupEventListeners() {
                 return;
             }
 
+            // Heartbeat sub-pages
+            const hbSubPages = ['heartbeat-live', 'heartbeat-shopify'];
+            if (hbSubPages.includes(pageId)) {
+                if (currentTool !== 'heartbeat') {
+                    openTool('heartbeat');
+                }
+                switchHeartbeatPage(pageId);
+                return;
+            }
+
             // Standalone pages (Manage group, Shopify, etc.) — deactivate all tool buttons
             document.querySelectorAll(".sidebar-btn[data-tool]").forEach(b => b.classList.remove("active"));
             // Collapse RA sub-menu
@@ -5828,6 +5875,11 @@ function setupEventListeners() {
             const arrow = document.querySelector('.sidebar-btn[data-tool="customer-response"] .sidebar-btn-expand');
             if (subMenu) subMenu.classList.remove('expanded');
             if (arrow) arrow.classList.remove('rotated');
+            // Collapse Heartbeat sub-menu
+            const hbSub2 = document.getElementById("sidebarHeartbeatPages");
+            const hbArrow2 = document.querySelector('.sidebar-btn[data-tool="heartbeat"] .sidebar-btn-expand');
+            if (hbSub2) hbSub2.classList.remove('expanded');
+            if (hbArrow2) hbArrow2.classList.remove('rotated');
             // Ensure appWrapper and mainApp are visible (Manage pages live in mainApp)
             document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
             document.getElementById("appWrapper").classList.add("visible");
@@ -17900,7 +17952,9 @@ const ROUTES = {
     '/ask-lightspeed':               { view: 'tool', tool: 'ask-lightspeed' },
     '/rules-of-play':                { view: 'tool', tool: 'rules-of-play' },
     '/compliance':                   { view: 'tool', tool: 'compliance' },
-    '/heartbeat':                    { view: 'tool', tool: 'heartbeat' },
+    '/heartbeat':                    { view: 'tool', tool: 'heartbeat', page: 'heartbeat-live' },
+    '/heartbeat/live':               { view: 'tool', tool: 'heartbeat', page: 'heartbeat-live' },
+    '/heartbeat/shopify':            { view: 'tool', tool: 'heartbeat', page: 'heartbeat-shopify' },
     '/compliance-admin':             { view: 'tool', tool: 'customer-response', page: 'compliance-admin' },
     '/home-base':                    { view: 'tool', tool: 'customer-response', page: 'home-base' },
     '/shopify-dashboard':            { view: 'tool', tool: 'customer-response', page: 'shopify-dashboard' },
@@ -17919,6 +17973,8 @@ const TOOL_ROUTES = {
 };
 
 const PAGE_ROUTES = {
+    'heartbeat-live':    '/heartbeat/live',
+    'heartbeat-shopify': '/heartbeat/shopify',
     'response':  '/response-assistant/generator',
     'templates': '/response-assistant/templates',
     'analytics': '/response-assistant/analytics',
@@ -17994,7 +18050,12 @@ function navigateToRoute(path) {
         }
         openTool(route.tool);
         if (route.page) {
-            switchPage(route.page);
+            // Heartbeat has its own page switcher
+            if (route.page.startsWith('heartbeat-')) {
+                switchHeartbeatPage(route.page);
+            } else {
+                switchPage(route.page);
+            }
         }
         if (route.subTool) {
             openNormalizerSubTool(route.subTool);
@@ -18904,9 +18965,6 @@ let _heartbeatGoal = parseInt(localStorage.getItem('heartbeat_goal')) || 0;
  * Initialize the Heartbeat tool page.
  */
 function initHeartbeat() {
-    const content = document.getElementById('heartbeatContent');
-    if (!content) return;
-
     // Wire up sidebar toggle
     const toggle = document.getElementById('heartbeatSidebarToggle');
     if (toggle && !toggle._hbBound) {
@@ -18917,17 +18975,57 @@ function initHeartbeat() {
         });
     }
 
+    // Default to Live Dashboard
+    initHeartbeatLive();
+}
+
+function initHeartbeatLive() {
+    const content = document.getElementById('heartbeatContent');
+    if (!content) return;
+
     // Reset render state so full page builds on each tool open
     _heartbeatRendered = false;
 
+    stopHeartbeatPolling();
     refreshHeartbeat();
-    refreshHbOrders(); // Initial orders fetch
-    refreshHbShopifySnapshot(); // Initial Shopify Intelligence fetch
+    refreshHbOrders();
+    _heartbeatPollTimer = setInterval(refreshHeartbeat, 5000);
+    _hbOrdersPollTimer = setInterval(refreshHbOrders, 120000);
+}
+
+function initHeartbeatShopify() {
+    const container = document.getElementById('hbShopifyIntelPage');
+    if (!container) return;
 
     stopHeartbeatPolling();
-    _heartbeatPollTimer = setInterval(refreshHeartbeat, 5000);
-    _hbOrdersPollTimer = setInterval(refreshHbOrders, 120000); // Every 2 minutes
-    _hbShopifyIntelTimer = setInterval(refreshHbShopifySnapshot, 120000); // Every 2 minutes
+    refreshHbShopifySnapshot();
+    _hbShopifyIntelTimer = setInterval(refreshHbShopifySnapshot, 120000);
+}
+
+function switchHeartbeatPage(pageId) {
+    // Update URL
+    pushRoute(PAGE_ROUTES[pageId] || '/heartbeat');
+
+    // Toggle page containers inside heartbeatApp
+    const livePage = document.getElementById('page-heartbeat-live');
+    const shopifyPage = document.getElementById('page-heartbeat-shopify');
+    if (livePage) livePage.classList.toggle('active', pageId === 'heartbeat-live');
+    if (shopifyPage) shopifyPage.classList.toggle('active', pageId === 'heartbeat-shopify');
+
+    // Update sidebar active states
+    document.querySelectorAll('#sidebarHeartbeatPages .sidebar-btn[data-page]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.page === pageId);
+    });
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'instant' });
+
+    // Stop all polling then start the right one
+    if (pageId === 'heartbeat-live') {
+        initHeartbeatLive();
+    } else if (pageId === 'heartbeat-shopify') {
+        initHeartbeatShopify();
+    }
 }
 
 function stopHeartbeatPolling() {
@@ -18984,15 +19082,6 @@ async function refreshHeartbeat() {
                     ordersFeed.innerHTML = renderHbLiveOrders(_hbOrdersData);
                 } else {
                     refreshHbOrders();
-                }
-            }
-            // Re-inject cached Shopify Intelligence into the fresh placeholder
-            const intelContainer = document.getElementById('hbShopifyIntel');
-            if (intelContainer) {
-                if (_hbShopifySnapshot) {
-                    intelContainer.innerHTML = renderHbShopifyIntel(_hbShopifySnapshot);
-                } else {
-                    refreshHbShopifySnapshot();
                 }
             }
         } else {
@@ -19056,9 +19145,6 @@ function renderHeartbeatPage(data) {
     if (wh && wh.grandPrizeWinners && wh.grandPrizeWinners.length > 0) {
         html += renderHbJackpotComparison(data);
     }
-
-    // 9 — Shopify Intelligence (async-filled placeholder)
-    html += '<div id="hbShopifyIntel"></div>';
 
     // Footer
     html += `<div class="feed-dash-updated">Last tick: Just now &middot; ${formatEasternTime()} &middot; Velocity ticker live every 5s</div>`;
@@ -19747,12 +19833,12 @@ function renderHbJackpotComparison(data) {
 // ---------------------------------------------------------------------------
 
 async function refreshHbShopifySnapshot() {
-    const container = document.getElementById('hbShopifyIntel');
+    const container = document.getElementById('hbShopifyIntelPage');
     if (!container) return;
 
     // Show loading state on first fetch
     if (!_hbShopifySnapshot) {
-        container.innerHTML = '<div class="raffle-card" style="margin-bottom:20px;"><div class="raffle-card-header"><div class="raffle-card-title">Shopify Intelligence &mdash; 24h Snapshot</div></div><div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">Loading Shopify data&hellip;</div></div>';
+        container.innerHTML = '<div class="feed-dash-loading"><div class="shopify-kpi-sub">Loading Shopify data&hellip;</div></div>';
     }
 
     try {
@@ -19768,7 +19854,7 @@ async function refreshHbShopifySnapshot() {
     } catch (err) {
         console.warn('Shopify Intelligence fetch failed:', err.message);
         if (!_hbShopifySnapshot) {
-            container.innerHTML = '<div class="raffle-card" style="margin-bottom:20px;"><div class="raffle-card-header"><div class="raffle-card-title">Shopify Intelligence &mdash; 24h Snapshot</div></div><div style="text-align:center;padding:24px 0;color:var(--text-muted,#6B7C93);font-size:13px;">Unable to load &mdash; ' + escapeHtml(err.message) + '</div></div>';
+            container.innerHTML = '<div class="feed-dash-loading"><div class="shopify-kpi-sub">Unable to load &mdash; ' + escapeHtml(err.message) + '</div></div>';
         }
     }
 }
@@ -20318,6 +20404,8 @@ function skeletonRows(count) {
         { id: 'teams', label: 'Team Management', desc: 'Manage your team', icon: '👥', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('teams'); } },
         { id: 'bulk', label: 'Bulk Processing', desc: 'Process multiple inquiries at once', icon: '📦', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('bulk'); } },
         { id: 'shopify-dashboard', label: 'Shopify Analytics', desc: 'View Shopify store analytics dashboard', icon: '💰', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('shopify-dashboard'); } },
+        { id: 'heartbeat-live', label: 'Heartbeat — Live Dashboard', desc: 'Real-time raffle velocity and sales tracking', icon: '💗', group: 'Navigate', action: function() { openTool('heartbeat'); switchHeartbeatPage('heartbeat-live'); } },
+        { id: 'heartbeat-shopify', label: 'Heartbeat — Shopify Intelligence', desc: '24h Shopify store snapshot with KPIs and geo data', icon: '🛒', group: 'Navigate', action: function() { openTool('heartbeat'); switchHeartbeatPage('heartbeat-shopify'); } },
     ];
 
     var overlay = null;
