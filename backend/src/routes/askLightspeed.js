@@ -241,7 +241,7 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
     },
     {
         name: 'search_heartbeat_data',
-        description: 'Query real-time and historical raffle sales data from the Heartbeat monitor. Returns current totals (sales, tickets, numbers sold), sales velocity across multiple time windows (1m, 5m, 10m, 30m, 1h, 3h, 24h, 7d), surge detection, and package tier breakdowns. Use this when the user asks about current sales performance, velocity, how fast tickets are selling, sales trends, revenue totals, or anything related to the live raffle dashboard/heartbeat.',
+        description: 'Query real-time and historical raffle sales data from the Heartbeat monitor. Returns current totals (sales, tickets, numbers sold), sales velocity across multiple time windows (1m, 5m, 10m, 30m, 1h, 3h, 24h, 7d), surge detection, package tier breakdowns with numbers-per-ticket, and odds calculations. IMPORTANT: "tickets" are purchases; "numbers" are individual entries in the draw pool. Odds are based on numbers, not tickets. Use this when the user asks about current sales, velocity, how fast tickets are selling, sales trends, revenue totals, odds of winning, or anything related to the live raffle dashboard/heartbeat.',
         input_schema: {
             type: 'object',
             properties: {
@@ -791,7 +791,7 @@ Use markdown formatting for readability.`;
  */
 async function executeSearchHeartbeatData(input) {
     const window = input.window || 'all';
-    const includeTiers = input.include_tiers || false;
+    // include_tiers param kept for backwards compat but tiers are now always fetched
 
     // Time window definitions (mirrors feedDashboard.js VELOCITY_WINDOWS)
     const WINDOWS = [
@@ -809,14 +809,15 @@ async function executeSearchHeartbeatData(input) {
         // Load snapshots from the last 7 days
         const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
         const result = await pool.query(
-            'SELECT ts, total_sales, total_tickets FROM velocity_snapshots WHERE ts >= $1 ORDER BY ts ASC',
+            'SELECT ts, total_sales, total_tickets, total_numbers FROM velocity_snapshots WHERE ts >= $1 ORDER BY ts ASC',
             [cutoff]
         );
 
         const snapshots = result.rows.map(r => ({
             ts: Number(r.ts),
             totalSales: parseFloat(r.total_sales),
-            totalTickets: parseInt(r.total_tickets, 10)
+            totalTickets: parseInt(r.total_tickets, 10),
+            totalNumbers: parseInt(r.total_numbers || 0, 10)
         }));
 
         if (snapshots.length < 2) {
@@ -831,6 +832,7 @@ async function executeSearchHeartbeatData(input) {
         summary += `As of: ${new Date(now).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}\n`;
         summary += `Total Sales: $${latest.totalSales.toLocaleString('en-CA', { minimumFractionDigits: 2 })}\n`;
         summary += `Total Tickets Sold: ${latest.totalTickets.toLocaleString()}\n`;
+        summary += `Total Numbers Sold (Draw Pool): ${latest.totalNumbers.toLocaleString()}\n`;
         summary += `Data Points: ${snapshots.length} snapshots over the collection period\n\n`;
 
         // Compute velocity for requested windows
@@ -849,6 +851,7 @@ async function executeSearchHeartbeatData(input) {
 
                 const salesDelta = latest.totalSales - windowStart.totalSales;
                 const ticketsDelta = latest.totalTickets - windowStart.totalTickets;
+                const numbersDelta = (latest.totalNumbers || 0) - (windowStart.totalNumbers || 0);
                 const priorDelta = windowStart.totalSales - priorStart.totalSales;
 
                 let changeStr = '';
@@ -857,7 +860,7 @@ async function executeSearchHeartbeatData(input) {
                     changeStr = pct >= 0 ? ` (+${pct}% vs prior period)` : ` (${pct}% vs prior period)`;
                 }
 
-                summary += `- ${win.label}: $${salesDelta.toLocaleString('en-CA', { minimumFractionDigits: 2 })} revenue, ${ticketsDelta.toLocaleString()} tickets${changeStr}\n`;
+                summary += `- ${win.label}: $${salesDelta.toLocaleString('en-CA', { minimumFractionDigits: 2 })} revenue, ${ticketsDelta.toLocaleString()} tickets, ${numbersDelta.toLocaleString()} numbers${changeStr}\n`;
             }
 
             // Surge detection (1h window)
@@ -878,36 +881,61 @@ async function executeSearchHeartbeatData(input) {
             }
         }
 
-        // Include tier breakdown if requested (requires a live feed fetch)
-        if (includeTiers) {
-            try {
-                const FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/event-details';
-                const { XMLParser } = require('fast-xml-parser');
-                const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '_', parseTagValue: true, trimValues: true, isArray: (name) => name === 'node' });
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 10000);
-                const resp = await fetch(FEED_URL, { signal: controller.signal, headers: { 'Accept': 'application/xml, text/xml, */*' } });
-                clearTimeout(timeout);
-                if (resp.ok) {
-                    const xml = await resp.text();
-                    const parsed = parser.parse(xml);
-                    const salesContent = parsed.content || parsed;
-                    const breakdownNodes = salesContent.breakdown?.node || [];
-                    const tiers = (Array.isArray(breakdownNodes) ? breakdownNodes : [breakdownNodes]);
-                    if (tiers.length > 0) {
-                        summary += `\n**Package Tier Breakdown:**\n`;
+        // Always fetch live feed for tier breakdown and accurate numbers data
+        try {
+            const FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/event-details';
+            const { XMLParser } = require('fast-xml-parser');
+            const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '_', parseTagValue: true, trimValues: true, isArray: (name) => name === 'node' });
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+            const resp = await fetch(FEED_URL, { signal: controller.signal, headers: { 'Accept': 'application/xml, text/xml, */*' } });
+            clearTimeout(timeout);
+            if (resp.ok) {
+                const xml = await resp.text();
+                const parsed = parser.parse(xml);
+                const salesContent = parsed.content || parsed;
+
+                // Live total numbers (most accurate, straight from the feed)
+                const liveNumbers = parseInt(String(salesContent.numbers || '0').replace(/,/g, ''), 10) || 0;
+                if (liveNumbers > 0 && liveNumbers !== latest.totalNumbers) {
+                    summary = summary.replace(
+                        /Total Numbers Sold \(Draw Pool\): .+\n/,
+                        `Total Numbers Sold (Draw Pool): ${liveNumbers.toLocaleString()}\n`
+                    );
+                }
+
+                const breakdownNodes = salesContent.breakdown?.node || [];
+                const tiers = (Array.isArray(breakdownNodes) ? breakdownNodes : [breakdownNodes]);
+                if (tiers.length > 0) {
+                    summary += `\n**Package Tier Breakdown:**\n`;
+                    for (const t of tiers) {
+                        const qty = parseInt(t.quantity) || 0;
+                        const price = parseFloat(t.price) || 0;
+                        const tickets = parseInt(String(t.total_tickets).replace(/,/g, '')) || 0;
+                        const numbers = parseInt(String(t.total_numbers).replace(/,/g, '')) || 0;
+                        const sales = parseFloat(String(t.total_sales).replace(/,/g, '')) || 0;
+                        summary += `- $${price.toFixed(2)} package (${qty} numbers per ticket): ${tickets.toLocaleString()} tickets sold = ${numbers.toLocaleString()} numbers, $${sales.toLocaleString('en-CA', { minimumFractionDigits: 2 })} revenue\n`;
+                    }
+
+                    // Add odds context
+                    const totalNumbersLive = liveNumbers || latest.totalNumbers;
+                    if (totalNumbersLive > 0) {
+                        summary += `\n**Odds Context:**\n`;
+                        summary += `Total numbers in the draw pool: ${totalNumbersLive.toLocaleString()}\n`;
+                        summary += `Each ticket contains multiple numbers (see tiers above). Odds of winning = [numbers a person holds] in ${totalNumbersLive.toLocaleString()}.\n`;
                         for (const t of tiers) {
                             const qty = parseInt(t.quantity) || 0;
                             const price = parseFloat(t.price) || 0;
-                            const tickets = parseInt(String(t.total_tickets).replace(/,/g, '')) || 0;
-                            const sales = parseFloat(String(t.total_sales).replace(/,/g, '')) || 0;
-                            summary += `- ${qty}-number package ($${price.toFixed(2)}): ${tickets.toLocaleString()} tickets, $${sales.toLocaleString('en-CA', { minimumFractionDigits: 2 })} revenue\n`;
+                            if (qty > 0) {
+                                const oddsRatio = Math.round(totalNumbersLive / qty);
+                                summary += `- 1x $${price.toFixed(2)} ticket (${qty} numbers) = 1 in ${oddsRatio.toLocaleString()} odds\n`;
+                            }
                         }
                     }
                 }
-            } catch (_e) {
-                summary += `\n(Package tier breakdown unavailable — feed fetch failed.)\n`;
             }
+        } catch (_e) {
+            summary += `\n(Package tier breakdown unavailable — feed fetch failed.)\n`;
         }
 
         return summary;
@@ -1105,7 +1133,16 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
         dynamicSystem += `\n\nCRITICAL REMINDER — TOOL USAGE:
 When the user asks about a specific customer, email address, order, or purchase, you MUST call the search_shopify_orders or search_shopify_customers tool to look up the data. Do NOT tell the user to check Shopify Admin manually. Do NOT say you only have aggregate data. You have real-time Shopify lookup tools — use them.
 
-When the user asks about current sales, velocity, how tickets are selling, revenue pace, sales performance, sales trends, "how are sales", "how are sales today", "how is the raffle doing", or Heartbeat data, you MUST call search_heartbeat_data FIRST. This is the ONLY tool that provides real-time, live sales data. Do NOT call run_insights_analysis or search_shopify_orders for general "how are sales" questions — those tools do not have live velocity data. Do NOT say you don't have access to live sales data — you do via search_heartbeat_data.`;
+When the user asks about current sales, velocity, how tickets are selling, revenue pace, sales performance, sales trends, "how are sales", "how are sales today", "how is the raffle doing", or Heartbeat data, you MUST call search_heartbeat_data FIRST. This is the ONLY tool that provides real-time, live sales data. Do NOT call run_insights_analysis or search_shopify_orders for general "how are sales" questions — those tools do not have live velocity data. Do NOT say you don't have access to live sales data — you do via search_heartbeat_data.
+
+CRITICAL — TICKETS vs NUMBERS (ODDS CALCULATIONS):
+In charitable gaming raffles, "tickets" and "numbers" are DIFFERENT things:
+- A TICKET is a single purchase/transaction (e.g. a $20 ticket or a $100 ticket).
+- Each ticket contains multiple NUMBERS (raffle entries). For example, a $20 ticket might have 50 numbers and a $100 ticket might have 700 numbers.
+- The DRAW POOL is the total numbers sold across all tickets — this is what determines odds of winning.
+- ODDS = [numbers a person holds] in [total numbers in the draw pool]. NOT 1 in [tickets sold].
+- When a user asks "what are the odds of winning?" or "what are my chances?", you MUST use the total numbers sold (draw pool size), NOT total tickets. Always call search_heartbeat_data to get accurate numbers data.
+- When presenting odds, always clarify which package tier the odds apply to (e.g. "If you bought one $20 ticket with 50 numbers, your odds are 50 in 2,500,000 or about 1 in 50,000").`;
 
         // Reinforce web search when enabled
         if (webSearch === 'true') {
@@ -1793,7 +1830,7 @@ SHOPIFY TOOLS:
 - search_shopify_customers: Search Shopify customers by name, email, or phone. Use when the user asks about customers, supporters, or buyers.
 
 HEARTBEAT (LIVE RAFFLE MONITOR):
-- search_heartbeat_data: Query real-time raffle sales data from the Heartbeat monitor. Returns current totals (revenue, tickets, numbers sold), sales velocity across time windows (1m to 7d), surge detection, and optionally package tier breakdowns. Use when the user asks about current sales, velocity, how fast tickets are selling, revenue performance, sales trends, or anything related to live raffle metrics.
+- search_heartbeat_data: Query real-time raffle sales data from the Heartbeat monitor. Returns current totals (revenue, tickets sold, numbers sold / draw pool size), sales velocity across time windows (1m to 7d), surge detection, package tier breakdowns with numbers-per-ticket multipliers, and odds calculations per package. Use when the user asks about current sales, velocity, odds of winning, draw pool size, or anything related to live raffle metrics. Remember: "tickets" = purchases, "numbers" = individual raffle entries. Odds are always based on numbers, not tickets.
 
 ${webSearch ? `WEB SEARCH (ENABLED):
 - web_search: Search the internet for current, verified information. This is a server-managed tool — call it and the results are provided automatically.
@@ -1822,6 +1859,7 @@ TOOL USAGE GUIDELINES:
 - For customer lookups ("find customer...", "who is...", "look up..."): Call search_shopify_customers with the query
 - For data analysis requests: Call run_insights_analysis with the data
 - For current sales, velocity, "how are sales going?", "how are sales today?", "how is the raffle doing?", "how fast are tickets selling?", heartbeat metrics, sales performance, or live raffle performance: Call search_heartbeat_data FIRST. This is your go-to tool for any general "how are sales" question. Use window parameter to focus on a specific time range, or "all" for a full overview. Do NOT use run_insights_analysis or Shopify tools for these questions.
+- For odds of winning, chances, probability, or draw pool size: Call search_heartbeat_data. The tool returns total numbers in the draw pool and per-package breakdowns. Remember: odds are based on NUMBERS (raffle entries), not tickets (purchases). Each ticket contains multiple numbers depending on the package tier.
 - For visualizing data: Call render_chart after you have retrieved the data. Use bar charts for comparisons, line charts for trends over time, pie/doughnut for proportions, horizontalBar for ranked lists. When the user asks to "show me", "graph", "chart", "visualize", or when numeric data would benefit from a visual, proactively render a chart.
 ${webSearch ? `- For ANY factual question, external topic, industry question, regulation, news, statistics, or "who/what/when/where" questions: You MUST call web_search. Do not rely on training data for factual claims — search first. The only exception is questions answerable from internal tools (KB, calendar, Shopify, Home Base).
 ` : ''}- For policy/procedure questions: Call search_knowledge_base

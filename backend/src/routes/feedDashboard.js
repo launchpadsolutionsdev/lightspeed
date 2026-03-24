@@ -54,13 +54,14 @@ async function loadSnapshots() {
     // Try PostgreSQL first
     try {
         const result = await pool.query(
-            'SELECT ts, total_sales, total_tickets FROM velocity_snapshots WHERE ts >= $1 ORDER BY ts ASC',
+            'SELECT ts, total_sales, total_tickets, total_numbers FROM velocity_snapshots WHERE ts >= $1 ORDER BY ts ASC',
             [cutoff]
         );
         _salesSnapshots = result.rows.map(r => ({
             ts: Number(r.ts),
             totalSales: parseFloat(r.total_sales),
-            totalTickets: parseInt(r.total_tickets, 10)
+            totalTickets: parseInt(r.total_tickets, 10),
+            totalNumbers: parseInt(r.total_numbers || 0, 10)
         }));
         log.info('Loaded velocity snapshots from database', { count: _salesSnapshots.length });
         return;
@@ -101,13 +102,13 @@ function saveSnapshotsIfNeeded() {
     const values = [];
     const params = [];
     batch.forEach((s, i) => {
-        const offset = i * 3;
-        values.push(`($${offset + 1}, $${offset + 2}, $${offset + 3})`);
-        params.push(s.ts, s.totalSales, s.totalTickets);
+        const offset = i * 4;
+        values.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`);
+        params.push(s.ts, s.totalSales, s.totalTickets, s.totalNumbers || 0);
     });
 
     pool.query(
-        `INSERT INTO velocity_snapshots (ts, total_sales, total_tickets) VALUES ${values.join(', ')} ON CONFLICT DO NOTHING`,
+        `INSERT INTO velocity_snapshots (ts, total_sales, total_tickets, total_numbers) VALUES ${values.join(', ')} ON CONFLICT DO NOTHING`,
         params
     ).catch(err => log.warn('Could not save velocity snapshots to DB', { error: err.message }));
 
@@ -154,8 +155,8 @@ async function fetchXmlFeed(url) {
 /**
  * Record a snapshot into the in-memory array and queue it for DB persistence.
  */
-function recordSnapshot(ts, totalSales, totalTickets) {
-    const snap = { ts, totalSales, totalTickets };
+function recordSnapshot(ts, totalSales, totalTickets, totalNumbers) {
+    const snap = { ts, totalSales, totalTickets, totalNumbers: totalNumbers || 0 };
     _salesSnapshots.push(snap);
     _pendingDbSnapshots.push(snap);
     if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
@@ -175,7 +176,7 @@ async function fetchFeed() {
     if (_feedCache && (now - _feedCacheTime) < FEED_CACHE_TTL) {
         // Still record a time-stamped snapshot and recompute velocity on cache hits
         if (_feedCache.salesBreakdown) {
-            recordSnapshot(now, _feedCache.salesBreakdown.totalSales, _feedCache.salesBreakdown.totalTickets);
+            recordSnapshot(now, _feedCache.salesBreakdown.totalSales, _feedCache.salesBreakdown.totalTickets, _feedCache.salesBreakdown.totalNumbers);
             _feedCache.salesVelocity = buildVelocityData(_salesSnapshots);
         }
         return _feedCache;
@@ -213,7 +214,7 @@ async function fetchFeed() {
 
         // Record sales snapshot for velocity tracking
         if (data.salesBreakdown) {
-            recordSnapshot(now, data.salesBreakdown.totalSales, data.salesBreakdown.totalTickets);
+            recordSnapshot(now, data.salesBreakdown.totalSales, data.salesBreakdown.totalTickets, data.salesBreakdown.totalNumbers);
         }
         data.salesVelocity = buildVelocityData(_salesSnapshots);
 
@@ -223,7 +224,7 @@ async function fetchFeed() {
     } catch (error) {
         // Record a snapshot from the last known values so the timeline stays continuous
         if (_feedCache && _feedCache.salesBreakdown) {
-            recordSnapshot(now, _feedCache.salesBreakdown.totalSales, _feedCache.salesBreakdown.totalTickets);
+            recordSnapshot(now, _feedCache.salesBreakdown.totalSales, _feedCache.salesBreakdown.totalTickets, _feedCache.salesBreakdown.totalNumbers);
         }
 
         if (_feedCache) {
@@ -449,7 +450,8 @@ function buildVelocityData(snapshots) {
     const samples = snapshots.map(s => ({
         ts: s.ts,
         sales: s.totalSales,
-        tickets: s.totalTickets
+        tickets: s.totalTickets,
+        numbers: s.totalNumbers || 0
     }));
 
     const now = snapshots[snapshots.length - 1].ts;
@@ -468,6 +470,7 @@ function buildVelocityData(snapshots) {
 
         const salesDelta = currentSnap.totalSales - windowStart.totalSales;
         const ticketsDelta = currentSnap.totalTickets - windowStart.totalTickets;
+        const numbersDelta = (currentSnap.totalNumbers || 0) - (windowStart.totalNumbers || 0);
         const priorDelta = windowStart.totalSales - priorStart.totalSales;
 
         let percentChange = null;
@@ -484,6 +487,7 @@ function buildVelocityData(snapshots) {
             durationMs: win.ms,
             salesDelta,
             ticketsDelta,
+            numbersDelta,
             percentChange,
             priorDelta,
             samples: windowSamples

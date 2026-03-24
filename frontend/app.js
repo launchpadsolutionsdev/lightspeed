@@ -20372,6 +20372,14 @@ function getHbAiContext(page) {
                 parts.push('PAYMENTS:\n' + Object.entries(sv.payment_breakdown).map(([k, v]) => `- ${k}: ${v}`).join('\n'));
             }
         }
+        // Include numbers data from salesBreakdown for accurate odds calculations
+        if (d.salesBreakdown) {
+            const sb = d.salesBreakdown;
+            parts.push(`NUMBERS & ODDS DATA:\nTotal Tickets Sold: ${sb.totalTickets?.toLocaleString() || 0}\nTotal Numbers Sold (Draw Pool Size): ${sb.totalNumbers?.toLocaleString() || 0}\nIMPORTANT: "Tickets" are purchases. "Numbers" are individual entries in the draw. Each ticket contains multiple numbers depending on the package tier. Odds of winning are based on NUMBERS, not tickets.`);
+            if (sb.tiers && sb.tiers.length > 0) {
+                parts.push('PACKAGE TIERS (numbers per ticket):\n' + sb.tiers.map(t => `- $${t.price?.toFixed(2)} package: ${t.numbersPerTicket} numbers per ticket, ${t.tickets?.toLocaleString()} tickets sold = ${t.numbers?.toLocaleString()} numbers, $${t.sales?.toLocaleString()} revenue`).join('\n'));
+            }
+        }
         if (d.recentOrders && d.recentOrders.length > 0) {
             parts.push(`RECENT ORDERS (last ${d.recentOrders.length}):\n` + d.recentOrders.slice(0, 20).map(o => `- ${o.customer_name || 'Guest'}: $${o.total || 0} (${o.items || 1} items)`).join('\n'));
         }
