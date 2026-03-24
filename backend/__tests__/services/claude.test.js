@@ -154,6 +154,7 @@ describe('claude service', () => {
             global.fetch.mockResolvedValue({
                 ok: false,
                 status: 429,
+                headers: new Map([['retry-after', '60']]),
                 json: jest.fn().mockResolvedValue({ error: { message: 'Rate limited' } })
             });
 

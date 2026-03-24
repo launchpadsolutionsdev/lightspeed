@@ -512,6 +512,27 @@ router.get('/products', authenticate, async (req, res) => {
     }
 });
 
+router.get('/customers/export', authenticate, async (req, res) => {
+    try {
+        const organizationId = await getOrgId(req.userId);
+        if (!organizationId) {
+            return res.status(403).json({ error: 'No organization found' });
+        }
+
+        const store = await shopifyService.getStoreConnection(organizationId);
+        if (!store) {
+            return res.status(404).json({ error: 'No Shopify store connected' });
+        }
+
+        const result = await shopifyService.exportCustomersFromRecentOrders(organizationId);
+        res.json(result);
+
+    } catch (error) {
+        log.error('Shopify customer export error', { error: error.message || error });
+        res.status(500).json({ error: 'Failed to export customers from Shopify' });
+    }
+});
+
 router.get('/orders/lookup', authenticate, async (req, res) => {
     try {
         const organizationId = await getOrgId(req.userId);
