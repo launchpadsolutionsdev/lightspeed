@@ -78,7 +78,7 @@ function getModelForComplexity(complexity) {
 3. **Dashboard widget** showing compliance KB health: how many entries are current vs. stale vs. expired
 4. **Source URL check:** Optionally ping source URLs to detect 404s (regulatory pages moved/removed)
 
-### S-7: List Normalizer — Structured Output Mode
+### S-7: Data Agent — Structured Output Mode
 
 **Current state:** Uses `new Function()` to execute AI-generated JavaScript transforms (security issue C-1).
 
@@ -279,7 +279,7 @@ Replace all 50+ `console.log` calls in backend with the existing `log` service. 
 ### Quick Wins (< 1 day each, high impact)
 1. S-1: Model routing by complexity (cost savings immediately)
 2. P-5: Semantic caching for repeated queries (instant responses + cost savings)
-3. S-7: JSON transform spec for List Normalizer (fixes C-1 security issue simultaneously)
+3. S-7: JSON transform spec for Data Agent (fixes C-1 security issue simultaneously)
 4. P-3: Additional prompt injection patterns (15 minutes, better security)
 5. O-5: Replace console.log with structured logger (2 hours)
 
@@ -309,6 +309,6 @@ Lightspeed has a remarkably strong foundation for a platform at this stage. The 
 
 2. **Model routing by complexity (S-1)** — Routes simple questions to Haiku for 60% cost savings and faster responses. Complex questions still get Sonnet's full capability.
 
-3. **JSON transform spec for List Normalizer (S-7)** — Simultaneously fixes the most critical security vulnerability (C-1) and makes the tool more reliable (no more syntax errors from AI-generated JavaScript).
+3. **JSON transform spec for Data Agent (S-7)** — Simultaneously fixes the most critical security vulnerability (C-1) and makes the tool more reliable (no more syntax errors from AI-generated JavaScript).
 
 These three changes together would reduce costs, improve response times, harden security, and increase reliability — all without changing the user experience negatively.

@@ -32,7 +32,7 @@
 ### C-2: Dynamic Code Execution from AI Output
 
 - **File:** `frontend/app.js:14254`
-- **Description:** The List Normalizer tool uses `new Function('row', aiText)` to execute AI-generated JavaScript transform functions. Although there is a test execution guard, this creates a code injection vector — the AI model's output is executed as arbitrary JavaScript in the user's browser.
+- **Description:** The Data Agent tool uses `new Function('row', aiText)` to execute AI-generated JavaScript transform functions. Although there is a test execution guard, this creates a code injection vector — the AI model's output is executed as arbitrary JavaScript in the user's browser.
 - **Impact:** If an attacker crafts input that causes the AI to generate malicious code, it executes in the user's session with full DOM access.
 - **Recommended Fix:** Replace `new Function()` with a sandboxed evaluation approach (e.g., Web Worker with restricted scope, or a safe expression evaluator like JSONata). At minimum, wrap execution in a try-catch and add Content-Security-Policy headers that restrict `unsafe-eval`.
 

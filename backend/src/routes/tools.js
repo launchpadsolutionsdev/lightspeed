@@ -502,7 +502,7 @@ ${JSON.stringify(data)}`;
 
 /**
  * POST /api/normalize
- * Normalize list data via AI (List Normalizer - general purpose)
+ * Normalize list data via AI (Data Agent - general purpose)
  */
 router.post('/normalize', authenticate, checkUsageLimit, async (req, res) => {
     try {
@@ -591,7 +591,7 @@ Return ONLY the JavaScript function body. No explanation, no markdown, no \`\`\`
 
 /**
  * POST /api/normalize/log
- * Log client-side list normalizer usage (no AI tokens, just record counts)
+ * Log client-side Data Agent usage (no AI tokens, just record counts)
  */
 router.post('/normalize/log', authenticate, async (req, res) => {
     try {

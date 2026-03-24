@@ -948,7 +948,7 @@ function setupAuthEventListeners() {
         toolDraftAssistant: 'draft-assistant',
         toolCustomerResponse: 'customer-response',
         toolDataAnalysis: 'data-analysis',
-        toolListNormalizer: 'list-normalizer',
+        toolDataAgent: 'data-agent',
         toolAskLightspeed: 'ask-lightspeed',
         toolRulesOfPlay: 'rules-of-play',
         toolCompliance: 'compliance'
@@ -2150,7 +2150,7 @@ function showToolMenu() {
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
-    document.getElementById("listNormalizerApp").classList.remove("visible");
+    document.getElementById("dataAgentApp").classList.remove("visible");
 
     // Show dashboard with sidebar offset
     const toolMenuPage = document.getElementById("toolMenuPage");
@@ -2526,7 +2526,7 @@ function openTool(toolId) {
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
-    document.getElementById("listNormalizerApp").classList.remove("visible");
+    document.getElementById("dataAgentApp").classList.remove("visible");
     document.getElementById("askLightspeedApp").classList.remove("visible");
     document.getElementById("rulesOfPlayApp").classList.remove("visible");
     document.getElementById("complianceApp").classList.remove("visible");
@@ -2540,9 +2540,9 @@ function openTool(toolId) {
     } else if (toolId === 'draft-assistant') {
         document.getElementById("draftAssistantApp").classList.add("visible");
         setupDraftAssistant();
-    } else if (toolId === 'list-normalizer') {
-        document.getElementById("listNormalizerApp").classList.add("visible");
-        setupListNormalizerListeners();
+    } else if (toolId === 'data-agent') {
+        document.getElementById("dataAgentApp").classList.add("visible");
+        setupDataAgentListeners();
         showNormalizerHub();
     } else if (toolId === 'ask-lightspeed') {
         document.getElementById("askLightspeedApp").classList.add("visible");
@@ -2606,7 +2606,7 @@ function goBackToMenu() {
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
-    document.getElementById("listNormalizerApp").classList.remove("visible");
+    document.getElementById("dataAgentApp").classList.remove("visible");
     document.getElementById("askLightspeedApp").classList.remove("visible");
     document.getElementById("rulesOfPlayApp").classList.remove("visible");
     document.getElementById("complianceApp").classList.remove("visible");
@@ -5304,7 +5304,7 @@ function loginUser(user, showMessage = true) {
     // Check if user was trying to reach a specific page before login
     const hadRedirect = handlePostLoginRedirect();
     if (!hadRedirect) {
-        // Check if there's an initial path from page load (e.g. browser refresh on /list-normalizer)
+        // Check if there's an initial path from page load (e.g. browser refresh on /data-agent)
         let initialPath = window._initialPath;
         // Normalize trailing slash (e.g. /dashboard/ → /dashboard)
         if (initialPath && initialPath !== '/' && initialPath.endsWith('/')) {
@@ -5589,7 +5589,7 @@ function handleLogout() {
     document.getElementById("mainApp").classList.remove("visible");
     document.getElementById("dataAnalysisApp").classList.remove("visible");
     document.getElementById("draftAssistantApp").classList.remove("visible");
-    document.getElementById("listNormalizerApp").classList.remove("visible");
+    document.getElementById("dataAgentApp").classList.remove("visible");
     document.getElementById("toolMenuPage").classList.remove("visible", "with-sidebar");
 
     // Show landing page (marketing page)
@@ -5838,7 +5838,7 @@ function setupEventListeners() {
     });
 
     // Sidebar toggle for mobile - all toggle buttons (including dashboard)
-    ["sidebarToggle", "dataSidebarToggle", "draftSidebarToggle", "listNormalizerSidebarToggle", "dashboardSidebarToggle", "ropSidebarToggle"].forEach(id => {
+    ["sidebarToggle", "dataSidebarToggle", "draftSidebarToggle", "dataAgentSidebarToggle", "dashboardSidebarToggle", "ropSidebarToggle"].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.addEventListener("click", toggleSidebar);
     });
@@ -15124,7 +15124,7 @@ function renderLeaderboardHtml(container, leaderboard) {
 }
 
 // ==================== LIST NORMALIZER ====================
-let listNormalizerListenersSetup = false;
+let dataAgentListenersSetup = false;
 let normalizerProcessedData = null;
 let normalizerFileName = null;
 let rawNormalizerListenersSetup = false;
@@ -15141,7 +15141,7 @@ function showNormalizerHub() {
     document.getElementById('normalizerDuplicatesView').style.display = 'none';
     document.getElementById('normalizerCompareView').style.display = 'none';
     document.getElementById('normalizerEmailCleanerView').style.display = 'none';
-    pushRoute('/list-normalizer');
+    pushRoute('/data-agent');
 }
 
 function openNormalizerSubTool(subTool) {
@@ -15154,24 +15154,24 @@ function openNormalizerSubTool(subTool) {
 
     if (subTool === 'marketing') {
         document.getElementById('normalizerMarketingView').style.display = 'block';
-        setupListNormalizerListeners();
-        pushRoute('/list-normalizer/marketing');
+        setupDataAgentListeners();
+        pushRoute('/data-agent/marketing');
     } else if (subTool === 'raw') {
         document.getElementById('normalizerRawView').style.display = 'block';
         setupRawNormalizerListeners();
-        pushRoute('/list-normalizer/raw');
+        pushRoute('/data-agent/raw');
     } else if (subTool === 'duplicates') {
         document.getElementById('normalizerDuplicatesView').style.display = 'block';
         setupDupFinderListeners();
-        pushRoute('/list-normalizer/duplicates');
+        pushRoute('/data-agent/duplicates');
     } else if (subTool === 'compare') {
         document.getElementById('normalizerCompareView').style.display = 'block';
         setupCompareListeners();
-        pushRoute('/list-normalizer/compare');
+        pushRoute('/data-agent/compare');
     } else if (subTool === 'email-cleaner') {
         document.getElementById('normalizerEmailCleanerView').style.display = 'block';
         setupEmailCleanerListeners();
-        pushRoute('/list-normalizer/email-cleaner');
+        pushRoute('/data-agent/email-cleaner');
     } else if (subTool === 'shopify-import') {
         // Stay on hub — the import downloads a file directly
         document.getElementById('normalizerHub').style.display = 'block';
@@ -15179,18 +15179,18 @@ function openNormalizerSubTool(subTool) {
     }
 }
 
-function setupListNormalizerListeners() {
-    if (listNormalizerListenersSetup) return;
+function setupDataAgentListeners() {
+    if (dataAgentListenersSetup) return;
 
     const dropzone = document.getElementById("normalizerDropzone");
     const fileInput = document.getElementById("normalizerFileInput");
 
     if (!dropzone || !fileInput) {
-        console.error("List Normalizer elements not found");
+        console.error("Data Agent elements not found");
         return;
     }
 
-    listNormalizerListenersSetup = true;
+    dataAgentListenersSetup = true;
 
     // Drag and drop handlers
     dropzone.addEventListener("dragover", (e) => {
@@ -15398,7 +15398,7 @@ async function logNormalizerUsage(originalCount, cleanCount, removedCount) {
         });
     } catch (err) {
         // Non-critical — don't interrupt user flow
-        console.warn('[List Normalizer] Failed to log usage:', err.message);
+        console.warn('[Data Agent] Failed to log usage:', err.message);
     }
 }
 
@@ -15474,7 +15474,7 @@ function saveNormalizerExport(filename, recordCount) {
         if (history.length > 20) history.length = 20;
         localStorage.setItem('normalizerHistory', JSON.stringify(history));
     } catch (err) {
-        console.warn('[List Normalizer] Failed to save history:', err.message);
+        console.warn('[Data Agent] Failed to save history:', err.message);
     }
 }
 
@@ -17891,12 +17891,12 @@ const ROUTES = {
     '/response-assistant/thread':     { view: 'tool', tool: 'customer-response', page: 'thread' },
     '/data-analysis':       { view: 'tool', tool: 'data-analysis' },
     '/draft-assistant':     { view: 'tool', tool: 'draft-assistant' },
-    '/list-normalizer':              { view: 'tool', tool: 'list-normalizer' },
-    '/list-normalizer/marketing':    { view: 'tool', tool: 'list-normalizer', subTool: 'marketing' },
-    '/list-normalizer/raw':          { view: 'tool', tool: 'list-normalizer', subTool: 'raw' },
-    '/list-normalizer/duplicates':   { view: 'tool', tool: 'list-normalizer', subTool: 'duplicates' },
-    '/list-normalizer/compare':      { view: 'tool', tool: 'list-normalizer', subTool: 'compare' },
-    '/list-normalizer/email-cleaner': { view: 'tool', tool: 'list-normalizer', subTool: 'email-cleaner' },
+    '/data-agent':              { view: 'tool', tool: 'data-agent' },
+    '/data-agent/marketing':    { view: 'tool', tool: 'data-agent', subTool: 'marketing' },
+    '/data-agent/raw':          { view: 'tool', tool: 'data-agent', subTool: 'raw' },
+    '/data-agent/duplicates':   { view: 'tool', tool: 'data-agent', subTool: 'duplicates' },
+    '/data-agent/compare':      { view: 'tool', tool: 'data-agent', subTool: 'compare' },
+    '/data-agent/email-cleaner': { view: 'tool', tool: 'data-agent', subTool: 'email-cleaner' },
     '/ask-lightspeed':               { view: 'tool', tool: 'ask-lightspeed' },
     '/rules-of-play':                { view: 'tool', tool: 'rules-of-play' },
     '/compliance':                   { view: 'tool', tool: 'compliance' },
@@ -17911,7 +17911,7 @@ const TOOL_ROUTES = {
     'customer-response': '/response-assistant',
     'data-analysis':     '/data-analysis',
     'draft-assistant':   '/draft-assistant',
-    'list-normalizer':   '/list-normalizer',
+    'data-agent':        '/data-agent',
     'ask-lightspeed':    '/ask-lightspeed',
     'rules-of-play':     '/rules-of-play',
     'compliance':        '/compliance',
@@ -18126,7 +18126,7 @@ async function checkShopifyStatus() {
                 ? new Date(lastSync).toLocaleString()
                 : 'Never';
 
-            // Show the Shopify import card in List Normalizer
+            // Show the Shopify import card in Data Agent
             const shopifyCard = document.getElementById('nhubShopifyCard');
             if (shopifyCard) shopifyCard.style.display = '';
         } else {
@@ -19977,7 +19977,7 @@ function openSettingsShopify() {
 
 
 /**
- * Handle Shopify customer import in the List Normalizer.
+ * Handle Shopify customer import in Data Agent.
  */
 async function handleShopifyCustomerImport() {
     const card = document.getElementById('nhubShopifyCard');
@@ -20108,7 +20108,7 @@ function skeletonRows(count) {
         { id: 'response', label: 'Response Assistant', desc: 'Generate customer responses', icon: '⚡', group: 'Tools', action: function() { openTool('customer-response'); switchPage('response'); } },
         { id: 'draft', label: 'Draft Assistant', desc: 'Create marketing content', icon: '✏️', group: 'Tools', action: function() { openTool('draft-assistant'); } },
         { id: 'data', label: 'Insights Engine', desc: 'Analyze data and charts', icon: '📊', group: 'Tools', action: function() { openTool('data-analysis'); } },
-        { id: 'normalizer', label: 'List Normalizer', desc: 'Clean and format lists', icon: '📋', group: 'Tools', action: function() { openTool('list-normalizer'); } },
+        { id: 'normalizer', label: 'Data Agent', desc: 'Clean and format lists', icon: '📋', group: 'Tools', action: function() { openTool('data-agent'); } },
         { id: 'ask', label: 'Ask Lightspeed', desc: 'Chat with your AI assistant', icon: '💬', group: 'Tools', action: function() { openTool('ask-lightspeed'); } },
         { id: 'rop', label: 'Rules of Play', desc: 'Generate rules of play documents', icon: '📜', group: 'Tools', action: function() { openTool('rules-of-play'); } },
         { id: 'compliance', label: 'Compliance Assistant', desc: 'Get compliance guidance for lottery regulations', icon: '🤖', group: 'Tools', action: function() { openTool('compliance'); } },
