@@ -150,7 +150,7 @@ async function getCrossToolContext(organizationId, userId, options = {}) {
             response_assistant: 'Response Assistant',
             draft_assistant: 'Draft Assistant',
             insights_engine: 'Insights Engine',
-            list_normalizer: 'List Normalizer',
+            list_normalizer: 'Data Agent',
             ask_lightspeed: 'Ask Lightspeed',
             content_generator: 'Content Generator'
         };

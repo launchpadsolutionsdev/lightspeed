@@ -13,7 +13,7 @@ Lightspeed is a well-architected multi-tenant AI SaaS platform with strong funda
 
 ## CRITICAL FINDINGS
 
-### C-1: Dynamic Code Execution in List Normalizer
+### C-1: Dynamic Code Execution in Data Agent
 - **File:** `frontend/app.js:14410`
 - **Code:** `transformFn = new Function('row', aiText);`
 - **Risk:** AI-generated JavaScript is executed directly in the user's browser with full DOM access. A crafted input could cause Claude to generate malicious code (XSS, data exfiltration, localStorage theft).

@@ -18,7 +18,7 @@ AI-powered productivity suite for hospital lotteries and charitable gaming organ
 | **Response Assistant** | Paste customer inquiries, get AI-generated responses with tone/length controls |
 | **Draft Assistant** | Generate social posts, emails, ads, and general content |
 | **Insights Engine** | Upload Excel data for automated analysis and visualizations |
-| **List Normalizer** | Clean and deduplicate customer/seller lists |
+| **Data Agent** | Clean and deduplicate customer/seller lists |
 | **Ask Lightspeed** | General-purpose AI assistant for quick questions |
 
 ### Platform Features

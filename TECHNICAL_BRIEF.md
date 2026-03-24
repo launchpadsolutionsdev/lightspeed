@@ -10,7 +10,7 @@
 
 Lightspeed is an AI-powered SaaS productivity platform purpose-built for charitable lottery operators in Canada. It solves a specific and underserved problem: small-to-mid-size charitable organizations running lotteries, raffles, and 50/50 draws lack the in-house marketing, compliance, and operational expertise to run these programs efficiently. Lightspeed gives them an AI assistant that already knows their business — their products, their customers, their regulatory environment, and their brand voice.
 
-The platform provides five core AI tools: a **Response Assistant** for generating customer-facing replies, a **Draft Assistant** for creating marketing content (social posts, emails, press releases, ads), an **Insights Engine** for analyzing sales and operational data, a **List Normalizer** for cleaning messy data exports, and a **Compliance Assistant** that provides jurisdiction-specific regulatory guidance backed by verified knowledge bases. A sixth module, **Ask Lightspeed**, is an agentic AI interface that combines 12 internal tools (KB search, calendar management, content drafting, response history, Home Base search, Shopify queries, Heartbeat analytics, chart rendering, and more) plus server-managed **web search** in a single natural-language interface with AI-generated follow-up suggestions. Additional modules include **Raffle Heartbeat** for real-time sales velocity tracking, a **Rules of Play Generator** for jurisdiction-aware regulatory document drafting, and **Shared Prompts** for team-wide prompt libraries with activity tracking.
+The platform provides five core AI tools: a **Response Assistant** for generating customer-facing replies, a **Draft Assistant** for creating marketing content (social posts, emails, press releases, ads), an **Insights Engine** for analyzing sales and operational data, a **Data Agent** for cleaning messy data exports, and a **Compliance Assistant** that provides jurisdiction-specific regulatory guidance backed by verified knowledge bases. A sixth module, **Ask Lightspeed**, is an agentic AI interface that combines 12 internal tools (KB search, calendar management, content drafting, response history, Home Base search, Shopify queries, Heartbeat analytics, chart rendering, and more) plus server-managed **web search** in a single natural-language interface with AI-generated follow-up suggestions. Additional modules include **Raffle Heartbeat** for real-time sales velocity tracking, a **Rules of Play Generator** for jurisdiction-aware regulatory document drafting, and **Shared Prompts** for team-wide prompt libraries with activity tracking.
 
 Lightspeed is deployed as a multi-tenant SaaS application with organization-level isolation. Each organization maintains its own knowledge base, response rules, brand voice profile, and usage history. The platform integrates with Shopify for e-commerce analytics, Stripe for subscription billing, and supports Google and Microsoft OAuth for authentication. It is currently in production serving charitable lottery operators in Ontario, Canada.
 
@@ -182,7 +182,7 @@ Lightspeed deploys as a **monorepo** with two Render services:
 - `backend/src/services/shopify.js` — `buildAnalyticsSummary()` for Shopify data
 - `frontend/app.js` — File upload UI and report rendering
 
-### 4.4 List Normalizer
+### 4.4 Data Agent
 
 **What it does:** Cleans and standardizes messy data (customer lists, Excel exports, volunteer rosters) using AI-generated transform functions.
 
@@ -300,7 +300,7 @@ Lightspeed deploys as a **monorepo** with two Render services:
 
 Lightspeed uses two Claude models in a tiered architecture:
 
-- **Claude Sonnet 4.6** (`claude-sonnet-4-6`) — Primary generation model for all user-facing responses. Used for Response Assistant, Draft Assistant, Insights Engine, List Normalizer, Ask Lightspeed, and Compliance Assistant.
+- **Claude Sonnet 4.6** (`claude-sonnet-4-6`) — Primary generation model for all user-facing responses. Used for Response Assistant, Draft Assistant, Insights Engine, Data Agent, Ask Lightspeed, and Compliance Assistant.
 - **Claude Haiku 4.5** (`claude-haiku-4-5-20251001`) — Lightweight model for internal processing tasks: KB relevance picking, rated example filtering, voice fingerprint analysis, conversation summarization, and web search follow-up suggestion generation.
 
 The primary model is configurable via the `ANTHROPIC_MODEL` environment variable. Users can select between Sonnet and Opus via the model selector; Haiku is not user-selectable but is used internally for operations where speed and cost matter more than output quality.
@@ -507,7 +507,7 @@ organizations → home_base_posts
 | POST | `/generate` | JWT | Non-streaming generation |
 | POST | `/generate-stream` | JWT | Streaming generation (SSE) |
 | POST | `/analyze` | JWT | Insights Engine analysis |
-| POST | `/normalize` | JWT | List Normalizer |
+| POST | `/normalize` | JWT | Data Agent |
 | GET | `/calendar-context` | JWT | Calendar context for AI tools |
 
 ### Ask Lightspeed (`/api/ask-lightspeed`)
@@ -686,7 +686,7 @@ organizations → home_base_posts
 
 4. **Usage limits are currently bypassed.** The `checkUsageLimit` middleware is hardcoded to `return next()`, meaning all subscription tiers have unlimited AI usage. This must be re-enabled before scaling. (See audit report C-1.)
 
-5. **`new Function()` in List Normalizer.** AI-generated JavaScript is executed in the browser via `new Function()`. This should be sandboxed or replaced with a safe expression evaluator.
+5. **`new Function()` in Data Agent.** AI-generated JavaScript is executed in the browser via `new Function()`. This should be sandboxed or replaced with a safe expression evaluator.
 
 ### Data & Integration
 

@@ -1391,7 +1391,7 @@ function formatToolName(tool) {
         'draft_assistant': 'Draft Assistant',
         'response_assistant': 'Response Assistant',
         'insights_engine': 'Insights Engine',
-        'list_normalizer': 'List Normalizer',
+        'list_normalizer': 'Data Agent',
         'ask_lightspeed': 'Ask Lightspeed'
     };
     return names[tool] || tool;

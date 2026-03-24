@@ -51,7 +51,7 @@
         #mainApp *,
         #dataAnalysisApp *,
         #draftAssistantApp *,
-        #listNormalizerApp *,
+        #dataAgentApp *,
         #askLightspeedApp * {
             text-shadow: none !important;
         }
@@ -13659,13 +13659,13 @@
                                             <div class="hero-mockup-card-desc">Upload data and generate visual dashboards instantly.</div>
                                             <div class="hero-mockup-tags"><span class="hero-mockup-tag">Analytics</span></div>
                                         </div>
-                                        <!-- List Normalizer -->
+                                        <!-- Data Agent -->
                                         <div class="hero-mockup-card hero-mockup-card-sm">
                                             <div>
                                                 <span class="hero-mockup-icon icon-yellow">&#128221;</span>
                                                 <span class="hero-mockup-badge">AI-Powered</span>
                                             </div>
-                                            <div class="hero-mockup-card-title">List Normalizer</div>
+                                            <div class="hero-mockup-card-title">Data Agent</div>
                                             <div class="hero-mockup-card-desc">Clean and format customer lists for Mailchimp export.</div>
                                             <div class="hero-mockup-tags"><span class="hero-mockup-tag">Data Export</span></div>
                                         </div>
@@ -13924,7 +13924,7 @@
                             </button>
                             <button class="tool-tab" data-tool="normalizer">
                                 <span class="tool-tab-icon yellow"><svg viewBox="0 0 16 16" fill="none" stroke="#D97706" stroke-width="1.5" stroke-linecap="round" width="14" height="14"><path d="M4 6l4-4 4 4M4 10l4 4 4-4"/></svg></span>
-                                List Normalizer
+                                Data Agent
                             </button>
                             <button class="tool-tab" data-tool="ask">
                                 <span class="tool-tab-icon blue"><svg viewBox="0 0 16 16" fill="none" width="14" height="14"><circle cx="8" cy="8" r="6.5" stroke="#1B6BF5" stroke-width="1.2"/><path d="M6.5 6.5a1.5 1.5 0 0 1 3 0c0 .8-.7 1-1.5 1.3V9" stroke="#1B6BF5" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11" r="0.6" fill="#1B6BF5"/></svg></span>
@@ -14033,12 +14033,12 @@
                                 </div>
                             </div>
 
-                            <!-- List Normalizer Panel -->
+                            <!-- Data Agent Panel -->
                             <div class="tool-panel" data-tool="normalizer">
                                 <div class="tool-panel-text">
                                     <span class="tool-panel-badge">AI-Powered</span>
-                                    <div class="tool-panel-title">List Normalizer</div>
-                                    <p class="tool-panel-desc">Transform messy data into clean, upload-ready contact lists for Mailchimp, Constant Contact, and more. List Normalizer handles duplicate removal, column merging, and case standardization. Compare lists, find duplicates across files, and clean emails by fixing typos and removing invalid entries.</p>
+                                    <div class="tool-panel-title">Data Agent</div>
+                                    <p class="tool-panel-desc">Transform messy data into clean, upload-ready contact lists for Mailchimp, Constant Contact, and more. Data Agent handles duplicate removal, column merging, and case standardization. Compare lists, find duplicates across files, and clean emails by fixing typos and removing invalid entries.</p>
                                 </div>
                                 <div class="tool-panel-visual">
                                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
@@ -14220,7 +14220,7 @@
                         <span class="landing-faq-icon">+</span>
                     </button>
                     <div class="landing-faq-answer">
-                        <div class="landing-faq-answer-inner">Lightspeed is an AI-powered platform built specifically for nonprofits and charitable gaming/raffle operators. It includes five purpose-built tools &mdash; Response Assistant, Draft Assistant, Insights Engine, List Normalizer, and Ask Lightspeed &mdash; designed to handle customer service, content creation, data analytics, list management, and general tasks. Unlike generic AI tools, Lightspeed was trained on tens of thousands of real-world operational scenarios and uses machine learning to get smarter with every interaction. Organizations also receive an onboarding session where your personalized knowledge base is created, so Lightspeed knows who you are, and exactly how to help you.</div>
+                        <div class="landing-faq-answer-inner">Lightspeed is an AI-powered platform built specifically for nonprofits and charitable gaming/raffle operators. It includes five purpose-built tools &mdash; Response Assistant, Draft Assistant, Insights Engine, Data Agent, and Ask Lightspeed &mdash; designed to handle customer service, content creation, data analytics, list management, and general tasks. Unlike generic AI tools, Lightspeed was trained on tens of thousands of real-world operational scenarios and uses machine learning to get smarter with every interaction. Organizations also receive an onboarding session where your personalized knowledge base is created, so Lightspeed knows who you are, and exactly how to help you.</div>
                     </div>
                 </div>
                 <div class="landing-faq-item">
@@ -14274,7 +14274,7 @@
                         <span class="landing-faq-icon">+</span>
                     </button>
                     <div class="landing-faq-answer">
-                        <div class="landing-faq-answer-inner">Insights Engine works with raw data exports from online raffle providers like BUMP. List Normalizer prepares clean, formatted contact lists ready for upload to email platforms like Mailchimp and Constant Contact. Draft Assistant and Response Assistant work with your organization&rsquo;s knowledge base to produce content and replies you can copy directly into any platform you&rsquo;re already using.</div>
+                        <div class="landing-faq-answer-inner">Insights Engine works with raw data exports from online raffle providers like BUMP. Data Agent prepares clean, formatted contact lists ready for upload to email platforms like Mailchimp and Constant Contact. Draft Assistant and Response Assistant work with your organization&rsquo;s knowledge base to produce content and replies you can copy directly into any platform you&rsquo;re already using.</div>
                     </div>
                 </div>
                 <div class="landing-faq-item">
@@ -14872,9 +14872,9 @@
                         <span class="sidebar-btn-icon">&#128200;</span>
                         <span class="sidebar-btn-label">Insights Engine</span>
                     </button>
-                    <button class="sidebar-btn" data-tool="list-normalizer">
+                    <button class="sidebar-btn" data-tool="data-agent">
                         <span class="sidebar-btn-icon">&#128221;</span>
-                        <span class="sidebar-btn-label">List Normalizer</span>
+                        <span class="sidebar-btn-label">Data Agent</span>
                     </button>
                     <button class="sidebar-btn" data-tool="rules-of-play">
                         <span class="sidebar-btn-icon">&#9878;</span>
@@ -17813,12 +17813,12 @@
         </footer>
     </div>
 
-    <!-- ==================== LIST NORMALIZER TOOL ==================== -->
-    <div class="app" id="listNormalizerApp">
+    <!-- ==================== DATA AGENT TOOL ==================== -->
+    <div class="app" id="dataAgentApp">
         <header class="header">
             <div class="header-inner">
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <button class="sidebar-toggle" id="listNormalizerSidebarToggle" title="Toggle menu">
+                    <button class="sidebar-toggle" id="dataAgentSidebarToggle" title="Toggle menu">
                         <span>&#9776;</span>
                     </button>
                 </div>
@@ -17832,7 +17832,7 @@
                 <div class="normalizer-hub-hero">
                     <div class="normalizer-hub-icon">📋</div>
                     <div class="normalizer-hub-hero-text">
-                        <h1>List Normalizer</h1>
+                        <h1>Data Agent</h1>
                         <p>Clean, transform, and standardize your data. Choose a tool to get started.</p>
                     </div>
                 </div>
@@ -17921,7 +17921,7 @@
             <!-- ===== MARKETING CONTACT LIST NORMALIZER (existing tool) ===== -->
             <div class="normalizer-sub-tool" id="normalizerMarketingView" style="display: none;">
                 <button class="normalizer-back-btn" onclick="showNormalizerHub()">
-                    <span>←</span> Back to List Normalizer
+                    <span>←</span> Back to Data Agent
                 </button>
 
                 <div class="normalizer-container">
@@ -18020,7 +18020,7 @@
             <!-- ===== RAW DATA NORMALIZER (new tool) ===== -->
             <div class="normalizer-sub-tool" id="normalizerRawView" style="display: none;">
                 <button class="normalizer-back-btn" onclick="showNormalizerHub()">
-                    <span>←</span> Back to List Normalizer
+                    <span>←</span> Back to Data Agent
                 </button>
 
                 <div class="normalizer-container">
@@ -18127,7 +18127,7 @@
             <!-- ===== DUPLICATE FINDER ===== -->
             <div class="normalizer-sub-tool" id="normalizerDuplicatesView" style="display: none;">
                 <button class="normalizer-back-btn" onclick="showNormalizerHub()">
-                    <span>←</span> Back to List Normalizer
+                    <span>←</span> Back to Data Agent
                 </button>
 
                 <div class="normalizer-container">
@@ -18215,7 +18215,7 @@
             <!-- ===== LIST COMPARATOR ===== -->
             <div class="normalizer-sub-tool" id="normalizerCompareView" style="display: none;">
                 <button class="normalizer-back-btn" onclick="showNormalizerHub()">
-                    <span>←</span> Back to List Normalizer
+                    <span>←</span> Back to Data Agent
                 </button>
 
                 <div class="normalizer-container">
@@ -18323,7 +18323,7 @@
             <!-- ===== EMAIL CLEANER ===== -->
             <div class="normalizer-sub-tool" id="normalizerEmailCleanerView" style="display: none;">
                 <button class="normalizer-back-btn" onclick="showNormalizerHub()">
-                    <span>←</span> Back to List Normalizer
+                    <span>←</span> Back to Data Agent
                 </button>
 
                 <div class="normalizer-container">
@@ -18434,7 +18434,7 @@
                 </div>
             </div>
         </footer>
-    </div><!-- /#listNormalizerApp -->
+    </div><!-- /#dataAgentApp -->
 
     <!-- ==================== ASK LIGHTSPEED TOOL ==================== -->
     <div class="app" id="askLightspeedApp">

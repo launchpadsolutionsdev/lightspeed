@@ -267,7 +267,7 @@
 
 ### 6.2 Priority Frontend Tests
 **Critical security test:**
-- Remove or sandbox `new Function()` in List Normalizer (C-2), add test that confirms no dynamic code execution
+- Remove or sandbox `new Function()` in Data Agent (C-2), add test that confirms no dynamic code execution
 
 **Utility function tests:**
 - Date formatting helpers

@@ -132,7 +132,7 @@ ${organizationName ? `You're now part of ${organizationName}.` : ''}
 Get started by exploring our AI-powered tools:
 - Response Assistant: Generate customer responses
 - Insights Engine: Analyze your data
-- List Normalizer: Clean up messy lists
+- Data Agent: Clean up messy lists
 - Draft Assistant: Create content drafts
 
 If you have any questions, we're here to help.
