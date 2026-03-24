@@ -20415,8 +20415,8 @@ function skeletonRows(count) {
         { id: 'teams', label: 'Team Management', desc: 'Manage your team', icon: '👥', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('teams'); } },
         { id: 'bulk', label: 'Bulk Processing', desc: 'Process multiple inquiries at once', icon: '📦', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('bulk'); } },
         { id: 'shopify-dashboard', label: 'Shopify Analytics', desc: 'View Shopify store analytics dashboard', icon: '💰', group: 'Navigate', action: function() { openTool('customer-response'); switchPage('shopify-dashboard'); } },
-        { id: 'heartbeat-live', label: 'Heartbeat — Live Dashboard', desc: 'Real-time raffle velocity and sales tracking', icon: '💗', group: 'Navigate', action: function() { openTool('heartbeat'); switchHeartbeatPage('heartbeat-live'); } },
-        { id: 'heartbeat-shopify', label: 'Heartbeat — Shopify Intelligence', desc: '24h Shopify store snapshot with KPIs and geo data', icon: '🛒', group: 'Navigate', action: function() { openTool('heartbeat'); switchHeartbeatPage('heartbeat-shopify'); } },
+        { id: 'heartbeat-live', label: 'Heartbeat — Live Dashboard', desc: 'Real-time raffle velocity and sales tracking', icon: '🚀', group: 'Navigate', action: function() { openTool('heartbeat'); switchHeartbeatPage('heartbeat-live'); } },
+        { id: 'heartbeat-shopify', label: 'Heartbeat — Shopify Intelligence', desc: '24h Shopify store snapshot with KPIs and geo data', icon: '🛍️', group: 'Navigate', action: function() { openTool('heartbeat'); switchHeartbeatPage('heartbeat-shopify'); } },
     ];
 
     var overlay = null;
