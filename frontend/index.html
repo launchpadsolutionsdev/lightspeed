@@ -19415,6 +19415,139 @@
             font-family: inherit;
         }
         .hb-ai-new-chat:hover { border-color: #E91E8C; color: #E91E8C; }
+
+        /* Heartbeat AI panel attachments */
+        .hb-ai-attach-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            border: 1px solid var(--border, #E3E8EE);
+            background: #fff;
+            color: var(--text-muted, #6B7C93);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .hb-ai-attach-btn:hover {
+            border-color: #E91E8C;
+            color: #E91E8C;
+            background: rgba(233,30,140,0.04);
+        }
+        .hb-ai-attachments {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .hb-ai-attachments:empty { display: none; margin-bottom: 0; }
+        .hb-ai-attachment-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            background: #fff;
+            border: 1px solid var(--border, #E3E8EE);
+            border-radius: 8px;
+            font-size: 11px;
+            color: var(--text-secondary, #4F5B67);
+            animation: fadeInUp 0.2s ease-out;
+        }
+        .hb-ai-attachment-thumb {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: var(--bg-alt, #F7F8FA);
+        }
+        .hb-ai-attachment-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            background: var(--bg-alt, #F7F8FA);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text-muted, #6B7C93);
+            text-transform: uppercase;
+        }
+        .hb-ai-attachment-info {
+            display: flex;
+            flex-direction: column;
+            max-width: 100px;
+        }
+        .hb-ai-attachment-name {
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hb-ai-attachment-size {
+            font-size: 9px;
+            color: var(--text-muted, #6B7C93);
+        }
+        .hb-ai-attachment-remove {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid var(--border, #E3E8EE);
+            background: #fff;
+            color: var(--text-muted, #6B7C93);
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            transition: all 0.15s;
+        }
+        .hb-ai-attachment-remove:hover {
+            background: #fee2e2;
+            border-color: #fecaca;
+            color: #ef4444;
+        }
+        .hb-ai-drop-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(233, 30, 140, 0.06);
+            border: 2px dashed rgba(233, 30, 140, 0.4);
+            border-radius: var(--radius-xl, 16px);
+            z-index: 10;
+            align-items: center;
+            justify-content: center;
+        }
+        .hb-ai-drop-overlay.visible {
+            display: flex;
+        }
+        .hb-ai-drop-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #E91E8C;
+        }
+        .hb-ai-msg-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 6px;
+        }
+        .hb-ai-msg-file-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: rgba(233,30,140,0.08);
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #E91E8C;
+            margin-bottom: 4px;
+        }
         /* Ask Lightspeed trigger button in page header */
         .hb-ask-btn {
             padding: 6px 14px;
@@ -19511,13 +19644,19 @@
                                 <button class="hb-ai-model" data-model="claude-opus-4-6" onclick="selectHbAiModel(this,'live')">Opus</button>
                                 <button class="hb-ai-new-chat" onclick="clearHbAiChat('live')">+ New</button>
                             </div>
+                            <div class="hb-ai-attachments" id="hbAiAttachmentsLive"></div>
                             <div class="hb-ai-input-row">
+                                <button class="hb-ai-attach-btn" onclick="document.getElementById('hbAiFileInputLive').click()" title="Attach files or images">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                </button>
                                 <textarea class="hb-ai-input" id="hbAiInputLive" placeholder="Ask about your live raffle data…" rows="1"></textarea>
                                 <button class="hb-ai-send" id="hbAiSendLive" onclick="sendHbAiMessage('live')">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                 </button>
+                                <input type="file" id="hbAiFileInputLive" multiple accept="image/*,.pdf,.txt,.csv,.md,.json,.xml,.html,.xlsx,.xls" style="display:none" onchange="hbAiFilesSelected('live', this)">
                             </div>
                         </div>
+                        <div class="hb-ai-drop-overlay" id="hbAiDropOverlayLive"><div class="hb-ai-drop-label">Drop files here</div></div>
                     </div>
                 </div>
             </div>
@@ -19551,13 +19690,19 @@
                                 <button class="hb-ai-model" data-model="claude-opus-4-6" onclick="selectHbAiModel(this,'shopify')">Opus</button>
                                 <button class="hb-ai-new-chat" onclick="clearHbAiChat('shopify')">+ New</button>
                             </div>
+                            <div class="hb-ai-attachments" id="hbAiAttachmentsShopify"></div>
                             <div class="hb-ai-input-row">
+                                <button class="hb-ai-attach-btn" onclick="document.getElementById('hbAiFileInputShopify').click()" title="Attach files or images">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                </button>
                                 <textarea class="hb-ai-input" id="hbAiInputShopify" placeholder="Ask about your Shopify data…" rows="1"></textarea>
                                 <button class="hb-ai-send" id="hbAiSendShopify" onclick="sendHbAiMessage('shopify')">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                 </button>
+                                <input type="file" id="hbAiFileInputShopify" multiple accept="image/*,.pdf,.txt,.csv,.md,.json,.xml,.html,.xlsx,.xls" style="display:none" onchange="hbAiFilesSelected('shopify', this)">
                             </div>
                         </div>
+                        <div class="hb-ai-drop-overlay" id="hbAiDropOverlayShopify"><div class="hb-ai-drop-label">Drop files here</div></div>
                     </div>
                 </div>
             </div>
