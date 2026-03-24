@@ -15014,6 +15014,10 @@
             </nav>
 
             <div class="sidebar-footer">
+                <button class="sidebar-btn" id="reportBugBtn" title="Report a Bug" style="margin-bottom: 4px; font-size: 0.82rem;">
+                    <span class="sidebar-btn-icon">&#128027;</span>
+                    <span class="sidebar-btn-label">Report a Bug</span>
+                </button>
                 <div class="sidebar-user-menu">
                     <button class="sidebar-user-btn" id="sidebarUserMenuBtn">
                         <div class="user-avatar" id="sidebarUserAvatar">U</div>
@@ -20200,6 +20204,62 @@ Answer to question 2..."></textarea>
         if (window.location.hash === '#privacy') showLegalModal('privacy');
         if (window.location.hash === '#terms') showLegalModal('terms');
     </script>
+
+    <!-- Bug Report Modal -->
+    <div class="modal-overlay" id="bugReportModal" style="display:none;">
+        <div class="modal" style="max-width: 540px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Report a Bug</h2>
+                <button class="modal-close" onclick="closeBugReportModal()">&times;</button>
+            </div>
+            <div id="bugReportForm">
+                <div style="display: flex; gap: 12px; margin-bottom: 14px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label" style="font-size: 0.85rem;">Category</label>
+                        <select id="bugReportCategory" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg-input); color: var(--text-primary);">
+                            <option value="bug">Bug</option>
+                            <option value="feature">Feature Request</option>
+                            <option value="question">Question</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label" style="font-size: 0.85rem;">Severity</label>
+                        <select id="bugReportSeverity" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg-input); color: var(--text-primary);">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label" style="font-size: 0.85rem;">Title</label>
+                    <input type="text" id="bugReportTitle" placeholder="Brief summary of the issue" maxlength="200" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg-input); color: var(--text-primary);">
+                </div>
+                <div class="form-group" style="margin-bottom: 18px;">
+                    <label class="form-label" style="font-size: 0.85rem;">Description</label>
+                    <textarea id="bugReportDescription" rows="5" placeholder="What happened? What did you expect? Steps to reproduce..." style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg-input); color: var(--text-primary); resize: vertical;"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" id="submitBugReportBtn" onclick="submitBugReport()" style="flex: 1;">Submit Report</button>
+                    <button class="btn-secondary" onclick="openMyBugReports()" style="flex: 0; white-space: nowrap; padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-alt); color: var(--text-secondary); cursor: pointer;">My Reports</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Bug Reports Modal -->
+    <div class="modal-overlay" id="myBugReportsModal" style="display:none;">
+        <div class="modal" style="max-width: 640px; max-height: 80vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="flex-shrink: 0;">
+                <h2 class="modal-title">My Reports</h2>
+                <button class="modal-close" onclick="closeMyBugReports()">&times;</button>
+            </div>
+            <div id="myBugReportsList" style="overflow-y: auto; flex: 1; padding: 4px 0;">
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">Loading...</div>
+            </div>
+        </div>
+    </div>
 
     <!-- JavaScript -->
     <script src="ls-modal.js?v=20260301"></script>

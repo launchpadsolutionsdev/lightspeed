@@ -929,6 +929,10 @@ function setupAuthEventListeners() {
         document.getElementById("settingsModal").classList.add("show");
     });
 
+    document.getElementById("reportBugBtn")?.addEventListener("click", () => {
+        openBugReportModal();
+    });
+
     // Close dropdown when clicking outside
     document.addEventListener("click", (e) => {
         const userMenu = document.getElementById("userMenuBtn");
@@ -23682,6 +23686,147 @@ async function initComplianceNav() {
         console.error('Failed to init compliance nav:', err);
     }
 }
+
+// ==================== BUG REPORTS ====================
+
+function openBugReportModal() {
+    const modal = document.getElementById('bugReportModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    document.getElementById('bugReportTitle').value = '';
+    document.getElementById('bugReportDescription').value = '';
+    document.getElementById('bugReportCategory').value = 'bug';
+    document.getElementById('bugReportSeverity').value = 'medium';
+    document.getElementById('bugReportTitle').focus();
+}
+window.openBugReportModal = openBugReportModal;
+
+function closeBugReportModal() {
+    const modal = document.getElementById('bugReportModal');
+    if (modal) modal.style.display = 'none';
+}
+window.closeBugReportModal = closeBugReportModal;
+
+async function submitBugReport() {
+    const title = document.getElementById('bugReportTitle')?.value.trim();
+    const description = document.getElementById('bugReportDescription')?.value.trim();
+    const category = document.getElementById('bugReportCategory')?.value;
+    const severity = document.getElementById('bugReportSeverity')?.value;
+
+    if (!title) { lsMicro.toast('Please enter a title', 'error'); return; }
+    if (!description) { lsMicro.toast('Please enter a description', 'error'); return; }
+
+    const btn = document.getElementById('submitBugReportBtn');
+    const restoreBtn = lsMicro.btnLoading(btn, 'Submitting...');
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/bug-reports`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
+            body: JSON.stringify({
+                title, description, category, severity,
+                pageUrl: window.location.href,
+                browserInfo: navigator.userAgent
+            })
+        });
+
+        if (!resp.ok) {
+            const data = await resp.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to submit');
+        }
+
+        closeBugReportModal();
+        lsMicro.toast('Bug report submitted — thank you!', 'success');
+    } catch (err) {
+        lsMicro.toast(err.message || 'Failed to submit report', 'error');
+    } finally {
+        restoreBtn();
+    }
+}
+window.submitBugReport = submitBugReport;
+
+function openMyBugReports() {
+    closeBugReportModal();
+    const modal = document.getElementById('myBugReportsModal');
+    if (modal) modal.style.display = 'flex';
+    loadMyBugReports();
+}
+window.openMyBugReports = openMyBugReports;
+
+function closeMyBugReports() {
+    const modal = document.getElementById('myBugReportsModal');
+    if (modal) modal.style.display = 'none';
+}
+window.closeMyBugReports = closeMyBugReports;
+
+async function loadMyBugReports(page) {
+    const container = document.getElementById('myBugReportsList');
+    if (!container) return;
+    page = page || 1;
+
+    container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Loading...</div>';
+
+    try {
+        const resp = await fetch(`${API_BASE_URL}/api/bug-reports?page=${page}&limit=10`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        if (!resp.ok) throw new Error('Failed to load');
+        const data = await resp.json();
+
+        if (data.reports.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No reports yet. Submit your first one!</div>';
+            return;
+        }
+
+        const statusColors = { open: '#f59e0b', in_progress: '#3b82f6', resolved: '#10b981', closed: '#6b7280' };
+        const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
+        const categoryIcons = { bug: '\uD83D\uDC1B', feature: '\u2728', question: '\u2753' };
+
+        let html = data.reports.map(r => {
+            const date = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const color = statusColors[r.status] || '#6b7280';
+            return `<div style="padding: 12px 0; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span>${categoryIcons[r.category] || ''}</span>
+                    <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); flex: 1;">${lsMicro.escapeHtml(r.title)}</span>
+                    <span style="font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; color: #fff; background: ${color};">${statusLabels[r.status] || r.status}</span>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-left: 28px;">${date} &middot; ${r.severity}</div>
+                ${r.admin_notes ? `<div style="font-size: 0.8rem; color: var(--text-secondary); margin: 6px 0 0 28px; padding: 6px 10px; background: var(--bg-alt); border-radius: 6px;"><strong>Admin:</strong> ${lsMicro.escapeHtml(r.admin_notes)}</div>` : ''}
+            </div>`;
+        }).join('');
+
+        if (data.totalPages > 1) {
+            html += '<div style="display: flex; justify-content: center; gap: 8px; padding: 12px 0;">';
+            for (let i = 1; i <= data.totalPages; i++) {
+                const active = i === data.page;
+                html += `<button onclick="loadMyBugReports(${i})" style="padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: ${active ? 'var(--gradient-start)' : 'var(--bg-alt)'}; color: ${active ? '#fff' : 'var(--text-secondary)'}; cursor: pointer; font-size: 0.8rem;">${i}</button>`;
+            }
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Failed to load reports.</div>';
+    }
+}
+window.loadMyBugReports = loadMyBugReports;
+
+// Close bug report modals with Escape key and overlay click
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeBugReportModal();
+        closeMyBugReports();
+    }
+});
+document.getElementById('bugReportModal')?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal-overlay')) closeBugReportModal();
+});
+document.getElementById('myBugReportsModal')?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal-overlay')) closeMyBugReports();
+});
+
+// ==================== END BUG REPORTS ====================
 
 (function hookShopifySettingsCheck() {
     const settingsToggle = document.getElementById('settingsToggle');
