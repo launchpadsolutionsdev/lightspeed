@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heartbeat Gets Sub-Pages, Shopify Intelligence Fixes &amp; More | What's New | Lightspeed</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta name="description" content="Heartbeat now has dedicated sub-pages for Live Dashboard and Shopify Intelligence, plus data accuracy fixes for product revenue, geographic tracking, and live timestamps.">
+    <link rel="canonical" href="https://www.lightspeedutility.ca/whats-new/heartbeat-upgrade/">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Heartbeat Gets Sub-Pages, Shopify Intelligence Fixes &amp; More | Lightspeed">
+    <meta property="og:description" content="Heartbeat now has dedicated sub-pages for Live Dashboard and Shopify Intelligence, plus data accuracy fixes for product revenue, geographic tracking, and live timestamps.">
+    <meta property="og:url" content="https://www.lightspeedutility.ca/whats-new/heartbeat-upgrade/">
+    <meta property="og:site_name" content="Lightspeed by Launchpad">
+    <meta property="og:image" content="https://www.lightspeedutility.ca/Social-Share-Image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Heartbeat Gets Sub-Pages, Shopify Intelligence Fixes &amp; More | Lightspeed">
+    <meta name="twitter:description" content="Heartbeat now has dedicated sub-pages for Live Dashboard and Shopify Intelligence, plus data accuracy fixes for product revenue, geographic tracking, and live timestamps.">
+    <meta name="twitter:image" content="https://www.lightspeedutility.ca/Social-Share-Image.jpg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/design-system.css?v=20260324">
+    <link rel="stylesheet" href="/landing.css?v=20260324">
+    <link rel="stylesheet" href="/whats-new.css?v=20260324">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="landing-nav">
+        <div class="landing-nav-inner">
+            <a href="/" class="landing-nav-logo">
+                <img src="/launchpad-logo.svg" alt="Lightspeed" height="28">
+                <span>Lightspeed</span>
+            </a>
+            <div class="landing-nav-center">
+                <a href="/#features" class="landing-nav-link">Features</a>
+                <a href="/pricing/" class="landing-nav-link">Pricing</a>
+                <a href="/case-study/" class="landing-nav-link">Case Studies</a>
+                <a href="/whats-new/" class="landing-nav-link active">What's New</a>
+                <a href="/about/" class="landing-nav-link">About</a>
+                <a href="/faq/" class="landing-nav-link">FAQ</a>
+                <a href="/#contact" class="landing-nav-link">Contact</a>
+            </div>
+            <div class="landing-nav-actions">
+                <a href="/" class="landing-nav-signin">Sign in</a>
+                <a href="/" class="landing-nav-cta">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="wn-detail">
+
+        <div class="wn-back-wrapper">
+            <a href="/whats-new/" class="wn-back">&larr; Back to What's New</a>
+        </div>
+
+        <section class="wn-detail-hero">
+            <div class="wn-detail-meta">
+                <span class="wn-card-badge wn-card-badge--tools">Tools</span>
+                <span class="wn-card-badge wn-card-badge--improvement">Improvement</span>
+                <span class="wn-detail-date">March 24, 2026</span>
+            </div>
+            <h1 class="wn-detail-title">Heartbeat Gets Sub-Pages, Shopify Intelligence Fixes &amp; More</h1>
+            <p class="wn-detail-lede">Heartbeat now splits into two focused sub-pages &mdash; Live Dashboard for real-time raffle monitoring and Shopify Intelligence for your store&rsquo;s daily snapshot &mdash; with significant data accuracy fixes across the board.</p>
+        </section>
+
+        <div class="wn-detail-divider"><hr></div>
+
+        <section class="wn-detail-body">
+            <p>Since launching Heartbeat last week, we&rsquo;ve been watching how teams use it during live events. The biggest piece of feedback: the page was doing too much. Real-time raffle velocity and a Shopify store snapshot are both valuable, but they serve different needs at different moments. Today&rsquo;s update addresses that &mdash; and fixes several data accuracy issues we identified along the way.</p>
+
+            <h2>Two Dedicated Sub-Pages</h2>
+            <p>Heartbeat now has a collapsible sub-menu in the sidebar, just like the Response Assistant. Click the arrow to expand it and you&rsquo;ll see two focused pages:</p>
+            <ul>
+                <li><strong>Live Dashboard</strong> &mdash; Everything related to your active raffle: sales velocity ticker, vital signs, surge detection, payment breakdown, package performance, hourly heatmaps, jackpot comparisons, and the live orders feed. Polls every 5 seconds for real-time data.</li>
+                <li><strong>Shopify Intelligence</strong> &mdash; Your Shopify store&rsquo;s daily snapshot: revenue, orders, average order value, refunds, geographic hotspots, top products, top buyers, and discount code tracking. Auto-refreshes every 2 minutes.</li>
+            </ul>
+            <p>Each sub-page only runs the polling it needs. When you&rsquo;re on the Live Dashboard, Shopify queries don&rsquo;t fire. When you switch to Shopify Intelligence, the 5-second raffle ticker stops. This means less unnecessary network traffic and a snappier experience.</p>
+
+            <h2>Product Revenue Was Showing $0 &mdash; Fixed</h2>
+            <p>The &ldquo;Top Products Today&rdquo; section was showing product names and unit counts correctly, but every product displayed $0 in revenue. The root cause: when the primary analytics tables are still warming up, the system falls back to parsing line item data from recent orders. That data stores prices in a field called <code>price_cents</code>, but the fallback parser was looking for a field called <code>price</code> &mdash; which doesn&rsquo;t exist. The result: <code>undefined</code> became <code>0</code> for every product.</p>
+            <p>The fix reads <code>price_cents</code> first, with a fallback to <code>price</code> for safety. Product revenue now displays correctly from the first order onward.</p>
+
+            <h2>Geographic Data Was Showing &ldquo;Unknown&rdquo; &mdash; Fixed</h2>
+            <p>The &ldquo;Where Orders Are Coming From&rdquo; section was displaying &ldquo;Unknown, Unknown&rdquo; for every order. This happened because the system only looked at shipping addresses when syncing order data from Shopify &mdash; but raffle tickets and digital products don&rsquo;t have shipping addresses.</p>
+            <p>We made two changes:</p>
+            <ul>
+                <li>The Shopify sync now falls back to billing addresses when no shipping address is available, which captures the vast majority of digital-product orders.</li>
+                <li>For orders that genuinely have no address data at all, the frontend now shows &ldquo;No Address on File&rdquo; instead of the confusing &ldquo;Unknown, Unknown&rdquo; label.</li>
+            </ul>
+
+            <h2>Live Timestamps So You Know Data Is Fresh</h2>
+            <p>Previously, the Shopify Intelligence page showed today&rsquo;s date but nothing to indicate when the data was last fetched. If you left the page open for 10 minutes, there was no way to tell whether the numbers were current or stale.</p>
+            <p>The API now returns a <code>generated_at</code> timestamp with every response. The page header displays &ldquo;Updated 3:45 PM ET&rdquo; (or whatever the current time is), and the footer confirms the refresh cadence: &ldquo;Data resets at midnight ET &middot; Auto-refreshes every 2 minutes.&rdquo;</p>
+
+            <h2>Clearer Labeling</h2>
+            <p>The section header previously read &ldquo;24h Snapshot,&rdquo; which implied a trailing 24-hour window. In reality, the KPIs, products, and geographic data all use calendar-day queries that reset at midnight Eastern. We renamed it to &ldquo;Today&rsquo;s Snapshot&rdquo; so the numbers match expectations &mdash; they represent today so far, and they&rsquo;ll climb throughout the day.</p>
+
+            <h2>Shopify Analytics Consolidated</h2>
+            <p>The standalone Shopify Analytics page that previously lived in the sidebar has been retired. All Shopify store data now lives under Heartbeat &rsaquo; Shopify Intelligence, giving you a single place to check your store&rsquo;s daily performance alongside your raffle data.</p>
+
+            <h2>Keyboard &amp; Command Palette</h2>
+            <p>Both new sub-pages are accessible from the command palette (<strong>Cmd+K</strong> or <strong>Ctrl+K</strong>). Type &ldquo;heartbeat&rdquo; or &ldquo;shopify&rdquo; to jump directly to either page. Direct URLs also work: <code>/heartbeat/live</code> and <code>/heartbeat/shopify</code>.</p>
+
+            <div class="wn-detail-cta">
+                <p>Ready to see the new Heartbeat?</p>
+                <a href="/" class="wn-cta-btn">Open Heartbeat</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="landing-footer">
+        <div class="landing-footer-inner">
+            <div class="landing-footer-top">
+                <div class="landing-footer-brand">
+                    <div class="landing-footer-brand-logo">
+                        <img src="/launchpad-logo.svg" alt="Lightspeed" onerror="this.style.display='none'">
+                        <span>Lightspeed</span>
+                    </div>
+                    <p class="landing-footer-brand-desc">AI-powered productivity tools built for nonprofit teams and charitable gaming operators.</p>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Product</h4>
+                    <a href="/#features">Features</a>
+                    <a href="/pricing/">Pricing</a>
+                    <a href="/integrations/">Integrations</a>
+                    <a href="/faq/">FAQ</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Company</h4>
+                    <a href="/about/">About</a>
+                    <a href="/security/">Security</a>
+                    <a href="/case-study/">Case Studies</a>
+                    <a href="/#contact">Contact</a>
+                </div>
+                <div class="landing-footer-col">
+                    <h4>Resources</h4>
+                    <a href="/whats-new/">What&rsquo;s New</a>
+                    <a href="/help/">Help Center</a>
+                    <a href="/status/">System Status</a>
+                </div>
+            </div>
+            <div class="landing-footer-bottom">
+                <span class="landing-footer-copyright">&copy; 2026 Launchpad Solutions. Built in Canada.</span>
+                <a href="/status/" class="landing-footer-status" id="footerStatus">
+                    <span class="status-dot" id="footerDot"></span>
+                    <span id="footerStatusText">All systems operational</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-banner" id="cookieBanner">
+        <span class="cookie-banner-text">We use cookies to improve your experience. By continuing to use this site you agree to our <a href="/#privacy">Privacy Policy</a>.</span>
+        <div class="cookie-banner-actions">
+            <button class="cookie-btn" onclick="dismissCookieBanner(false)">Decline</button>
+            <button class="cookie-btn cookie-btn-accept" onclick="dismissCookieBanner(true)">Accept</button>
+        </div>
+    </div>
+
+    <script>
+        function dismissCookieBanner(accepted) {
+            localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
+            var banner = document.getElementById('cookieBanner');
+            if (banner) banner.classList.remove('show');
+        }
+        if (!localStorage.getItem('cookie_consent')) {
+            setTimeout(function() {
+                var banner = document.getElementById('cookieBanner');
+                if (banner) banner.classList.add('show');
+            }, 1500);
+        }
+    </script>
+
+    <!-- Live Status Check -->
+    <script>
+        (function() {
+            var API = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+                ? "http://localhost:3001" : "https://lightspeed-backend.onrender.com";
+            fetch(API + "/health", { mode: "cors" })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    var dot = document.getElementById("footerDot");
+                    var txt = document.getElementById("footerStatusText");
+                    if (!dot || !txt) return;
+                    var labels = { operational: "All systems operational", degraded: "Service disruption", down: "System outage" };
+                    dot.className = "status-dot status-dot-" + d.status;
+                    txt.textContent = labels[d.status] || "All systems operational";
+                })
+                .catch(function() {
+                    var dot = document.getElementById("footerDot");
+                    var txt = document.getElementById("footerStatusText");
+                    if (dot) dot.className = "status-dot status-dot-down";
+                    if (txt) txt.textContent = "System outage";
+                });
+        })();
+    </script>
+</body>
+</html>
