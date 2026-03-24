@@ -15173,8 +15173,9 @@ function openNormalizerSubTool(subTool) {
         setupEmailCleanerListeners();
         pushRoute('/list-normalizer/email-cleaner');
     } else if (subTool === 'shopify-import') {
-        handleShopifyCustomerImport();
         // Stay on hub — the import downloads a file directly
+        document.getElementById('normalizerHub').style.display = 'block';
+        handleShopifyCustomerImport();
     }
 }
 
@@ -19979,8 +19980,24 @@ function openSettingsShopify() {
  * Handle Shopify customer import in the List Normalizer.
  */
 async function handleShopifyCustomerImport() {
+    const card = document.getElementById('nhubShopifyCard');
+    const originalContent = card ? card.innerHTML : '';
+
     try {
-        showToast('Pulling customers from Shopify...', 'success');
+        // Show loading state on the card
+        if (card) {
+            card.style.pointerEvents = 'none';
+            card.style.opacity = '0.85';
+            card.innerHTML = `
+                <div style="display:flex;align-items:center;gap:14px;padding:8px 0;">
+                    <div class="nhub-icon nhub-icon-green">🛍️</div>
+                    <div>
+                        <h3 class="nhub-title" style="margin-bottom:4px;">Pulling from Shopify...</h3>
+                        <p class="nhub-desc" style="margin:0;">Fetching your most recent customers. This may take a few seconds.</p>
+                    </div>
+                    <div class="spinner" style="margin-left:auto;"></div>
+                </div>`;
+        }
 
         const response = await fetch(`${API_BASE_URL}/api/shopify/customers/export`, {
             headers: getAuthHeaders()
@@ -20025,6 +20042,13 @@ async function handleShopifyCustomerImport() {
 
     } catch (err) {
         showToast(`Shopify import failed: ${err.message}`, 'error');
+    } finally {
+        // Restore original card content
+        if (card) {
+            card.innerHTML = originalContent;
+            card.style.pointerEvents = '';
+            card.style.opacity = '';
+        }
     }
 }
 
