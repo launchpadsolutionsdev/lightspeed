@@ -11155,7 +11155,7 @@
             flex-shrink: 0;
         }
 
-        /* Analysis Panel */
+        /* Analysis Panel — inherits .nested-card for background/border/radius/shadow */
         .insights-analysis-panel {
             width: 0;
             min-width: 0;
@@ -11163,17 +11163,13 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            background: white;
-            border: 1px solid var(--border, #e5e7eb);
             transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                         min-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                         opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: var(--radius-xl, 16px);
             position: sticky;
             top: 80px;
             height: calc(100vh - 100px);
             align-self: flex-start;
-            box-shadow: var(--shadow-lg, 0 4px 6px rgba(0, 0, 0, 0.07));
         }
 
         .data-body-wrapper.analysis-panel-open .insights-analysis-panel {
@@ -17392,7 +17388,7 @@
             </div>
 
             <!-- Ask Lightspeed Analysis Panel -->
-            <div class="insights-analysis-panel" id="insightsAnalysisPanel">
+            <div class="insights-analysis-panel nested-card" id="insightsAnalysisPanel">
                 <div class="iap-header">
                     <div class="iap-header-left">
                         <span style="font-size: 20px;">&#10024;</span>
