@@ -38,6 +38,7 @@ const askLightspeedRoutes = require('./routes/askLightspeed');
 const complianceRoutes = require('./routes/compliance');
 const dashboardRoutes = require('./routes/dashboard');
 const feedDashboardRoutes = require('./routes/feedDashboard');
+const bugReportRoutes = require('./routes/bugReports');
 const shopifyAnalytics = require('./services/shopifyAnalytics');
 const pool = require('../config/database');
 
@@ -199,6 +200,7 @@ app.use('/api/ask-lightspeed', askLightspeedRoutes);
 app.use('/api/compliance', complianceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/feed-dashboard', feedDashboardRoutes);
+app.use('/api/bug-reports', bugReportRoutes);
 
 // Start reminder checker (runs every 60 seconds)
 if (contentCalendarRoutes.checkReminders) {

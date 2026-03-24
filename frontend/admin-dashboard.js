@@ -95,6 +95,7 @@ function getAdminShell() {
             <button class="admin-tab" data-tab="costs">Usage & Costs</button>
             <button class="admin-tab" data-tab="activity">Activity Feed</button>
             <button class="admin-tab" data-tab="audit">Audit Log</button>
+            <button class="admin-tab" data-tab="bugs">Bug Reports</button>
         </div>
 
         <div id="adminTabContent" class="admin-tab-content">
@@ -139,6 +140,7 @@ async function loadAdminTab(tab) {
         else if (tab === 'costs') await renderCostsTab(container);
         else if (tab === 'activity') await renderActivityTab(container);
         else if (tab === 'audit') await renderAuditTab(container);
+        else if (tab === 'bugs') await renderBugReportsTab(container);
     } catch (error) {
         console.error(`Admin tab error (${tab}):`, error);
         container.innerHTML = `
@@ -2056,6 +2058,196 @@ function adminClearAuditFilters() {
 function adminAuditGoToPage(page) {
     adminAuditPage = page;
     loadAdminTab('audit');
+}
+
+// ==================== BUG REPORTS TAB ====================
+
+let adminBugPage = 1;
+let adminBugStatusFilter = '';
+let adminBugCategoryFilter = '';
+
+async function renderBugReportsTab(container) {
+    const [statsData, reportsData] = await Promise.all([
+        fetchAdminData('/api/bug-reports/stats'),
+        fetchAdminData(`/api/bug-reports?page=${adminBugPage}&limit=20${adminBugStatusFilter ? '&status=' + adminBugStatusFilter : ''}${adminBugCategoryFilter ? '&category=' + adminBugCategoryFilter : ''}`)
+    ]);
+
+    const s = statsData.stats;
+    const statusColors = { open: '#f59e0b', in_progress: '#3b82f6', resolved: '#10b981', closed: '#6b7280' };
+    const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
+    const categoryIcons = { bug: '\uD83D\uDC1B', feature: '\u2728', question: '\u2753' };
+    const severityColors = { critical: '#ef4444', high: '#f97316', medium: '#f59e0b', low: '#6b7280' };
+
+    let html = `
+        <div class="admin-stats-grid" style="margin-bottom: 20px;">
+            ${statCard('\uD83D\uDC1B', 'Open', parseInt(s.open) || 0, null, null, parseInt(s.open) > 0)}
+            ${statCard('\uD83D\uDD27', 'In Progress', parseInt(s.in_progress) || 0)}
+            ${statCard('\u2705', 'Resolved', parseInt(s.resolved) || 0)}
+            ${statCard('\uD83D\uDCCA', 'Total', parseInt(s.total) || 0)}
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+            <select id="adminBugStatusFilter" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-input); color: var(--text-primary); font-size: 0.85rem;">
+                <option value="">All Statuses</option>
+                <option value="open" ${adminBugStatusFilter === 'open' ? 'selected' : ''}>Open</option>
+                <option value="in_progress" ${adminBugStatusFilter === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                <option value="resolved" ${adminBugStatusFilter === 'resolved' ? 'selected' : ''}>Resolved</option>
+                <option value="closed" ${adminBugStatusFilter === 'closed' ? 'selected' : ''}>Closed</option>
+            </select>
+            <select id="adminBugCategoryFilter" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-input); color: var(--text-primary); font-size: 0.85rem;">
+                <option value="">All Categories</option>
+                <option value="bug" ${adminBugCategoryFilter === 'bug' ? 'selected' : ''}>Bugs</option>
+                <option value="feature" ${adminBugCategoryFilter === 'feature' ? 'selected' : ''}>Features</option>
+                <option value="question" ${adminBugCategoryFilter === 'question' ? 'selected' : ''}>Questions</option>
+            </select>
+        </div>`;
+
+    if (reportsData.reports.length === 0) {
+        html += '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No bug reports found.</div>';
+    } else {
+        html += '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>'
+            + '<th>Report</th><th>Submitter</th><th>Severity</th><th>Status</th><th>Date</th><th>Actions</th>'
+            + '</tr></thead><tbody>';
+
+        for (const r of reportsData.reports) {
+            const date = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const name = [r.first_name, r.last_name].filter(Boolean).join(' ') || r.email || 'Unknown';
+            const sevColor = severityColors[r.severity] || '#6b7280';
+            const statColor = statusColors[r.status] || '#6b7280';
+
+            html += `<tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span>${categoryIcons[r.category] || ''}</span>
+                        <span style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(r.title)}</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(r.description)}</div>
+                </td>
+                <td style="font-size: 0.85rem;">
+                    <div>${escapeHtml(name)}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted);">${r.organization_name ? escapeHtml(r.organization_name) : ''}</div>
+                </td>
+                <td><span style="font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; color: #fff; background: ${sevColor};">${r.severity}</span></td>
+                <td><span style="font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; color: #fff; background: ${statColor};">${statusLabels[r.status] || r.status}</span></td>
+                <td style="font-size: 0.85rem; white-space: nowrap;">${date}</td>
+                <td>
+                    <button class="admin-action-btn" onclick="openAdminBugDetail('${r.id}')" title="View & manage">
+                        \u270F\uFE0F
+                    </button>
+                </td>
+            </tr>`;
+        }
+        html += '</tbody></table></div>';
+
+        if (reportsData.totalPages > 1) {
+            html += '<div style="display: flex; justify-content: center; gap: 6px; margin-top: 12px;">';
+            for (let i = 1; i <= reportsData.totalPages; i++) {
+                const active = i === reportsData.page;
+                html += `<button onclick="adminBugGoToPage(${i})" style="padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: ${active ? 'var(--gradient-start)' : 'var(--bg-alt)'}; color: ${active ? '#fff' : 'var(--text-secondary)'}; cursor: pointer; font-size: 0.8rem;">${i}</button>`;
+            }
+            html += '</div>';
+        }
+    }
+
+    container.innerHTML = html;
+
+    // Wire up filter changes
+    document.getElementById('adminBugStatusFilter')?.addEventListener('change', (e) => {
+        adminBugStatusFilter = e.target.value;
+        adminBugPage = 1;
+        loadAdminTab('bugs');
+    });
+    document.getElementById('adminBugCategoryFilter')?.addEventListener('change', (e) => {
+        adminBugCategoryFilter = e.target.value;
+        adminBugPage = 1;
+        loadAdminTab('bugs');
+    });
+}
+
+function adminBugGoToPage(page) {
+    adminBugPage = page;
+    loadAdminTab('bugs');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function openAdminBugDetail(id) {
+    // Find the report from the current data
+    let report;
+    try {
+        const data = await fetchAdminData(`/api/bug-reports?page=1&limit=100`);
+        report = data.reports.find(r => r.id === id);
+    } catch (e) { return; }
+    if (!report) return;
+
+    const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
+    const name = [report.first_name, report.last_name].filter(Boolean).join(' ') || report.email || 'Unknown';
+    const date = new Date(report.created_at).toLocaleString();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = 'display:flex; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;';
+    overlay.innerHTML = `
+        <div class="modal" style="max-width: 520px; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 1.05rem;">${escapeHtml(report.title)}</h3>
+                <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
+                By ${escapeHtml(name)} ${report.organization_name ? '(' + escapeHtml(report.organization_name) + ')' : ''} &middot; ${date}
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px; padding: 10px; background: var(--bg-alt); border-radius: 8px; white-space: pre-wrap;">${escapeHtml(report.description)}</div>
+            ${report.page_url ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;"><strong>Page:</strong> ${escapeHtml(report.page_url)}</div>` : ''}
+            ${report.browser_info ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;"><strong>Browser:</strong> ${escapeHtml(report.browser_info)}</div>` : ''}
+            <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Status</label>
+                    <select id="adminBugDetailStatus" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-input); color: var(--text-primary); font-size: 0.85rem;">
+                        ${Object.entries(statusLabels).map(([k, v]) => `<option value="${k}" ${report.status === k ? 'selected' : ''}>${v}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Admin Notes</label>
+                <textarea id="adminBugDetailNotes" rows="3" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-input); color: var(--text-primary); font-size: 0.85rem; resize: vertical;">${escapeHtml(report.admin_notes || '')}</textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="adminBugDetailSave" class="btn-primary" style="flex: 1;">Save Changes</button>
+                <button onclick="this.closest('.modal-overlay').remove()" style="padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-alt); color: var(--text-secondary); cursor: pointer;">Cancel</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    document.getElementById('adminBugDetailSave').addEventListener('click', async () => {
+        const status = document.getElementById('adminBugDetailStatus').value;
+        const adminNotes = document.getElementById('adminBugDetailNotes').value;
+        const saveBtn = document.getElementById('adminBugDetailSave');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+            const resp = await fetch(`${API_BASE_URL}/api/bug-reports/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status, adminNotes })
+            });
+            if (!resp.ok) throw new Error('Failed to update');
+            overlay.remove();
+            loadAdminTab('bugs');
+        } catch (err) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Changes';
+            alert('Failed to update: ' + err.message);
+        }
+    });
 }
 
 // Auto-init on page load

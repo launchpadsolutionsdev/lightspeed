@@ -685,14 +685,21 @@ async function backgroundFetchAllOrgs() {
         const result = await pool.query(
             'SELECT id, bump_feed_url, bump_winners_feed_url, bump_sales_feed_url FROM organizations WHERE bump_feed_url IS NOT NULL'
         );
-        const promises = result.rows.map(row =>
-            fetchFeed(row.id, row.bump_feed_url, row.bump_winners_feed_url, row.bump_sales_feed_url)
-                .catch(err => {
-                    _bgFetchFails++;
-                    log.warn('Background velocity fetch failed', { orgId: row.id, error: err.message, totalFails: _bgFetchFails });
-                })
-        );
-        await Promise.allSettled(promises);
+        const rows = result.rows;
+        // Stagger fetches across the interval so we don't blast all orgs at once
+        const staggerMs = rows.length > 1 ? Math.floor(VELOCITY_BG_INTERVAL / rows.length) : 0;
+        for (let i = 0; i < rows.length; i++) {
+            if (i > 0 && staggerMs > 0) {
+                await new Promise(resolve => setTimeout(resolve, staggerMs));
+            }
+            const row = rows[i];
+            try {
+                await fetchFeed(row.id, row.bump_feed_url, row.bump_winners_feed_url, row.bump_sales_feed_url);
+            } catch (err) {
+                _bgFetchFails++;
+                log.warn('Background velocity fetch failed', { orgId: row.id, error: err.message, totalFails: _bgFetchFails });
+            }
+        }
     } catch (err) {
         log.warn('Background fetch org query failed', { error: err.message });
     }
