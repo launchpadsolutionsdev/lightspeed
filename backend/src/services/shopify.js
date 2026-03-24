@@ -484,6 +484,85 @@ function normalizeOrder(order) {
     };
 }
 
+// ─── Customer Export (from recent orders) ────────────────────────────
+
+/**
+ * Export unique customers extracted from the last 1000 orders.
+ * Avoids fetching the entire customer list (which times out on large stores).
+ * Uses Link-header pagination to walk backwards through orders.
+ */
+async function exportCustomersFromRecentOrders(organizationId) {
+    const store = await getStoreConnection(organizationId);
+    if (!store) throw new Error('No Shopify store connected');
+
+    const domain = cleanShopDomain(store.shop_domain);
+    const accessToken = store.access_token;
+    const collected = [];
+    const TARGET = 1000;
+    let url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/orders.json?status=any&limit=250&fields=customer,email&order=created_at+desc`;
+
+    while (url && collected.length < TARGET) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000);
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'X-Shopify-Access-Token': accessToken,
+                    'Content-Type': 'application/json'
+                },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                throw new Error(`Shopify API error ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+            if (data.orders) {
+                collected.push(...data.orders);
+            }
+
+            // Stop if we have enough
+            if (collected.length >= TARGET) break;
+
+            // Follow pagination
+            const linkHeader = response.headers.get('link');
+            url = null;
+            if (linkHeader) {
+                const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+                if (nextMatch) {
+                    url = nextMatch[1];
+                }
+            }
+        } catch (err) {
+            clearTimeout(timeout);
+            if (err.name === 'AbortError') {
+                throw new Error(`Shopify API timeout fetching orders (had ${collected.length} records)`);
+            }
+            throw err;
+        }
+    }
+
+    // Extract unique customers by email
+    const seen = new Set();
+    const customers = [];
+    for (const order of collected) {
+        const email = (order.customer?.email || order.email || '').toLowerCase().trim();
+        if (!email || seen.has(email)) continue;
+        seen.add(email);
+        customers.push({
+            first_name: order.customer?.first_name || '',
+            last_name: order.customer?.last_name || '',
+            email
+        });
+    }
+
+    return { customers, total: customers.length };
+}
+
 // ─── AI Context Builders ────────────────────────────────────────────
 
 /**
@@ -858,6 +937,7 @@ module.exports = {
     lookupOrder,
     lookupCustomer,
     searchCustomers,
+    exportCustomersFromRecentOrders,
 
     // AI Context
     buildContextForInquiry,
