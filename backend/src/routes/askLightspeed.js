@@ -789,7 +789,7 @@ Use markdown formatting for readability.`;
  * Returns a text summary of current sales totals, velocity windows, and
  * optionally package tier breakdowns.
  */
-async function executeSearchHeartbeatData(input) {
+async function executeSearchHeartbeatData(input, organizationId) {
     const window = input.window || 'all';
     // include_tiers param kept for backwards compat but tiers are now always fetched
 
@@ -806,11 +806,11 @@ async function executeSearchHeartbeatData(input) {
     ];
 
     try {
-        // Load snapshots from the last 7 days
+        // Load snapshots from the last 7 days, scoped to org
         const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
         const result = await pool.query(
-            'SELECT ts, total_sales, total_tickets, total_numbers FROM velocity_snapshots WHERE ts >= $1 ORDER BY ts ASC',
-            [cutoff]
+            'SELECT ts, total_sales, total_tickets, total_numbers FROM velocity_snapshots WHERE organization_id = $1 AND ts >= $2 ORDER BY ts ASC',
+            [organizationId, cutoff]
         );
 
         const snapshots = result.rows.map(r => ({
@@ -883,7 +883,12 @@ async function executeSearchHeartbeatData(input) {
 
         // Always fetch live feed for tier breakdown and accurate numbers data
         try {
-            const FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/event-details';
+            // Look up org's configured sales feed URL, fall back to env var
+            let FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/event-details';
+            try {
+                const orgFeedResult = await pool.query('SELECT bump_sales_feed_url FROM organizations WHERE id = $1', [organizationId]);
+                if (orgFeedResult.rows[0]?.bump_sales_feed_url) FEED_URL = orgFeedResult.rows[0].bump_sales_feed_url;
+            } catch (_e) { /* use fallback */ }
             const { XMLParser } = require('fast-xml-parser');
             const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '_', parseTagValue: true, trimValues: true, isArray: (name) => name === 'node' });
             const controller = new AbortController();
@@ -1570,7 +1575,7 @@ async function processResponse(response, messages, system, organizationId, userI
         } else if (toolUse.name === 'search_heartbeat_data') {
             // Read action — query Heartbeat velocity/sales data
             sendEvent({ type: 'status', message: 'Querying Heartbeat sales data...' });
-            const toolResult = await executeSearchHeartbeatData(toolUse.input);
+            const toolResult = await executeSearchHeartbeatData(toolUse.input, organizationId);
 
             trackTool('search_heartbeat_data');
             const followUpMessages = [
