@@ -577,7 +577,7 @@ const REPORT_TYPES = {
     },
     'payment-tickets': {
         name: 'Payment Tickets',
-        description: 'Analyze sales by seller/channel. Shows Shopify (online) vs in-person sales breakdown, with detailed metrics for Foundation Donation Office and Thunder Bay 50/50 Store sellers.',
+        description: 'Analyze sales by seller/channel. Shows Shopify (online) vs in-person sales breakdown, with detailed metrics per seller location.',
         uploadTitle: 'Upload Payment Tickets Report',
         uploadSubtitle: 'Export this report from BUMP Raffle with your desired date range'
     },
@@ -1354,7 +1354,7 @@ function _renderWizardStep1() {
             <form id="wizardForm1" class="wizard-form">
                 <div class="wizard-field-group">
                     <label for="wizOrgName">Organization Name <span class="required">*</span></label>
-                    <input type="text" id="wizOrgName" placeholder="e.g., Thunder Bay Regional Health Sciences Foundation" required>
+                    <input type="text" id="wizOrgName" placeholder="e.g., Your Organization Name" required>
                     <span class="wizard-hint">Your nonprofit or charity name</span>
                 </div>
                 <div class="wizard-field-row">
@@ -6631,7 +6631,7 @@ function analyzeDataFull(data) {
             if (isRSU) {
                 rsuRevenue += amount;
                 rsuCount++;
-                rawCity = 'Thunder Bay';
+                rawCity = 'Local';
             }
         }
 
@@ -8115,12 +8115,12 @@ function analyzePaymentTicketsReport(data) {
         }
 
         const sellerLower = seller.toLowerCase();
-        // Foundation Donation Office: Seller 1 and Seller 2
+        // Primary sellers: Seller 1 and Seller 2
         if (sellerLower === 'seller 1' || sellerLower === 'seller 2' ||
             sellerLower === 'seller1' || sellerLower === 'seller2') {
             foundationSellers[seller] = data;
         } else {
-            // Thunder Bay 50/50 Store: all other sellers
+            // Other in-person sellers
             storeSellers[seller] = data;
         }
     });
@@ -9703,6 +9703,8 @@ async function loadTeamData() {
         document.getElementById('contentTemplatesSection').style.display = canManageOrg ? 'block' : 'none';
         const shopifyCard = document.getElementById('shopifyIntegrationCard');
         if (shopifyCard) shopifyCard.style.display = canManageOrg ? 'block' : 'none';
+        const bumpFeedSection = document.getElementById('bumpFeedSection');
+        if (bumpFeedSection) bumpFeedSection.style.display = canManageOrg ? 'block' : 'none';
 
         // Populate org profile fields
         if (canManageOrg) {
@@ -9736,7 +9738,10 @@ function populateOrgProfile(org) {
         orgProfileTimezone: org.timezone || 'America/Toronto',
         orgProfileDrawTime: org.default_draw_time || '',
         orgProfileDeadlineTime: org.ticket_deadline_time || '',
-        orgProfileSocialLine: org.social_required_line || ''
+        orgProfileSocialLine: org.social_required_line || '',
+        orgBumpFeedUrl: org.bump_feed_url || '',
+        orgBumpWinnersFeedUrl: org.bump_winners_feed_url || '',
+        orgBumpSalesFeedUrl: org.bump_sales_feed_url || ''
     };
     for (const [id, value] of Object.entries(fields)) {
         const el = document.getElementById(id);
@@ -9807,7 +9812,10 @@ async function saveOrgProfile() {
             ticketDeadlineTime: document.getElementById('orgProfileDeadlineTime')?.value.trim() || null,
             socialRequiredLine: document.getElementById('orgProfileSocialLine')?.value.trim() || null,
             brandTerminology,
-            emailAddons
+            emailAddons,
+            bumpFeedUrl: document.getElementById('orgBumpFeedUrl')?.value.trim() || null,
+            bumpWinnersFeedUrl: document.getElementById('orgBumpWinnersFeedUrl')?.value.trim() || null,
+            bumpSalesFeedUrl: document.getElementById('orgBumpSalesFeedUrl')?.value.trim() || null
         };
 
         const response = await fetch(`${API_BASE_URL}/api/organizations/${currentOrgId}`, {
@@ -18398,6 +18406,7 @@ async function refreshVelocityTicker() {
         if (!res.ok) return;
 
         const data = await res.json();
+        if (data.notConfigured) return;
         _velocityLastTick = Date.now();
 
         if (data.salesVelocity) {
@@ -18437,6 +18446,12 @@ async function refreshFeedDashboard() {
         }
 
         const data = await res.json();
+        if (data.notConfigured) {
+            container.innerHTML = '<div style="text-align:center; padding: 40px 20px;">'
+                + '<p style="color: var(--text-secondary, #888);">BUMP feeds not configured. <a href="#" onclick="navigateTo(\'response-assistant/teams\'); return false;">Set up in Teams</a></p>'
+                + '</div>';
+            return;
+        }
         _feedDashLastData = data;
         renderRaffleDashboard(data);
     } catch (err) {
@@ -19228,6 +19243,18 @@ async function refreshHeartbeat() {
         }
 
         const data = await res.json();
+
+        // Handle orgs that haven't configured their BUMP feeds yet
+        if (data.notConfigured) {
+            content.innerHTML = '<div style="text-align:center; padding: 60px 20px;">'
+                + '<h2 style="margin-bottom: 12px;">BUMP Feeds Not Configured</h2>'
+                + '<p style="color: var(--text-secondary, #888); max-width: 480px; margin: 0 auto 20px;">To use Heartbeat, your organization needs to configure its BUMP XML feed URLs. An admin can set these up on the Teams page.</p>'
+                + '<a href="#" onclick="navigateTo(\'response-assistant/teams\'); return false;" class="btn-primary" style="display: inline-block; padding: 10px 24px;">Go to Teams Settings</a>'
+                + '</div>';
+            _heartbeatRendered = false;
+            return;
+        }
+
         _heartbeatFullData = data;
         _heartbeatLastTick = Date.now();
         if (data.salesVelocity) _heartbeatLastData = data.salesVelocity;

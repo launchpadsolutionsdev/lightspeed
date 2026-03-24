@@ -16231,6 +16231,43 @@
                         </div>
                     </div>
 
+                    <!-- BUMP Feed Configuration -->
+                    <div class="teams-card" id="bumpFeedSection" style="display: none;">
+                        <div class="teams-card-header">
+                            <h3>BUMP Feed Configuration</h3>
+                        </div>
+                        <div class="teams-card-body">
+                            <p class="org-profile-note">Configure your organization's BUMP API feed URLs to enable the Heartbeat live dashboard, sales velocity tracking, and real-time raffle analytics.</p>
+                            <div class="org-profile-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="orgBumpFeedUrl">Main Raffle Feed URL</label>
+                                    <input type="url" id="orgBumpFeedUrl" placeholder="https://yourorg-api.bumpcbnraffle.net/api/feeds/dak" class="invite-input">
+                                    <p style="font-size: 0.7rem; color: var(--text-secondary, #888); margin-top: 4px;">
+                                        Primary feed — provides jackpot pool, prizes, raffle status, and draw schedule.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="org-profile-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="orgBumpWinnersFeedUrl">Winners Feed URL</label>
+                                    <input type="url" id="orgBumpWinnersFeedUrl" placeholder="https://yourorg-api.bumpcbnraffle.net/api/feeds/winners" class="invite-input">
+                                    <p style="font-size: 0.7rem; color: var(--text-secondary, #888); margin-top: 4px;">
+                                        Historical draw results and claim status for secondary prizes.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="org-profile-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="orgBumpSalesFeedUrl">Sales Breakdown Feed URL</label>
+                                    <input type="url" id="orgBumpSalesFeedUrl" placeholder="https://yourorg-api.bumpcbnraffle.net/api/feeds/event-details" class="invite-input">
+                                    <p style="font-size: 0.7rem; color: var(--text-secondary, #888); margin-top: 4px;">
+                                        Ticket sales, revenue, payment method breakdown, and package tier data.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Organization Profile Section -->
                     <div class="teams-card" id="orgProfileSection">
                         <div class="teams-card-header">

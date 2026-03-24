@@ -10,6 +10,7 @@ const pool = require('../../config/database');
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 const auditLog = require('../services/auditLog');
 const log = require('../services/logger');
+const { seedOrgStarterContent } = require('../services/orgOnboarding');
 
 /**
  * GET /api/admin/dashboard
@@ -914,6 +915,9 @@ router.post('/organizations', authenticate, requireSuperAdmin, async (req, res) 
              RETURNING *`,
             [orgId, trimmedName, slug, trialEndsAt]
         );
+
+        // Seed starter content (templates, rules) for the new org
+        await seedOrgStarterContent(orgId, req.userId);
 
         auditLog.logAction({ orgId: orgId, userId: req.userId, action: 'ADMIN_ORG_CREATED', resourceType: 'ORGANIZATION', resourceId: orgId, changes: { name: trimmedName }, req });
         res.status(201).json({ organization: result.rows[0] });

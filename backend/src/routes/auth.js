@@ -13,6 +13,7 @@ const msal = require('@azure/msal-node');
 const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const log = require('../services/logger');
+const { seedOrgStarterContent } = require('../services/orgOnboarding');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -427,6 +428,9 @@ router.post('/create-organization', authenticate, [
              VALUES ($1, $2, 'owner', NOW())`,
             [req.userId, orgId]
         );
+
+        // Seed starter content (templates, rules) for the new org
+        await seedOrgStarterContent(orgId, req.userId);
 
         // Get the created organization
         const orgResult = await pool.query('SELECT * FROM organizations WHERE id = $1', [orgId]);

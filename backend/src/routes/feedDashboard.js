@@ -17,56 +17,74 @@ const { authenticate } = require('../middleware/auth');
 const log = require('../services/logger');
 const pool = require('../../config/database');
 
-// Feed URLs — configure via environment variables or use BUMP API defaults.
-const FEED_URL = process.env.DASHBOARD_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/dak';
-const WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/winners';
-const SALES_FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || 'https://tbh.ca-api.bumpcbnraffle.net/api/feeds/event-details';
+// Optional env-var feed URLs — only used as fallback during migration period.
+// No hardcoded defaults; orgs must configure their own URLs via Teams > BUMP Feed Configuration.
+const ENV_FEED_URL = process.env.DASHBOARD_FEED_URL || null;
+const ENV_WINNERS_FEED_URL = process.env.DASHBOARD_WINNERS_FEED_URL || null;
+const ENV_SALES_FEED_URL = process.env.DASHBOARD_SALES_FEED_URL || null;
 const FEED_CACHE_TTL = 2 * 60 * 1000; // 2-minute cache for near-real-time pool updates
 
-let _feedCache = null;
-let _feedCacheTime = 0;
+// Per-org caches: Map<orgId, { data, cacheTime }>
+const _feedCaches = new Map();
 
-// Sales velocity snapshots — stores { ts, totalSales, totalTickets } samples.
-// Primary storage is PostgreSQL (velocity_snapshots table) so data survives
-// restarts, redeploys, and disk wipes.  In-memory array is kept as a hot cache
-// for fast velocity calculations without hitting the DB on every request.
+// Sales velocity snapshots — per-org in-memory hot caches backed by PostgreSQL.
 const VELOCITY_MAX_SAMPLES = 5040; // ~7 days at 2-min intervals
 const VELOCITY_SAVE_INTERVAL = 60 * 1000;     // Flush to DB at most once per 60s
 const VELOCITY_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // Prune snapshots older than 7 days
-let _salesSnapshots = [];
-let _snapshotsLoaded = false;
-let _lastSaveTime = 0;
-let _pendingDbSnapshots = [];  // Snapshots queued for the next DB flush
+
+// Per-org snapshot state: Map<orgId, snapshot[]>
+const _salesSnapshotsByOrg = new Map();
+const _snapshotsLoadedByOrg = new Set();
+const _pendingDbSnapshotsByOrg = new Map();
+let _lastSaveTimeByOrg = new Map();
 let _bgFetchCount = 0;        // Health counter: total background fetches since startup
 let _bgFetchFails = 0;        // Health counter: failed background fetches since startup
 
 /**
- * Load velocity snapshots from PostgreSQL on first access.
+ * Look up an organization's configured BUMP feed URLs from the database.
+ * Returns null values if the org has no feed URLs configured.
+ */
+async function getOrgFeedUrls(orgId) {
+    const result = await pool.query(
+        'SELECT bump_feed_url, bump_winners_feed_url, bump_sales_feed_url FROM organizations WHERE id = $1',
+        [orgId]
+    );
+    const row = result.rows[0];
+    return {
+        feedUrl: row?.bump_feed_url || null,
+        winnersFeedUrl: row?.bump_winners_feed_url || null,
+        salesFeedUrl: row?.bump_sales_feed_url || null
+    };
+}
+
+/**
+ * Load velocity snapshots from PostgreSQL on first access for a given org.
  * Falls back to the legacy JSON file if the DB table doesn't exist yet
  * (e.g. migration hasn't run), then prunes entries older than 7 days.
  */
-async function loadSnapshots() {
-    if (_snapshotsLoaded) return;
-    _snapshotsLoaded = true;
+async function loadSnapshots(orgId) {
+    if (_snapshotsLoadedByOrg.has(orgId)) return;
+    _snapshotsLoadedByOrg.add(orgId);
 
     const cutoff = Date.now() - VELOCITY_MAX_AGE;
 
     // Try PostgreSQL first
     try {
         const result = await pool.query(
-            'SELECT ts, total_sales, total_tickets, total_numbers FROM velocity_snapshots WHERE ts >= $1 ORDER BY ts ASC',
-            [cutoff]
+            'SELECT ts, total_sales, total_tickets, total_numbers FROM velocity_snapshots WHERE organization_id = $1 AND ts >= $2 ORDER BY ts ASC',
+            [orgId, cutoff]
         );
-        _salesSnapshots = result.rows.map(r => ({
+        const snapshots = result.rows.map(r => ({
             ts: Number(r.ts),
             totalSales: parseFloat(r.total_sales),
             totalTickets: parseInt(r.total_tickets, 10),
             totalNumbers: parseInt(r.total_numbers || 0, 10)
         }));
-        log.info('Loaded velocity snapshots from database', { count: _salesSnapshots.length });
+        _salesSnapshotsByOrg.set(orgId, snapshots);
+        log.info('Loaded velocity snapshots from database', { orgId, count: snapshots.length });
         return;
     } catch (err) {
-        log.warn('Could not load velocity snapshots from DB, trying JSON fallback', { error: err.message });
+        log.warn('Could not load velocity snapshots from DB, trying JSON fallback', { orgId, error: err.message });
     }
 
     // Fallback: legacy JSON file (for first deploy before migration runs)
@@ -76,46 +94,49 @@ async function loadSnapshots() {
             const raw = fs.readFileSync(jsonPath, 'utf8');
             const parsed = JSON.parse(raw);
             if (Array.isArray(parsed)) {
-                _salesSnapshots = parsed.filter(s => s.ts >= cutoff);
-                log.info('Loaded velocity snapshots from JSON fallback', { count: _salesSnapshots.length });
+                _salesSnapshotsByOrg.set(orgId, parsed.filter(s => s.ts >= cutoff));
+                log.info('Loaded velocity snapshots from JSON fallback', { orgId, count: _salesSnapshotsByOrg.get(orgId).length });
+                return;
             }
         }
     } catch (err) {
         log.warn('Could not load velocity snapshots from JSON', { error: err.message });
-        _salesSnapshots = [];
     }
+    _salesSnapshotsByOrg.set(orgId, []);
 }
 
 /**
- * Flush pending snapshots to PostgreSQL (throttled, async, fire-and-forget).
+ * Flush pending snapshots to PostgreSQL for a given org (throttled, async, fire-and-forget).
  * Also prunes rows older than 7 days periodically.
  */
-function saveSnapshotsIfNeeded() {
+function saveSnapshotsIfNeeded(orgId) {
     const now = Date.now();
-    if (now - _lastSaveTime < VELOCITY_SAVE_INTERVAL) return;
-    if (_pendingDbSnapshots.length === 0) return;
-    _lastSaveTime = now;
+    const lastSave = _lastSaveTimeByOrg.get(orgId) || 0;
+    if (now - lastSave < VELOCITY_SAVE_INTERVAL) return;
+    const pending = _pendingDbSnapshotsByOrg.get(orgId);
+    if (!pending || pending.length === 0) return;
+    _lastSaveTimeByOrg.set(orgId, now);
 
-    const batch = _pendingDbSnapshots.splice(0);
+    const batch = pending.splice(0);
 
     // Build a multi-row INSERT for efficiency
     const values = [];
     const params = [];
     batch.forEach((s, i) => {
-        const offset = i * 4;
-        values.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`);
-        params.push(s.ts, s.totalSales, s.totalTickets, s.totalNumbers || 0);
+        const offset = i * 5;
+        values.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`);
+        params.push(orgId, s.ts, s.totalSales, s.totalTickets, s.totalNumbers || 0);
     });
 
     pool.query(
-        `INSERT INTO velocity_snapshots (ts, total_sales, total_tickets, total_numbers) VALUES ${values.join(', ')} ON CONFLICT DO NOTHING`,
+        `INSERT INTO velocity_snapshots (organization_id, ts, total_sales, total_tickets, total_numbers) VALUES ${values.join(', ')} ON CONFLICT DO NOTHING`,
         params
-    ).catch(err => log.warn('Could not save velocity snapshots to DB', { error: err.message }));
+    ).catch(err => log.warn('Could not save velocity snapshots to DB', { orgId, error: err.message }));
 
     // Prune old rows periodically (fire-and-forget)
     const cutoff = now - VELOCITY_MAX_AGE;
-    pool.query('DELETE FROM velocity_snapshots WHERE ts < $1', [cutoff])
-        .catch(err => log.warn('Could not prune old velocity snapshots', { error: err.message }));
+    pool.query('DELETE FROM velocity_snapshots WHERE organization_id = $1 AND ts < $2', [orgId, cutoff])
+        .catch(err => log.warn('Could not prune old velocity snapshots', { orgId, error: err.message }));
 }
 
 const xmlParser = new XMLParser({
@@ -155,38 +176,49 @@ async function fetchXmlFeed(url) {
 /**
  * Record a snapshot into the in-memory array and queue it for DB persistence.
  */
-function recordSnapshot(ts, totalSales, totalTickets, totalNumbers) {
+function recordSnapshot(orgId, ts, totalSales, totalTickets, totalNumbers) {
     const snap = { ts, totalSales, totalTickets, totalNumbers: totalNumbers || 0 };
-    _salesSnapshots.push(snap);
-    _pendingDbSnapshots.push(snap);
-    if (_salesSnapshots.length > VELOCITY_MAX_SAMPLES) {
-        _salesSnapshots = _salesSnapshots.slice(-VELOCITY_MAX_SAMPLES);
+    let snapshots = _salesSnapshotsByOrg.get(orgId) || [];
+    snapshots.push(snap);
+    if (snapshots.length > VELOCITY_MAX_SAMPLES) {
+        snapshots = snapshots.slice(-VELOCITY_MAX_SAMPLES);
     }
-    saveSnapshotsIfNeeded();
+    _salesSnapshotsByOrg.set(orgId, snapshots);
+
+    if (!_pendingDbSnapshotsByOrg.has(orgId)) _pendingDbSnapshotsByOrg.set(orgId, []);
+    _pendingDbSnapshotsByOrg.get(orgId).push(snap);
+    saveSnapshotsIfNeeded(orgId);
 }
 
 /**
  * Fetch all three feeds in parallel, parse, and cache.
  * Records a velocity snapshot on every call — even on cache hits and failures —
  * so the timeline never has gaps while the server is running.
+ *
+ * @param {string} orgId - Organization UUID
+ * @param {string} feedUrl - Main raffle feed URL
+ * @param {string} winnersFeedUrl - Winners feed URL (optional)
+ * @param {string} salesFeedUrl - Sales breakdown feed URL (optional)
  */
-async function fetchFeed() {
-    await loadSnapshots();
+async function fetchFeed(orgId, feedUrl, winnersFeedUrl, salesFeedUrl) {
+    await loadSnapshots(orgId);
     const now = Date.now();
-    if (_feedCache && (now - _feedCacheTime) < FEED_CACHE_TTL) {
+    const cached = _feedCaches.get(orgId);
+
+    if (cached && (now - cached.cacheTime) < FEED_CACHE_TTL) {
         // Still record a time-stamped snapshot and recompute velocity on cache hits
-        if (_feedCache.salesBreakdown) {
-            recordSnapshot(now, _feedCache.salesBreakdown.totalSales, _feedCache.salesBreakdown.totalTickets, _feedCache.salesBreakdown.totalNumbers);
-            _feedCache.salesVelocity = buildVelocityData(_salesSnapshots);
+        if (cached.data.salesBreakdown) {
+            recordSnapshot(orgId, now, cached.data.salesBreakdown.totalSales, cached.data.salesBreakdown.totalTickets, cached.data.salesBreakdown.totalNumbers);
+            cached.data.salesVelocity = buildVelocityData(_salesSnapshotsByOrg.get(orgId) || []);
         }
-        return _feedCache;
+        return cached.data;
     }
 
     try {
         // Fetch all configured feeds in parallel — secondary feeds are optional
-        const feedPromises = [fetchXmlFeed(FEED_URL)];
-        const winnersIdx = WINNERS_FEED_URL ? (feedPromises.push(fetchXmlFeed(WINNERS_FEED_URL)), feedPromises.length - 1) : -1;
-        const salesIdx = SALES_FEED_URL ? (feedPromises.push(fetchXmlFeed(SALES_FEED_URL)), feedPromises.length - 1) : -1;
+        const feedPromises = [fetchXmlFeed(feedUrl)];
+        const winnersIdx = winnersFeedUrl ? (feedPromises.push(fetchXmlFeed(winnersFeedUrl)), feedPromises.length - 1) : -1;
+        const salesIdx = salesFeedUrl ? (feedPromises.push(fetchXmlFeed(salesFeedUrl)), feedPromises.length - 1) : -1;
 
         const results = await Promise.allSettled(feedPromises);
 
@@ -214,22 +246,21 @@ async function fetchFeed() {
 
         // Record sales snapshot for velocity tracking
         if (data.salesBreakdown) {
-            recordSnapshot(now, data.salesBreakdown.totalSales, data.salesBreakdown.totalTickets, data.salesBreakdown.totalNumbers);
+            recordSnapshot(orgId, now, data.salesBreakdown.totalSales, data.salesBreakdown.totalTickets, data.salesBreakdown.totalNumbers);
         }
-        data.salesVelocity = buildVelocityData(_salesSnapshots);
+        data.salesVelocity = buildVelocityData(_salesSnapshotsByOrg.get(orgId) || []);
 
-        _feedCache = data;
-        _feedCacheTime = now;
+        _feedCaches.set(orgId, { data, cacheTime: now });
         return data;
     } catch (error) {
         // Record a snapshot from the last known values so the timeline stays continuous
-        if (_feedCache && _feedCache.salesBreakdown) {
-            recordSnapshot(now, _feedCache.salesBreakdown.totalSales, _feedCache.salesBreakdown.totalTickets, _feedCache.salesBreakdown.totalNumbers);
+        if (cached && cached.data.salesBreakdown) {
+            recordSnapshot(orgId, now, cached.data.salesBreakdown.totalSales, cached.data.salesBreakdown.totalTickets, cached.data.salesBreakdown.totalNumbers);
         }
 
-        if (_feedCache) {
-            log.warn('Feed fetch failed, returning stale cache', { error: error.message });
-            return _feedCache;
+        if (cached) {
+            log.warn('Feed fetch failed, returning stale cache', { orgId, error: error.message });
+            return cached.data;
         }
         throw error;
     }
@@ -506,10 +537,35 @@ function buildVelocityData(snapshots) {
     return { samples, surge, windows };
 }
 
+/**
+ * Resolve feed URLs for a request — uses org's DB-configured URLs,
+ * falling back to legacy environment variables.
+ */
+async function resolveOrgFeedUrls(orgId) {
+    if (!orgId) return null;
+    try {
+        const urls = await getOrgFeedUrls(orgId);
+        if (urls.feedUrl) return urls;
+    } catch (err) {
+        log.warn('Could not look up org feed URLs, falling back to env vars', { orgId, error: err.message });
+    }
+    // Fallback to environment variables for legacy/migration period
+    return {
+        feedUrl: ENV_FEED_URL || null,
+        winnersFeedUrl: ENV_WINNERS_FEED_URL || null,
+        salesFeedUrl: ENV_SALES_FEED_URL || null
+    };
+}
+
 // GET /api/feed-dashboard/data
 router.get('/data', authenticate, async (req, res) => {
     try {
-        const data = await fetchFeed();
+        const orgId = req.organizationId;
+        const urls = await resolveOrgFeedUrls(orgId);
+        if (!urls || !urls.feedUrl) {
+            return res.json({ notConfigured: true, error: 'No BUMP feed URLs configured. Go to Teams > BUMP Feed Configuration to set them up.' });
+        }
+        const data = await fetchFeed(orgId, urls.feedUrl, urls.winnersFeedUrl, urls.salesFeedUrl);
         res.json(data);
     } catch (error) {
         log.error('Feed dashboard error', { error: error.message });
@@ -518,22 +574,29 @@ router.get('/data', authenticate, async (req, res) => {
 });
 
 // GET /api/feed-dashboard/status — show which feeds are configured
-router.get('/status', authenticate, (req, res) => {
+router.get('/status', authenticate, async (req, res) => {
+    const orgId = req.organizationId;
+    const urls = orgId ? await resolveOrgFeedUrls(orgId) : null;
+    const cached = orgId ? _feedCaches.get(orgId) : null;
     res.json({
-        mainFeed: { url: FEED_URL, configured: !!FEED_URL },
-        winnersFeed: { url: WINNERS_FEED_URL || null, configured: !!WINNERS_FEED_URL },
-        salesFeed: { url: SALES_FEED_URL || null, configured: !!SALES_FEED_URL },
+        mainFeed: { url: urls?.feedUrl || null, configured: !!urls?.feedUrl },
+        winnersFeed: { url: urls?.winnersFeedUrl || null, configured: !!urls?.winnersFeedUrl },
+        salesFeed: { url: urls?.salesFeedUrl || null, configured: !!urls?.salesFeedUrl },
         cacheTtl: FEED_CACHE_TTL,
-        cacheAge: _feedCacheTime ? Date.now() - _feedCacheTime : null
+        cacheAge: cached ? Date.now() - cached.cacheTime : null
     });
 });
 
 // POST /api/feed-dashboard/refresh — force cache refresh
 router.post('/refresh', authenticate, async (req, res) => {
-    _feedCache = null;
-    _feedCacheTime = 0;
+    const orgId = req.organizationId;
+    if (orgId) _feedCaches.delete(orgId);
     try {
-        const data = await fetchFeed();
+        const urls = await resolveOrgFeedUrls(orgId);
+        if (!urls || !urls.feedUrl) {
+            return res.json({ notConfigured: true, error: 'No BUMP feed URLs configured.' });
+        }
+        const data = await fetchFeed(orgId, urls.feedUrl, urls.winnersFeedUrl, urls.salesFeedUrl);
         res.json(data);
     } catch (error) {
         log.error('Feed dashboard refresh error', { error: error.message });
@@ -612,41 +675,52 @@ router.get('/whats-new', authenticate, (req, res) => {
     res.json(_whatsNewCache);
 });
 
-// Background snapshot collection — fetches every 90 seconds regardless of page visits
-// so velocity data accumulates continuously 24/7 while the server is running.
-// Interval is 90s (staggered from the 2-minute cache TTL) to ensure at least one
-// fresh XML fetch per cache cycle, avoiding a timing race where every background
-// fetch hits the cache and never gets new data.
+// Background snapshot collection — fetches every 90 seconds for ALL orgs that have
+// feed URLs configured, so velocity data accumulates continuously 24/7.
 const VELOCITY_BG_INTERVAL = 90 * 1000;
 const VELOCITY_HEALTH_LOG_INTERVAL = 30 * 60 * 1000; // Log health stats every 30 min
 
+async function backgroundFetchAllOrgs() {
+    try {
+        const result = await pool.query(
+            'SELECT id, bump_feed_url, bump_winners_feed_url, bump_sales_feed_url FROM organizations WHERE bump_feed_url IS NOT NULL'
+        );
+        const promises = result.rows.map(row =>
+            fetchFeed(row.id, row.bump_feed_url, row.bump_winners_feed_url, row.bump_sales_feed_url)
+                .catch(err => {
+                    _bgFetchFails++;
+                    log.warn('Background velocity fetch failed', { orgId: row.id, error: err.message, totalFails: _bgFetchFails });
+                })
+        );
+        await Promise.allSettled(promises);
+    } catch (err) {
+        log.warn('Background fetch org query failed', { error: err.message });
+    }
+}
+
 setInterval(() => {
     _bgFetchCount++;
-    fetchFeed().catch(err => {
-        _bgFetchFails++;
-        log.warn('Background velocity fetch failed', { error: err.message, totalFails: _bgFetchFails });
-    });
+    backgroundFetchAllOrgs();
 }, VELOCITY_BG_INTERVAL);
 
 // Run once on startup after a short delay to seed the first snapshot
 setTimeout(() => {
     _bgFetchCount++;
-    fetchFeed().catch(err => {
-        _bgFetchFails++;
-        log.warn('Initial velocity fetch failed', { error: err.message });
-    });
+    backgroundFetchAllOrgs();
 }, 5000);
 
 // Periodic health log — helps diagnose overnight gaps by checking Render logs
 setInterval(() => {
-    const lastSnap = _salesSnapshots.length > 0 ? _salesSnapshots[_salesSnapshots.length - 1] : null;
+    let totalSnapshots = 0;
+    let totalPending = 0;
+    for (const [, snaps] of _salesSnapshotsByOrg) totalSnapshots += snaps.length;
+    for (const [, pending] of _pendingDbSnapshotsByOrg) totalPending += pending.length;
     log.info('Heartbeat background health', {
-        snapshotsInMemory: _salesSnapshots.length,
-        pendingDbWrites: _pendingDbSnapshots.length,
+        orgsTracked: _salesSnapshotsByOrg.size,
+        snapshotsInMemory: totalSnapshots,
+        pendingDbWrites: totalPending,
         bgFetches: _bgFetchCount,
-        bgFails: _bgFetchFails,
-        lastSnapshotAge: lastSnap ? `${Math.round((Date.now() - lastSnap.ts) / 1000)}s ago` : 'none',
-        lastSnapshotSales: lastSnap ? lastSnap.totalSales : null
+        bgFails: _bgFetchFails
     });
 }, VELOCITY_HEALTH_LOG_INTERVAL);
 
