@@ -1010,7 +1010,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
     };
 
     try {
-        const { message, conversation, model, language, webSearch } = req.body;
+        const { message, conversation, model, language, webSearch, dashboardContext } = req.body;
         const file = req.file;
         const organizationId = req.organizationId;
         const userId = req.userId;
@@ -1079,6 +1079,11 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
             '', message || '', organizationId,
             { kb_type: 'all', userId, tool: 'ask_lightspeed', includeCitations: true }
         );
+
+        // Inject dashboard context when Ask Lightspeed is invoked from Heartbeat panels
+        if (dashboardContext) {
+            dynamicSystem += `\n\n--- LIVE DASHBOARD DATA (currently visible to the user) ---\n${dashboardContext}\n--- END DASHBOARD DATA ---\n\nThe user is asking about the data shown above on their Heartbeat dashboard. Use this data to answer their questions directly. You do NOT need to call tools to look up data that is already provided here — just analyze it. Only call tools if the user asks about something not covered by this data (e.g., a specific customer lookup, historical comparisons, or data not shown above).`;
+        }
 
         // Reinforce tool usage after all context injection (KB, rules, memory, etc.)
         // This must come LAST so it isn't buried by appended context.
