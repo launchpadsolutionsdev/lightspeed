@@ -6947,6 +6947,10 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
         }
 
+        .nhub-card-full {
+            grid-column: 1 / -1;
+        }
+
 
         /* Icon rows */
         .nhub-icon-row {
@@ -17834,8 +17838,8 @@
                 </div>
 
                 <div class="nhub-grid">
-                    <!-- Marketing Contact List -->
-                    <div class="nhub-card" onclick="openNormalizerSubTool('marketing')">
+                    <!-- Marketing Contact List (full width) -->
+                    <div class="nhub-card nhub-card-full" onclick="openNormalizerSubTool('marketing')">
                         <div class="nhub-icon-row">
                             <div class="nhub-icon nhub-icon-blue">📧</div>
                             <span class="nhub-badge">Most Used</span>
@@ -17849,8 +17853,20 @@
                         </div>
                     </div>
 
-                    <!-- Raw Data Normalizer -->
-                    <div class="nhub-card" onclick="openNormalizerSubTool('raw')">
+                    <!-- Shopify Import (full width, hidden by default) -->
+                    <div class="nhub-card nhub-card-full" onclick="openNormalizerSubTool('shopify-import')" id="nhubShopifyCard" style="display: none;">
+                        <div class="nhub-icon-row">
+                            <div class="nhub-icon nhub-icon-green">🛍️</div>
+                        </div>
+                        <h3 class="nhub-title">Shopify Import</h3>
+                        <p class="nhub-desc">Pull customers directly from your connected Shopify store. Export as a clean Mailchimp-ready list.</p>
+                        <div class="nhub-features">
+                            <span class="nhub-feature">Shopify</span>
+                        </div>
+                    </div>
+
+                    <!-- Raw Data Normalizer (full width) -->
+                    <div class="nhub-card nhub-card-full" onclick="openNormalizerSubTool('raw')">
                         <div class="nhub-icon-row">
                             <div class="nhub-icon nhub-icon-purple">🔧</div>
                             <span class="nhub-badge nhub-badge-ai">AI-Powered</span>
@@ -17861,18 +17877,6 @@
                             <span class="nhub-feature">Any Format</span>
                             <span class="nhub-feature">Plain English</span>
                             <span class="nhub-feature">Bulk Transform</span>
-                        </div>
-                    </div>
-
-                    <!-- Duplicate Finder -->
-                    <div class="nhub-card" onclick="openNormalizerSubTool('duplicates')">
-                        <div class="nhub-icon-row">
-                            <div class="nhub-icon nhub-icon-amber">🔍</div>
-                        </div>
-                        <h3 class="nhub-title">Duplicate Finder</h3>
-                        <p class="nhub-desc">Find duplicate entries by any column. Preview groups side-by-side and download a deduplicated file.</p>
-                        <div class="nhub-features">
-                            <span class="nhub-feature">Deduplication</span>
                         </div>
                     </div>
 
@@ -17900,15 +17904,15 @@
                         </div>
                     </div>
 
-                    <!-- Shopify Import (hidden by default) -->
-                    <div class="nhub-card" onclick="openNormalizerSubTool('shopify-import')" id="nhubShopifyCard" style="display: none;">
+                    <!-- Duplicate Finder -->
+                    <div class="nhub-card" onclick="openNormalizerSubTool('duplicates')">
                         <div class="nhub-icon-row">
-                            <div class="nhub-icon nhub-icon-green">🛍️</div>
+                            <div class="nhub-icon nhub-icon-amber">🔍</div>
                         </div>
-                        <h3 class="nhub-title">Shopify Import</h3>
-                        <p class="nhub-desc">Pull customers directly from your connected Shopify store. Export as a clean Mailchimp-ready list.</p>
+                        <h3 class="nhub-title">Duplicate Finder</h3>
+                        <p class="nhub-desc">Find duplicate entries by any column. Preview groups side-by-side and download a deduplicated file.</p>
                         <div class="nhub-features">
-                            <span class="nhub-feature">Shopify</span>
+                            <span class="nhub-feature">Deduplication</span>
                         </div>
                     </div>
                 </div>
