@@ -1,0 +1,873 @@
+/* ============================================================
+   LIGHTSPEED MOBILE RESPONSIVE OVERRIDES
+   Comprehensive mobile fixes for screens ≤ 768px
+   ============================================================ */
+
+/* ── Global Mobile Foundations ─────────────────────────────── */
+
+/* Prevent horizontal overflow on all pages */
+html, body {
+    overflow-x: hidden;
+}
+
+/* Ensure all images and media respect container bounds */
+img, video, iframe, canvas, svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Ensure tables don't blow out layout */
+table {
+    max-width: 100%;
+}
+
+/* ── Tablet/Small: ≤ 900px ────────────────────────────────── */
+/* This breakpoint matches when the sidebar goes off-screen */
+@media (max-width: 900px) {
+    /* Show the header bar so users can access the hamburger toggle.
+       The header is hidden (display:none) post-login because the sidebar
+       handles nav on desktop. On mobile, the sidebar slides away, so we
+       MUST show the header to give users the toggle. */
+    .app-tools-area > .app > .header,
+    #dataAnalysisApp > .header,
+    #draftAssistantApp > .header,
+    #dataAgentApp > .header,
+    #heartbeatApp > .header {
+        display: flex !important;
+        padding: 8px 16px;
+        min-height: 52px;
+        border-bottom: 1px solid var(--border);
+        background: #fff;
+        position: sticky;
+        top: 0;
+        z-index: 99;
+    }
+
+    .app-tools-area > .app > .header .header-inner,
+    #dataAnalysisApp > .header .header-inner,
+    #draftAssistantApp > .header .header-inner,
+    #dataAgentApp > .header .header-inner,
+    #heartbeatApp > .header .header-inner {
+        width: 100%;
+        display: flex;
+        align-items: center;
+    }
+    /* Dashboard/tool menu mobile header - show sidebar toggle */
+    .tool-menu-mobile-header {
+        display: flex;
+        align-items: center;
+        padding: 8px 16px;
+        background: #fff;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 99;
+    }
+
+    .tool-menu-mobile-header .sidebar-toggle {
+        display: flex;
+    }
+}
+
+/* Hide dashboard mobile header on desktop */
+.tool-menu-mobile-header {
+    display: none;
+}
+
+/* ── Mobile: ≤ 768px ──────────────────────────────────────── */
+@media (max-width: 768px) {
+
+    /* ── Auth Pages ─────────────────────────────────────────── */
+    .auth-card {
+        padding: 28px 20px;
+    }
+
+    .auth-container {
+        padding: 16px;
+    }
+
+    .auth-logo-text {
+        font-size: 1.25rem;
+    }
+
+    .auth-title {
+        font-size: 1.25rem;
+    }
+
+    /* ── Tool Menu / Dashboard ──────────────────────────────── */
+    .tool-menu-header {
+        padding: 20px 16px;
+    }
+
+    .tool-menu-greeting {
+        font-size: 0.85rem;
+    }
+
+    .tool-menu-title {
+        font-size: 1.5rem !important;
+    }
+
+    .tool-menu-subtitle {
+        font-size: 0.85rem;
+    }
+
+    .tool-menu-content {
+        padding: 16px !important;
+        margin: 8px 12px !important;
+    }
+
+    /* Dashboard bento cards */
+    .bento-card {
+        padding: 20px;
+    }
+
+    .bento-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .bento-title {
+        font-size: 0.95rem;
+    }
+
+    .bento-description {
+        font-size: 0.8rem;
+    }
+
+    .bento-cta {
+        font-size: 0.8rem;
+        padding: 8px 16px;
+    }
+
+    /* Dashboard widgets */
+    .dash-widget-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    .bento-compact-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* ── Response Assistant ──────────────────────────────────── */
+    .response-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    .card {
+        padding: 16px;
+    }
+
+    .card-header {
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .card-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+    }
+
+    .card-title {
+        font-size: 0.95rem;
+    }
+
+    .card-description {
+        font-size: 0.78rem;
+    }
+
+    /* Smart suggestions - horizontal scroll */
+    .smart-suggestions {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+    }
+
+    .smart-suggestions::-webkit-scrollbar {
+        display: none;
+    }
+
+    .suggestion-chip {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Inquiry type toggle */
+    .inquiry-type-toggle {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .toggle-buttons {
+        width: 100%;
+    }
+
+    .toggle-btn {
+        flex: 1;
+    }
+
+    /* Response section */
+    .response-actions {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .response-actions button {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+
+    /* Options row */
+    .options-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .options-row select,
+    .options-row .toggle-buttons {
+        width: 100%;
+    }
+
+    /* Generate button */
+    .generate-btn,
+    #generateBtn {
+        width: 100%;
+        padding: 14px;
+        font-size: 0.95rem;
+    }
+
+    /* ── Draft Studio ───────────────────────────────────────── */
+    .draft-studio {
+        grid-template-columns: 1fr !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+
+    .draft-studio-sidebar {
+        max-height: none !important;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .draft-studio-main {
+        min-height: 50vh;
+    }
+
+    .draft-studio-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        padding: 10px 12px;
+    }
+
+    .draft-tab {
+        flex-shrink: 0;
+    }
+
+    .draft-studio-footer {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .draft-studio-footer .draft-generate-btn {
+        min-width: 100%;
+    }
+
+    .draft-assistant-container {
+        padding: 16px !important;
+    }
+
+    /* ── Ask Lightspeed ─────────────────────────────────────── */
+    .als-page {
+        height: 100vh;
+        height: -webkit-fill-available;
+    }
+
+    .als-welcome {
+        min-height: calc(100vh - 160px);
+        padding: 0 8px;
+    }
+
+    .als-hero {
+        margin-bottom: 20px;
+    }
+
+    .als-title {
+        font-size: 24px !important;
+    }
+
+    .als-title-light {
+        font-size: 14px !important;
+    }
+
+    .als-prompts {
+        gap: 6px;
+        margin-bottom: 24px;
+    }
+
+    .als-prompt-chip {
+        padding: 8px 14px;
+        font-size: 0.78rem;
+    }
+
+    .als-capabilities {
+        grid-template-columns: 1fr !important;
+        gap: 10px;
+    }
+
+    .als-cap-card {
+        padding: 14px;
+    }
+
+    .als-input-area {
+        padding: 8px 12px 12px !important;
+    }
+
+    .als-input-row {
+        gap: 8px;
+    }
+
+    .als-input {
+        font-size: 16px; /* Prevent iOS zoom */
+    }
+
+    .als-model-pills {
+        justify-content: center;
+    }
+
+    .als-msg {
+        max-width: 94% !important;
+        padding: 12px 16px;
+        font-size: 0.88rem;
+    }
+
+    .als-chat-scroll-inner {
+        padding: 20px 12px 12px !important;
+    }
+
+    /* ALS sidebar overlay on mobile */
+    .als-sidebar {
+        width: 100% !important;
+        left: 0 !important;
+    }
+
+    /* ── Data Analysis ──────────────────────────────────────── */
+    .data-analysis-container {
+        padding: 16px !important;
+    }
+
+    .data-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .data-page-header-text h1 {
+        font-size: 1.35rem;
+    }
+
+    .data-step-indicator {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start;
+        padding-bottom: 4px;
+    }
+
+    .data-step-label {
+        font-size: 11px;
+    }
+
+    .data-upload-dropzone {
+        padding: 24px 16px;
+    }
+
+    .data-nav-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        gap: 4px;
+        padding-bottom: 4px;
+    }
+
+    .data-nav-tab {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Insights panel stacks below on mobile */
+    .data-body-wrapper {
+        flex-direction: column !important;
+    }
+
+    .data-body-wrapper.analysis-panel-open .data-analysis-container {
+        flex: none !important;
+        max-width: 100% !important;
+    }
+
+    .data-body-wrapper.analysis-panel-open .insights-analysis-panel {
+        position: relative !important;
+        top: auto !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        height: 50vh;
+        border-left: none !important;
+        border-top: 1px solid var(--border);
+        border-radius: 0 !important;
+    }
+
+    /* ── Heartbeat ──────────────────────────────────────────── */
+    .heartbeat-container {
+        padding: 0 !important;
+    }
+
+    .raffle-hero {
+        padding: 24px 16px;
+    }
+
+    .raffle-hero-prize {
+        font-size: 2rem;
+    }
+
+    .velocity-ticker-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .raffle-kpi-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px;
+    }
+
+    .raffle-metrics-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .hb-heatmap {
+        grid-template-columns: repeat(6, 1fr) !important;
+    }
+
+    /* ── Home Base ──────────────────────────────────────────── */
+    .hb-header {
+        padding: 14px 16px 0 !important;
+    }
+
+    .hb-header h1 {
+        font-size: 1.25rem;
+    }
+
+    .hb-compose {
+        padding: 12px 16px !important;
+    }
+
+    .hb-compose-textarea {
+        font-size: 16px; /* Prevent iOS zoom */
+    }
+
+    .hb-feed-area {
+        padding: 12px !important;
+    }
+
+    .hb-filters-bar {
+        padding: 0 12px !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .hb-filter-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .hb-post {
+        padding: 14px !important;
+    }
+
+    .hb-post-footer {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .hb-compose-footer {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+
+    .hb-post-btn {
+        width: 100%;
+    }
+
+    .hb-notif-dropdown {
+        width: 280px;
+        right: -1rem;
+    }
+
+    .hb-search-input {
+        width: 140px !important;
+    }
+
+    .hb-search-input:focus {
+        width: 180px !important;
+    }
+
+    /* HB AI Panel - full screen on mobile */
+    .hb-split-layout {
+        flex-direction: column !important;
+        gap: 0 !important;
+    }
+
+    .hb-ai-panel.open {
+        width: 100% !important;
+        min-width: 100% !important;
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        border-radius: 0 !important;
+        height: 100% !important;
+    }
+
+    /* ── Teams / Settings ───────────────────────────────────── */
+    #page-teams {
+        padding: 1rem !important;
+    }
+
+    .teams-header h1 {
+        font-size: 1.35rem;
+    }
+
+    .invite-form-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .invite-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .member-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+
+    .member-actions {
+        width: 100%;
+        justify-content: flex-end !important;
+    }
+
+    .invite-link-container {
+        flex-direction: column !important;
+    }
+
+    .org-profile-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Settings sections */
+    .settings-section {
+        padding: 16px;
+    }
+
+    .manage-card {
+        padding: 16px;
+    }
+
+    /* ── Knowledge Base ─────────────────────────────────────── */
+    .kb-page {
+        padding: 16px !important;
+    }
+
+    .kb-page-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .kb-page-title {
+        font-size: 1.25rem;
+    }
+
+    .kb-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .kb-tab {
+        white-space: nowrap;
+        flex-shrink: 0;
+        padding: 8px 14px;
+    }
+
+    .kb-toolbar {
+        flex-direction: column !important;
+    }
+
+    .kb-toolbar-actions {
+        width: 100% !important;
+    }
+
+    .kb-search {
+        min-width: 0 !important;
+        width: 100%;
+    }
+
+    .kb-form-row {
+        flex-direction: column !important;
+    }
+
+    .kb-entry-top {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .kb-entry-actions {
+        align-self: flex-end;
+    }
+
+    /* ── Compliance ─────────────────────────────────────────── */
+    .compliance-body {
+        flex-direction: column !important;
+    }
+
+    .compliance-chat-panel {
+        min-height: 50vh;
+    }
+
+    /* ── Shopify Dashboard ──────────────────────────────────── */
+    .shopify-connect-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 20px !important;
+    }
+
+    .shopify-kpi-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+
+    .shopify-charts-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    .shopify-kpi-value {
+        font-size: 1.3rem !important;
+    }
+
+    /* ── Normalizer Hub ─────────────────────────────────────── */
+    .nhub-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .normalizer-info-cards {
+        grid-template-columns: 1fr !important;
+    }
+
+    .normalizer-stats {
+        flex-direction: column !important;
+    }
+
+    .normalizer-stat-arrow {
+        transform: rotate(90deg) !important;
+    }
+
+    /* ── Compare / Upload Grids ─────────────────────────────── */
+    .compare-upload-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* ── Admin Dashboard ────────────────────────────────────── */
+    #page-admin {
+        padding: 16px !important;
+    }
+
+    .admin-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* ── Tables - Horizontal Scroll ─────────────────────────── */
+    .ls-table-wrap,
+    .data-table-container,
+    .admin-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .ls-table,
+    .data-table {
+        min-width: 500px;
+    }
+
+    /* ── Modals ─────────────────────────────────────────────── */
+    .kb-modal {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .cmdk-dialog {
+        width: 95vw !important;
+        max-width: 95vw !important;
+    }
+
+    .cmdk-overlay {
+        padding-top: 12vh;
+    }
+
+    /* ── Form Inputs ────────────────────────────────────────── */
+    /* Prevent iOS zoom on input focus by ensuring 16px min font */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="url"],
+    input[type="tel"],
+    input[type="number"],
+    textarea,
+    select {
+        font-size: 16px;
+    }
+
+    /* ── Sticky CTA bar ─────────────────────────────────────── */
+    .sticky-cta-bar {
+        padding: 6px 12px !important;
+    }
+
+    .sticky-cta-btn {
+        font-size: 13px;
+        padding: 8px 16px;
+    }
+
+    /* ── General Container Overrides ────────────────────────── */
+    .container {
+        padding: 12px !important;
+    }
+
+    /* ── Touch Target Improvements ──────────────────────────── */
+    .sidebar-btn {
+        min-height: 44px;
+    }
+
+    .kb-tab,
+    .data-nav-tab,
+    .hb-filter-btn {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* ── Cookie Banner ──────────────────────────────────────── */
+    .cookie-banner {
+        flex-direction: column !important;
+        gap: 12px !important;
+        text-align: center !important;
+        padding: 14px 16px !important;
+    }
+
+    /* ── Rules Add Form ─────────────────────────────────────── */
+    .rules-add-form {
+        flex-direction: column;
+    }
+
+    .rule-item {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .rule-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .rule-move-btns {
+        flex-direction: row;
+    }
+}
+
+/* ── Small Mobile: ≤ 480px ────────────────────────────────── */
+@media (max-width: 480px) {
+
+    /* Even tighter padding */
+    .tool-menu-content {
+        padding: 12px !important;
+        margin: 8px 8px !important;
+    }
+
+    .card {
+        padding: 14px;
+    }
+
+    .bento-card {
+        padding: 16px;
+    }
+
+    .als-title {
+        font-size: 20px !important;
+    }
+
+    .als-prompt-chip {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+
+    .als-msg {
+        max-width: 96% !important;
+        padding: 10px 14px;
+    }
+
+    .data-page-header-text h1 {
+        font-size: 1.15rem;
+    }
+
+    .hb-header h1 {
+        font-size: 1.1rem;
+    }
+
+    .kb-page-title {
+        font-size: 1.1rem;
+    }
+
+    .tool-menu-title {
+        font-size: 1.3rem !important;
+    }
+
+    /* Stack KPI grids to single column */
+    .raffle-kpi-grid,
+    .shopify-kpi-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Auth */
+    .auth-card {
+        padding: 24px 16px;
+    }
+
+    .auth-btn {
+        padding: 14px;
+    }
+}
+
+/* ── Safe area insets for notched devices ──────────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+    .als-input-area,
+    .hb-ai-input-area,
+    .draft-studio-footer {
+        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+
+    .sidebar {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .sticky-cta-bar {
+        padding-bottom: calc(6px + env(safe-area-inset-bottom));
+    }
+}

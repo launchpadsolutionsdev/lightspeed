@@ -221,6 +221,83 @@
     transition: var(--transition);
 }
 
+/* Mobile menu panel */
+.landing-mobile-menu {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 200;
+    flex-direction: column;
+    padding: 80px 24px 40px;
+    gap: 8px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.landing-mobile-menu.open {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+}
+
+.landing-mobile-menu-link {
+    display: block;
+    padding: 14px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: color 0.15s ease;
+    text-decoration: none;
+}
+
+.landing-mobile-menu-link:hover {
+    color: var(--cta);
+}
+
+.landing-mobile-menu-ctas {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.landing-mobile-menu-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    font-size: 20px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.landing-mobile-menu-close:hover {
+    background: var(--bg-alt);
+}
+
 /* ============================================================
    HERO SECTION
    Stripe-style: animated gradient background, two-tone headline
