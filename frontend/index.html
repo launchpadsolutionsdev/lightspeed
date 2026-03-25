@@ -15561,6 +15561,9 @@
                                 <div class="card-title">Team History</div>
                                 <div class="card-description">Recent responses from all team members</div>
                             </div>
+                            <button class="btn-secondary btn-sm" onclick="exportHistoryCSV()" title="Download response history as CSV" style="margin-left: auto;">
+                                <span class="btn-icon">&#128190;</span> Export CSV
+                            </button>
                         </div>
                         <div class="history-list" id="historyList"></div>
                     </div>
@@ -15619,6 +15622,9 @@
                                 <span class="btn-icon">&#128196;</span> Upload Doc
                             </button>
                             <input type="file" id="kbDocUploadInput" accept=".docx" style="display:none" onchange="uploadKbDoc(this)">
+                            <button class="btn-secondary btn-sm" onclick="exportKbCSV()" title="Download knowledge base as CSV">
+                                <span class="btn-icon">&#128190;</span> Export CSV
+                            </button>
                         </div>
                     </div>
 
@@ -16422,6 +16428,14 @@
                             <button type="button" class="btn-secondary" id="exportOrgDataBtn" onclick="exportOrganizationData()">
                                 📥 Export All Data (JSON)
                             </button>
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button type="button" class="btn-secondary btn-sm" onclick="exportKbCSV()">
+                                    <span class="btn-icon">&#128190;</span> Knowledge Base (CSV)
+                                </button>
+                                <button type="button" class="btn-secondary btn-sm" onclick="exportHistoryCSV()">
+                                    <span class="btn-icon">&#128190;</span> Response History (CSV)
+                                </button>
+                            </div>
                         </div>
                     </div>
 

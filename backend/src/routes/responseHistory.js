@@ -9,6 +9,7 @@ const pool = require('../../config/database');
 const { authenticate } = require('../middleware/auth');
 const { pickRelevantRatedExamples } = require('../services/claude');
 const log = require('../services/logger');
+const { toCSV } = require('../services/csvExport');
 
 /**
  * GET /api/response-history
@@ -614,6 +615,86 @@ router.get('/analytics', authenticate, async (req, res) => {
     } catch (error) {
         log.error('Analytics error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to load analytics' });
+    }
+});
+
+/**
+ * GET /api/response-history/export/csv
+ * Export response history as a CSV file.
+ * Supports ?days=N to limit to last N days (default: all).
+ */
+router.get('/export/csv', authenticate, async (req, res) => {
+    try {
+        const orgResult = await pool.query(
+            'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+            [req.userId]
+        );
+
+        if (orgResult.rows.length === 0) {
+            return res.status(400).json({ error: 'No organization found' });
+        }
+
+        const organizationId = orgResult.rows[0].organization_id;
+
+        // Check user is admin/owner for full export
+        const roleResult = await pool.query(
+            'SELECT role FROM organization_memberships WHERE user_id = $1 AND organization_id = $2',
+            [req.userId, organizationId]
+        );
+        const role = roleResult.rows[0]?.role;
+        if (role !== 'owner' && role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins and owners can export response history' });
+        }
+
+        let sql = `SELECT rh.inquiry, rh.response, rh.format, rh.tone, rh.tool,
+                           rh.rating, rh.rating_feedback, rh.char_count, rh.word_count,
+                           rh.response_time_ms, rh.created_at,
+                           u.first_name, u.last_name
+                    FROM response_history rh
+                    LEFT JOIN users u ON rh.user_id = u.id
+                    WHERE rh.organization_id = $1`;
+        const params = [organizationId];
+
+        const days = parseInt(req.query.days);
+        if (days > 0) {
+            sql += ` AND rh.created_at >= NOW() - MAKE_INTERVAL(days := $2)`;
+            params.push(days);
+        }
+
+        sql += ' ORDER BY rh.created_at DESC LIMIT 10000';
+
+        const result = await pool.query(sql, params);
+
+        const columns = [
+            { key: 'created_at', header: 'Date' },
+            { key: 'author', header: 'Author' },
+            { key: 'tool', header: 'Tool' },
+            { key: 'format', header: 'Format' },
+            { key: 'tone', header: 'Tone' },
+            { key: 'inquiry', header: 'Inquiry' },
+            { key: 'response', header: 'Response' },
+            { key: 'rating', header: 'Rating' },
+            { key: 'rating_feedback', header: 'Rating Feedback' },
+            { key: 'word_count', header: 'Word Count' },
+            { key: 'char_count', header: 'Char Count' },
+            { key: 'response_time_ms', header: 'Response Time (ms)' }
+        ];
+
+        const rows = result.rows.map(r => ({
+            ...r,
+            author: [r.first_name, r.last_name].filter(Boolean).join(' ') || 'Anonymous',
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
+        }));
+
+        const csv = toCSV(rows, columns);
+        const date = new Date().toISOString().slice(0, 10);
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="response-history-${date}.csv"`);
+        res.send(csv);
+
+    } catch (error) {
+        log.error('CSV export response history error', { error: error.message || error });
+        res.status(500).json({ error: 'Failed to export response history as CSV' });
     }
 });
 

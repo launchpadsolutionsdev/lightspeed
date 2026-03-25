@@ -5745,6 +5745,7 @@ function loadSettings() {
         usageReportsToggle.checked = currentUser?.settings?.usageReports === true;
     }
 
+
     // --- Account info: member since, plan, status ---
     const memberSinceEl = document.getElementById("settingsMemberSince");
     if (memberSinceEl) {
@@ -9900,6 +9901,73 @@ async function exportOrganizationData() {
     }
 }
 window.exportOrganizationData = exportOrganizationData;
+
+/**
+ * Export knowledge base entries as CSV
+ */
+async function exportKbCSV() {
+    try {
+        const kbType = document.getElementById('kbTypeFilter')?.value || '';
+        const url = kbType && kbType !== 'all'
+            ? `${API_BASE_URL}/api/knowledge-base/export/csv?type=${kbType}`
+            : `${API_BASE_URL}/api/knowledge-base/export/csv`;
+
+        const response = await fetch(url, { headers: getAuthHeaders() });
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || 'Export failed');
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1]
+            || `knowledge-base-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+
+        showToast('Knowledge base exported as CSV!', 'success');
+    } catch (error) {
+        console.error('KB CSV export error:', error);
+        showToast(error.message || 'Failed to export knowledge base', 'error');
+    }
+}
+window.exportKbCSV = exportKbCSV;
+
+/**
+ * Export response history as CSV
+ */
+async function exportHistoryCSV() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/response-history/export/csv`, {
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || 'Export failed');
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1]
+            || `response-history-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+
+        showToast('Response history exported as CSV!', 'success');
+    } catch (error) {
+        console.error('History CSV export error:', error);
+        showToast(error.message || 'Failed to export response history', 'error');
+    }
+}
+window.exportHistoryCSV = exportHistoryCSV;
 
 // ==================== CONTENT TEMPLATE MANAGEMENT ====================
 
