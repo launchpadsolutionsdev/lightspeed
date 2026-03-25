@@ -1,15 +1,6 @@
 // Lightspeed by Launchpad Solutions v3.0
 // Multi-Tool Platform with Customer Response & Data Analysis
 
-// ==================== MOBILE MENU ====================
-function closeMobileMenu() {
-    var menu = document.getElementById('landingMobileMenu');
-    if (menu) {
-        menu.classList.remove('open');
-        document.body.style.overflow = '';
-    }
-}
-
 // ==================== STICKY CTA & BACK TO TOP ====================
 function initScrollUI() {
     var stickyCta = document.getElementById('stickyCta');
