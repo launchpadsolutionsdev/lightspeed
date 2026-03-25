@@ -15,6 +15,7 @@ const auditLog = require('../services/auditLog');
 const { cache } = require('../services/cache');
 const { chunkAndStore, rechunkAllEntries } = require('../services/chunkingService');
 const log = require('../services/logger');
+const { toCSV } = require('../services/csvExport');
 
 // Helper to invalidate KB cache for an org after any write operation
 function invalidateKbCache(organizationId) {
@@ -686,6 +687,60 @@ router.get('/export/all', authenticate, async (req, res) => {
     } catch (error) {
         log.error('Export knowledge base error', { error: error.message || error });
         res.status(500).json({ error: 'Failed to export entries' });
+    }
+});
+
+/**
+ * GET /api/knowledge-base/export/csv
+ * Export all knowledge base entries as a CSV file.
+ * Supports ?type=support|internal filter.
+ */
+router.get('/export/csv', authenticate, async (req, res) => {
+    try {
+        const organizationId = req.organizationId;
+        if (!organizationId) {
+            return res.status(400).json({ error: 'No organization found' });
+        }
+
+        const { type } = req.query;
+        let sql = `SELECT title, content, category, tags, kb_type, created_at, updated_at
+                    FROM knowledge_base WHERE organization_id = $1`;
+        const params = [organizationId];
+
+        if (type && ['support', 'internal'].includes(type)) {
+            sql += ' AND kb_type = $2';
+            params.push(type);
+        }
+
+        sql += ' ORDER BY category, title';
+        const result = await pool.query(sql, params);
+
+        const columns = [
+            { key: 'title', header: 'Title' },
+            { key: 'content', header: 'Content' },
+            { key: 'category', header: 'Category' },
+            { key: 'tags_str', header: 'Tags' },
+            { key: 'kb_type', header: 'Type' },
+            { key: 'created_at', header: 'Created' },
+            { key: 'updated_at', header: 'Updated' }
+        ];
+
+        const rows = result.rows.map(r => ({
+            ...r,
+            tags_str: (r.tags || []).join('; '),
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : '',
+            updated_at: r.updated_at ? new Date(r.updated_at).toISOString() : ''
+        }));
+
+        const csv = toCSV(rows, columns);
+        const date = new Date().toISOString().slice(0, 10);
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="knowledge-base-${date}.csv"`);
+        res.send(csv);
+
+    } catch (error) {
+        log.error('CSV export knowledge base error', { error: error.message || error });
+        res.status(500).json({ error: 'Failed to export entries as CSV' });
     }
 });
 

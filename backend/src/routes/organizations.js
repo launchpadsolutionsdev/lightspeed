@@ -101,7 +101,11 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
     body('complianceEnabled').optional().isBoolean(),
     body('bumpFeedUrl').optional(),
     body('bumpWinnersFeedUrl').optional(),
-    body('bumpSalesFeedUrl').optional()
+    body('bumpSalesFeedUrl').optional(),
+    body('retentionResponseHistoryDays').optional().isInt({ min: 30, max: 3650 }),
+    body('retentionAuditLogsDays').optional().isInt({ min: 30, max: 3650 }),
+    body('retentionConversationsDays').optional().isInt({ min: 30, max: 3650 }),
+    body('retentionUsageLogsDays').optional().isInt({ min: 30, max: 3650 })
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -131,7 +135,11 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
             complianceEnabled: 'compliance_enabled',
             bumpFeedUrl: 'bump_feed_url',
             bumpWinnersFeedUrl: 'bump_winners_feed_url',
-            bumpSalesFeedUrl: 'bump_sales_feed_url'
+            bumpSalesFeedUrl: 'bump_sales_feed_url',
+            retentionResponseHistoryDays: 'retention_response_history_days',
+            retentionAuditLogsDays: 'retention_audit_logs_days',
+            retentionConversationsDays: 'retention_conversations_days',
+            retentionUsageLogsDays: 'retention_usage_logs_days'
         };
 
         const updates = [];

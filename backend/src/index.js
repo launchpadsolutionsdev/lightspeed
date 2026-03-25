@@ -40,6 +40,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const feedDashboardRoutes = require('./routes/feedDashboard');
 const bugReportRoutes = require('./routes/bugReports');
 const shopifyAnalytics = require('./services/shopifyAnalytics');
+const { runRetentionCleanup } = require('./services/dataRetention');
 const pool = require('../config/database');
 
 // Validate required environment variables
@@ -233,6 +234,17 @@ setInterval(() => {
         .finally(() => { analyticsSyncRunning = false; });
 }, 15 * 60 * 1000);
 log.info('Shopify analytics sync scheduler started (15min interval)');
+
+// Start data retention cleanup (runs daily at ~3 AM server time, or every 24 hours)
+let retentionRunning = false;
+setInterval(() => {
+    if (retentionRunning) return;
+    retentionRunning = true;
+    runRetentionCleanup()
+        .catch(err => log.error('Data retention cleanup error', { error: err.message }))
+        .finally(() => { retentionRunning = false; });
+}, 24 * 60 * 60 * 1000); // 24 hours
+log.info('Data retention cleanup scheduler started (24h interval)');
 
 // 404 handler
 app.use((req, res) => {
