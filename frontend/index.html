@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="landing.css?v=20260301">
     <link rel="stylesheet" href="rules-of-play.css?v=20260301">
     <link rel="stylesheet" href="compliance.css?v=20260316e">
+    <link rel="stylesheet" href="mobile.css?v=20260325">
     <!-- SheetJS for Excel parsing (Data Analysis Tool) — defer to avoid blocking page render -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" defer></script>
     <!-- Chart.js for visualizations — defer to avoid blocking page render -->
@@ -13663,6 +13664,22 @@
             </div>
         </nav>
 
+        <!-- Mobile Menu -->
+        <div class="landing-mobile-menu" id="landingMobileMenu">
+            <button class="landing-mobile-menu-close" id="mobileMenuClose" aria-label="Close menu">&times;</button>
+            <button class="landing-mobile-menu-link" onclick="document.querySelector('#features').scrollIntoView({behavior: 'smooth'}); closeMobileMenu();">Features</button>
+            <a href="/pricing/" class="landing-mobile-menu-link">Pricing</a>
+            <a href="/case-study/" class="landing-mobile-menu-link">Case Studies</a>
+            <a href="/whats-new/" class="landing-mobile-menu-link">What's New</a>
+            <a href="/about/" class="landing-mobile-menu-link">About</a>
+            <a href="/faq/" class="landing-mobile-menu-link">FAQ</a>
+            <button class="landing-mobile-menu-link" onclick="document.querySelector('#contact').scrollIntoView({behavior: 'smooth'}); closeMobileMenu();">Contact</button>
+            <div class="landing-mobile-menu-ctas">
+                <button class="ls-btn ls-btn-secondary" style="width: 100%; justify-content: center;" onclick="document.getElementById('navSignInBtn').click(); closeMobileMenu();">Sign in</button>
+                <button class="ls-btn ls-btn-primary" style="width: 100%; justify-content: center;" onclick="document.getElementById('navLaunchAppBtn').click(); closeMobileMenu();">Get Started Free</button>
+            </div>
+        </div>
+
         <!-- Hero Section -->
         <section class="landing-hero">
             <div class="landing-hero-inner">
@@ -14754,7 +14771,11 @@
     <!-- ==================== TOOL MENU PAGE ==================== -->
     <div class="tool-menu-page" id="toolMenuPage">
         <div class="tool-menu-bg"></div>
-
+        <div class="tool-menu-mobile-header">
+            <button class="sidebar-toggle" id="dashboardSidebarToggle" title="Toggle menu">
+                <span>&#9776;</span>
+            </button>
+        </div>
         <div class="tool-menu-content nested-card">
             <div class="tool-menu-greeting">
                 <h1 class="tool-menu-title" id="menuGreeting">Good morning.</h1>

@@ -16594,6 +16594,28 @@ function initParallaxAndAnimations() {
         });
     }
 
+    // Mobile menu toggle
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const landingMobileMenu = document.getElementById('landingMobileMenu');
+    const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+    if (mobileMenuToggle && landingMobileMenu) {
+        mobileMenuToggle.addEventListener('click', () => {
+            landingMobileMenu.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        });
+    }
+    if (mobileMenuClose && landingMobileMenu) {
+        mobileMenuClose.addEventListener('click', closeMobileMenu);
+    }
+
+    window.closeMobileMenu = function() {
+        if (landingMobileMenu) {
+            landingMobileMenu.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    };
+
     // Sign-in buttons - navigate to login
     const signInBtns = [
         document.getElementById('navSignInBtn'),
