@@ -13665,6 +13665,7 @@
         </nav>
 
         <!-- Mobile Menu -->
+        <script>function closeMobileMenu(){var m=document.getElementById('landingMobileMenu');if(m){m.classList.remove('open');document.body.style.overflow='';}}</script>
         <div class="landing-mobile-menu" id="landingMobileMenu">
             <button class="landing-mobile-menu-close" id="mobileMenuClose" aria-label="Close menu">&times;</button>
             <button class="landing-mobile-menu-link" onclick="document.querySelector('#features').scrollIntoView({behavior: 'smooth'}); closeMobileMenu();">Features</button>
