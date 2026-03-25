@@ -8,7 +8,7 @@
  */
 
 const pool = require('../../config/database');
-const { cache, TTL } = require('./cache');
+const { cache } = require('./cache');
 const log = require('./logger');
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
