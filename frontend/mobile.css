@@ -21,6 +21,11 @@ table {
     max-width: 100%;
 }
 
+/* Hide dashboard mobile header on desktop */
+.tool-menu-mobile-header {
+    display: none;
+}
+
 /* ── Tablet/Small: ≤ 900px ────────────────────────────────── */
 /* This breakpoint matches when the sidebar goes off-screen */
 @media (max-width: 900px) {
@@ -52,6 +57,7 @@ table {
         display: flex;
         align-items: center;
     }
+
     /* Dashboard/tool menu mobile header - show sidebar toggle */
     .tool-menu-mobile-header {
         display: flex;
@@ -67,11 +73,6 @@ table {
     .tool-menu-mobile-header .sidebar-toggle {
         display: flex;
     }
-}
-
-/* Hide dashboard mobile header on desktop */
-.tool-menu-mobile-header {
-    display: none;
 }
 
 /* ── Mobile: ≤ 768px ──────────────────────────────────────── */
