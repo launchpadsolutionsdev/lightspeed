@@ -639,6 +639,14 @@
     border: 1px solid #E3E8EE;
 }
 
+.hero-slide-list {
+    margin: 6px 0 8px 16px;
+    padding: 0;
+    list-style: disc;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
 .hero-slide-typing {
     animation: heroFadeInUp 0.8s ease both;
     animation-delay: 0.3s;
