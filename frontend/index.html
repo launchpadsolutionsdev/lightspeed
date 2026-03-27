@@ -13852,25 +13852,76 @@
                                             <div class="hero-kpi-change up">+8.1%</div>
                                         </div>
                                         <div class="hero-kpi-card">
-                                            <div class="hero-kpi-label">Avg. Order</div>
-                                            <div class="hero-kpi-value">$14.77</div>
-                                            <div class="hero-kpi-change up">+3.2%</div>
+                                            <div class="hero-kpi-label">Active Subscribers</div>
+                                            <div class="hero-kpi-value">312</div>
+                                            <div class="hero-kpi-change up">+5.6%</div>
+                                        </div>
+                                        <div class="hero-kpi-card">
+                                            <div class="hero-kpi-label">Conversion Rate</div>
+                                            <div class="hero-kpi-value">4.2%</div>
+                                            <div class="hero-kpi-change up">+0.8%</div>
                                         </div>
                                     </div>
-                                    <!-- Mini chart -->
+                                    <!-- Revenue chart -->
                                     <div class="hero-slide-chart">
                                         <div class="hero-chart-label">Revenue &mdash; Last 7 days</div>
-                                        <svg class="hero-chart-svg" viewBox="0 0 320 80" preserveAspectRatio="none">
+                                        <svg class="hero-chart-svg" viewBox="0 0 320 100" preserveAspectRatio="none">
                                             <defs>
                                                 <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="0%" stop-color="#E91E8C" stop-opacity="0.25"/>
                                                     <stop offset="100%" stop-color="#E91E8C" stop-opacity="0"/>
                                                 </linearGradient>
                                             </defs>
-                                            <path class="hero-chart-area" d="M0 65 L53 50 L107 55 L160 35 L213 25 L267 30 L320 10 L320 80 L0 80Z" fill="url(#chartGrad)"/>
-                                            <polyline class="hero-chart-line" points="0,65 53,50 107,55 160,35 213,25 267,30 320,10" fill="none" stroke="#E91E8C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                            <circle class="hero-chart-point" cx="320" cy="10" r="4" fill="#E91E8C"/>
+                                            <!-- Gridlines -->
+                                            <line x1="0" y1="25" x2="320" y2="25" stroke="#E3E8EE" stroke-width="0.5"/>
+                                            <line x1="0" y1="50" x2="320" y2="50" stroke="#E3E8EE" stroke-width="0.5"/>
+                                            <line x1="0" y1="75" x2="320" y2="75" stroke="#E3E8EE" stroke-width="0.5"/>
+                                            <path class="hero-chart-area" d="M0 80 L53 62 L107 68 L160 42 L213 30 L267 36 L320 12 L320 100 L0 100Z" fill="url(#chartGrad)"/>
+                                            <polyline class="hero-chart-line" points="0,80 53,62 107,68 160,42 213,30 267,36 320,12" fill="none" stroke="#E91E8C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            <circle class="hero-chart-point" cx="320" cy="12" r="4" fill="#E91E8C"/>
                                         </svg>
+                                        <div class="hero-chart-x-axis">
+                                            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                                        </div>
+                                    </div>
+                                    <!-- Live orders feed -->
+                                    <div class="hero-slide-orders">
+                                        <div class="hero-orders-header">
+                                            <span class="hero-orders-title">Live Orders</span>
+                                            <span class="hero-slide-live-dot"></span>
+                                        </div>
+                                        <div class="hero-orders-list">
+                                            <div class="hero-order-row">
+                                                <span class="hero-order-time">2m ago</span>
+                                                <span class="hero-order-name">Sarah M.</span>
+                                                <span class="hero-order-detail">10 tickets</span>
+                                                <span class="hero-order-amount">$25.00</span>
+                                            </div>
+                                            <div class="hero-order-row">
+                                                <span class="hero-order-time">8m ago</span>
+                                                <span class="hero-order-name">James T.</span>
+                                                <span class="hero-order-detail">5 tickets</span>
+                                                <span class="hero-order-amount">$10.00</span>
+                                            </div>
+                                            <div class="hero-order-row">
+                                                <span class="hero-order-time">14m ago</span>
+                                                <span class="hero-order-name">Emily R.</span>
+                                                <span class="hero-order-detail">50 tickets</span>
+                                                <span class="hero-order-amount">$75.00</span>
+                                            </div>
+                                            <div class="hero-order-row">
+                                                <span class="hero-order-time">21m ago</span>
+                                                <span class="hero-order-name">David K.</span>
+                                                <span class="hero-order-detail">5 tickets</span>
+                                                <span class="hero-order-amount">$10.00</span>
+                                            </div>
+                                            <div class="hero-order-row">
+                                                <span class="hero-order-time">34m ago</span>
+                                                <span class="hero-order-name">Lisa W.</span>
+                                                <span class="hero-order-detail">25 tickets + sub</span>
+                                                <span class="hero-order-amount">$50.00</span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="hero-slide-footer-stat">
                                         <span class="hero-stat-pill">Shopify synced</span>
