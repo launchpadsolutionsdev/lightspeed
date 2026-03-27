@@ -443,10 +443,10 @@
     white-space: nowrap;
 }
 
-.hero-showcase-dot svg {
+.hero-showcase-dot-icon {
+    font-size: 14px;
+    line-height: 1;
     flex-shrink: 0;
-    opacity: 0.6;
-    transition: opacity 0.3s ease;
 }
 
 .hero-showcase-dot:hover {
@@ -455,19 +455,10 @@
     border-color: #CBD5E1;
 }
 
-.hero-showcase-dot:hover svg {
-    opacity: 1;
-}
-
 .hero-showcase-dot.active {
     background: #0A2540;
     color: #fff;
     border-color: #0A2540;
-}
-
-.hero-showcase-dot.active svg {
-    opacity: 1;
-    stroke: #fff;
 }
 
 /* --- Slides Container --- */
@@ -535,6 +526,8 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    font-size: 18px;
+    line-height: 1;
 }
 
 .hero-slide-icon.icon-gradient { background: linear-gradient(135deg, #E91E8C, #F47B3A); }
