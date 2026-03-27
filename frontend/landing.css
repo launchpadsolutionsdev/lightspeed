@@ -364,7 +364,13 @@
     display: grid;
     grid-template-columns: 1fr 1.2fr;
     gap: 48px;
-    align-items: center;
+    align-items: stretch;
+}
+
+.landing-hero-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 /* Eyebrow text */
@@ -407,6 +413,9 @@
 .hero-showcase {
     position: relative;
     z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
 }
 
 /* --- Navigation Tabs --- */
@@ -464,7 +473,8 @@
 /* --- Slides Container --- */
 .hero-showcase-slides {
     position: relative;
-    min-height: 400px;
+    flex: 1;
+    min-height: 0;
 }
 
 .hero-showcase-slide {
@@ -472,6 +482,7 @@
     top: 0;
     left: 0;
     width: 100%;
+    height: 100%;
     opacity: 0;
     transform: translateY(12px);
     transition: opacity 0.5s ease, transform 0.5s ease;
@@ -483,6 +494,7 @@
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
+    height: 100%;
 }
 
 /* --- Shared Slide Panel --- */
@@ -493,6 +505,10 @@
     box-shadow: 0 24px 80px rgba(10, 37, 64, 0.10), 0 2px 6px rgba(10, 37, 64, 0.04);
     font-family: var(--font-family);
     border: 1px solid #E3E8EE;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
 }
 
 /* --- Slide Header --- */
@@ -590,6 +606,8 @@
     flex-direction: column;
     gap: 14px;
     margin-bottom: 16px;
+    flex: 1;
+    justify-content: center;
 }
 
 .hero-slide-msg {
@@ -680,6 +698,10 @@
 
 .hero-slide-calendar {
     margin-bottom: 14px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .hero-cal-header {
@@ -801,6 +823,7 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
     margin-bottom: 16px;
+    margin-top: auto;
 }
 
 .hero-kpi-card {
@@ -838,6 +861,7 @@
 
 .hero-slide-chart {
     margin-bottom: 14px;
+    margin-top: auto;
 }
 
 .hero-chart-label {
@@ -899,6 +923,8 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    flex: 1;
+    justify-content: center;
 }
 
 .hero-ra-incoming {
