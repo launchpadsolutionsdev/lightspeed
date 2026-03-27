@@ -13700,99 +13700,222 @@
                         </div>
                     </div>
 
-                    <!-- Right: Dashboard Mockup -->
-                    <div class="hero-mockup">
-                        <div class="hero-mockup-panel">
-                            <!-- Greeting -->
-                            <div class="hero-mockup-greeting-title">Good afternoon, Sarah.</div>
-                            <div class="hero-mockup-greeting-sub">What would you like to work on?</div>
+                    <!-- Right: Animated Feature Showcase -->
+                    <div class="hero-showcase">
+                        <!-- Navigation dots -->
+                        <div class="hero-showcase-nav">
+                            <button class="hero-showcase-dot active" data-slide="0">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                                Ask Lightspeed
+                            </button>
+                            <button class="hero-showcase-dot" data-slide="1">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                Runway
+                            </button>
+                            <button class="hero-showcase-dot" data-slide="2">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                Heartbeat
+                            </button>
+                            <button class="hero-showcase-dot" data-slide="3">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                Response Assistant
+                            </button>
+                        </div>
 
-                            <!-- Tool Cards -->
-                            <div class="hero-mockup-tools">
-                                <!-- Response Assistant (left, tall) -->
-                                <div class="hero-mockup-card hero-mockup-card-response">
-                                    <div>
-                                        <span class="hero-mockup-icon icon-blue">&#9889;</span>
-                                        <span class="hero-mockup-badge">AI-Powered</span>
+                        <!-- Slides container -->
+                        <div class="hero-showcase-slides">
+
+                            <!-- Slide 1: Ask Lightspeed -->
+                            <div class="hero-showcase-slide active" data-slide="0">
+                                <div class="hero-slide-panel">
+                                    <div class="hero-slide-header">
+                                        <div class="hero-slide-header-left">
+                                            <span class="hero-slide-icon icon-gradient">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                                            </span>
+                                            <span class="hero-slide-title">Ask Lightspeed</span>
+                                            <span class="hero-slide-badge">AI Assistant</span>
+                                        </div>
+                                        <div class="hero-slide-model-sel">
+                                            <span class="hero-slide-model active">Claude Sonnet</span>
+                                            <span class="hero-slide-model">Claude Opus</span>
+                                        </div>
                                     </div>
-                                    <div class="hero-mockup-card-title">Response Assistant</div>
-                                    <div class="hero-mockup-card-desc">Generate professional, AI-powered responses to customer inquiries. Customize tone, length, and format. Includes knowledge base, analytics, and quick reply templates.</div>
-                                    <div class="hero-mockup-tags">
-                                        <span class="hero-mockup-tag">Smart Replies</span>
-                                        <span class="hero-mockup-tag">Knowledge Base</span>
-                                        <span class="hero-mockup-tag">Analytics</span>
-                                        <span class="hero-mockup-tag">Templates</span>
+                                    <!-- Chat conversation -->
+                                    <div class="hero-slide-chat">
+                                        <div class="hero-slide-msg user">
+                                            <div class="hero-slide-msg-bubble user">Draft a thank-you email to our top sponsors for Q1</div>
+                                        </div>
+                                        <div class="hero-slide-msg ai">
+                                            <div class="hero-slide-msg-bubble ai">
+                                                <div class="hero-slide-typing">
+                                                    <strong>Subject: Thank You for an Incredible Q1!</strong><br><br>
+                                                    Dear [Sponsor Name],<br><br>
+                                                    On behalf of our entire team, I wanted to personally thank you for your generous support during Q1. Your partnership helped us raise <strong>$24,500</strong> across 3 campaigns, directly funding community programs that&hellip;
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="hero-mockup-cta">Open Response Assistant &rarr;</div>
+                                    <div class="hero-slide-input-bar">
+                                        <svg class="hero-slide-attach" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3ACB9" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                        <span class="hero-slide-input-text">Ask anything&hellip;</span>
+                                        <span class="hero-slide-send-btn">
+                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="#fff"><path d="M2.5 2.2L14 8 2.5 13.8V9.3L9.5 8 2.5 6.7V2.2z"/></svg>
+                                        </span>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <!-- Right column -->
-                                <div class="hero-mockup-right">
-                                    <!-- Draft Assistant -->
-                                    <div class="hero-mockup-card">
-                                        <div>
-                                            <span class="hero-mockup-icon icon-orange">&#9997;&#65039;</span>
-                                            <span class="hero-mockup-badge">AI-Powered</span>
+                            <!-- Slide 2: Runway -->
+                            <div class="hero-showcase-slide" data-slide="1">
+                                <div class="hero-slide-panel">
+                                    <div class="hero-slide-header">
+                                        <div class="hero-slide-header-left">
+                                            <span class="hero-slide-icon icon-purple">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                            </span>
+                                            <span class="hero-slide-title">Runway</span>
+                                            <span class="hero-slide-badge">Content Calendar</span>
                                         </div>
-                                        <div class="hero-mockup-card-title">Draft Assistant</div>
-                                        <div class="hero-mockup-card-desc">Create on-brand social posts, emails, media releases, and ads.</div>
-                                        <div class="hero-mockup-tags">
-                                            <span class="hero-mockup-tag">Social</span>
-                                            <span class="hero-mockup-tag">Email</span>
-                                            <span class="hero-mockup-tag">Media</span>
+                                        <div class="hero-slide-month-nav">
+                                            <span class="hero-slide-month-label">March 2026</span>
                                         </div>
                                     </div>
-
-                                    <!-- Bottom pair -->
-                                    <div class="hero-mockup-right-bottom">
-                                        <!-- Insights Engine -->
-                                        <div class="hero-mockup-card hero-mockup-card-sm">
-                                            <div>
-                                                <span class="hero-mockup-icon icon-green">&#128200;</span>
-                                                <span class="hero-mockup-badge">AI-Powered</span>
-                                            </div>
-                                            <div class="hero-mockup-card-title">Insights Engine</div>
-                                            <div class="hero-mockup-card-desc">Upload data and generate visual dashboards instantly.</div>
-                                            <div class="hero-mockup-tags"><span class="hero-mockup-tag">Analytics</span></div>
+                                    <!-- Calendar grid -->
+                                    <div class="hero-slide-calendar">
+                                        <div class="hero-cal-header">
+                                            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span>
                                         </div>
-                                        <!-- Data Agent -->
-                                        <div class="hero-mockup-card hero-mockup-card-sm">
-                                            <div>
-                                                <span class="hero-mockup-icon icon-yellow">&#128221;</span>
-                                                <span class="hero-mockup-badge">AI-Powered</span>
+                                        <div class="hero-cal-grid">
+                                            <div class="hero-cal-day"><span class="hero-cal-num">2</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">3</span></div>
+                                            <div class="hero-cal-day has-event"><span class="hero-cal-num">4</span><span class="hero-cal-event ev-blue">Email blast</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">5</span></div>
+                                            <div class="hero-cal-day has-event"><span class="hero-cal-num">6</span><span class="hero-cal-event ev-pink">Social post</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">9</span></div>
+                                            <div class="hero-cal-day has-event"><span class="hero-cal-num">10</span><span class="hero-cal-event ev-orange">Ad campaign</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">11</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">12</span></div>
+                                            <div class="hero-cal-day has-event"><span class="hero-cal-num">13</span><span class="hero-cal-event ev-green">Newsletter</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">16</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">17</span></div>
+                                            <div class="hero-cal-day has-event"><span class="hero-cal-num">18</span><span class="hero-cal-event ev-blue">Press release</span></div>
+                                            <div class="hero-cal-day has-event"><span class="hero-cal-num">19</span><span class="hero-cal-event ev-pink">Instagram reel</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">20</span></div>
+                                            <div class="hero-cal-day has-event"><span class="hero-cal-num">23</span><span class="hero-cal-event ev-orange">Sponsor email</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">24</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">25</span></div>
+                                            <div class="hero-cal-day has-event"><span class="hero-cal-num">26</span><span class="hero-cal-event ev-green">Blog post</span></div>
+                                            <div class="hero-cal-day"><span class="hero-cal-num">27</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="hero-slide-footer-stat">
+                                        <span class="hero-stat-pill">8 items scheduled</span>
+                                        <span class="hero-stat-pill">3 drafts ready</span>
+                                        <span class="hero-stat-pill accent">AI-assisted</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 3: Heartbeat -->
+                            <div class="hero-showcase-slide" data-slide="2">
+                                <div class="hero-slide-panel">
+                                    <div class="hero-slide-header">
+                                        <div class="hero-slide-header-left">
+                                            <span class="hero-slide-icon icon-red">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                            </span>
+                                            <span class="hero-slide-title">Heartbeat</span>
+                                            <span class="hero-slide-badge">Live Dashboard</span>
+                                        </div>
+                                        <span class="hero-slide-live-dot"></span>
+                                    </div>
+                                    <!-- KPI cards -->
+                                    <div class="hero-slide-kpis">
+                                        <div class="hero-kpi-card">
+                                            <div class="hero-kpi-label">Total Revenue</div>
+                                            <div class="hero-kpi-value">$18,420</div>
+                                            <div class="hero-kpi-change up">+12.4%</div>
+                                        </div>
+                                        <div class="hero-kpi-card">
+                                            <div class="hero-kpi-label">Tickets Sold</div>
+                                            <div class="hero-kpi-value">1,247</div>
+                                            <div class="hero-kpi-change up">+8.1%</div>
+                                        </div>
+                                        <div class="hero-kpi-card">
+                                            <div class="hero-kpi-label">Avg. Order</div>
+                                            <div class="hero-kpi-value">$14.77</div>
+                                            <div class="hero-kpi-change up">+3.2%</div>
+                                        </div>
+                                    </div>
+                                    <!-- Mini chart -->
+                                    <div class="hero-slide-chart">
+                                        <div class="hero-chart-label">Revenue &mdash; Last 7 days</div>
+                                        <svg class="hero-chart-svg" viewBox="0 0 320 80" preserveAspectRatio="none">
+                                            <defs>
+                                                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stop-color="#E91E8C" stop-opacity="0.25"/>
+                                                    <stop offset="100%" stop-color="#E91E8C" stop-opacity="0"/>
+                                                </linearGradient>
+                                            </defs>
+                                            <path class="hero-chart-area" d="M0 65 L53 50 L107 55 L160 35 L213 25 L267 30 L320 10 L320 80 L0 80Z" fill="url(#chartGrad)"/>
+                                            <polyline class="hero-chart-line" points="0,65 53,50 107,55 160,35 213,25 267,30 320,10" fill="none" stroke="#E91E8C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            <circle class="hero-chart-point" cx="320" cy="10" r="4" fill="#E91E8C"/>
+                                        </svg>
+                                    </div>
+                                    <div class="hero-slide-footer-stat">
+                                        <span class="hero-stat-pill">Shopify synced</span>
+                                        <span class="hero-stat-pill">Auto-refreshing</span>
+                                        <span class="hero-stat-pill accent">AI Insights</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 4: Response Assistant -->
+                            <div class="hero-showcase-slide" data-slide="3">
+                                <div class="hero-slide-panel">
+                                    <div class="hero-slide-header">
+                                        <div class="hero-slide-header-left">
+                                            <span class="hero-slide-icon icon-blue">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                            </span>
+                                            <span class="hero-slide-title">Response Assistant</span>
+                                            <span class="hero-slide-badge">AI-Powered</span>
+                                        </div>
+                                    </div>
+                                    <!-- Incoming message -->
+                                    <div class="hero-slide-ra">
+                                        <div class="hero-ra-incoming">
+                                            <div class="hero-ra-label">Customer Inquiry</div>
+                                            <div class="hero-ra-msg">"Hi, I bought 5 tickets for the 50/50 draw last week but haven't received a confirmation email. Can you help?"</div>
+                                        </div>
+                                        <!-- AI response -->
+                                        <div class="hero-ra-response">
+                                            <div class="hero-ra-label">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                                                AI-Generated Response
                                             </div>
-                                            <div class="hero-mockup-card-title">Data Agent</div>
-                                            <div class="hero-mockup-card-desc">Clean and format customer lists for Mailchimp export.</div>
-                                            <div class="hero-mockup-tags"><span class="hero-mockup-tag">Data Export</span></div>
+                                            <div class="hero-ra-msg ai">Hi there! Thank you for reaching out. I've located your order (#LS-4821) for 5 tickets purchased on March 20. It looks like the confirmation was sent to your spam folder. I've just re-sent it &mdash; please check your inbox!</div>
+                                            <div class="hero-ra-actions">
+                                                <span class="hero-ra-action-btn primary">Send Response</span>
+                                                <span class="hero-ra-action-btn">Edit</span>
+                                                <span class="hero-ra-action-btn">Regenerate</span>
+                                            </div>
+                                        </div>
+                                        <div class="hero-ra-meta">
+                                            <span class="hero-stat-pill">Knowledge Base matched</span>
+                                            <span class="hero-stat-pill">Order lookup complete</span>
+                                            <span class="hero-stat-pill accent">Tone: Professional</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Ask Lightspeed -->
-                            <div class="hero-mockup-ask">
-                                <div class="hero-mockup-ask-header">
-                                    <span class="hero-mockup-ask-icon">&#10024;</span>
-                                    <span class="hero-mockup-ask-title">Ask Lightspeed</span>
-                                    <span class="hero-mockup-ask-ai">AI Assistant</span>
-                                    <div class="hero-mockup-ask-tones">
-                                        <span class="hero-mockup-ask-tone active">Professional</span>
-                                        <span class="hero-mockup-ask-tone">Friendly</span>
-                                        <span class="hero-mockup-ask-tone">Casual</span>
-                                    </div>
-                                </div>
-                                <div class="hero-mockup-prompts">
-                                    <span class="hero-mockup-prompt">Draft a professional email to a corporate sponsor</span>
-                                    <span class="hero-mockup-prompt">Suggest some calls-to-action for our website</span>
-                                    <span class="hero-mockup-prompt">Help me brainstorm social media content ideas for this month</span>
-                                    <span class="hero-mockup-prompt">Write a short blurb about where lottery funds go</span>
-                                </div>
-                                <div class="hero-mockup-input">
-                                    <span class="hero-mockup-input-text">Ask anything...</span>
-                                    <span class="hero-mockup-send"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 2.2L14 8 2.5 13.8V9.3L9.5 8 2.5 6.7V2.2z"/></svg></span>
-                                </div>
-                                <div class="hero-mockup-disclaimer">AI-generated responses. Always verify important information.</div>
-                            </div>
+                        </div>
+
+                        <!-- Progress bar -->
+                        <div class="hero-showcase-progress">
+                            <div class="hero-showcase-progress-bar"></div>
                         </div>
                     </div>
                 </div>
