@@ -41,6 +41,69 @@ function initScrollUI() {
     }
 }
 
+// ==================== HERO SHOWCASE CAROUSEL ====================
+function initHeroShowcase() {
+    var container = document.querySelector('.hero-showcase');
+    if (!container) return;
+
+    var dots = container.querySelectorAll('.hero-showcase-dot');
+    var slides = container.querySelectorAll('.hero-showcase-slide');
+    var progressBar = container.querySelector('.hero-showcase-progress-bar');
+    var current = 0;
+    var total = slides.length;
+    var interval = 6000; // 6 seconds per slide
+    var timer = null;
+    var startTime = 0;
+    var rafId = null;
+
+    function goToSlide(index) {
+        slides[current].classList.remove('active');
+        dots[current].classList.remove('active');
+        current = index;
+        slides[current].classList.add('active');
+        dots[current].classList.add('active');
+        startTime = Date.now();
+    }
+
+    function updateProgress() {
+        var elapsed = Date.now() - startTime;
+        var progress = Math.min((elapsed / interval) * 100, 100);
+        if (progressBar) progressBar.style.width = progress + '%';
+        rafId = requestAnimationFrame(updateProgress);
+    }
+
+    function startAutoplay() {
+        stopAutoplay();
+        startTime = Date.now();
+        rafId = requestAnimationFrame(updateProgress);
+        timer = setInterval(function() {
+            goToSlide((current + 1) % total);
+        }, interval);
+    }
+
+    function stopAutoplay() {
+        if (timer) clearInterval(timer);
+        if (rafId) cancelAnimationFrame(rafId);
+        timer = null;
+        rafId = null;
+    }
+
+    // Click handlers for navigation dots
+    dots.forEach(function(dot, i) {
+        dot.addEventListener('click', function() {
+            if (i === current) return;
+            goToSlide(i);
+            startAutoplay(); // Reset timer on manual nav
+        });
+    });
+
+    // Pause on hover, resume on leave
+    container.addEventListener('mouseenter', stopAutoplay);
+    container.addEventListener('mouseleave', startAutoplay);
+
+    startAutoplay();
+}
+
 // ==================== COOKIE CONSENT ====================
 function dismissCookieBanner(accepted) {
     localStorage.setItem('cookie_consent', accepted ? 'accepted' : 'declined');
@@ -834,6 +897,9 @@ function setupAuthEventListeners() {
 
     // Scroll UI (sticky CTA + back to top)
     initScrollUI();
+
+    // Hero showcase carousel
+    initHeroShowcase();
 
     // Pricing toggle (monthly / annual)
     const pricingToggle = document.getElementById('pricingToggle');
