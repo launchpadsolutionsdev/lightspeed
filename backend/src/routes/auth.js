@@ -140,7 +140,8 @@ router.post('/google', async (req, res) => {
 
         // Get all user's organizations
         const orgResult = await pool.query(
-            `SELECT o.*, om.role
+            `SELECT o.*, om.role,
+                    (SELECT COUNT(*) FROM organization_memberships WHERE organization_id = o.id) as member_count
              FROM organizations o
              JOIN organization_memberships om ON o.id = om.organization_id
              WHERE om.user_id = $1
@@ -317,7 +318,8 @@ router.post('/microsoft', async (req, res) => {
 
         // Get all user's organizations
         const orgResult = await pool.query(
-            `SELECT o.*, om.role
+            `SELECT o.*, om.role,
+                    (SELECT COUNT(*) FROM organization_memberships WHERE organization_id = o.id) as member_count
              FROM organizations o
              JOIN organization_memberships om ON o.id = om.organization_id
              WHERE om.user_id = $1
@@ -360,7 +362,8 @@ router.post('/microsoft', async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
     try {
         const orgResult = await pool.query(
-            `SELECT o.*, om.role
+            `SELECT o.*, om.role,
+                    (SELECT COUNT(*) FROM organization_memberships WHERE organization_id = o.id) as member_count
              FROM organizations o
              JOIN organization_memberships om ON o.id = om.organization_id
              WHERE om.user_id = $1
