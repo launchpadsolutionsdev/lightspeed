@@ -24328,7 +24328,8 @@ async function initComplianceNav() {
         }
 
         // Show compliance admin nav for super admins only
-        const isSuperAdmin = await checkSuperAdmin().catch(() => false);
+        let isSuperAdmin = false;
+        try { isSuperAdmin = checkSuperAdmin(); } catch (_) {}
         if (isSuperAdmin) {
             const knowledgeNavBtn = document.querySelector('.sidebar-btn[data-page="knowledge"]');
             if (knowledgeNavBtn && !document.getElementById('complianceAdminNavBtn')) {
