@@ -5448,6 +5448,14 @@ function loginUser(user, showMessage = true) {
     // Setup main app event listeners if not already done
     setupEventListeners();
 
+    // Populate org switcher from login data immediately
+    if (currentUser && currentUser.organizations && currentUser.organizations.length > 0) {
+        userOrganizations = currentUser.organizations;
+        currentOrgId = currentUser.organization?.id || userOrganizations[0]?.id;
+        currentUserRole = currentUser.organization?.role || userOrganizations[0]?.role;
+        renderOrgSwitcher();
+    }
+
     // Load settings into forms
     loadSettings();
 
