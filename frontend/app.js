@@ -15665,7 +15665,82 @@ function processNormalizerFile(file) {
             const workbook = XLSX.read(data, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
-            const rawData = XLSX.utils.sheet_to_json(sheet);
+
+            // First try standard parsing (uses first row as headers)
+            let rawData = XLSX.utils.sheet_to_json(sheet);
+
+            // Check if headers look like real headers or if they're actually data
+            // by testing if any column name matches known header patterns
+            const headerPatterns = /^(email|e-mail|first\s*name|last\s*name|fname|lname|name|phone|address|city|state|zip|company|customer)/i;
+            const hasRealHeaders = rawData.length > 0 && Object.keys(rawData[0]).some(key => headerPatterns.test(key.trim()));
+
+            if (!hasRealHeaders && rawData.length > 0) {
+                // No recognizable headers found — the file likely has no header row
+                // Re-parse as array-of-arrays and detect columns by content
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+                // Scan first several rows to find which column index contains emails
+                let emailColIdx = -1;
+                const scanLimit = Math.min(rows.length, 20);
+                const colScores = {};
+                for (let r = 0; r < scanLimit; r++) {
+                    const row = rows[r];
+                    if (!Array.isArray(row)) continue;
+                    for (let c = 0; c < row.length; c++) {
+                        const val = String(row[c] || '').trim();
+                        if (emailRegex.test(val)) {
+                            colScores[c] = (colScores[c] || 0) + 1;
+                        }
+                    }
+                }
+                // Pick the column with the most email matches
+                let bestCount = 0;
+                for (const [idx, count] of Object.entries(colScores)) {
+                    if (count > bestCount) {
+                        bestCount = count;
+                        emailColIdx = parseInt(idx);
+                    }
+                }
+
+                if (emailColIdx >= 0) {
+                    // Rebuild rawData as objects with synthetic column names
+                    // Try to identify name columns: look for columns with text-only values near the email column
+                    const nameColIndices = [];
+                    for (let c = 0; c < (rows[0] || []).length; c++) {
+                        if (c === emailColIdx) continue;
+                        let nameScore = 0;
+                        for (let r = 0; r < scanLimit; r++) {
+                            const val = String((rows[r] || [])[c] || '').trim();
+                            // Looks like a name: alphabetic, maybe with spaces/hyphens, not a number or email
+                            if (val && /^[a-zA-Z][a-zA-Z\s\-'.]{0,40}$/.test(val) && !emailRegex.test(val)) {
+                                nameScore++;
+                            }
+                        }
+                        if (nameScore >= scanLimit * 0.4) {
+                            nameColIndices.push(c);
+                        }
+                    }
+
+                    // Assign synthetic header names
+                    rawData = rows.map(row => {
+                        if (!Array.isArray(row)) return {};
+                        const obj = {};
+                        obj['Email'] = row[emailColIdx] || '';
+                        if (nameColIndices.length === 1) {
+                            obj['First Name'] = row[nameColIndices[0]] || '';
+                        } else if (nameColIndices.length >= 2) {
+                            // Assume the first name-like column before the second is first name
+                            obj['First Name'] = row[nameColIndices[0]] || '';
+                            obj['Last Name'] = row[nameColIndices[1]] || '';
+                        }
+                        return obj;
+                    });
+                    console.log(`[Marketing Contact List] No headers detected. Auto-mapped column ${emailColIdx} as Email` +
+                        (nameColIndices.length > 0 ? `, columns [${nameColIndices.join(', ')}] as name fields` : '') +
+                        `. (${rows.length} rows)`);
+                }
+            }
 
             // Process the data for Mailchimp
             processForMailchimp(rawData);
