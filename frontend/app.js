@@ -15537,6 +15537,104 @@ function renderLeaderboardHtml(container, leaderboard) {
     container.innerHTML = podiumHtml + listHtml;
 }
 
+// ==================== DATA AGENT SHARED UTILITIES ====================
+
+/**
+ * Parse a spreadsheet sheet with automatic header detection.
+ * If the first row doesn't contain recognizable headers, re-parses
+ * as raw arrays and detects columns by content (email regex, name patterns).
+ * Returns an array of objects with proper column names.
+ */
+function parseSheetAutoHeaders(sheet) {
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    const HEADER_PATTERNS = /^(email|e-?mail|first\s*name|last\s*name|fname|lname|name|phone|address|city|state|zip|company|customer|seller|amount|total|quantity|status|date|id|event|order)/i;
+
+    // First try standard parsing (Row 1 = headers)
+    const defaultData = XLSX.utils.sheet_to_json(sheet);
+    if (defaultData.length === 0) return defaultData;
+
+    // Check if column names look like real headers
+    const defaultCols = Object.keys(defaultData[0]);
+    const hasRealHeaders = defaultCols.some(key => HEADER_PATTERNS.test(key.trim()));
+    if (hasRealHeaders) return defaultData;
+
+    // No recognizable headers — re-parse as raw arrays and detect by content
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    if (rows.length === 0) return defaultData;
+
+    const scanLimit = Math.min(rows.length, 20);
+    const maxCols = rows.reduce((max, r) => Math.max(max, Array.isArray(r) ? r.length : 0), 0);
+
+    // Score each column: count how many rows have email-like values
+    const emailScores = {};
+    const nameScores = {};
+    for (let r = 0; r < scanLimit; r++) {
+        const row = rows[r];
+        if (!Array.isArray(row)) continue;
+        for (let c = 0; c < row.length; c++) {
+            const val = String(row[c] || '').trim();
+            if (EMAIL_REGEX.test(val)) {
+                emailScores[c] = (emailScores[c] || 0) + 1;
+            } else if (val && /^[a-zA-Z][a-zA-Z\s\-'.]{0,40}$/.test(val)) {
+                nameScores[c] = (nameScores[c] || 0) + 1;
+            }
+        }
+    }
+
+    // Find the best email column
+    let emailColIdx = -1;
+    let bestEmailCount = 0;
+    for (const [idx, count] of Object.entries(emailScores)) {
+        if (count > bestEmailCount) {
+            bestEmailCount = count;
+            emailColIdx = parseInt(idx);
+        }
+    }
+
+    // Find name-like columns (at least 40% of scanned rows are name-like)
+    const nameColIndices = [];
+    for (let c = 0; c < maxCols; c++) {
+        if (c === emailColIdx) continue;
+        if ((nameScores[c] || 0) >= scanLimit * 0.4) {
+            nameColIndices.push(c);
+        }
+    }
+
+    // Build synthetic column names
+    const colNames = [];
+    for (let c = 0; c < maxCols; c++) {
+        if (c === emailColIdx) {
+            colNames[c] = 'Email';
+        } else if (nameColIndices.length >= 2 && c === nameColIndices[0]) {
+            colNames[c] = 'First Name';
+        } else if (nameColIndices.length >= 2 && c === nameColIndices[1]) {
+            colNames[c] = 'Last Name';
+        } else if (nameColIndices.length === 1 && c === nameColIndices[0]) {
+            colNames[c] = 'Name';
+        } else {
+            // Generic column label (Column A, Column B, etc.)
+            colNames[c] = 'Column ' + String.fromCharCode(65 + Math.min(c, 25));
+        }
+    }
+
+    const logParts = [];
+    if (emailColIdx >= 0) logParts.push(`col ${emailColIdx} → Email`);
+    if (nameColIndices.length > 0) logParts.push(`cols [${nameColIndices.join(', ')}] → name fields`);
+    console.log(`[Data Agent] No headers detected. Auto-mapped: ${logParts.join(', ') || 'no email/name columns found'}. (${rows.length} rows, ${maxCols} columns)`);
+
+    // Convert rows to objects using synthetic column names
+    return rows.map(row => {
+        if (!Array.isArray(row)) return {};
+        const obj = {};
+        for (let c = 0; c < maxCols; c++) {
+            if (colNames[c] && row[c] != null) {
+                obj[colNames[c]] = row[c];
+            }
+        }
+        return obj;
+    });
+}
+
 // ==================== LIST NORMALIZER ====================
 let dataAgentListenersSetup = false;
 let normalizerProcessedData = null;
@@ -15663,84 +15761,8 @@ function processNormalizerFile(file) {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-
-            // First try standard parsing (uses first row as headers)
-            let rawData = XLSX.utils.sheet_to_json(sheet);
-
-            // Check if headers look like real headers or if they're actually data
-            // by testing if any column name matches known header patterns
-            const headerPatterns = /^(email|e-mail|first\s*name|last\s*name|fname|lname|name|phone|address|city|state|zip|company|customer)/i;
-            const hasRealHeaders = rawData.length > 0 && Object.keys(rawData[0]).some(key => headerPatterns.test(key.trim()));
-
-            if (!hasRealHeaders && rawData.length > 0) {
-                // No recognizable headers found — the file likely has no header row
-                // Re-parse as array-of-arrays and detect columns by content
-                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-                // Scan first several rows to find which column index contains emails
-                let emailColIdx = -1;
-                const scanLimit = Math.min(rows.length, 20);
-                const colScores = {};
-                for (let r = 0; r < scanLimit; r++) {
-                    const row = rows[r];
-                    if (!Array.isArray(row)) continue;
-                    for (let c = 0; c < row.length; c++) {
-                        const val = String(row[c] || '').trim();
-                        if (emailRegex.test(val)) {
-                            colScores[c] = (colScores[c] || 0) + 1;
-                        }
-                    }
-                }
-                // Pick the column with the most email matches
-                let bestCount = 0;
-                for (const [idx, count] of Object.entries(colScores)) {
-                    if (count > bestCount) {
-                        bestCount = count;
-                        emailColIdx = parseInt(idx);
-                    }
-                }
-
-                if (emailColIdx >= 0) {
-                    // Rebuild rawData as objects with synthetic column names
-                    // Try to identify name columns: look for columns with text-only values near the email column
-                    const nameColIndices = [];
-                    for (let c = 0; c < (rows[0] || []).length; c++) {
-                        if (c === emailColIdx) continue;
-                        let nameScore = 0;
-                        for (let r = 0; r < scanLimit; r++) {
-                            const val = String((rows[r] || [])[c] || '').trim();
-                            // Looks like a name: alphabetic, maybe with spaces/hyphens, not a number or email
-                            if (val && /^[a-zA-Z][a-zA-Z\s\-'.]{0,40}$/.test(val) && !emailRegex.test(val)) {
-                                nameScore++;
-                            }
-                        }
-                        if (nameScore >= scanLimit * 0.4) {
-                            nameColIndices.push(c);
-                        }
-                    }
-
-                    // Assign synthetic header names
-                    rawData = rows.map(row => {
-                        if (!Array.isArray(row)) return {};
-                        const obj = {};
-                        obj['Email'] = row[emailColIdx] || '';
-                        if (nameColIndices.length === 1) {
-                            obj['First Name'] = row[nameColIndices[0]] || '';
-                        } else if (nameColIndices.length >= 2) {
-                            // Assume the first name-like column before the second is first name
-                            obj['First Name'] = row[nameColIndices[0]] || '';
-                            obj['Last Name'] = row[nameColIndices[1]] || '';
-                        }
-                        return obj;
-                    });
-                    console.log(`[Marketing Contact List] No headers detected. Auto-mapped column ${emailColIdx} as Email` +
-                        (nameColIndices.length > 0 ? `, columns [${nameColIndices.join(', ')}] as name fields` : '') +
-                        `. (${rows.length} rows)`);
-                }
-            }
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rawData = parseSheetAutoHeaders(sheet);
 
             // Process the data for Mailchimp
             processForMailchimp(rawData);
@@ -16077,7 +16099,7 @@ function loadRawNormalizerFile(file) {
             const workbook = XLSX.read(data, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
-            rawNormalizerRawData = XLSX.utils.sheet_to_json(sheet);
+            rawNormalizerRawData = parseSheetAutoHeaders(sheet);
 
             if (rawNormalizerRawData.length === 0) {
                 showToast("The file appears to be empty", "error");
@@ -16366,7 +16388,7 @@ function loadDupFinderFile(file) {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            dupFinderData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            dupFinderData = parseSheetAutoHeaders(workbook.Sheets[workbook.SheetNames[0]]);
             if (!dupFinderData.length) { showToast("File is empty", "error"); return; }
             showDupFinderColumnPicker();
         } catch (err) { showToast("Error reading file: " + err.message, "error"); }
@@ -16538,7 +16560,7 @@ function loadCompareFile(side, file) {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            const parsed = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            const parsed = parseSheetAutoHeaders(workbook.Sheets[workbook.SheetNames[0]]);
             if (!parsed.length) { showToast("File is empty", "error"); return; }
 
             if (side === 'A') { compareDataA = parsed; }
@@ -16739,7 +16761,7 @@ function loadEmailCleanerFile(file) {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            emailCleanerData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            emailCleanerData = parseSheetAutoHeaders(workbook.Sheets[workbook.SheetNames[0]]);
             if (!emailCleanerData.length) { showToast("File is empty", "error"); return; }
             showEmailCleanerColumnPicker();
         } catch (err) { showToast("Error reading file: " + err.message, "error"); }
