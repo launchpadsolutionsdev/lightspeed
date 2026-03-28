@@ -15788,22 +15788,20 @@ function parseSheetAutoHeaders(sheet) {
         }
     }
 
-    // Find name-like columns (at least 40% of scanned rows are name-like)
-    // Then prefer columns closest to the email column, since in contact data
-    // formats, name columns are typically adjacent to the email column.
-    // This avoids misidentifying City/State columns as name columns.
-    const allNameCandidates = [];
-    for (let c = 0; c < maxCols; c++) {
-        if (c === emailColIdx) continue;
+    // Find name-like columns that appear BEFORE the email column.
+    // In contact data, name fields virtually always precede the email.
+    // City, State, Address etc. come AFTER email — so restricting to
+    // columns before the email eliminates them as false positives.
+    const nameColIndices = [];
+    for (let c = 0; c < emailColIdx; c++) {
         if ((nameScores[c] || 0) >= scanLimit * 0.4) {
-            allNameCandidates.push(c);
+            nameColIndices.push(c);
         }
     }
-
-    // Sort candidates by distance from email column (closest first)
-    allNameCandidates.sort((a, b) => Math.abs(a - emailColIdx) - Math.abs(b - emailColIdx));
-    // Take at most 2 name columns — the two closest to email
-    const nameColIndices = allNameCandidates.slice(0, 2).sort((a, b) => a - b);
+    // If we found more than 2, take only the 2 closest to the email column
+    if (nameColIndices.length > 2) {
+        nameColIndices.splice(0, nameColIndices.length - 2);
+    }
 
     // Build synthetic column names
     const colNames = [];
