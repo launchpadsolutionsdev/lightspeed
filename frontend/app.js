@@ -15744,7 +15744,9 @@ function renderLeaderboardHtml(container, leaderboard) {
  */
 function parseSheetAutoHeaders(sheet) {
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    const HEADER_PATTERNS = /^(email|e-?mail|first\s*name|last\s*name|fname|lname|name|phone|address|city|state|zip|company|customer|seller|amount|total|quantity|status|date|id|event|order)/i;
+    // Header patterns must match the FULL column key (anchored both sides)
+    // to avoid false positives from data values like "Ida", "Stacy", "Orlando"
+    const HEADER_PATTERNS = /^(email|e-?mail|email\s*address|first\s*name|last\s*name|fname|lname|full\s*name|phone|phone\s*number|address|city|state|zip|zip\s*code|postal\s*code|company|customer\s*id|seller\s*id|amount|total|quantity|status|date|order\s*id|event\s*name|country|country\s*code|age|age\s*range|opt-?in|id)$/i;
 
     // First try standard parsing (Row 1 = headers)
     const defaultData = XLSX.utils.sheet_to_json(sheet);
@@ -15752,9 +15754,7 @@ function parseSheetAutoHeaders(sheet) {
 
     // Check if column names look like real headers.
     // Require at least 3 columns to match header-like patterns to avoid false
-    // positives when a headerless file has data values (e.g. name "Ida" matches
-    // ^id, a city "State College" matches ^state).  Real header rows will have
-    // many recognisable labels; a single or double coincidence is ignored.
+    // positives when a headerless file has data values.
     const defaultCols = Object.keys(defaultData[0]);
     const headerMatchCount = defaultCols.filter(key => HEADER_PATTERNS.test(key.trim())).length;
     if (headerMatchCount >= 3) return defaultData;
