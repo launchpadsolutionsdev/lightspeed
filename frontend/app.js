@@ -24082,8 +24082,8 @@ async function submitBugReport() {
     const category = document.getElementById('bugReportCategory')?.value;
     const severity = document.getElementById('bugReportSeverity')?.value;
 
-    if (!title) { lsMicro.toast('Please enter a title', 'error'); return; }
-    if (!description) { lsMicro.toast('Please enter a description', 'error'); return; }
+    if (!title) { showToast('Please enter a title', 'error'); return; }
+    if (!description) { showToast('Please enter a description', 'error'); return; }
 
     const btn = document.getElementById('submitBugReportBtn');
     const restoreBtn = lsMicro.btnLoading(btn, 'Submitting...');
@@ -24105,9 +24105,9 @@ async function submitBugReport() {
         }
 
         closeBugReportModal();
-        lsMicro.toast('Bug report submitted — thank you!', 'success');
+        showToast('Bug report submitted — thank you!', 'success');
     } catch (err) {
-        lsMicro.toast(err.message || 'Failed to submit report', 'error');
+        showToast(err.message || 'Failed to submit report', 'error');
     } finally {
         restoreBtn();
     }
