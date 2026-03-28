@@ -24101,7 +24101,8 @@ async function submitBugReport() {
 
         if (!resp.ok) {
             const data = await resp.json().catch(() => ({}));
-            throw new Error(data.error || 'Failed to submit');
+            console.error('Bug report submit failed:', resp.status, data);
+            throw new Error(data.error || `Failed to submit (${resp.status})`);
         }
 
         closeBugReportModal();
