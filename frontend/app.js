@@ -14659,6 +14659,8 @@ async function generateDraft() {
     const outputEl = document.getElementById('draftOutputContent');
     outputEl.innerHTML = '';
     outputEl._rawText = '';
+    // Remove any previous context indicators
+    outputEl.parentNode.querySelectorAll('.draft-context-indicator').forEach(el => el.remove());
     updateDraftExportButtons(currentDraftType);
 
     const maxTokens = currentDraftType === 'ad' ? 512 : (currentDraftType === 'media-release' ? 2048 : 1500);
@@ -14705,10 +14707,12 @@ async function generateDraft() {
 
         saveDraftToHistory(userPrompt, generatedContent, currentDraftType);
 
-        // Show context indicator
+        // Show context indicator (remove old ones first)
+        outputEl.parentNode.querySelectorAll('.draft-context-indicator').forEach(el => el.remove());
         const ctxHtml = buildContextIndicatorHtml(draftCtx, 'draft');
         if (ctxHtml) {
             const ctxContainer = document.createElement('div');
+            ctxContainer.className = 'draft-context-indicator';
             ctxContainer.innerHTML = ctxHtml;
             outputEl.parentNode.insertBefore(ctxContainer, outputEl.nextSibling);
         }
@@ -15010,10 +15014,12 @@ async function generateWriteAnything() {
 
         saveDraftToHistory(userPrompt, generatedContent, 'write-anything' + (contentType ? '-' + contentType : ''));
 
-        // Show context indicator
+        // Show context indicator (remove old ones first)
+        outputEl.parentNode.querySelectorAll('.draft-context-indicator').forEach(el => el.remove());
         const waCtxHtml = buildContextIndicatorHtml(waCtx, 'writeAnything');
         if (waCtxHtml) {
             const ctxContainer = document.createElement('div');
+            ctxContainer.className = 'draft-context-indicator';
             ctxContainer.innerHTML = waCtxHtml;
             outputEl.parentNode.insertBefore(ctxContainer, outputEl.nextSibling);
         }
@@ -15127,10 +15133,12 @@ async function generateEmailDraft() {
 
         saveDraftToHistory(userPrompt, generatedContent, 'email-' + currentEmailType);
 
-        // Show context indicator
+        // Show context indicator (remove old ones first)
+        outputEl.parentNode.querySelectorAll('.draft-context-indicator').forEach(el => el.remove());
         const emailCtxHtml = buildContextIndicatorHtml(emailCtx, 'emailDraft');
         if (emailCtxHtml) {
             const ctxContainer = document.createElement('div');
+            ctxContainer.className = 'draft-context-indicator';
             ctxContainer.innerHTML = emailCtxHtml;
             outputEl.parentNode.insertBefore(ctxContainer, outputEl.nextSibling);
         }
