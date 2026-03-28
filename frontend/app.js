@@ -132,6 +132,10 @@ function getAuthHeaders() {
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
+    const activeOrgId = localStorage.getItem('activeOrganizationId');
+    if (activeOrgId) {
+        headers['X-Organization-Id'] = activeOrgId;
+    }
     return headers;
 }
 
@@ -760,16 +764,17 @@ async function processPendingInvite() {
             // Clear the pending token
             localStorage.removeItem('pendingInviteToken');
 
-            // Update user's organization
+            // Switch to the newly joined organization
             if (currentUser && data.organization) {
                 currentUser.organization = data.organization;
+                localStorage.setItem('activeOrganizationId', data.organization.id);
                 localStorage.setItem("lightspeed_users", JSON.stringify(users));
             }
 
             showToast(`Successfully joined ${data.organization?.name || 'the organization'}!`, 'success');
 
-            // Refresh team page if on it
-            if (document.getElementById('teamsPage')?.classList.contains('active')) {
+            // Refresh team data (also refreshes org switcher)
+            if (typeof loadTeamData === 'function') {
                 loadTeamData();
             }
         } else {
@@ -1203,10 +1208,20 @@ async function processGoogleUser(googleUser, credential, accessToken) {
             // Update with backend data
             user.backendId = data.user?.id;
             user.isSuperAdmin = data.user?.isSuperAdmin || false;
-            user.organization = data.organization || null;
+            user.organizations = data.organizations || (data.organization ? [data.organization] : []);
+            user.organization = data.organization || user.organizations[0] || null;
             user.needsOrganization = data.needsOrganization || false;
             user.backendCreatedAt = data.user?.createdAt || user.createdAt;
             user.picture = data.user?.picture || user.picture;
+
+            // Restore last active org from localStorage, or default to first
+            const savedOrgId = localStorage.getItem('activeOrganizationId');
+            const matchedOrg = savedOrgId && user.organizations.find(o => o.id === savedOrgId);
+            const activeOrg = matchedOrg || user.organizations[0] || null;
+            if (activeOrg) {
+                user.organization = activeOrg;
+                localStorage.setItem('activeOrganizationId', activeOrg.id);
+            }
 
             localStorage.setItem("lightspeed_users", JSON.stringify(users));
 
@@ -1329,10 +1344,20 @@ async function handleMicrosoftAuthResponse(response, email, name, account) {
 
         user.backendId = data.user?.id;
         user.isSuperAdmin = data.user?.isSuperAdmin || false;
-        user.organization = data.organization || null;
+        user.organizations = data.organizations || (data.organization ? [data.organization] : []);
+        user.organization = data.organization || user.organizations[0] || null;
         user.needsOrganization = data.needsOrganization || false;
         user.picture = data.user?.picture || user.picture;
         user.backendCreatedAt = data.user?.createdAt || user.createdAt;
+
+        // Restore last active org from localStorage, or default to first
+        const savedOrgId = localStorage.getItem('activeOrganizationId');
+        const matchedOrg = savedOrgId && user.organizations.find(o => o.id === savedOrgId);
+        const activeOrg = matchedOrg || user.organizations[0] || null;
+        if (activeOrg) {
+            user.organization = activeOrg;
+            localStorage.setItem('activeOrganizationId', activeOrg.id);
+        }
 
         localStorage.setItem("lightspeed_users", JSON.stringify(users));
 
@@ -1704,6 +1729,7 @@ function _bindWizardStep1() {
                 }
 
                 _wizardOrgId = data.organization.id;
+                localStorage.setItem('activeOrganizationId', data.organization.id);
 
                 // Save optional fields from step 1 (website, licence) if provided
                 const website = document.getElementById('wizWebsite').value.trim();
@@ -5670,6 +5696,10 @@ function handleLogout() {
     currentUser = null;
     currentTool = null;
     localStorage.removeItem("lightspeed_current_user");
+    localStorage.removeItem("activeOrganizationId");
+    userOrganizations = [];
+    currentOrgId = null;
+    currentUserRole = null;
 
     // Reset state
     defaultName = "Bella";
@@ -5864,6 +5894,9 @@ function setupEventListeners() {
     // Prevent double-binding
     if (eventListenersSetup) return;
     eventListenersSetup = true;
+
+    // Initialize org switcher event listeners
+    initOrgSwitcherEvents();
 
     // Navigation - tool switching buttons in sidebar (skip dashboard, handled separately)
     document.querySelectorAll(".sidebar-btn[data-tool]").forEach(btn => {
@@ -9729,10 +9762,11 @@ document.addEventListener('click', function(e) {
 // ==================== TEAM MANAGEMENT ====================
 let currentOrgId = null;
 let currentUserRole = null;
+let userOrganizations = []; // All orgs the user belongs to
 
 async function loadTeamData() {
     try {
-        // Get user's organization
+        // Get user's organizations
         const orgResponse = await fetch(`${API_BASE_URL}/api/organizations/my`, {
             headers: getAuthHeaders()
         });
@@ -9742,8 +9776,12 @@ async function loadTeamData() {
         }
 
         const orgData = await orgResponse.json();
-        // Backend returns { organizations: [...] } - grab the first one
-        const org = orgData.organizations?.[0] || orgData.organization || null;
+        userOrganizations = orgData.organizations || [];
+
+        // Determine active org: use saved selection, or fall back to first
+        const savedOrgId = localStorage.getItem('activeOrganizationId');
+        const org = (savedOrgId && userOrganizations.find(o => o.id === savedOrgId))
+            || userOrganizations[0] || null;
 
         if (!org) {
             // User has no organization
@@ -9755,11 +9793,22 @@ async function loadTeamData() {
             document.getElementById('inviteSection').style.display = 'none';
             document.getElementById('pendingInvitationsCard').style.display = 'none';
             document.getElementById('contentTemplatesSection').style.display = 'none';
+            renderOrgSwitcher();
             return;
         }
 
         currentOrgId = org.id;
         currentUserRole = org.role;
+        localStorage.setItem('activeOrganizationId', org.id);
+
+        // Update currentUser reference
+        if (currentUser) {
+            currentUser.organization = org;
+            currentUser.organizations = userOrganizations;
+        }
+
+        // Render the org switcher
+        renderOrgSwitcher();
 
         // Update organization details
         document.getElementById('orgName').textContent = org.name || '-';
@@ -9791,6 +9840,209 @@ async function loadTeamData() {
         console.error('Error loading team data:', error);
         showToast('Failed to load team data', 'error');
     }
+}
+
+// ==================== ORGANIZATION SWITCHER ====================
+
+function renderOrgSwitcher() {
+    const switcher = document.getElementById('orgSwitcher');
+    if (!switcher) return;
+
+    const orgs = userOrganizations;
+    const activeOrgId = currentOrgId || localStorage.getItem('activeOrganizationId');
+    const activeOrg = orgs.find(o => o.id === activeOrgId) || orgs[0];
+
+    // Always show switcher once user is logged in (even with 1 org, for "Create New")
+    switcher.style.display = 'block';
+
+    // Update button label
+    const nameEl = document.getElementById('orgSwitcherName');
+    const roleEl = document.getElementById('orgSwitcherRole');
+    if (nameEl) nameEl.textContent = activeOrg ? activeOrg.name : 'No Organization';
+    if (roleEl) roleEl.textContent = activeOrg ? activeOrg.role : '';
+
+    // Show search if 5+ orgs (client manager scale)
+    const searchWrap = document.getElementById('orgSwitcherSearchWrap');
+    if (searchWrap) searchWrap.style.display = orgs.length >= 5 ? 'block' : 'none';
+
+    // Render org list
+    const listEl = document.getElementById('orgSwitcherList');
+    if (!listEl) return;
+
+    listEl.innerHTML = orgs.map(org => `
+        <button class="org-switcher-item ${org.id === activeOrgId ? 'active' : ''}" data-org-id="${org.id}">
+            <div class="org-switcher-icon">&#127970;</div>
+            <div class="org-switcher-item-info">
+                <span class="org-switcher-item-name">${escapeHtml(org.name)}</span>
+                <span class="org-switcher-item-role">${org.role} &middot; ${org.member_count || 1} member${(org.member_count || 1) !== 1 ? 's' : ''}</span>
+            </div>
+            ${org.id === activeOrgId ? '<span class="org-switcher-item-check">&#10003;</span>' : ''}
+        </button>
+    `).join('');
+
+    // If no orgs, show prompt
+    if (orgs.length === 0) {
+        listEl.innerHTML = '<div style="padding: 12px 14px; font-size: 0.8rem; color: var(--text-muted);">No organizations yet</div>';
+    }
+}
+
+async function switchOrganization(orgId) {
+    if (orgId === currentOrgId) return;
+
+    const org = userOrganizations.find(o => o.id === orgId);
+    if (!org) return;
+
+    // Update state
+    currentOrgId = org.id;
+    currentUserRole = org.role;
+    localStorage.setItem('activeOrganizationId', org.id);
+
+    // Update currentUser
+    if (currentUser) {
+        currentUser.organization = org;
+        localStorage.setItem("lightspeed_users", JSON.stringify(users));
+    }
+
+    // Close the dropdown
+    const dropdown = document.getElementById('orgSwitcherDropdown');
+    if (dropdown) dropdown.classList.remove('show');
+
+    // Re-render switcher button
+    renderOrgSwitcher();
+
+    // Show feedback
+    showToast(`Switched to ${org.name}`, 'success');
+
+    // Reload org-scoped data
+    await loadTeamData();
+}
+
+// Org switcher event listeners (delegated, set up once)
+let _orgSwitcherInitialized = false;
+
+function initOrgSwitcherEvents() {
+    if (_orgSwitcherInitialized) return;
+    _orgSwitcherInitialized = true;
+
+    // Toggle dropdown
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('#orgSwitcherBtn');
+        const dropdown = document.getElementById('orgSwitcherDropdown');
+        if (!dropdown) return;
+
+        if (btn) {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+            // Focus search if visible
+            const searchInput = document.getElementById('orgSwitcherSearch');
+            if (searchInput && searchInput.offsetParent !== null) {
+                setTimeout(() => searchInput.focus(), 50);
+            }
+            return;
+        }
+
+        // Click on org item
+        const item = e.target.closest('.org-switcher-item');
+        if (item && item.dataset.orgId) {
+            switchOrganization(item.dataset.orgId);
+            return;
+        }
+
+        // Click on create button
+        if (e.target.closest('#orgSwitcherCreateBtn')) {
+            dropdown.classList.remove('show');
+            showCreateOrgFromSwitcher();
+            return;
+        }
+
+        // Click outside closes dropdown
+        if (!e.target.closest('.org-switcher-dropdown')) {
+            dropdown.classList.remove('show');
+        }
+    });
+
+    // Search filter
+    document.addEventListener('input', function(e) {
+        if (e.target.id !== 'orgSwitcherSearch') return;
+        const query = e.target.value.toLowerCase().trim();
+        const items = document.querySelectorAll('.org-switcher-item');
+        items.forEach(item => {
+            const name = item.querySelector('.org-switcher-item-name')?.textContent.toLowerCase() || '';
+            item.style.display = name.includes(query) ? '' : 'none';
+        });
+    });
+}
+
+function showCreateOrgFromSwitcher() {
+    // Build a lightweight modal for creating a new org
+    let modal = document.getElementById('createOrgModal');
+    if (modal) modal.remove();
+
+    modal = document.createElement('div');
+    modal.id = 'createOrgModal';
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 420px; padding: 28px;">
+            <h3 style="margin: 0 0 16px; font-size: 1.1rem;">Create New Organization</h3>
+            <form id="createOrgFromSwitcherForm">
+                <label style="font-size: 0.85rem; font-weight: 500; display: block; margin-bottom: 6px;">Organization Name</label>
+                <input type="text" id="newOrgNameInput" required placeholder="e.g. BUMP Raffle Toronto"
+                    style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; box-sizing: border-box; margin-bottom: 16px;" />
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button type="button" id="cancelCreateOrgBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.85rem;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="confirmCreateOrgBtn" style="padding: 8px 16px; font-size: 0.85rem;">Create</button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Focus input
+    setTimeout(() => document.getElementById('newOrgNameInput')?.focus(), 50);
+
+    // Cancel
+    document.getElementById('cancelCreateOrgBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    // Submit
+    document.getElementById('createOrgFromSwitcherForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newOrgNameInput').value.trim();
+        if (!name) return;
+
+        const btn = document.getElementById('confirmCreateOrgBtn');
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/create-organization`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ name })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                modal.remove();
+                showToast(`Created "${data.organization.name}"`, 'success');
+
+                // Switch to the new org
+                localStorage.setItem('activeOrganizationId', data.organization.id);
+                await loadTeamData();
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                showToast(errorData.error || 'Failed to create organization', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Create';
+            }
+        } catch (error) {
+            console.error('Create org error:', error);
+            showToast('Connection error. Please try again.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Create';
+        }
+    });
 }
 
 function populateOrgProfile(org) {
