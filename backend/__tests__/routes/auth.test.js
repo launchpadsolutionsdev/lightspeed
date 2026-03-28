@@ -283,8 +283,6 @@ describe('Auth Routes', () => {
         });
 
         it('creates org and adds user as owner', async () => {
-            // Check existing memberships -> none
-            pool.query.mockResolvedValueOnce({ rows: [] });
             // INSERT organization
             pool.query.mockResolvedValueOnce({ rowCount: 1 });
             // INSERT membership
@@ -307,16 +305,26 @@ describe('Auth Routes', () => {
             expect(res.body.organization.role).toBe('owner');
         });
 
-        it('returns 400 if user already has an org', async () => {
-            // Check existing memberships -> found
-            pool.query.mockResolvedValueOnce({ rows: [{ organization_id: 'org-1' }] });
+        it('allows creating a second org (multi-org support)', async () => {
+            // INSERT organization
+            pool.query.mockResolvedValueOnce({ rowCount: 1 });
+            // INSERT membership
+            pool.query.mockResolvedValueOnce({ rowCount: 1 });
+            // seedOrgStarterContent: INSERT templates from system library
+            pool.query.mockResolvedValueOnce({ rowCount: 5 });
+            // seedOrgStarterContent: INSERT starter response rules
+            pool.query.mockResolvedValueOnce({ rowCount: 2 });
+            // SELECT created org
+            pool.query.mockResolvedValueOnce({
+                rows: [{ id: 'mock-uuid', name: 'Another Org', slug: 'another-org', subscription_status: 'trial' }]
+            });
 
             const res = await request(app)
                 .post('/api/auth/create-organization')
                 .send({ name: 'Another Org' });
 
-            expect(res.status).toBe(400);
-            expect(res.body.error).toMatch(/already/i);
+            expect(res.status).toBe(201);
+            expect(res.body.organization.name).toBe('Another Org');
         });
     });
 });
