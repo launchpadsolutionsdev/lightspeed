@@ -13931,7 +13931,7 @@ const DRAFT_TYPE_LABELS = {
     'social': 'Social Media Copy',
     'email': 'Email Copy',
     'media-release': 'Media Release',
-    'ad': 'Facebook/Instagram Ad',
+    'ad': 'Meta Ad Copy',
     'write-anything': 'Write Anything'
 };
 
@@ -13952,9 +13952,9 @@ const DRAFT_EMPTY_STATES = {
         tips: ['Select the release type for proper formatting (Immediate, Embargo, Award, Impact)', 'Add at least one quote for a more compelling release', 'The About boilerplate is auto-populated from your knowledge base']
     },
     'ad': {
-        icon: '📣', title: 'Facebook/Instagram Ad',
-        text: 'Describe your campaign goal. Lightspeed generates structured ad variants with separate headline, primary text, and CTA fields matching Meta Ads Manager.',
-        tips: ['Generate up to 5 variants to A/B test', 'Each variant includes headline (40 chars), primary text (125 chars), and CTA (30 chars)', 'Character counts are shown per field for easy copy-paste into Meta Ads Manager']
+        icon: '📣', title: 'Meta Ad Copy',
+        text: 'Describe your campaign goal and Lightspeed generates Meta-ready ad copy with Primary Text, Headline, and Description fields — sized to Meta\'s character limits.',
+        tips: ['Primary Text: 125 chars (80 chars visible on mobile without "See more")', 'Headline: 27\u201340 chars, displayed below the creative', 'Description: under 30 chars, may not show on all placements', 'Copy individual fields or all at once for Meta Ads Manager']
     },
     'write-anything': {
         icon: '✨', title: 'Write Anything',
@@ -14032,20 +14032,17 @@ FOR MEDIA RELEASES:
 - Include quotes from leadership when provided
 - Include media contact information at the end: "For media inquiries, contact: [Organization Name]"
 
-FOR FACEBOOK/INSTAGRAM ADS:
-- Generate each ad variant as a STRUCTURED FORMAT with three separate fields:
-  - HEADLINE: Maximum 40 characters. Punchy, attention-grabbing. The hook.
-  - PRIMARY TEXT: Maximum 125 characters. The main message with key value proposition.
-  - DESCRIPTION/CTA: Maximum 30 characters. Clear call to action.
-- Must include the organization's website URL in the primary text
-- Focus on urgency and excitement — goal is always ticket sales
-- One emoji allowed per field
-- When generating multiple variants, vary the angle: try urgency, excitement, social proof, FOMO, and value-focused approaches.
-- Format each variant clearly:
-  --- Variant 1 ---
-  Headline (X/40 chars): [text]
-  Primary Text (X/125 chars): [text]
-  Description (X/30 chars): [text]
+FOR META (FACEBOOK/INSTAGRAM) ADS:
+- You MUST respond with ONLY a valid JSON object — no markdown, no explanation, no code fences.
+- The JSON must have this exact structure:
+  { "primary_text": "...", "headline": "...", "description": "..." }
+- PRIMARY TEXT: The main ad copy above the creative. Maximum 125 characters. Front-load the value proposition or hook in the first 80 characters (mobile visible limit). Lead with the value prop, NOT the brand name.
+- HEADLINE: Short, punchy text below the creative. 27–40 characters max. Action-oriented, create urgency or curiosity.
+- DESCRIPTION: Supporting context below the headline. Under 30 characters. Complement, don't repeat, the headline. Reinforces the message but doesn't carry it (not shown on all placements).
+- All copy should be written for charitable lottery/raffle campaigns by default, but adapt to whatever context the user provides.
+- One emoji maximum per field.
+- Include a call-to-action naturally (e.g., "Get your tickets," "Don't miss out").
+- Must include the organization's website URL in the primary text when available.
 
 FOR WRITE ANYTHING (free-form):
 - Adapt to any content type the user requests
@@ -14449,34 +14446,12 @@ function setupDraftAssistant() {
         });
     });
 
-    // Copy for Meta Ads Manager (structured JSON format)
+    // Copy for Meta Ads Manager (structured fields)
     document.getElementById('draftCopyMetaBtn').addEventListener('click', () => {
-        const content = document.getElementById('draftOutputContent').textContent;
-        // Try to parse structured variants from the output
-        const variants = [];
-        const variantBlocks = content.split(/---\s*Variant\s*\d+\s*---/i).filter(b => b.trim());
-        if (variantBlocks.length > 0) {
-            variantBlocks.forEach((block, idx) => {
-                const headlineMatch = block.match(/Headline[^:]*:\s*(.+)/i);
-                const primaryMatch = block.match(/Primary Text[^:]*:\s*(.+)/i);
-                const descMatch = block.match(/Description[^:]*:\s*(.+)/i);
-                variants.push({
-                    variant: idx + 1,
-                    headline: headlineMatch ? headlineMatch[1].trim() : '',
-                    primaryText: primaryMatch ? primaryMatch[1].trim() : '',
-                    description: descMatch ? descMatch[1].trim() : ''
-                });
-            });
-        }
-
-        if (variants.length > 0 && variants[0].headline) {
-            const formatted = variants.map(v =>
-                `Variant ${v.variant}:\n  Headline: ${v.headline}\n  Primary Text: ${v.primaryText}\n  Description: ${v.description}`
-            ).join('\n\n');
-            navigator.clipboard.writeText(formatted).then(() => {
-                showToast('Copied ' + variants.length + ' ad variants \u2014 paste into Meta Ads Manager', 'success');
-            });
+        if (metaAdCurrentData) {
+            copyAllMetaAdFields();
         } else {
+            const content = document.getElementById('draftOutputContent').textContent;
             navigator.clipboard.writeText(content).then(() => {
                 showToast('Copied ad content to clipboard', 'info');
             });
@@ -14575,14 +14550,16 @@ function showDraftMain(section) {
 }
 
 function updateDraftExportButtons(contentType) {
+    const copyBtn = document.getElementById('draftCopyBtn');
     const htmlBtn = document.getElementById('draftCopyHtmlBtn');
     const mailchimpBtn = document.getElementById('draftCopyMailchimpBtn');
     const metaBtn = document.getElementById('draftCopyMetaBtn');
     // Email: show HTML + Mailchimp
     htmlBtn.style.display = (contentType === 'email') ? 'inline-flex' : 'none';
     mailchimpBtn.style.display = (contentType === 'email') ? 'inline-flex' : 'none';
-    // Ad: show Meta Ads
+    // Ad: show Meta Ads button, hide generic Copy (cards have per-field copy)
     metaBtn.style.display = (contentType === 'ad') ? 'inline-flex' : 'none';
+    copyBtn.style.display = (contentType === 'ad') ? 'none' : 'inline-flex';
 }
 
 async function generateDraft() {
@@ -14650,17 +14627,23 @@ async function generateDraft() {
         topic = document.getElementById('adTopicInput').value.trim();
         if (!topic) { showToast('Please enter a campaign goal', 'error'); return; }
         details = document.getElementById('adDetailsInput').value.trim();
-
-        const variantEl = document.querySelector('.wa-toggle-pill[data-ad-variants].active');
-        const variantCount = variantEl ? parseInt(variantEl.dataset.adVariants) : 5;
+        const audience = document.getElementById('adAudienceInput')?.value.trim() || '';
+        const ctaGoal = document.getElementById('adCtaGoalInput')?.value.trim() || '';
 
         const org = currentUser?.organization;
         const adUrl = org?.website_url || '[Organization Website]';
 
-        userPrompt = 'Generate ' + variantCount + ' Facebook/Instagram ad variant' + (variantCount > 1 ? 's' : '') + ' for: ' + topic;
+        userPrompt = 'Generate Meta (Facebook/Instagram) ad copy for: ' + topic;
         if (details) userPrompt += '\n\nKey details: ' + details;
-        userPrompt += '\n\nFor EACH variant, output in this exact structured format:\n--- Variant N ---\nHeadline (X/40 chars): [headline text]\nPrimary Text (X/125 chars): [primary text]\nDescription (X/30 chars): [CTA text]';
-        userPrompt += '\n\nRULES:\n- Headline: MAX 40 characters\n- Primary Text: MAX 125 characters, MUST include ' + adUrl + '\n- Description/CTA: MAX 30 characters\n- Show actual character count for each field\n- One emoji allowed per field\n- Vary the angle across variants: urgency, excitement, social proof, FOMO, value';
+        if (audience) userPrompt += '\n\nTarget audience: ' + audience;
+        if (ctaGoal) userPrompt += '\n\nCTA goal: ' + ctaGoal;
+        userPrompt += '\n\nRespond with ONLY a valid JSON object (no markdown, no code fences, no explanation):';
+        userPrompt += '\n{ "primary_text": "...", "headline": "...", "description": "..." }';
+        userPrompt += '\n\nRULES:';
+        userPrompt += '\n- primary_text: MAX 125 characters. Front-load the hook in the first 80 chars. MUST include ' + adUrl;
+        userPrompt += '\n- headline: 27\u201340 characters. Action-oriented, urgency or curiosity.';
+        userPrompt += '\n- description: Under 30 characters. Complement the headline, don\'t repeat it.';
+        userPrompt += '\n- One emoji max per field. Lead with value, NOT brand name.';
         userPrompt += '\n\nTone: ' + currentDraftTone;
     } else {
         showToast('Unknown draft type', 'error');
@@ -14675,12 +14658,19 @@ async function generateDraft() {
     document.getElementById('draftOutputBadge').textContent = DRAFT_TYPE_LABELS[currentDraftType];
     const outputEl = document.getElementById('draftOutputContent');
     outputEl.innerHTML = '';
+    outputEl._rawText = '';
     updateDraftExportButtons(currentDraftType);
 
-    const maxTokens = currentDraftType === 'ad' ? 2048 : (currentDraftType === 'media-release' ? 2048 : 1500);
+    const maxTokens = currentDraftType === 'ad' ? 512 : (currentDraftType === 'media-release' ? 2048 : 1500);
+    const isAd = currentDraftType === 'ad';
 
     try {
         const dynamicSystem = await buildDraftDynamicPrompt(currentDraftType, null, topic);
+
+        if (isAd) {
+            // For ads, show a loading spinner in the output area while we collect JSON
+            outputEl.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:20px;color:var(--text-muted);"><div class="draft-spinner" style="width:20px;height:20px;"></div> Generating ad copy...</div>';
+        }
 
         const { text: generatedContent, contextSummary: draftCtx } = await fetchStream({
             staticSystem: DRAFT_STATIC_PROMPT,
@@ -14694,9 +14684,24 @@ async function generateDraft() {
         }, {
             onText: (chunk) => {
                 outputEl._rawText = (outputEl._rawText || '') + chunk;
-                outputEl.innerHTML = escapeHtmlWithLinks(outputEl._rawText);
+                if (!isAd) {
+                    outputEl.innerHTML = escapeHtmlWithLinks(outputEl._rawText);
+                }
             }
         });
+
+        if (isAd) {
+            // Parse JSON and render structured cards
+            const adData = parseMetaAdJson(generatedContent);
+            if (adData) {
+                metaAdCurrentData = adData;
+                renderMetaAdCards(outputEl, adData);
+            } else {
+                // Fallback: show raw text if JSON parse fails
+                outputEl.innerHTML = escapeHtmlWithLinks(generatedContent);
+                showToast('Ad generated but could not parse structured fields. Showing raw output.', 'info');
+            }
+        }
 
         saveDraftToHistory(userPrompt, generatedContent, currentDraftType);
 
@@ -14720,6 +14725,153 @@ async function generateDraft() {
     }
 }
 
+// ==================== META AD STRUCTURED OUTPUT ====================
+
+let metaAdCurrentData = null;
+
+const META_AD_FIELDS = [
+    { key: 'primary_text', label: 'Primary Text', limit: 125, mobileLimit: 80 },
+    { key: 'headline', label: 'Headline', limit: 40, safeLimit: 27 },
+    { key: 'description', label: 'Description', limit: 30 }
+];
+
+function parseMetaAdJson(text) {
+    // Try to extract JSON from the response (may have markdown fences or extra text)
+    let cleaned = text.trim();
+    // Strip code fences
+    cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+    // Try to find JSON object
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.primary_text && parsed.headline && parsed.description) return parsed;
+        return null;
+    } catch { return null; }
+}
+
+function renderMetaAdCards(container, data) {
+    let html = '<div class="meta-ad-output">';
+    META_AD_FIELDS.forEach(field => {
+        const text = data[field.key] || '';
+        const len = text.length;
+        const pct = Math.min((len / field.limit) * 100, 100);
+        const overPct = len > field.limit ? 100 : pct;
+        const colorClass = len > field.limit ? 'red' : (pct > 80 ? 'yellow' : 'green');
+        const countClass = len > field.limit ? ' over' : '';
+        const mobileHint = field.mobileLimit ? ` (${Math.min(len, field.mobileLimit)}/${field.mobileLimit} mobile-visible)` : '';
+        const safeHint = field.safeLimit && len > field.safeLimit ? ` \u00b7 ${len > field.safeLimit ? 'may truncate on some placements' : ''}` : '';
+
+        html += `
+        <div class="meta-ad-card" data-field="${field.key}">
+            <div class="meta-ad-card-header">
+                <span class="meta-ad-field-label">${field.label}</span>
+                <div class="meta-ad-card-actions">
+                    <button class="meta-ad-card-btn" onclick="copyMetaAdField('${field.key}')" title="Copy ${field.label}">Copy</button>
+                    <button class="meta-ad-card-btn" id="metaAdRegen_${field.key}" onclick="regenerateMetaAdField('${field.key}')" title="Regenerate ${field.label}">Regen</button>
+                </div>
+            </div>
+            <div class="meta-ad-text" id="metaAdText_${field.key}">${escapeHtml(text)}</div>
+            <div class="meta-ad-char-bar">
+                <div class="meta-ad-char-track">
+                    <div class="meta-ad-char-fill ${colorClass}" style="width: ${overPct}%"></div>
+                </div>
+                <span class="meta-ad-char-count${countClass}">${len}/${field.limit} chars${mobileHint}${safeHint}</span>
+            </div>
+        </div>`;
+    });
+
+    html += `
+        <div class="meta-ad-copy-all">
+            <button class="meta-ad-copy-all-btn" onclick="copyAllMetaAdFields()">Copy All Fields</button>
+        </div>
+    </div>`;
+
+    container.innerHTML = html;
+}
+
+function copyMetaAdField(fieldKey) {
+    if (!metaAdCurrentData || !metaAdCurrentData[fieldKey]) return;
+    navigator.clipboard.writeText(metaAdCurrentData[fieldKey]).then(() => {
+        const fieldLabel = META_AD_FIELDS.find(f => f.key === fieldKey)?.label || fieldKey;
+        showToast(fieldLabel + ' copied to clipboard', 'success');
+    });
+}
+
+function copyAllMetaAdFields() {
+    if (!metaAdCurrentData) return;
+    const formatted = META_AD_FIELDS.map(f =>
+        f.label + ': ' + (metaAdCurrentData[f.key] || '')
+    ).join('\n');
+    navigator.clipboard.writeText(formatted).then(() => {
+        showToast('All ad fields copied to clipboard', 'success');
+    });
+}
+
+async function regenerateMetaAdField(fieldKey) {
+    if (!metaAdCurrentData || !lastDraftRequest) return;
+
+    const fieldLabel = META_AD_FIELDS.find(f => f.key === fieldKey)?.label || fieldKey;
+    const fieldLimit = META_AD_FIELDS.find(f => f.key === fieldKey)?.limit || 125;
+    const regenBtn = document.getElementById('metaAdRegen_' + fieldKey);
+    const textEl = document.getElementById('metaAdText_' + fieldKey);
+    if (!textEl) return;
+
+    // Show loading state
+    if (regenBtn) regenBtn.classList.add('regenerating');
+    const originalText = textEl.textContent;
+    textEl.style.opacity = '0.5';
+
+    try {
+        const org = currentUser?.organization;
+        const adUrl = org?.website_url || '[Organization Website]';
+
+        // Build a focused prompt for just this one field
+        const currentFields = META_AD_FIELDS.map(f =>
+            f.label + ': ' + (metaAdCurrentData[f.key] || '')
+        ).join('\n');
+
+        const regenPrompt = 'I have these existing Meta ad fields:\n' + currentFields +
+            '\n\nRegenerate ONLY the ' + fieldLabel + ' field. Keep the other fields in mind for consistency but ONLY output the new ' + fieldLabel + ' text.' +
+            '\n\nRULES for ' + fieldLabel + ': Maximum ' + fieldLimit + ' characters. One emoji max.' +
+            (fieldKey === 'primary_text' ? ' Front-load the hook in the first 80 chars. Include ' + adUrl + '.' : '') +
+            (fieldKey === 'headline' ? ' Action-oriented, create urgency or curiosity.' : '') +
+            (fieldKey === 'description' ? ' Complement the headline, don\'t repeat it.' : '') +
+            '\n\nRespond with ONLY the new text for ' + fieldLabel + '. No JSON, no labels, no quotes, no explanation — just the text itself.';
+
+        const dynamicSystem = await buildDraftDynamicPrompt('ad', null, lastDraftRequest.topic);
+
+        const { text: newFieldText } = await fetchStream({
+            staticSystem: DRAFT_STATIC_PROMPT,
+            dynamicSystem,
+            inquiry: lastDraftRequest.topic,
+            kb_type: 'all',
+            tool: 'draft_assistant',
+            messages: [{ role: 'user', content: regenPrompt }],
+            max_tokens: 256,
+            model: draftModel
+        }, {});
+
+        // Clean the response — strip any accidental quotes, labels, or whitespace
+        let cleaned = newFieldText.trim().replace(/^["']|["']$/g, '').trim();
+        if (cleaned.toLowerCase().startsWith(fieldLabel.toLowerCase() + ':')) {
+            cleaned = cleaned.substring(fieldLabel.length + 1).trim();
+        }
+
+        // Update the data and re-render just this card
+        metaAdCurrentData[fieldKey] = cleaned;
+        const outputEl = document.getElementById('draftOutputContent');
+        renderMetaAdCards(outputEl, metaAdCurrentData);
+        showToast(fieldLabel + ' regenerated', 'success');
+
+    } catch (error) {
+        textEl.textContent = originalText;
+        textEl.style.opacity = '1';
+        if (regenBtn) regenBtn.classList.remove('regenerating');
+        showToast('Error regenerating ' + fieldLabel + ': ' + error.message, 'error');
+    }
+}
+
 // Template memory — auto-save/restore last-used details per content type
 function saveDraftTemplate(contentType) {
     const templates = JSON.parse(localStorage.getItem('ls_draft_templates') || '{}');
@@ -14735,6 +14887,8 @@ function saveDraftTemplate(contentType) {
     } else if (contentType === 'ad') {
         data.topic = document.getElementById('adTopicInput')?.value || '';
         data.details = document.getElementById('adDetailsInput')?.value || '';
+        data.audience = document.getElementById('adAudienceInput')?.value || '';
+        data.ctaGoal = document.getElementById('adCtaGoalInput')?.value || '';
     } else if (contentType === 'email') {
         data.emailType = document.getElementById('draftEmailTypeSelect')?.value || '';
         data.details = document.getElementById('draftEmailDetails')?.value || '';
@@ -14762,6 +14916,8 @@ function restoreDraftTemplate(contentType) {
     } else if (contentType === 'ad') {
         if (data.topic) document.getElementById('adTopicInput').value = data.topic;
         if (data.details) document.getElementById('adDetailsInput').value = data.details;
+        if (data.audience) document.getElementById('adAudienceInput').value = data.audience;
+        if (data.ctaGoal) document.getElementById('adCtaGoalInput').value = data.ctaGoal;
     } else if (contentType === 'email') {
         if (data.emailType) {
             const select = document.getElementById('draftEmailTypeSelect');
@@ -15018,8 +15174,13 @@ function resetDraftAssistant() {
     // Reset Ad panel fields
     const adTopic = document.getElementById('adTopicInput');
     const adDetails = document.getElementById('adDetailsInput');
+    const adAudience = document.getElementById('adAudienceInput');
+    const adCtaGoal = document.getElementById('adCtaGoalInput');
     if (adTopic) adTopic.value = '';
     if (adDetails) adDetails.value = '';
+    if (adAudience) adAudience.value = '';
+    if (adCtaGoal) adCtaGoal.value = '';
+    metaAdCurrentData = null;
 
     // Reset all quote fields (1-3)
     for (let i = 1; i <= 3; i++) {
@@ -15098,6 +15259,8 @@ async function refineDraft(instruction) {
     outputEl.innerHTML = '';
     outputEl._rawText = '';
 
+    const isAd = currentDraftType === 'ad' || (lastDraftRequest && lastDraftRequest.type === 'ad');
+
     try {
         const refineInquiry = lastDraftRequest?.details || lastDraftRequest?.topic || null;
         let contentType = currentDraftType;
@@ -15110,34 +15273,60 @@ async function refineDraft(instruction) {
         }
         const dynamicSystem = await buildDraftDynamicPrompt(contentType, emailType, refineInquiry);
 
+        // For ads, include the current structured data as context and request JSON back
+        let refineInstruction = instruction;
+        if (isAd && metaAdCurrentData) {
+            refineInstruction = instruction + '\n\nRespond with ONLY a valid JSON object: { "primary_text": "...", "headline": "...", "description": "..." }';
+        }
+
         const messages = [
             { role: 'user', content: lastDraftRequest?._originalUserPrompt || 'Generate the content as requested.' },
-            { role: 'assistant', content: currentContent },
-            { role: 'user', content: instruction + '\n\nPlease provide the updated content only, without any explanations or preamble.' }
+            { role: 'assistant', content: isAd && metaAdCurrentData ? JSON.stringify(metaAdCurrentData) : currentContent },
+            { role: 'user', content: refineInstruction + '\n\nPlease provide the updated content only, without any explanations or preamble.' }
         ];
 
-        await fetchStream({
+        if (isAd) {
+            outputEl.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:20px;color:var(--text-muted);"><div class="draft-spinner" style="width:20px;height:20px;"></div> Refining ad copy...</div>';
+        }
+
+        const { text: refinedText } = await fetchStream({
             staticSystem: DRAFT_STATIC_PROMPT,
             dynamicSystem,
             inquiry: refineInquiry,
             kb_type: 'all',
             tool: 'draft_assistant',
             messages: messages,
-            max_tokens: 2048,
+            max_tokens: isAd ? 512 : 2048,
             model: draftModel
         }, {
             onText: (chunk) => {
                 outputEl._rawText = (outputEl._rawText || '') + chunk;
-                outputEl.innerHTML = escapeHtmlWithLinks(outputEl._rawText);
+                if (!isAd) {
+                    outputEl.innerHTML = escapeHtmlWithLinks(outputEl._rawText);
+                }
             }
         });
+
+        if (isAd) {
+            const adData = parseMetaAdJson(refinedText);
+            if (adData) {
+                metaAdCurrentData = adData;
+                renderMetaAdCards(outputEl, adData);
+            } else {
+                outputEl.innerHTML = escapeHtmlWithLinks(refinedText);
+            }
+        }
 
         showToast('Draft refined!', 'success');
 
     } catch (error) {
         console.error('Draft refinement error:', error);
         // Restore original content
-        document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(currentContent);
+        if (isAd && metaAdCurrentData) {
+            renderMetaAdCards(document.getElementById('draftOutputContent'), metaAdCurrentData);
+        } else {
+            document.getElementById('draftOutputContent').innerHTML = escapeHtmlWithLinks(currentContent);
+        }
         if (!['TRIAL_EXPIRED', 'AUTH_REQUIRED'].includes(error.message)) {
             showToast('Error refining draft: ' + error.message, 'error');
         }

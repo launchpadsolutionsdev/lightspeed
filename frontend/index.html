@@ -8342,6 +8342,132 @@
             border: 1px solid var(--border);
         }
 
+        /* Meta Ad structured output cards */
+        .meta-ad-output {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .meta-ad-card {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            position: relative;
+        }
+
+        .meta-ad-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .meta-ad-field-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .meta-ad-card-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .meta-ad-card-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+        }
+
+        .meta-ad-card-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--text-muted);
+        }
+
+        .meta-ad-card-btn.regenerating {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .meta-ad-text {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            min-height: 24px;
+        }
+
+        .meta-ad-char-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            gap: 10px;
+        }
+
+        .meta-ad-char-track {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .meta-ad-char-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+
+        .meta-ad-char-fill.green { background: #22c55e; }
+        .meta-ad-char-fill.yellow { background: #eab308; }
+        .meta-ad-char-fill.red { background: #ef4444; }
+
+        .meta-ad-char-count {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            white-space: nowrap;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .meta-ad-char-count.over { color: #ef4444; font-weight: 600; }
+
+        .meta-ad-copy-all {
+            display: flex;
+            justify-content: center;
+            padding-top: 8px;
+        }
+
+        .meta-ad-copy-all-btn {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+        }
+
+        .meta-ad-copy-all-btn:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
         .draft-disclaimer {
             margin-top: 16px;
             padding: 12px;
@@ -18178,13 +18304,13 @@
                             </div>
 
                             <div class="draft-form-group">
-                                <label class="draft-label">Variants</label>
-                                <div class="wa-toggle-group" id="adVariantGroup">
-                                    <button class="wa-toggle-pill" data-ad-variants="1">1</button>
-                                    <button class="wa-toggle-pill" data-ad-variants="3">3</button>
-                                    <button class="wa-toggle-pill active" data-ad-variants="5">5</button>
-                                </div>
-                                <p class="draft-hint">Generate multiple ad variants to A/B test.</p>
+                                <label class="draft-label">Target audience (optional)</label>
+                                <input type="text" id="adAudienceInput" class="draft-input" placeholder="E.g., Local community, past supporters, 25-55 age group...">
+                            </div>
+
+                            <div class="draft-form-group">
+                                <label class="draft-label">CTA goal (optional)</label>
+                                <input type="text" id="adCtaGoalInput" class="draft-input" placeholder="E.g., Buy tickets, Visit website, Learn more...">
                             </div>
 
                             <div class="draft-form-group">
