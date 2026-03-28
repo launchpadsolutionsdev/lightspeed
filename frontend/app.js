@@ -15969,7 +15969,61 @@ function processNormalizerFile(file) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rawData = parseSheetAutoHeaders(sheet);
+
+            // Try standard parse first — if the file has real headers we use them
+            const defaultData = XLSX.utils.sheet_to_json(sheet);
+            const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+            const HEADER_KW = /^(email|e-?mail|first\s*name|last\s*name|fname|lname)/i;
+            const defaultCols = defaultData.length > 0 ? Object.keys(defaultData[0]) : [];
+            const headerHits = defaultCols.filter(k => HEADER_KW.test(k.trim())).length;
+
+            let rawData;
+            if (headerHits >= 2) {
+                // File has real header row — use it as-is
+                rawData = defaultData;
+            } else {
+                // Headerless file (e.g. BUMP Customers report).
+                // Known layout: col A=blank, B=First Name, C=Last Name, D=Email.
+                // We parse as raw arrays and map by position.  To be resilient we
+                // also scan for the email column in case the layout shifts.
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                // Find the email column by scanning first 20 rows
+                let emailIdx = 3; // default: column D (index 3)
+                const scanLimit = Math.min(rows.length, 20);
+                const colScores = {};
+                for (let r = 0; r < scanLimit; r++) {
+                    const row = rows[r];
+                    if (!Array.isArray(row)) continue;
+                    for (let c = 0; c < row.length; c++) {
+                        if (EMAIL_RE.test(String(row[c] || '').trim())) {
+                            colScores[c] = (colScores[c] || 0) + 1;
+                        }
+                    }
+                }
+                let bestScore = 0;
+                for (const [idx, score] of Object.entries(colScores)) {
+                    if (score > bestScore) {
+                        bestScore = score;
+                        emailIdx = parseInt(idx);
+                    }
+                }
+
+                // Name columns are the two columns immediately before the email column
+                const firstNameIdx = emailIdx - 2;
+                const lastNameIdx = emailIdx - 1;
+
+                console.log(`[Marketing Contact List] Headerless file detected. Mapping: col ${firstNameIdx}→First Name, col ${lastNameIdx}→Last Name, col ${emailIdx}→Email (${rows.length} rows)`);
+
+                rawData = rows.map(row => {
+                    if (!Array.isArray(row)) return {};
+                    return {
+                        'First Name': row[firstNameIdx] != null ? row[firstNameIdx] : '',
+                        'Last Name':  row[lastNameIdx] != null ? row[lastNameIdx] : '',
+                        'Email':      row[emailIdx] != null ? row[emailIdx] : ''
+                    };
+                });
+            }
 
             // Process the data for Mailchimp
             processForMailchimp(rawData);
