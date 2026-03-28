@@ -1880,6 +1880,11 @@ function _wizardFinish() {
 
     loginUser(currentUser, false);
 
+    // Refresh org list so the switcher includes the newly created org
+    if (typeof loadTeamData === 'function') {
+        loadTeamData();
+    }
+
     if (selectedPlan) {
         showToast('Setting up your subscription...', 'info');
         startCheckout(selectedPlan);
@@ -9982,74 +9987,9 @@ function initOrgSwitcherEvents() {
 }
 
 function showCreateOrgFromSwitcher() {
-    // Build a lightweight modal for creating a new org
-    let modal = document.getElementById('createOrgModal');
-    if (modal) modal.remove();
-
-    modal = document.createElement('div');
-    modal.id = 'createOrgModal';
-    modal.className = 'modal-overlay show';
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 420px; padding: 28px;">
-            <h3 style="margin: 0 0 16px; font-size: 1.1rem;">Create New Organization</h3>
-            <form id="createOrgFromSwitcherForm">
-                <label style="font-size: 0.85rem; font-weight: 500; display: block; margin-bottom: 6px;">Organization Name</label>
-                <input type="text" id="newOrgNameInput" required placeholder="e.g. BUMP Raffle Toronto"
-                    style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; box-sizing: border-box; margin-bottom: 16px;" />
-                <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                    <button type="button" id="cancelCreateOrgBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.85rem;">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="confirmCreateOrgBtn" style="padding: 8px 16px; font-size: 0.85rem;">Create</button>
-                </div>
-            </form>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    // Focus input
-    setTimeout(() => document.getElementById('newOrgNameInput')?.focus(), 50);
-
-    // Cancel
-    document.getElementById('cancelCreateOrgBtn').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-
-    // Submit
-    document.getElementById('createOrgFromSwitcherForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = document.getElementById('newOrgNameInput').value.trim();
-        if (!name) return;
-
-        const btn = document.getElementById('confirmCreateOrgBtn');
-        btn.disabled = true;
-        btn.textContent = 'Creating...';
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/create-organization`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ name })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                modal.remove();
-                showToast(`Created "${data.organization.name}"`, 'success');
-
-                // Switch to the new org
-                localStorage.setItem('activeOrganizationId', data.organization.id);
-                await loadTeamData();
-            } else {
-                const errorData = await response.json().catch(() => ({}));
-                showToast(errorData.error || 'Failed to create organization', 'error');
-                btn.disabled = false;
-                btn.textContent = 'Create';
-            }
-        } catch (error) {
-            console.error('Create org error:', error);
-            showToast('Connection error. Please try again.', 'error');
-            btn.disabled = false;
-            btn.textContent = 'Create';
-        }
-    });
+    // Launch the full onboarding wizard so the user can set up
+    // name, profile, content config, and invite team members.
+    showOrganizationSetup(currentUser);
 }
 
 function populateOrgProfile(org) {
