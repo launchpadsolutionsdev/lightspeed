@@ -5453,13 +5453,34 @@ function loginUser(user, showMessage = true) {
     // Setup main app event listeners if not already done
     setupEventListeners();
 
-    // Populate org switcher from login data immediately
+    // Populate org switcher from login data immediately (fast, may lack member_count)
     if (currentUser && currentUser.organizations && currentUser.organizations.length > 0) {
         userOrganizations = currentUser.organizations;
         currentOrgId = currentUser.organization?.id || userOrganizations[0]?.id;
         currentUserRole = currentUser.organization?.role || userOrganizations[0]?.role;
         renderOrgSwitcher();
     }
+
+    // Fetch fresh org data in background to get accurate member counts
+    fetch(`${API_BASE_URL}/api/organizations/my`, { headers: getAuthHeaders() })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            if (data && data.organizations) {
+                userOrganizations = data.organizations;
+                const savedOrgId = localStorage.getItem('activeOrganizationId');
+                const activeOrg = (savedOrgId && userOrganizations.find(o => o.id === savedOrgId)) || userOrganizations[0];
+                if (activeOrg) {
+                    currentOrgId = activeOrg.id;
+                    currentUserRole = activeOrg.role;
+                    if (currentUser) {
+                        currentUser.organization = activeOrg;
+                        currentUser.organizations = userOrganizations;
+                    }
+                }
+                renderOrgSwitcher();
+            }
+        })
+        .catch(() => {});
 
     // Load settings into forms
     loadSettings();
