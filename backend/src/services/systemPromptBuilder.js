@@ -508,7 +508,8 @@ async function buildResponseAssistantPrompt(params) {
     if (isThread) {
         const linkInfo = orgWebsite ? `You MUST include ${orgWebsite} in the response. Reference it naturally (e.g., "Visit ${orgWebsite} for..." or "You can find more at ${orgWebsite}").` : 'Include relevant website links when helpful.';
         formatInstructions = `LINKS: ${linkInfo}
-FORMAT: This is a reply within an ongoing email thread. Use flowing paragraphs. Do NOT repeat information or pleasantries already covered earlier in the thread.`;
+FORMAT: This is a reply within an ongoing email thread. Use flowing paragraphs. Do NOT repeat information or pleasantries already covered earlier in the thread.
+STYLING: Do NOT use Markdown bold (**) around URLs or links. Write URLs as plain text.`;
     } else if (isFacebook) {
         const fbEmailDirective = orgSupportEmail
             ? `"Please email us at ${orgSupportEmail} and our team will assist you as soon as possible."`
@@ -525,11 +526,13 @@ FACEBOOK PRIVACY RULE - VERY IMPORTANT:
 - NEVER offer to take direct action on Facebook (e.g., "I'll resend your tickets", "I've forwarded this to our team", "Let me look into your account")
 - Facebook is a public platform where we cannot verify identity or handle sensitive account matters
 - Instead, ALWAYS direct the customer to email us: ${fbEmailDirective}
-- You can acknowledge their concern briefly, but the solution must be to email us`;
+- You can acknowledge their concern briefly, but the solution must be to email us
+STYLING: Do NOT use Markdown bold (**) around URLs or links. Write URLs as plain text.`;
     } else {
         const linkInfo = orgWebsite ? `You MUST include ${orgWebsite} in the response. Reference it naturally (e.g., "Visit ${orgWebsite} for..." or "You can find more at ${orgWebsite}").` : 'Include relevant website links when helpful.';
         formatInstructions = `${includeLinks ? `LINKS: ${linkInfo}` : 'LINKS: Minimize links unless essential.'}
-${includeSteps ? 'FORMAT: Include step-by-step instructions when applicable.' : 'FORMAT: Use flowing paragraphs, avoid numbered lists unless necessary.'}`;
+${includeSteps ? 'FORMAT: Include step-by-step instructions when applicable.' : 'FORMAT: Use flowing paragraphs, avoid numbered lists unless necessary.'}
+STYLING: Do NOT use Markdown bold (**) around URLs or links. Write URLs as plain text.`;
     }
 
     // Organization info section
