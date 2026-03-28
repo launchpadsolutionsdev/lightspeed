@@ -16155,18 +16155,32 @@ function downloadNormalizedList() {
         return;
     }
 
-    // Create workbook
-    const ws = XLSX.utils.json_to_sheet(normalizerProcessedData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Mailchimp List");
+    // Build CSV content
+    const header = Object.keys(normalizerProcessedData[0]).join(',');
+    const rows = normalizerProcessedData.map(row =>
+        Object.values(row).map(val => {
+            const str = String(val ?? '');
+            // Escape values that contain commas, quotes, or newlines
+            return (str.includes(',') || str.includes('"') || str.includes('\n'))
+                ? '"' + str.replace(/"/g, '""') + '"'
+                : str;
+        }).join(',')
+    );
+    const csv = header + '\n' + rows.join('\n');
 
     // Generate filename with date
     const date = new Date();
     const dateStr = date.toISOString().split('T')[0];
-    const filename = `Mailchimp_List_${dateStr}.xlsx`;
+    const filename = `Mailchimp_List_${dateStr}.csv`;
 
-    // Download
-    XLSX.writeFile(wb, filename);
+    // Download as CSV
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
     showToast(`Downloaded ${filename}`, "success");
 
     // Save to export history
