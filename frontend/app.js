@@ -15750,10 +15750,14 @@ function parseSheetAutoHeaders(sheet) {
     const defaultData = XLSX.utils.sheet_to_json(sheet);
     if (defaultData.length === 0) return defaultData;
 
-    // Check if column names look like real headers
+    // Check if column names look like real headers.
+    // Require at least 3 columns to match header-like patterns to avoid false
+    // positives when a headerless file has data values (e.g. name "Ida" matches
+    // ^id, a city "State College" matches ^state).  Real header rows will have
+    // many recognisable labels; a single or double coincidence is ignored.
     const defaultCols = Object.keys(defaultData[0]);
-    const hasRealHeaders = defaultCols.some(key => HEADER_PATTERNS.test(key.trim()));
-    if (hasRealHeaders) return defaultData;
+    const headerMatchCount = defaultCols.filter(key => HEADER_PATTERNS.test(key.trim())).length;
+    if (headerMatchCount >= 3) return defaultData;
 
     // No recognizable headers — re-parse as raw arrays and detect by content
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
@@ -16155,18 +16159,32 @@ function downloadNormalizedList() {
         return;
     }
 
-    // Create workbook
-    const ws = XLSX.utils.json_to_sheet(normalizerProcessedData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Mailchimp List");
+    // Build CSV content
+    const header = Object.keys(normalizerProcessedData[0]).join(',');
+    const rows = normalizerProcessedData.map(row =>
+        Object.values(row).map(val => {
+            const str = String(val ?? '');
+            // Escape values that contain commas, quotes, or newlines
+            return (str.includes(',') || str.includes('"') || str.includes('\n'))
+                ? '"' + str.replace(/"/g, '""') + '"'
+                : str;
+        }).join(',')
+    );
+    const csv = header + '\n' + rows.join('\n');
 
     // Generate filename with date
     const date = new Date();
     const dateStr = date.toISOString().split('T')[0];
-    const filename = `Mailchimp_List_${dateStr}.xlsx`;
+    const filename = `Mailchimp_List_${dateStr}.csv`;
 
-    // Download
-    XLSX.writeFile(wb, filename);
+    // Download as CSV
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
     showToast(`Downloaded ${filename}`, "success");
 
     // Save to export history
