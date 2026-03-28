@@ -9988,8 +9988,7 @@ function showCreateOrgFromSwitcher() {
 
     modal = document.createElement('div');
     modal.id = 'createOrgModal';
-    modal.className = 'modal-overlay';
-    modal.style.display = 'flex';
+    modal.className = 'modal-overlay show';
     modal.innerHTML = `
         <div class="modal-content" style="max-width: 420px; padding: 28px;">
             <h3 style="margin: 0 0 16px; font-size: 1.1rem;">Create New Organization</h3>
