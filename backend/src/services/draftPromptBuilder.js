@@ -56,20 +56,17 @@ FOR MEDIA RELEASES:
 - Include quotes from leadership when provided
 - Include media contact information at the end: "For media inquiries, contact: [Organization Name]"
 
-FOR FACEBOOK/INSTAGRAM ADS:
-- Generate each ad variant as a STRUCTURED FORMAT with three separate fields:
-  - HEADLINE: Maximum 40 characters. Punchy, attention-grabbing. The hook.
-  - PRIMARY TEXT: Maximum 125 characters. The main message with key value proposition.
-  - DESCRIPTION/CTA: Maximum 30 characters. Clear call to action.
-- Must include the organization's website URL in the primary text
-- Focus on urgency and excitement — goal is always ticket sales
-- One emoji allowed per field
-- When generating multiple variants, vary the angle: try urgency, excitement, social proof, FOMO, and value-focused approaches.
-- Format each variant clearly:
-  --- Variant 1 ---
-  Headline (X/40 chars): [text]
-  Primary Text (X/125 chars): [text]
-  Description (X/30 chars): [text]
+FOR META (FACEBOOK/INSTAGRAM) ADS:
+- You MUST respond with ONLY a valid JSON object — no markdown, no explanation, no code fences.
+- The JSON must have this exact structure:
+  { "primary_text": "...", "headline": "...", "description": "..." }
+- PRIMARY TEXT: The main ad copy above the creative. Maximum 125 characters. Front-load the value proposition or hook in the first 80 characters (mobile visible limit). Lead with the value prop, NOT the brand name.
+- HEADLINE: Short, punchy text below the creative. 27–40 characters max. Action-oriented, create urgency or curiosity.
+- DESCRIPTION: Supporting context below the headline. Under 30 characters. Complement, don't repeat, the headline. Reinforces the message but doesn't carry it (not shown on all placements).
+- All copy should be written for charitable lottery/raffle campaigns by default, but adapt to whatever context the user provides.
+- One emoji maximum per field.
+- Include a call-to-action naturally (e.g., "Get your tickets," "Don't miss out").
+- Must include the organization's website URL in the primary text when available.
 
 FOR WRITE ANYTHING (free-form):
 - Adapt to any content type the user requests
@@ -180,7 +177,7 @@ SECURITY:
 const CONTENT_TYPE_LABELS = {
     'social': 'Social Media Post',
     'media-release': 'Media Release',
-    'ad': 'Facebook/Instagram Ad'
+    'ad': 'Meta Ad Copy'
 };
 
 const EMAIL_TYPE_LABELS = {
@@ -443,13 +440,19 @@ function buildDraftUserPrompt(input, org) {
     }
 
     if (contentType === 'ad') {
-        const variantCount = input.variant_count || 5;
         const adUrl = org?.website_url || '[Organization Website]';
 
-        let prompt = 'Generate ' + variantCount + ' Facebook/Instagram ad variant' + (variantCount > 1 ? 's' : '') + ' for: ' + input.inquiry;
+        let prompt = 'Generate Meta (Facebook/Instagram) ad copy for: ' + input.inquiry;
         if (input.details) prompt += '\n\nKey details: ' + input.details;
-        prompt += '\n\nFor EACH variant, output in this exact structured format:\n--- Variant N ---\nHeadline (X/40 chars): [headline text]\nPrimary Text (X/125 chars): [primary text]\nDescription (X/30 chars): [CTA text]';
-        prompt += '\n\nRULES:\n- Headline: MAX 40 characters\n- Primary Text: MAX 125 characters, MUST include ' + adUrl + '\n- Description/CTA: MAX 30 characters\n- Show actual character count for each field\n- One emoji allowed per field\n- Vary the angle across variants: urgency, excitement, social proof, FOMO, value';
+        if (input.audience) prompt += '\n\nTarget audience: ' + input.audience;
+        if (input.cta_goal) prompt += '\n\nCTA goal: ' + input.cta_goal;
+        prompt += '\n\nRespond with ONLY a valid JSON object (no markdown, no code fences, no explanation):';
+        prompt += '\n{ "primary_text": "...", "headline": "...", "description": "..." }';
+        prompt += '\n\nRULES:';
+        prompt += '\n- primary_text: MAX 125 characters. Front-load the hook in the first 80 chars. MUST include ' + adUrl;
+        prompt += '\n- headline: 27\u201340 characters. Action-oriented, urgency or curiosity.';
+        prompt += '\n- description: Under 30 characters. Complement the headline, don\'t repeat it.';
+        prompt += '\n- One emoji max per field. Lead with value, NOT brand name.';
         prompt += '\n\nTone: ' + tone;
         return prompt;
     }
