@@ -4435,6 +4435,180 @@
             transform: translateY(0);
         }
 
+        /* Organization Switcher */
+        .org-switcher {
+            position: relative;
+            margin-bottom: 4px;
+        }
+        .org-switcher-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 10px;
+            background: rgba(99, 102, 241, 0.06);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        .org-switcher-btn:hover {
+            background: rgba(99, 102, 241, 0.12);
+            border-color: rgba(99, 102, 241, 0.25);
+        }
+        .org-switcher-icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .org-switcher-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            min-width: 0;
+        }
+        .org-switcher-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: left;
+        }
+        .org-switcher-role {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: left;
+        }
+        .org-switcher-chevron {
+            font-size: 0.6rem;
+            color: rgba(0,0,0,0.3);
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .org-switcher-dropdown {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            margin-bottom: 4px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            max-height: 340px;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.2s ease;
+            z-index: 300;
+        }
+        .org-switcher-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .org-switcher-search-wrap {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .org-switcher-search {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            outline: none;
+            background: var(--bg-light);
+            box-sizing: border-box;
+        }
+        .org-switcher-search:focus {
+            border-color: var(--primary);
+        }
+        .org-switcher-list {
+            overflow-y: auto;
+            max-height: 220px;
+            padding: 4px;
+        }
+        .org-switcher-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 10px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.12s;
+            text-align: left;
+        }
+        .org-switcher-item:hover {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        .org-switcher-item.active {
+            background: rgba(99, 102, 241, 0.08);
+        }
+        .org-switcher-item-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            min-width: 0;
+        }
+        .org-switcher-item-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .org-switcher-item-role {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .org-switcher-item-check {
+            font-size: 0.85rem;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+        .org-switcher-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0 8px;
+        }
+        .org-switcher-create {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px 14px;
+            background: transparent;
+            border: none;
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--primary);
+            transition: background 0.12s;
+            text-align: left;
+        }
+        .org-switcher-create:hover {
+            background: rgba(99, 102, 241, 0.06);
+        }
+
         .user-btn {
             display: flex;
             align-items: center;
@@ -15210,6 +15384,27 @@
             </nav>
 
             <div class="sidebar-footer">
+                <!-- Organization Switcher -->
+                <div class="org-switcher" id="orgSwitcher" style="display: none;">
+                    <button class="org-switcher-btn" id="orgSwitcherBtn" title="Switch Organization">
+                        <div class="org-switcher-icon">&#127970;</div>
+                        <div class="org-switcher-info">
+                            <span class="org-switcher-name" id="orgSwitcherName">Organization</span>
+                            <span class="org-switcher-role" id="orgSwitcherRole">owner</span>
+                        </div>
+                        <span class="org-switcher-chevron" id="orgSwitcherChevron">&#9660;</span>
+                    </button>
+                    <div class="org-switcher-dropdown" id="orgSwitcherDropdown">
+                        <div class="org-switcher-search-wrap" id="orgSwitcherSearchWrap" style="display: none;">
+                            <input type="text" class="org-switcher-search" id="orgSwitcherSearch" placeholder="Search organizations..." />
+                        </div>
+                        <div class="org-switcher-list" id="orgSwitcherList"></div>
+                        <div class="org-switcher-divider"></div>
+                        <button class="org-switcher-create" id="orgSwitcherCreateBtn">
+                            <span>&#43;</span> Create New Organization
+                        </button>
+                    </div>
+                </div>
                 <button class="sidebar-btn" id="reportBugBtn" title="Report a Bug" style="margin-bottom: 4px; font-size: 0.82rem;">
                     <span class="sidebar-btn-icon">&#128027;</span>
                     <span class="sidebar-btn-label">Report a Bug</span>

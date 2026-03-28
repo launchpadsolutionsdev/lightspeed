@@ -36,19 +36,39 @@ const authenticate = async (req, res, next) => {
         req.userId = decoded.userId;
         req.user = userResult.rows[0];
 
-        // Cache organization_id on the request so route handlers don't
-        // each need a separate SELECT on organization_memberships.
-        const orgCacheKey = `auth:org:${decoded.userId}`;
-        let orgId = cache.get(orgCacheKey);
-        if (orgId === undefined) {
-            const orgRow = await pool.query(
-                'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
-                [decoded.userId]
-            );
-            orgId = orgRow.rows[0]?.organization_id || null;
-            cache.set(orgCacheKey, orgId, TTL.AUTH_ORG);
+        // Determine active organization.
+        // If the client sends an X-Organization-Id header, use that org
+        // (after verifying the user is a member). Otherwise fall back to
+        // the user's first membership for backwards compatibility.
+        const requestedOrgId = req.headers['x-organization-id'] || null;
+
+        if (requestedOrgId) {
+            // Verify membership for the requested org
+            const memberCacheKey = `auth:org:${decoded.userId}:${requestedOrgId}`;
+            let isMember = cache.get(memberCacheKey);
+            if (isMember === undefined) {
+                const memberRow = await pool.query(
+                    'SELECT organization_id FROM organization_memberships WHERE user_id = $1 AND organization_id = $2',
+                    [decoded.userId, requestedOrgId]
+                );
+                isMember = memberRow.rows.length > 0;
+                cache.set(memberCacheKey, isMember, TTL.AUTH_ORG);
+            }
+            req.organizationId = isMember ? requestedOrgId : null;
+        } else {
+            // Legacy fallback: grab the first org the user belongs to
+            const orgCacheKey = `auth:org:${decoded.userId}`;
+            let orgId = cache.get(orgCacheKey);
+            if (orgId === undefined) {
+                const orgRow = await pool.query(
+                    'SELECT organization_id FROM organization_memberships WHERE user_id = $1 LIMIT 1',
+                    [decoded.userId]
+                );
+                orgId = orgRow.rows[0]?.organization_id || null;
+                cache.set(orgCacheKey, orgId, TTL.AUTH_ORG);
+            }
+            req.organizationId = orgId;
         }
-        req.organizationId = orgId;
 
         next();
     } catch (error) {

@@ -138,19 +138,20 @@ router.post('/google', async (req, res) => {
             );
         }
 
-        // Get user's organization
+        // Get all user's organizations
         const orgResult = await pool.query(
             `SELECT o.*, om.role
              FROM organizations o
              JOIN organization_memberships om ON o.id = om.organization_id
              WHERE om.user_id = $1
-             LIMIT 1`,
+             ORDER BY om.created_at`,
             [user.id]
         );
 
         const token = generateToken(user.id);
-        const organization = orgResult.rows[0] || null;
-        const needsOrganization = !organization;
+        const organizations = orgResult.rows;
+        const organization = organizations[0] || null;
+        const needsOrganization = organizations.length === 0;
 
         res.json({
             token,
@@ -164,6 +165,7 @@ router.post('/google', async (req, res) => {
                 createdAt: user.created_at
             },
             organization,
+            organizations,
             isNewUser,
             needsOrganization
         });
@@ -313,19 +315,20 @@ router.post('/microsoft', async (req, res) => {
             );
         }
 
-        // Get user's organization
+        // Get all user's organizations
         const orgResult = await pool.query(
             `SELECT o.*, om.role
              FROM organizations o
              JOIN organization_memberships om ON o.id = om.organization_id
              WHERE om.user_id = $1
-             LIMIT 1`,
+             ORDER BY om.created_at`,
             [user.id]
         );
 
         const token = generateToken(user.id);
-        const organization = orgResult.rows[0] || null;
-        const needsOrganization = !organization;
+        const organizations = orgResult.rows;
+        const organization = organizations[0] || null;
+        const needsOrganization = organizations.length === 0;
 
         res.json({
             token,
@@ -339,6 +342,7 @@ router.post('/microsoft', async (req, res) => {
                 createdAt: user.created_at
             },
             organization,
+            organizations,
             isNewUser,
             needsOrganization
         });
@@ -360,11 +364,12 @@ router.get('/me', authenticate, async (req, res) => {
              FROM organizations o
              JOIN organization_memberships om ON o.id = om.organization_id
              WHERE om.user_id = $1
-             LIMIT 1`,
+             ORDER BY om.created_at`,
             [req.userId]
         );
 
-        const organization = orgResult.rows[0] || null;
+        const organizations = orgResult.rows;
+        const organization = organizations[0] || null;
         res.json({
             user: {
                 id: req.user.id,
@@ -376,7 +381,8 @@ router.get('/me', authenticate, async (req, res) => {
                 createdAt: req.user.created_at
             },
             organization,
-            needsOrganization: !organization
+            organizations,
+            needsOrganization: organizations.length === 0
         });
 
     } catch (error) {
@@ -399,16 +405,6 @@ router.post('/create-organization', authenticate, [
         }
 
         const { name } = req.body;
-
-        // Check if user already has an organization
-        const existingOrg = await pool.query(
-            'SELECT organization_id FROM organization_memberships WHERE user_id = $1',
-            [req.userId]
-        );
-
-        if (existingOrg.rows.length > 0) {
-            return res.status(400).json({ error: 'User already belongs to an organization' });
-        }
 
         // Create organization
         const orgId = uuidv4();
