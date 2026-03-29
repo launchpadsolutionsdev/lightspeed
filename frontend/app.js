@@ -7760,16 +7760,32 @@ function buildAnalysisSystemPrompt(reportType, data) {
         prompt += JSON.stringify(dataDigest);
     }
 
-    prompt += `\n\nProvide a thorough yet concise analysis including:\n`;
-    prompt += `1. Key highlights and notable metrics\n`;
-    prompt += `2. Trends or patterns you observe (remember: sales cycles are normal)\n`;
-    prompt += `3. Areas of strength\n`;
-    prompt += `4. Opportunities for growth\n`;
-    prompt += `5. Actionable recommendations\n`;
+    prompt += `\n\nWRITING STYLE — FOLLOW THESE RULES STRICTLY:\n\n`;
+
+    prompt += `1. LEAD WITH INSIGHT, NOT METRICS. Do not open with a summary table or a grid of key metrics. Open with the single most interesting or notable finding in the data — stated as a confident, specific observation in one or two sentences. Weave key numbers into your narrative naturally. The reader should encounter metrics inside sentences that explain what they mean, not in a table they have to interpret themselves.\n\n`;
+
+    prompt += `2. NEVER DESCRIBE WHAT A CHART OR TABLE ALREADY SHOWS. If a table shows that the $20 tier has the most orders, do not write "The $20 tier has the highest order count." Instead, explain what it means or why it matters: what is the strategic implication? What should the reader do with that information? Every sentence should add insight the data alone does not provide.\n\n`;
+
+    prompt += `3. BE DIRECT AND CONFIDENT. Do not hedge with phrases like "consistent with industry norms," "a well-functioning result," "a healthy metric," or "a solid outcome." If a number is good, say why it is good in concrete terms. If something is underwhelming, say so. The reader is the Director of Charitable Gaming — they want your honest read, not diplomatic padding.\n\n`;
+
+    prompt += `4. TIE EVERY RECOMMENDATION TO A SPECIFIC NUMBER. Never offer generic advice like "consider a targeted message to encourage upgrades." Instead, do the math: "Your 8,023 buyers at $50 represent $401,150 in potential revenue if even 10% moved to $75 — that is a $60,000+ opportunity from a single campaign." Recommendations without math are opinions. Recommendations with math are tools.\n\n`;
+
+    prompt += `5. VARY YOUR RHYTHM. Mix short, punchy observations with longer analytical points. A one-sentence paragraph that lands a key insight is more powerful than burying it inside a block of text. Do not write uniform five-sentence paragraphs throughout — let the structure breathe.\n\n`;
+
+    prompt += `6. TREAT PEOPLE LIKE PEOPLE, NOT DATA ROWS. When discussing top buyers or repeat purchasers, highlight behavioral patterns rather than just listing names and dollar amounts. "Your top three buyers didn't make one large purchase — they came back 10+ times each, which tells you something about habit, not just generosity" is better than "The top three buyers contributed $X across Y orders."\n\n`;
+
+    prompt += `7. END WITH ONE CLEAR TAKEAWAY, NOT A SUMMARY LIST. Do not end the report with a bulleted recap of everything above. Close with a single paragraph — the one thing the reader should walk away thinking about. If there are five insights, pick the most important one and commit to it. The summary is the report itself; the ending is the punctuation.\n\n`;
+
+    prompt += `8. SKIP EXPLANATIONS THE READER ALREADY KNOWS. Do not explain what a ticket tier is, how a raffle works, or what "repeat buyer" means. The reader runs this program. Focus entirely on what this specific data reveals — not on defining terms or providing background context.\n\n`;
+
+    prompt += `9. USE NATURAL SECTION FLOW, NOT RIGID TEMPLATES. Sections should follow from each other logically, not feel like disconnected modules. Use transitions. If the tier analysis reveals that the $100 tier drives disproportionate revenue, the geographic section might note where those $100 buyers are concentrated. Connect the dots across sections rather than treating each one as a standalone block.\n\n`;
+
+    prompt += `10. NO FILLER CLOSINGS. Do not end sections or the report with generic lines like "This is a strong result and reflects well on the program." If you have made your point, stop. The reader will decide if the result is strong — your job is to give them the evidence to make that call.\n\n`;
+
+    prompt += `Analyze the data thoroughly. Cover the key findings, patterns, strengths, growth opportunities, and actionable recommendations. Do not use emojis.`;
     if (reportType === 'customer-purchases') {
-        prompt += `6. Top 10 Buyers (always include this)\n`;
+        prompt += ` Include a "Top 10 Buyers" section listing the top 10 customers by total spend (numbered, with name and total).`;
     }
-    prompt += `\nFormat your response with clear headers and bullet points. Be specific with numbers. Do not use emojis. Keep it professional, data-driven, and encouraging.`;
 
     return prompt;
 }
