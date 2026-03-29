@@ -6692,8 +6692,6 @@ function analyzeDataFull(data) {
     if (!emailCol) console.warn('[Insights Engine] Could not find email column. Available columns:', columns);
 
     const PACKAGES = [100, 75, 50, 20, 10];
-    const SINGLE_PACKAGE_AMOUNTS = new Set([10, 20, 50, 75, 100]);
-
     function estimatePackages(totalSpent) {
         let remaining = totalSpent;
         let packages = [];
@@ -6732,11 +6730,12 @@ function analyzeDataFull(data) {
     const uniqueCustomers = emails.size;
     const avgPerCustomer = uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0;
 
-    // Repeat buyers
+    // Repeat buyers — a single row with $200 means 2x$100 tickets in one transaction,
+    // making that customer a multi-ticket buyer within that row.
     let repeatBuyersCount = 0;
     data.forEach(row => {
         const spent = parseCurrency(row[spentCol]);
-        if (!SINGLE_PACKAGE_AMOUNTS.has(spent)) repeatBuyersCount++;
+        if (estimatePackages(spent).length > 1) repeatBuyersCount++;
     });
 
     // Total tickets
@@ -6859,7 +6858,9 @@ function analyzeDataFull(data) {
     animateCurrency(el('dataRsuSales'), rsuRevenue, 1200, true);
 
     // Populate Summary Statistics Table
-    const avgOrderPerCustomer = uniqueCustomers > 0 ? totalTransactions / uniqueCustomers : 0;
+    // Use totalPackageCount (estimated tickets) rather than totalTransactions (rows),
+    // because one row with $200 is really 2x$100 tickets bought in one transaction.
+    const avgOrderPerCustomer = uniqueCustomers > 0 ? totalPackageCount / uniqueCustomers : 0;
     const avgSalesPerCustomer = uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0;
 
     // Package breakdown for summary table (calculate first so we can use for weighted average)
@@ -7589,14 +7590,27 @@ function buildDataDigest(data, reportType) {
     }
 
     // Top buyers
+    // A single row with $200 = 2x$100 tickets, so we estimate ticket count from spend
+    // rather than counting rows as "orders".
+    const DIGEST_PACKAGES = [100, 75, 50, 20, 10];
+    function digestEstimatePackages(totalSpent) {
+        let remaining = totalSpent;
+        let count = 0;
+        for (const pkg of DIGEST_PACKAGES) {
+            while (remaining >= pkg) { count++; remaining -= pkg; }
+        }
+        return count || (totalSpent > 0 ? 1 : 0);
+    }
+
     if (spentCol && (emailCol || nameCol)) {
         const buyers = {};
         data.forEach(r => {
             const key = (r[emailCol] || r[nameCol] || '').toString().trim().toLowerCase();
             if (!key) return;
+            const spent = parseCurrency(r[spentCol]);
             if (!buyers[key]) buyers[key] = { name: r[nameCol] || r[emailCol] || key, total: 0, orders: 0 };
-            buyers[key].total += parseCurrency(r[spentCol]);
-            buyers[key].orders++;
+            buyers[key].total += spent;
+            buyers[key].orders += digestEstimatePackages(spent);
         });
         digest.topBuyers = Object.values(buyers)
             .sort((a, b) => b.total - a.total)
@@ -8200,7 +8214,19 @@ function analyzePaymentTicketsReport(data) {
     const amountCol = findCol(['amount'], ['amount']);
 
 
-    // Analyze seller data
+    // Estimate ticket count from a spend amount (e.g. $200 = 2x$100)
+    const PT_PACKAGES = [100, 75, 50, 20, 10];
+    function ptEstimateTickets(totalSpent) {
+        let remaining = totalSpent;
+        let count = 0;
+        for (const pkg of PT_PACKAGES) {
+            while (remaining >= pkg) { count++; remaining -= pkg; }
+        }
+        return count || (totalSpent > 0 ? 1 : 0);
+    }
+
+    // Analyze seller data — count estimated tickets, not rows,
+    // because one row with $200 is really 2x$100 tickets in one transaction.
     const sellerData = {};
     let totalSales = 0;
     let totalRevenue = 0;
@@ -8210,19 +8236,20 @@ function analyzePaymentTicketsReport(data) {
     data.forEach(row => {
         const seller = (row[sellerCol] || 'Unknown').toString().trim();
         const amount = parseCurrency(row[amountCol]);
+        const tickets = ptEstimateTickets(amount);
 
         if (!sellerData[seller]) {
             sellerData[seller] = { sales: 0, revenue: 0 };
         }
-        sellerData[seller].sales++;
+        sellerData[seller].sales += tickets;
         sellerData[seller].revenue += amount;
 
-        totalSales++;
+        totalSales += tickets;
         totalRevenue += amount;
 
         // Check if Shopify
         if (seller.toLowerCase().includes('shopify')) {
-            shopifySales++;
+            shopifySales += tickets;
             shopifyRevenue += amount;
         }
     });
