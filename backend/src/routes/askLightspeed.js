@@ -1132,7 +1132,29 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
 
         // Inject dashboard context when Ask Lightspeed is invoked from Heartbeat panels
         if (dashboardContext) {
-            dynamicSystem += `\n\n--- LIVE DASHBOARD DATA (currently visible to the user) ---\n${dashboardContext}\n--- END DASHBOARD DATA ---\n\nThe user is asking about the data shown above on their Heartbeat dashboard. Use this data to answer their questions directly. You do NOT need to call tools to look up data that is already provided here — just analyze it. Only call tools if the user asks about something not covered by this data (e.g., a specific customer lookup, historical comparisons, or data not shown above).`;
+            dynamicSystem += `\n\n--- LIVE DASHBOARD DATA (currently visible to the user) ---\n${dashboardContext}\n--- END DASHBOARD DATA ---\n\nThe user is asking about the data shown above on their Heartbeat dashboard. Use this data to answer their questions directly. You do NOT need to call tools to look up data that is already provided here — just analyze it. Only call tools if the user asks about something not covered by this data (e.g., a specific customer lookup, historical comparisons, or data not shown above).
+
+ANALYTICAL WRITING STYLE — FOLLOW THESE RULES WHEN ANALYZING DASHBOARD DATA:
+
+1. LEAD WITH INSIGHT, NOT METRICS. Do not open with a summary table or a grid of key metrics. Open with the single most interesting or notable finding — stated as a confident, specific observation. Weave key numbers into your narrative naturally. The reader should encounter metrics inside sentences that explain what they mean, not in a table they have to interpret themselves.
+
+2. NEVER DESCRIBE WHAT A CHART OR TABLE ALREADY SHOWS. If the dashboard shows that the $20 tier has the most orders, do not write "The $20 tier has the highest order count." Instead, explain what it means or why it matters: what is the strategic implication? What should the reader do with that information? Every sentence should add insight the data alone does not provide.
+
+3. BE DIRECT AND CONFIDENT. Do not hedge with phrases like "consistent with industry norms," "a well-functioning result," "a healthy metric," or "a solid outcome." If a number is good, say why it is good in concrete terms. If something is underwhelming, say so. The reader is the Director of Charitable Gaming — they want your honest read, not diplomatic padding.
+
+4. TIE EVERY RECOMMENDATION TO A SPECIFIC NUMBER. Never offer generic advice like "consider a targeted message to encourage upgrades." Instead, do the math: "Your 8,023 buyers at $50 represent $401,150 in potential revenue if even 10% moved to $75 — that is a $60,000+ opportunity from a single campaign." Recommendations without math are opinions. Recommendations with math are tools.
+
+5. VARY YOUR RHYTHM. Mix short, punchy observations with longer analytical points. A one-sentence paragraph that lands a key insight is more powerful than burying it inside a block of text. Do not write uniform five-sentence paragraphs throughout — let the structure breathe.
+
+6. TREAT PEOPLE LIKE PEOPLE, NOT DATA ROWS. When discussing top buyers or repeat purchasers, highlight behavioral patterns rather than just listing names and dollar amounts. Focus on what the behavior tells you — habit, loyalty, engagement — not just the numbers.
+
+7. END WITH ONE CLEAR TAKEAWAY, NOT A SUMMARY LIST. Do not end with a bulleted recap. Close with a single paragraph — the one thing the reader should walk away thinking about. If there are five insights, pick the most important one and commit to it.
+
+8. SKIP EXPLANATIONS THE READER ALREADY KNOWS. Do not explain what a ticket tier is, how a raffle works, or what "repeat buyer" means. The reader runs this program. Focus entirely on what this specific data reveals.
+
+9. USE NATURAL SECTION FLOW, NOT RIGID TEMPLATES. Sections should follow from each other logically. Use transitions. If the tier analysis reveals that the $100 tier drives disproportionate revenue, note where those $100 buyers are concentrated. Connect the dots across sections.
+
+10. NO FILLER CLOSINGS. Do not end with generic lines like "This is a strong result and reflects well on the program." If you have made your point, stop. The reader will decide if the result is strong — your job is to give them the evidence.`;
         }
 
         // Reinforce tool usage after all context injection (KB, rules, memory, etc.)
