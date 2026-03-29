@@ -516,8 +516,186 @@ async function streamResponse({ messages, system, staticSystem, dynamicSystem, m
     return { text: fullText, usage };
 }
 
+/**
+ * Generate a streaming response from Claude with full tool support.
+ * Streams text deltas in real-time via onText callback while buffering
+ * tool_use blocks. Returns a response object compatible with processResponse.
+ *
+ * @param {Object} options
+ * @param {Array} options.messages - Conversation messages
+ * @param {string} [options.system] - System prompt (single block)
+ * @param {string} [options.staticSystem] - Static system (cached)
+ * @param {string} [options.dynamicSystem] - Dynamic system (KB, rules, etc.)
+ * @param {number} [options.max_tokens=4096] - Max tokens
+ * @param {Array} [options.tools] - Tool definitions
+ * @param {string} [options.model] - Model override
+ * @param {Function} options.onText - Callback for each text chunk: (chunk: string) => void
+ * @returns {Promise<Object>} Response object with { content, usage, stop_reason } matching non-streaming shape
+ */
+async function generateResponseStream({ messages, system, staticSystem, dynamicSystem, max_tokens = 4096, tools, model, onText }) {
+    if (!ANTHROPIC_API_KEY) {
+        throw new Error('ANTHROPIC_API_KEY not configured');
+    }
+
+    // Build system blocks with prompt caching (same logic as generateResponse)
+    let systemBlocks;
+    if (staticSystem !== null && staticSystem !== undefined && dynamicSystem !== undefined) {
+        systemBlocks = [
+            { type: 'text', text: staticSystem, cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: dynamicSystem, cache_control: { type: 'ephemeral' } }
+        ];
+    } else {
+        const systemText = system || '';
+        systemBlocks = systemText ? [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }] : '';
+    }
+
+    const body = {
+        model: model || ANTHROPIC_MODEL,
+        max_tokens,
+        system: systemBlocks,
+        messages,
+        stream: true
+    };
+
+    // Add tools with cache_control on last tool definition
+    if (tools && tools.length > 0) {
+        body.tools = tools.map((tool, i) => {
+            if (i === tools.length - 1) {
+                return { ...tool, cache_control: { type: 'ephemeral' } };
+            }
+            return tool;
+        });
+    }
+
+    const jsonBody = sanitizeJsonString(JSON.stringify(body));
+
+    const hasServerTools = body.tools && body.tools.some(t => t.type === 'web_search_20250305');
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+    };
+
+    if (hasServerTools) {
+        headers['anthropic-beta'] = 'web-search-2025-03-05';
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers,
+        body: jsonBody
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        log.error('Claude streaming API error', { status: response.status, error: errorData });
+        if (response.status === 429) {
+            const retryAfter = response.headers.get('retry-after');
+            const waitSec = retryAfter ? parseInt(retryAfter, 10) : 60;
+            throw new Error(`Rate limited — please wait ${waitSec}s and try again, or reduce the data size.`);
+        }
+        throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+    }
+
+    // Parse SSE stream — accumulate content blocks to build a response object
+    // matching the non-streaming shape: { content: [...], usage: {...}, stop_reason }
+    const contentBlocks = []; // Final content array
+    let currentBlock = null;  // Block being assembled
+    let currentBlockIndex = -1;
+    let usage = { input_tokens: 0, output_tokens: 0 };
+    let stopReason = null;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const jsonStr = line.slice(6);
+            if (jsonStr === '[DONE]') continue;
+
+            let event;
+            try { event = JSON.parse(jsonStr); } catch (_e) { continue; }
+
+            switch (event.type) {
+                case 'message_start':
+                    if (event.message?.usage) {
+                        usage.input_tokens = event.message.usage.input_tokens || 0;
+                        if (event.message.usage.cache_creation_input_tokens || event.message.usage.cache_read_input_tokens) {
+                            log.info('Prompt cache usage (stream)', {
+                                cache_read: event.message.usage.cache_read_input_tokens || 0,
+                                cache_write: event.message.usage.cache_creation_input_tokens || 0,
+                                input_tokens: event.message.usage.input_tokens || 0
+                            });
+                        }
+                    }
+                    break;
+
+                case 'content_block_start':
+                    currentBlockIndex = event.index;
+                    if (event.content_block.type === 'text') {
+                        currentBlock = { type: 'text', text: '' };
+                    } else if (event.content_block.type === 'tool_use') {
+                        currentBlock = { type: 'tool_use', id: event.content_block.id, name: event.content_block.name, input: '' };
+                    } else if (event.content_block.type === 'server_tool_use') {
+                        currentBlock = { type: 'server_tool_use', id: event.content_block.id, name: event.content_block.name, input: '' };
+                    } else {
+                        currentBlock = { ...event.content_block };
+                    }
+                    break;
+
+                case 'content_block_delta':
+                    if (!currentBlock) break;
+                    if (event.delta.type === 'text_delta' && currentBlock.type === 'text') {
+                        currentBlock.text += event.delta.text;
+                        if (onText) onText(event.delta.text);
+                    } else if (event.delta.type === 'input_json_delta' && (currentBlock.type === 'tool_use' || currentBlock.type === 'server_tool_use')) {
+                        currentBlock.input += event.delta.partial_json;
+                    }
+                    break;
+
+                case 'content_block_stop':
+                    if (currentBlock) {
+                        // Parse accumulated JSON input for tool_use blocks
+                        if ((currentBlock.type === 'tool_use' || currentBlock.type === 'server_tool_use') && typeof currentBlock.input === 'string') {
+                            try { currentBlock.input = JSON.parse(currentBlock.input); } catch (_e) { currentBlock.input = {}; }
+                        }
+                        contentBlocks.push(currentBlock);
+                        currentBlock = null;
+                    }
+                    break;
+
+                case 'message_delta':
+                    if (event.usage) {
+                        usage.output_tokens = event.usage.output_tokens || 0;
+                    }
+                    if (event.delta?.stop_reason) {
+                        stopReason = event.delta.stop_reason;
+                    }
+                    break;
+            }
+        }
+    }
+
+    return {
+        content: contentBlocks,
+        usage,
+        stop_reason: stopReason
+    };
+}
+
 module.exports = {
     generateResponse,
+    generateResponseStream,
     generateWithKnowledge,
     pickRelevantKnowledge,
     pickRelevantRatedExamples,
