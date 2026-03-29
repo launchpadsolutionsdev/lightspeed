@@ -1262,12 +1262,16 @@ Web search is ENABLED. For any factual question, external topic, industry inform
     }
 });
 
+// Maximum number of tool-use round-trips before we stop and return a partial
+// response. Prevents runaway loops from burning tokens or hanging the request.
+const MAX_TOOL_ITERATIONS = 8;
+
 /**
  * Make a streaming follow-up call to Claude after a tool execution, then
  * recursively process the response (which may trigger more tool calls).
  * Text chunks are streamed to the client in real-time via sendEvent.
  */
-async function streamFollowUp(followUpMessages, system, max_tokens, tools, model, organizationId, userId, sendEvent, trackTool) {
+async function streamFollowUp(followUpMessages, system, max_tokens, tools, model, organizationId, userId, sendEvent, trackTool, depth = 0) {
     const followUp = await claudeService.generateResponseStream({
         messages: followUpMessages,
         system,
@@ -1276,15 +1280,17 @@ async function streamFollowUp(followUpMessages, system, max_tokens, tools, model
         model,
         onText: (chunk) => { sendEvent({ type: 'text', content: chunk }); }
     });
-    await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools, true);
+    await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools, true, depth);
 }
 
 /**
  * Process Claude's response, handling text blocks and tool_use blocks.
  * For read-only tools (search), executes immediately and loops back.
  * For write tools (create_runway_events), sends a confirmation prompt.
+ *
+ * @param {number} depth - Current tool-loop iteration count (0-based).
  */
-async function processResponse(response, messages, system, organizationId, userId, model, sendEvent, trackTool, tools, textAlreadyStreamed) {
+async function processResponse(response, messages, system, organizationId, userId, model, sendEvent, trackTool, tools, textAlreadyStreamed, depth = 0) {
     const content = response.content || [];
 
     // Log content block types for debugging web search
@@ -1326,6 +1332,13 @@ async function processResponse(response, messages, system, organizationId, userI
 
     // If no tool calls, we're done
     if (toolUseBlocks.length === 0) return;
+
+    // Guard against runaway tool loops
+    if (depth >= MAX_TOOL_ITERATIONS) {
+        log.warn('Ask Lightspeed tool loop hit max iterations', { depth, organizationId, tools: toolUseBlocks.map(t => t.name) });
+        sendEvent({ type: 'text', content: '\n\nI\'ve reached the maximum number of tool calls for this request. Here\'s what I have so far — feel free to ask a follow-up if you need more.' });
+        return;
+    }
 
     // Helper: build tool_result array for all tool_use blocks in this response.
     // The active tool gets the real result; others get a skip message.
@@ -1381,7 +1394,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             return;
 
         } else if (toolUse.name === 'search_knowledge_base') {
@@ -1398,7 +1411,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             return;
 
         } else if (toolUse.name === 'draft_content') {
@@ -1422,7 +1435,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
                 ];
 
-                await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
+                await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             } else {
                 // Draft succeeded — send the full draft directly to the user
                 sendEvent({ type: 'text', content: result.draft });
@@ -1435,7 +1448,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
                 ];
 
-                await streamFollowUp(followUpMessages, system, 1024, tools, model, organizationId, userId, sendEvent, trackTool);
+                await streamFollowUp(followUpMessages, system, 1024, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             }
             return;
 
@@ -1472,7 +1485,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             return;
 
         } else if (toolUse.name === 'search_home_base') {
@@ -1492,7 +1505,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             return;
 
         } else if (toolUse.name === 'run_insights_analysis') {
@@ -1509,7 +1522,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             return;
 
         } else if (toolUse.name === 'search_shopify_orders') {
@@ -1535,7 +1548,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             return;
 
         } else if (toolUse.name === 'search_shopify_customers') {
@@ -1560,7 +1573,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             return;
 
         } else if (toolUse.name === 'search_heartbeat_data') {
@@ -1575,7 +1588,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             return;
 
         } else if (toolUse.name === 'render_chart') {
@@ -1596,7 +1609,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            await streamFollowUp(followUpMessages, system, 2048, tools, model, organizationId, userId, sendEvent, trackTool);
+            await streamFollowUp(followUpMessages, system, 2048, tools, model, organizationId, userId, sendEvent, trackTool, depth + 1);
             return;
         }
     }
