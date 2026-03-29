@@ -602,7 +602,6 @@ async function generateResponseStream({ messages, system, staticSystem, dynamicS
     // matching the non-streaming shape: { content: [...], usage: {...}, stop_reason }
     const contentBlocks = []; // Final content array
     let currentBlock = null;  // Block being assembled
-    let currentBlockIndex = -1;
     let usage = { input_tokens: 0, output_tokens: 0 };
     let stopReason = null;
 
@@ -641,7 +640,6 @@ async function generateResponseStream({ messages, system, staticSystem, dynamicS
                     break;
 
                 case 'content_block_start':
-                    currentBlockIndex = event.index;
                     if (event.content_block.type === 'text') {
                         currentBlock = { type: 'text', text: '' };
                     } else if (event.content_block.type === 'tool_use') {
