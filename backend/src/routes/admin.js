@@ -615,7 +615,9 @@ router.get('/recent-activity', authenticate, requireSuperAdmin, async (req, res)
         // Recent signups
         const recentSignups = await pool.query(
             `SELECT id, email, first_name, last_name, created_at
-             FROM users ORDER BY created_at DESC LIMIT $1`, [limit]
+             FROM users
+             WHERE created_at > NOW() - INTERVAL '30 days'
+             ORDER BY created_at DESC LIMIT $1`, [limit]
         );
 
         // Recent usage activity
@@ -655,7 +657,7 @@ router.get('/recent-activity', authenticate, requireSuperAdmin, async (req, res)
  */
 router.get('/cost-estimate', authenticate, requireSuperAdmin, async (req, res) => {
     try {
-        // Claude Sonnet 4 pricing: $3/1M input, $15/1M output
+        // Claude Sonnet 4 / 4.6 pricing: $3/1M input, $15/1M output
         // We track total_tokens (input+output combined), estimate ~40% input, 60% output
         const INPUT_RATE = 3.00 / 1000000;
         const OUTPUT_RATE = 15.00 / 1000000;

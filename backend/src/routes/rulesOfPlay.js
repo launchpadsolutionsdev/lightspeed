@@ -260,11 +260,20 @@ router.post('/:id/generate', authenticate, checkUsageLimit, async (req, res) => 
         if (response.usage) {
             const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
             await pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'rules_of_play', $3, $4, TRUE, NOW())`,
-                [organizationId, req.userId, totalTokens, responseTimeMs]
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, input_tokens, output_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'rules_of_play', $3, $4, $5, $6, TRUE, NOW())`,
+                [organizationId, req.userId, totalTokens, response.usage.input_tokens || 0, response.usage.output_tokens || 0, responseTimeMs]
             );
         }
+
+        // Log response history (fire-and-forget)
+        const wordCount = generatedText.split(/\s+/).filter(Boolean).length;
+        const charCount = generatedText.length;
+        pool.query(
+            `INSERT INTO response_history (organization_id, user_id, tool, inquiry, response, word_count, char_count, response_time_ms, created_at)
+             VALUES ($1, $2, 'rules_of_play', $3, $4, $5, $6, $7, NOW())`,
+            [organizationId, req.userId, userMessage, generatedText, wordCount, charCount, responseTimeMs]
+        ).catch(err => log.warn('Failed to log rules_of_play response_history', { error: err.message }));
 
         res.json({ generated_document: generatedText, usage: response.usage });
     } catch (error) {
