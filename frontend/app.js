@@ -20616,23 +20616,24 @@ function renderHbTierPerformance(sb) {
 function hbComputeHourlySales(samples) {
     if (!samples || samples.length < 2) return [];
 
-    // Group samples by hour-of-day
-    const buckets = {};
-    samples.forEach(s => {
-        const h = new Date(s.ts).getHours();
-        if (!buckets[h]) buckets[h] = [];
-        buckets[h].push(s);
-    });
+    // Sort samples chronologically, then attribute each incremental delta
+    // to the hour in which it occurred. This avoids the bug where grouping
+    // cumulative totals by hour-of-day across multiple days would report
+    // the entire multi-day delta as a single hour's sales.
+    const sorted = [...samples].sort((a, b) => a.ts - b.ts);
+    const deltas = new Array(24).fill(0);
+    const counts = new Array(24).fill(0);
+
+    for (let i = 1; i < sorted.length; i++) {
+        const h = new Date(sorted[i].ts).getHours();
+        const d = sorted[i].sales - sorted[i - 1].sales;
+        if (d > 0) deltas[h] += d;
+        counts[h]++;
+    }
 
     const hourly = [];
     for (let h = 0; h < 24; h++) {
-        const b = buckets[h];
-        if (b && b.length >= 2) {
-            b.sort((a, c) => a.ts - c.ts);
-            hourly.push({ hour: h, delta: b[b.length - 1].sales - b[0].sales, count: b.length });
-        } else {
-            hourly.push({ hour: h, delta: 0, count: b ? b.length : 0 });
-        }
+        hourly.push({ hour: h, delta: deltas[h], count: counts[h] });
     }
     return hourly;
 }
