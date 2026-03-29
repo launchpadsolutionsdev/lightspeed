@@ -1127,7 +1127,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
         // Enhance with KB, rules, etc. — this becomes the dynamic system layer
         let { system: dynamicSystem } = await buildEnhancedPrompt(
             '', message || '', organizationId,
-            { kb_type: 'all', userId, tool: 'ask_lightspeed', includeCitations: true }
+            { kb_type: 'all', userId, tool: 'ask_lightspeed', includeCitations: false }
         );
 
         // Inject dashboard context when Ask Lightspeed is invoked from Heartbeat panels
