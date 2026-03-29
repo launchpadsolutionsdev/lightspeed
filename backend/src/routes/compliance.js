@@ -131,6 +131,7 @@ router.post('/chat', authenticate, checkAIRateLimit, checkUsageLimit, async (req
         res.write(`data: ${JSON.stringify({ type: 'conversation_id', conversation_id: convId })}\n\n`);
 
         let fullText = '';
+        const startTime = Date.now();
 
         await streamResponse({
             messages,
@@ -222,11 +223,21 @@ router.post('/chat', authenticate, checkAIRateLimit, checkUsageLimit, async (req
                     );
 
                     // Log usage
+                    const responseTimeMs = Date.now() - startTime;
                     await pool.query(
-                        `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, created_at)
-                         VALUES (gen_random_uuid(), $1, $2, 'compliance', $3, NOW())`,
-                        [organizationId, userId, (usage.input_tokens || 0) + (usage.output_tokens || 0)]
+                        `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, input_tokens, output_tokens, response_time_ms, created_at)
+                         VALUES (gen_random_uuid(), $1, $2, 'compliance', $3, $4, $5, $6, NOW())`,
+                        [organizationId, userId, (usage.input_tokens || 0) + (usage.output_tokens || 0), usage.input_tokens || 0, usage.output_tokens || 0, responseTimeMs]
                     );
+
+                    // Log response history (fire-and-forget)
+                    const wordCount = fullText.split(/\s+/).filter(Boolean).length;
+                    const charCount = fullText.length;
+                    pool.query(
+                        `INSERT INTO response_history (organization_id, user_id, tool, inquiry, response, word_count, char_count, response_time_ms, created_at)
+                         VALUES ($1, $2, 'compliance_assistant', $3, $4, $5, $6, $7, NOW())`,
+                        [organizationId, userId, message, fullText, wordCount, charCount, responseTimeMs]
+                    ).catch(err => log.warn('Failed to log compliance response_history', { error: err.message }));
 
                     // Send metadata event
                     res.write(`data: ${JSON.stringify({

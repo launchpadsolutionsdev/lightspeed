@@ -1044,6 +1044,7 @@ router.post('/agent', authenticate, checkUsageLimit, upload.single('file'), asyn
     };
 
     try {
+        const startTime = Date.now();
         const { message, conversation, model, language, webSearch, dashboardContext, content: rawContent } = req.body;
         const file = req.file;
         const organizationId = req.organizationId;
@@ -1178,8 +1179,15 @@ Web search is ENABLED. For any factual question, external topic, industry inform
             model: selectedModel
         });
 
+        // Wrap sendEvent to accumulate all streamed text for response_history
+        const accumulatedTextParts = [];
+        const trackingSendEvent = (data) => {
+            if (data.type === 'text') accumulatedTextParts.push(data.content);
+            sendEvent(data);
+        };
+
         // Process the response — handle tool_use blocks
-        await processResponse(response, messages, combinedSystem, organizationId, userId, selectedModel, sendEvent, () => {}, requestTools);
+        await processResponse(response, messages, combinedSystem, organizationId, userId, selectedModel, trackingSendEvent, () => {}, requestTools);
 
         // Emit follow-up suggestions only for web search conversations
         if (webSearch === 'true') {
@@ -1197,12 +1205,26 @@ Web search is ENABLED. For any factual question, external topic, industry inform
         }
 
         // Log usage
+        const responseTimeMs = Date.now() - startTime;
         if (organizationId && response.usage) {
             const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
             pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, success, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'ask_lightspeed', $3, TRUE, NOW())`,
-                [organizationId, userId, totalTokens]
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, input_tokens, output_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'ask_lightspeed', $3, $4, $5, $6, TRUE, NOW())`,
+                [organizationId, userId, totalTokens, response.usage.input_tokens || 0, response.usage.output_tokens || 0, responseTimeMs]
+            ).catch(_e => {});
+        }
+
+        // Save to response history for cross-tool context
+        const fullResponseText = accumulatedTextParts.join('\n');
+        if (organizationId && fullResponseText) {
+            const wordCount = fullResponseText.trim().split(/\s+/).length;
+            const charCount = fullResponseText.length;
+            const userInquiry = typeof message === 'string' ? message : 'Ask Lightspeed conversation';
+            pool.query(
+                `INSERT INTO response_history (organization_id, user_id, tool, inquiry, response, word_count, char_count, response_time_ms, created_at)
+                 VALUES ($1, $2, 'ask_lightspeed', $3, $4, $5, $6, $7, NOW())`,
+                [organizationId, userId, userInquiry, fullResponseText, wordCount, charCount, responseTimeMs]
             ).catch(_e => {});
         }
 

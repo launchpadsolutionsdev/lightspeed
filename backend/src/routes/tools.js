@@ -100,10 +100,21 @@ router.post('/response-assistant/generate', authenticate, checkAIRateLimit, chec
         if (organizationId && usage) {
             const totalTokens = (usage.input_tokens || 0) + (usage.output_tokens || 0);
             await pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, $4, TRUE, NOW())`,
-                [organizationId, req.userId, totalTokens, responseTimeMs]
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, input_tokens, output_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, $4, $5, $6, TRUE, NOW())`,
+                [organizationId, req.userId, totalTokens, usage.input_tokens || 0, usage.output_tokens || 0, responseTimeMs]
             ).catch(err => log.warn('Usage logging failed', { error: err.message }));
+        }
+
+        // Save to response_history for admin dashboard quality metrics
+        if (organizationId) {
+            const wordCount = text.trim().split(/\s+/).length;
+            const charCount = text.length;
+            pool.query(
+                `INSERT INTO response_history (id, organization_id, user_id, tool, inquiry, response, format, tone, response_time_ms, word_count, char_count, kb_entries_used, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'response_assistant', $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
+                [organizationId, req.userId, inquiry, text, format || 'email', tone || 'balanced', responseTimeMs, wordCount, charCount, referencedKbEntries.length]
+            ).catch(err => log.warn('Response history save failed', { error: err.message }));
         }
 
         // Validate output for safety + format compliance
@@ -290,10 +301,21 @@ router.post('/generate-stream', authenticate, checkUsageLimit, async (req, res) 
         if (organizationId && usage) {
             const totalTokens = (usage.input_tokens || 0) + (usage.output_tokens || 0);
             await pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, TRUE, NOW())`,
-                [organizationId, req.userId, tool || 'response_assistant', totalTokens, responseTimeMs]
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, input_tokens, output_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, TRUE, NOW())`,
+                [organizationId, req.userId, tool || 'response_assistant', totalTokens, usage.input_tokens || 0, usage.output_tokens || 0, responseTimeMs]
             ).catch(_e => log.warn('Usage logging failed', { error: _e.message }));
+        }
+
+        // Save to response_history for admin dashboard quality metrics
+        if (organizationId && inquiry) {
+            const wordCount = text.trim().split(/\s+/).length;
+            const charCount = text.length;
+            pool.query(
+                `INSERT INTO response_history (id, organization_id, user_id, tool, inquiry, response, format, tone, response_time_ms, word_count, char_count, kb_entries_used, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'email', 'balanced', $6, $7, $8, $9, NOW())`,
+                [organizationId, req.userId, tool || 'response_assistant', inquiry, text, responseTimeMs, wordCount, charCount, referencedKbEntries.length]
+            ).catch(_e => log.warn('Response history save failed', { error: _e.message }));
         }
 
         sendEvent({ type: 'done', usage: usage || {}, contextSummary });
@@ -469,23 +491,29 @@ ${JSON.stringify(data)}`;
         if (organizationId && response.usage) {
             const totalTokens = (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0);
             await pool.query(
-                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, response_time_ms, success, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'insights_engine', $3, $4, TRUE, NOW())`,
-                [organizationId, req.userId, totalTokens, responseTimeMs]
+                `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, input_tokens, output_tokens, response_time_ms, success, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'insights_engine', $3, $4, $5, $6, TRUE, NOW())`,
+                [organizationId, req.userId, totalTokens, response.usage.input_tokens || 0, response.usage.output_tokens || 0, responseTimeMs]
             );
         }
 
         // Save to response_history for cross-tool context
         if (organizationId) {
+            const responseText = response.content?.[0]?.text || '';
+            const wordCount = responseText.split(/\s+/).filter(Boolean).length;
+            const charCount = responseText.length;
             pool.query(
-                `INSERT INTO response_history (id, organization_id, user_id, tool, inquiry, response, content_type, context_layers_used, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'insights_engine', $3, $4, $5, $6, NOW())`,
+                `INSERT INTO response_history (id, organization_id, user_id, tool, inquiry, response, content_type, context_layers_used, word_count, char_count, response_time_ms, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, 'insights_engine', $3, $4, $5, $6, $7, $8, $9, NOW())`,
                 [
                     organizationId, req.userId,
                     (additionalContext || reportType || 'data analysis').substring(0, 500),
-                    (response.content?.[0]?.text || '').substring(0, 2000),
+                    responseText.substring(0, 2000),
                     reportType || 'data_analysis',
-                    JSON.stringify(contextSummary)
+                    JSON.stringify(contextSummary),
+                    wordCount,
+                    charCount,
+                    responseTimeMs
                 ]
             ).catch(_e => log.warn('Insights history save failed', { error: _e.message }));
         }
@@ -602,8 +630,8 @@ router.post('/normalize/log', authenticate, async (req, res) => {
         if (organizationId) {
             await pool.query(
                 `INSERT INTO usage_logs (id, organization_id, user_id, tool, total_tokens, created_at)
-                 VALUES (gen_random_uuid(), $1, $2, 'list_normalizer', $3, NOW())`,
-                [organizationId, req.userId, cleanCount || 0]
+                 VALUES (gen_random_uuid(), $1, $2, 'list_normalizer', 0, NOW())`,
+                [organizationId, req.userId]
             );
         }
 
