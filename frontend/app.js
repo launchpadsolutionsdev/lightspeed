@@ -3692,7 +3692,7 @@ async function sendAlsAgenticMessage(message, attachments, messagesToSend) {
                     case 'text':
                         msgDiv.classList.add('als-has-content');
                         statusDiv.style.display = 'none';
-                        fullText += (fullText && event.content ? '\n' : '') + (event.content || '');
+                        fullText += event.content || '';
                         textDiv.innerHTML = renderAlsMarkdownWithCitations(fullText, alsKbEntries);
                         chatArea.scrollTop = chatArea.scrollHeight;
                         break;
@@ -3905,7 +3905,7 @@ async function alsConfirmAction() {
                     statusEl.innerHTML = '<div class="als-tool-spinner"></div><span>' + escapeHtml(event.message) + '</span>';
                 } else if (event.type === 'text') {
                     statusEl.style.display = 'none';
-                    resultText += (resultText ? '\n' : '') + (event.content || '');
+                    resultText += event.content || '';
                     textEl.innerHTML = renderAlsMarkdownWithCitations(resultText, []);
                 } else if (event.type === 'events_created' || event.type === 'kb_saved') {
                     // Action completed successfully
@@ -7898,7 +7898,7 @@ async function streamIapResponse() {
                         msgEl.style.display = '';
                         messagesEl.appendChild(msgEl);
                     }
-                    fullText += (fullText && event.content ? '\n' : '') + (event.content || '');
+                    fullText += event.content || '';
                     msgEl.innerHTML = renderSimpleMarkdown(fullText);
                     messagesEl.scrollTop = messagesEl.scrollHeight;
                 } else if (event.type === 'status') {
@@ -21544,7 +21544,7 @@ async function sendHbAiMessage(page) {
                 try { event = JSON.parse(jsonStr); } catch (_e) { continue; }
 
                 if (event.type === 'text' && event.content) {
-                    fullText += (fullText ? '\n' : '') + event.content;
+                    fullText += event.content;
                     aiDiv.innerHTML = renderSimpleMarkdown(fullText);
                     messagesEl.scrollTop = messagesEl.scrollHeight;
                 } else if (event.type === 'status') {

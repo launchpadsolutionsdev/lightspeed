@@ -1189,27 +1189,29 @@ Web search is ENABLED. For any factual question, external topic, industry inform
         // Build combined system for tool-use follow-up calls (single string for processResponse)
         const combinedSystem = staticSystem + dynamicSystem;
 
-        // Call Claude with tools — split system for caching
+        // Call Claude with tools — split system for caching, stream text in real-time
         sendEvent({ type: 'status', message: 'Thinking...' });
 
-        const response = await claudeService.generateResponse({
+        const accumulatedTextParts = [];
+        const response = await claudeService.generateResponseStream({
             messages,
             staticSystem,
             dynamicSystem,
             max_tokens: 4096,
             tools: requestTools,
-            model: selectedModel
+            model: selectedModel,
+            onText: (chunk) => {
+                accumulatedTextParts.push(chunk);
+                sendEvent({ type: 'text', content: chunk });
+            }
         });
 
-        // Wrap sendEvent to accumulate all streamed text for response_history
-        const accumulatedTextParts = [];
+        // Process the response — handle tool_use blocks (text already streamed)
         const trackingSendEvent = (data) => {
             if (data.type === 'text') accumulatedTextParts.push(data.content);
             sendEvent(data);
         };
-
-        // Process the response — handle tool_use blocks
-        await processResponse(response, messages, combinedSystem, organizationId, userId, selectedModel, trackingSendEvent, () => {}, requestTools);
+        await processResponse(response, messages, combinedSystem, organizationId, userId, selectedModel, trackingSendEvent, () => {}, requestTools, true);
 
         // Emit follow-up suggestions only for web search conversations
         if (webSearch === 'true') {
@@ -1238,7 +1240,7 @@ Web search is ENABLED. For any factual question, external topic, industry inform
         }
 
         // Save to response history for cross-tool context
-        const fullResponseText = accumulatedTextParts.join('\n');
+        const fullResponseText = accumulatedTextParts.join('');
         if (organizationId && fullResponseText) {
             const wordCount = fullResponseText.trim().split(/\s+/).length;
             const charCount = fullResponseText.length;
@@ -1261,11 +1263,28 @@ Web search is ENABLED. For any factual question, external topic, industry inform
 });
 
 /**
+ * Make a streaming follow-up call to Claude after a tool execution, then
+ * recursively process the response (which may trigger more tool calls).
+ * Text chunks are streamed to the client in real-time via sendEvent.
+ */
+async function streamFollowUp(followUpMessages, system, max_tokens, tools, model, organizationId, userId, sendEvent, trackTool) {
+    const followUp = await claudeService.generateResponseStream({
+        messages: followUpMessages,
+        system,
+        max_tokens,
+        tools,
+        model,
+        onText: (chunk) => { sendEvent({ type: 'text', content: chunk }); }
+    });
+    await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools, true);
+}
+
+/**
  * Process Claude's response, handling text blocks and tool_use blocks.
  * For read-only tools (search), executes immediately and loops back.
  * For write tools (create_runway_events), sends a confirmation prompt.
  */
-async function processResponse(response, messages, system, organizationId, userId, model, sendEvent, trackTool, tools) {
+async function processResponse(response, messages, system, organizationId, userId, model, sendEvent, trackTool, tools, textAlreadyStreamed) {
     const content = response.content || [];
 
     // Log content block types for debugging web search
@@ -1295,8 +1314,8 @@ async function processResponse(response, messages, system, organizationId, userI
         // server_tool_use — handled server-side, no action needed
     }
 
-    // Send any text content
-    if (textParts.length > 0) {
+    // Send text content (skip if already streamed in real-time via onText callback)
+    if (!textAlreadyStreamed && textParts.length > 0) {
         sendEvent({ type: 'text', content: textParts.join('\n') });
     }
 
@@ -1355,23 +1374,14 @@ async function processResponse(response, messages, system, organizationId, userI
                 ? `Found ${results.length} events:\n${results.map(e => `- ${e.event_date}: ${e.title}${e.category ? ' [' + e.category + ']' : ''}`).join('\n')}`
                 : 'No matching events found on Runway.';
 
-            // Send tool result back to Claude for final response
+            // Send tool result back to Claude for streaming follow-up
             const followUpMessages = [
                 ...messages,
                 { role: 'assistant', content: response.content },
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 4096,
-                tools: tools,
-                model
-            });
-
-            // Recursively process (Claude might call another tool)
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'search_knowledge_base') {
@@ -1388,15 +1398,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 4096,
-                tools: tools,
-                model
-            });
-
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'draft_content') {
@@ -1420,15 +1422,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
                 ];
 
-                const followUp = await claudeService.generateResponse({
-                    messages: followUpMessages,
-                    system,
-                    max_tokens: 4096,
-                    tools: tools,
-                    model
-                });
-
-                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+                await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
             } else {
                 // Draft succeeded — send the full draft directly to the user
                 sendEvent({ type: 'text', content: result.draft });
@@ -1441,15 +1435,7 @@ async function processResponse(response, messages, system, organizationId, userI
                     { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
                 ];
 
-                const followUp = await claudeService.generateResponse({
-                    messages: followUpMessages,
-                    system,
-                    max_tokens: 1024,
-                    tools: tools,
-                    model
-                });
-
-                await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+                await streamFollowUp(followUpMessages, system, 1024, tools, model, organizationId, userId, sendEvent, trackTool);
             }
             return;
 
@@ -1486,15 +1472,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 4096,
-                tools: tools,
-                model
-            });
-
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'search_home_base') {
@@ -1514,15 +1492,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 4096,
-                tools: tools,
-                model
-            });
-
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'run_insights_analysis') {
@@ -1539,15 +1509,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 4096,
-                tools: tools,
-                model
-            });
-
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'search_shopify_orders') {
@@ -1573,15 +1535,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 4096,
-                tools: tools,
-                model
-            });
-
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'search_shopify_customers') {
@@ -1606,15 +1560,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 4096,
-                tools: tools,
-                model
-            });
-
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'search_heartbeat_data') {
@@ -1629,15 +1575,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 4096,
-                tools: tools,
-                model
-            });
-
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            await streamFollowUp(followUpMessages, system, 4096, tools, model, organizationId, userId, sendEvent, trackTool);
             return;
 
         } else if (toolUse.name === 'render_chart') {
@@ -1658,15 +1596,7 @@ async function processResponse(response, messages, system, organizationId, userI
                 { role: 'user', content: buildToolResults(toolUse.id, toolResult) }
             ];
 
-            const followUp = await claudeService.generateResponse({
-                messages: followUpMessages,
-                system,
-                max_tokens: 2048,
-                tools: tools,
-                model
-            });
-
-            await processResponse(followUp, followUpMessages, system, organizationId, userId, model, sendEvent, trackTool, tools);
+            await streamFollowUp(followUpMessages, system, 2048, tools, model, organizationId, userId, sendEvent, trackTool);
             return;
         }
     }
