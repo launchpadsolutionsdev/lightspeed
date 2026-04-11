@@ -22480,6 +22480,11 @@ async function hbLoadPosts() {
     const activityBtn = document.getElementById('hbActivityBtn');
     if (activityBtn) activityBtn.style.display = isAdminUser ? 'inline' : 'none';
 
+    // Show global post toggle for super admins
+    const isSA = !!(currentUser && currentUser.isSuperAdmin);
+    const globalLabel = document.getElementById('hbGlobalLabel');
+    if (globalLabel) globalLabel.style.display = isSA ? 'inline-flex' : 'none';
+
     // Load scheduled posts
     hbLoadScheduledPosts();
 }
@@ -22544,16 +22549,24 @@ function hbRenderPost(post) {
     const time = hbRelativeTime(post.created_at);
     const isAuthor = currentUser && post.author_id === currentUser.id;
     const canAdmin = hbUserRole === 'admin' || hbUserRole === 'owner';
-    const canDelete = isAuthor || canAdmin;
+    const isSA = !!(currentUser && currentUser.isSuperAdmin);
+    const isGlobal = !!post.is_global;
+    // For global posts, only super admins can delete/edit/pin
+    const canDelete = isGlobal ? isSA : (isAuthor || canAdmin);
     const commentCount = post.comment_count || 0;
 
-    // Check if still within edit window (15 min)
+    // Check if still within edit window (15 min) — super admins can always edit global posts
     const createdAt = new Date(post.created_at);
-    const canEdit = isAuthor && (Date.now() - createdAt.getTime() < 15 * 60 * 1000);
+    const canEdit = isGlobal ? isSA : (isAuthor && (Date.now() - createdAt.getTime() < 15 * 60 * 1000));
 
     let pinHtml = '';
     if (post.pinned) {
         pinHtml = '<span class="hb-pin-indicator" title="Pinned">&#128204;</span>';
+    }
+
+    let globalHtml = '';
+    if (isGlobal) {
+        globalHtml = '<span class="hb-global-badge" title="Visible to all organizations">All Orgs</span>';
     }
 
     // Edited indicator
@@ -22572,7 +22585,7 @@ function hbRenderPost(post) {
     if (canEdit) {
         actionsHtml += `<button class="hb-action-btn" title="Edit" onclick="hbStartEdit('${post.id}')">&#9998;</button>`;
     }
-    if (canAdmin) {
+    if (isGlobal ? isSA : canAdmin) {
         const pinIcon = post.pinned ? '&#128204;' : '&#128392;';
         const pinTitle = post.pinned ? 'Unpin' : 'Pin';
         actionsHtml += `<button class="hb-action-btn" title="${pinTitle}" onclick="hbTogglePin('${post.id}')">${pinIcon}</button>`;
@@ -22644,7 +22657,7 @@ function hbRenderPost(post) {
                 <span class="hb-author-name">${hbEsc(name)}</span>
                 ${editedHtml}
                 <span class="hb-badge" style="background:${catColor};color:#fff;border-color:${catColor}">${catLabel}</span>
-                ${pinHtml}
+                ${globalHtml}${pinHtml}
             </div>
             <div class="hb-post-meta">
                 <span class="hb-timestamp">${time}</span>
@@ -22786,7 +22799,8 @@ async function hbCreatePost() {
                     body,
                     category: hbSelectedCategory,
                     requires_ack: document.getElementById('hbRequiresAck')?.checked || false,
-                    scheduled_for: document.getElementById('hbScheduleFor')?.value || null
+                    scheduled_for: document.getElementById('hbScheduleFor')?.value || null,
+                    is_global: document.getElementById('hbIsGlobal')?.checked || false
                 })
             });
             if (!resp.ok) {
@@ -23342,6 +23356,8 @@ function hbResetCompose() {
 
     const ackCb = document.getElementById('hbRequiresAck');
     if (ackCb) ackCb.checked = false;
+    const globalCb = document.getElementById('hbIsGlobal');
+    if (globalCb) globalCb.checked = false;
     const schedInput = document.getElementById('hbScheduleFor');
     if (schedInput) schedInput.value = '';
 
