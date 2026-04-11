@@ -9,7 +9,7 @@
 
 ### What is Lightspeed?
 
-Lightspeed by Launchpad Solutions is an AI-powered productivity suite for hospital lotteries and charitable gaming organizations. From the README:
+Lightspeed Utility is an AI-powered productivity suite for hospital lotteries and charitable gaming organizations. From the README:
 
 > "AI-powered productivity suite for hospital lotteries and charitable gaming organizations. Helps staff respond to customer inquiries, analyze data, draft content, and normalize lists — faster and more consistently."
 

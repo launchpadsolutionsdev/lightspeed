@@ -1,4 +1,4 @@
-// Lightspeed by Launchpad Solutions
+// Lightspeed Utility
 // Generic Knowledge Base for Charitable Gaming & Lottery Organizations in Ontario
 //
 // This knowledge base is organization-agnostic. All responses use generic phrasing

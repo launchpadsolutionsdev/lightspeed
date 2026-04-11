@@ -1,4 +1,4 @@
-# Lightspeed by Launchpad Solutions
+# Lightspeed Utility
 
 AI-powered productivity suite for hospital lotteries and charitable gaming organizations. Helps staff respond to customer inquiries, analyze data, draft content, and normalize lists — faster and more consistently.
 
@@ -85,4 +85,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Built By
 
-**Launchpad Solutions** — Lottery consulting and technology for hospital foundations.
+**Lightspeed Utility** — Lottery consulting and technology for hospital foundations.

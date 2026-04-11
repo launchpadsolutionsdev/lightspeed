@@ -1,4 +1,4 @@
-// Lightspeed by Launchpad Solutions v3.0
+// Lightspeed Utility v3.0
 // Multi-Tool Platform with Customer Response & Data Analysis
 
 // ==================== STICKY CTA & BACK TO TOP ====================
@@ -2914,7 +2914,7 @@ When responding in a non-English language:
 
         // Layer 1 is fully static — zero dynamic variables — so prompt caching gets maximum hits.
         // All dynamic content (org name, tone, language) is injected in Layer 2 below.
-        const systemPrompt = `You are Lightspeed AI, an AI assistant built by Launchpad Solutions. You work for the organization identified below.
+        const systemPrompt = `You are Lightspeed AI, an AI assistant built by Lightspeed Utility. You work for the organization identified below.
 
 You are an expert in charitable gaming operations, lottery and raffle management, marketing and donor engagement, customer service, and nonprofit compliance (including AGCO regulations). You can briefly assist with adjacent topics when needed, but your primary role is supporting the operations and team of a charitable lottery organization.
 
@@ -3959,7 +3959,7 @@ function buildAlsAgenticSystemPrompt(orgName, toneDesc) {
     const today = new Date().toISOString().split('T')[0];
     const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
-    return `You are Ask Lightspeed, a powerful AI assistant built by Launchpad Solutions into the Lightspeed platform. You work for ${orgName}.
+    return `You are Ask Lightspeed, a powerful AI assistant built by Lightspeed Utility into the Lightspeed platform. You work for ${orgName}.
 
 TODAY'S DATE: ${dayOfWeek}, ${today}
 
@@ -4475,7 +4475,7 @@ async function sendAlsMessage() {
             ];
         }
 
-        const systemPrompt = `You are Lightspeed AI, a powerful, full-featured AI assistant built by Launchpad Solutions. You work for ${orgName}.
+        const systemPrompt = `You are Lightspeed AI, a powerful, full-featured AI assistant built by Lightspeed Utility. You work for ${orgName}.
 
 TODAY'S DATE: ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}, ${new Date().toISOString().split('T')[0]}
 
@@ -14032,7 +14032,7 @@ const EMAIL_DETAILS_LABELS = {
 
 // Layer 1: Static, org-agnostic Draft Assistant prompt — zero dynamic variables.
 // Cached across all requests via cache_control. All org-specific content is injected in Layer 2.
-const DRAFT_STATIC_PROMPT = `You are a content strategist and copywriter built by Launchpad Solutions. You work for the organization identified below.
+const DRAFT_STATIC_PROMPT = `You are a content strategist and copywriter built by Lightspeed Utility. You work for the organization identified below.
 
 You are an expert in charitable gaming marketing, lottery and raffle communications, donor engagement, nonprofit fundraising content, and compliance-aware promotional writing. You can also write general-purpose content (reports, internal memos, board materials, etc.) when asked.
 

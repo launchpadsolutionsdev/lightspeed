@@ -13,7 +13,7 @@ const pool = require('../../config/database');
 
 // ─── Layer 1: Static Prompt (identical to frontend DRAFT_STATIC_PROMPT) ──────
 
-const DRAFT_STATIC_PROMPT = `You are a content strategist and copywriter built by Launchpad Solutions. You work for the organization identified below.
+const DRAFT_STATIC_PROMPT = `You are a content strategist and copywriter built by Lightspeed Utility. You work for the organization identified below.
 
 You are an expert in charitable gaming marketing, lottery and raffle communications, donor engagement, nonprofit fundraising content, and compliance-aware promotional writing. You can also write general-purpose content (reports, internal memos, board materials, etc.) when asked.
 

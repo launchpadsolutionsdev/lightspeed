@@ -437,7 +437,7 @@ def build_doc():
     foot.paragraph_format.space_after  = Pt(0)
     foot.alignment = WD_ALIGN_PARAGRAPH.CENTER
     fr = foot.add_run(
-        "Lightspeed  ·  Launchpad Solutions  ·  Confidential & Proprietary  ·  "
+        "Lightspeed  ·  Lightspeed Utility  ·  Confidential & Proprietary  ·  "
         "Distribution restricted to authorised parties under executed NDA"
     )
     set_font(fr, size=7, colour=MID_GREY)
