@@ -12259,6 +12259,17 @@
             font-size: 0.8rem;
             margin-left: 2px;
         }
+        .hb-global-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff;
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 9999px;
+            margin-left: 6px;
+            letter-spacing: 0.02em;
+        }
         .hb-post-meta {
             display: flex;
             align-items: center;
@@ -16585,6 +16596,9 @@
                             </div>
                         </div>
                         <div class="hb-schedule-row">
+                            <label class="hb-schedule-label" id="hbGlobalLabel" style="display:none">
+                                <input type="checkbox" id="hbIsGlobal"> Post to all organizations
+                            </label>
                             <label class="hb-schedule-label" id="hbAckLabel" style="display:none">
                                 <input type="checkbox" id="hbRequiresAck"> Require acknowledgment
                             </label>

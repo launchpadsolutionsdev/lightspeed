@@ -78,6 +78,17 @@ async function isAdmin(userId, organizationId) {
     return result.rows[0].role === 'admin' || result.rows[0].role === 'owner';
 }
 
+/**
+ * Helper: check if user is a super admin.
+ */
+async function isSuperAdmin(userId) {
+    const result = await pool.query(
+        'SELECT is_super_admin FROM users WHERE id = $1',
+        [userId]
+    );
+    return result.rows[0]?.is_super_admin === true;
+}
+
 // ── Categories ────────────────────────────────────────────────────────
 
 /**
@@ -337,7 +348,7 @@ router.get('/posts', authenticate, async (req, res) => {
 
         const result = await pool.query(
             `SELECT p.id, p.body, p.category, p.pinned, COALESCE(p.pin_order, 0) AS pin_order, p.created_at, p.updated_at,
-                    p.author_id, p.edited_at, p.requires_ack,
+                    p.author_id, p.edited_at, p.requires_ack, COALESCE(p.is_global, false) AS is_global,
                     u.first_name, u.last_name,
                     COALESCE(c.comment_count, 0)::int AS comment_count,
                     COALESCE(a.attachment_count, 0)::int AS attachment_count
@@ -353,7 +364,7 @@ router.get('/posts', authenticate, async (req, res) => {
                  FROM home_base_attachments
                  GROUP BY post_id
              ) a ON a.post_id = p.id
-             WHERE p.organization_id = $1
+             WHERE (p.organization_id = $1 OR p.is_global = true)
                AND COALESCE(p.archived, false) = false
                AND COALESCE(p.is_draft, false) = false${categoryFilter}
              ORDER BY p.pinned DESC, p.pin_order ASC, p.created_at DESC`,
@@ -494,15 +505,25 @@ router.post('/posts', authenticate, [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const organizationId = req.organizationId;
-        if (!organizationId) {
+        const { body: postBody, category, requires_ack, scheduled_for, is_draft, is_global } = req.body;
+
+        // Global posts: super admin only, org is optional
+        const isGlobal = !!is_global;
+        let organizationId = req.organizationId;
+
+        if (isGlobal) {
+            const superAdmin = await isSuperAdmin(req.userId);
+            if (!superAdmin) {
+                return res.status(403).json({ error: 'Only super admins can create global posts' });
+            }
+            // Global posts don't belong to a specific org
+            organizationId = null;
+        } else if (!organizationId) {
             return res.status(400).json({ error: 'Organization required' });
         }
 
-        const { body: postBody, category, requires_ack, scheduled_for, is_draft } = req.body;
-
-        // Validate category against org's custom categories
-        if (category) {
+        // Validate category against org's custom categories (skip for global posts)
+        if (category && !isGlobal) {
             const validSlugs = await getValidCategorySlugs(organizationId);
             if (!validSlugs.includes(category)) {
                 return res.status(400).json({ error: 'Invalid category' });
@@ -517,8 +538,8 @@ router.post('/posts', authenticate, [
             return res.status(400).json({ error: 'Scheduled time must be in the future' });
         }
 
-        // Only admins can require acknowledgment
-        if (requires_ack) {
+        // Only admins can require acknowledgment (not applicable for global posts)
+        if (requires_ack && !isGlobal) {
             const admin = await isAdmin(req.userId, organizationId);
             if (!admin) {
                 return res.status(403).json({ error: 'Only admins can require acknowledgment' });
@@ -526,10 +547,10 @@ router.post('/posts', authenticate, [
         }
 
         const result = await pool.query(
-            `INSERT INTO home_base_posts (organization_id, author_id, body, category, requires_ack, scheduled_for, is_draft)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `INSERT INTO home_base_posts (organization_id, author_id, body, category, requires_ack, scheduled_for, is_draft, is_global)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
              RETURNING *`,
-            [organizationId, req.userId, postBody, category || 'general', !!requires_ack, scheduledTime, isDraft]
+            [organizationId, req.userId, postBody, category || 'general', !!requires_ack, scheduledTime, isDraft, isGlobal]
         );
 
         // Fetch author info for the response
@@ -543,16 +564,18 @@ router.post('/posts', authenticate, [
         post.comment_count = 0;
         post.reactions = [];
 
-        // Process @mentions (fire-and-forget)
-        const mentions = extractMentions(postBody);
-        if (mentions.length > 0) {
-            resolveMentions(mentions, organizationId, req.userId).then(ids => {
-                if (ids.length > 0) createMentionNotifications(ids, req.userId, organizationId, post.id, null);
-            }).catch(() => {});
+        // Process @mentions (fire-and-forget) — skip for global posts (no single org context)
+        if (!isGlobal) {
+            const mentions = extractMentions(postBody);
+            if (mentions.length > 0) {
+                resolveMentions(mentions, organizationId, req.userId).then(ids => {
+                    if (ids.length > 0) createMentionNotifications(ids, req.userId, organizationId, post.id, null);
+                }).catch(() => {});
+            }
         }
 
         // Log activity
-        if (!isDraft) logActivity(organizationId, req.userId, 'post', post.id);
+        if (!isDraft && organizationId) logActivity(organizationId, req.userId, 'post', post.id);
 
         res.status(201).json({ post });
     } catch (error) {
@@ -568,8 +591,12 @@ router.post('/posts', authenticate, [
 router.delete('/posts/:id', authenticate, async (req, res) => {
     try {
         const organizationId = req.organizationId;
+
+        // Try to find the post: either in this org or as a global post
         const postResult = await pool.query(
-            'SELECT author_id FROM home_base_posts WHERE id = $1 AND organization_id = $2 AND COALESCE(archived, false) = false',
+            `SELECT author_id, is_global FROM home_base_posts
+             WHERE id = $1 AND (organization_id = $2 OR is_global = true)
+               AND COALESCE(archived, false) = false`,
             [req.params.id, organizationId]
         );
 
@@ -577,17 +604,26 @@ router.delete('/posts/:id', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        const isAuthor = postResult.rows[0].author_id === req.userId;
-        const admin = await isAdmin(req.userId, organizationId);
+        const post = postResult.rows[0];
 
-        if (!isAuthor && !admin) {
-            return res.status(403).json({ error: 'Not authorized to delete this post' });
+        // Global posts: only super admins can delete
+        if (post.is_global) {
+            const superAdmin = await isSuperAdmin(req.userId);
+            if (!superAdmin) {
+                return res.status(403).json({ error: 'Only super admins can delete global posts' });
+            }
+        } else {
+            const isAuthor = post.author_id === req.userId;
+            const admin = await isAdmin(req.userId, organizationId);
+            if (!isAuthor && !admin) {
+                return res.status(403).json({ error: 'Not authorized to delete this post' });
+            }
         }
 
         await pool.query(
-            `UPDATE home_base_posts SET archived = true, archived_at = NOW(), archived_by = $3
-             WHERE id = $1 AND organization_id = $2`,
-            [req.params.id, organizationId, req.userId]
+            `UPDATE home_base_posts SET archived = true, archived_at = NOW(), archived_by = $2
+             WHERE id = $1`,
+            [req.params.id, req.userId]
         );
 
         res.json({ message: 'Post deleted' });
@@ -604,13 +640,10 @@ router.delete('/posts/:id', authenticate, async (req, res) => {
 router.patch('/posts/:id/pin', authenticate, async (req, res) => {
     try {
         const organizationId = req.organizationId;
-        const admin = await isAdmin(req.userId, organizationId);
-        if (!admin) {
-            return res.status(403).json({ error: 'Admin access required' });
-        }
 
+        // Check if this is a global post
         const postResult = await pool.query(
-            'SELECT id, pinned FROM home_base_posts WHERE id = $1 AND organization_id = $2',
+            'SELECT id, pinned, is_global FROM home_base_posts WHERE id = $1 AND (organization_id = $2 OR is_global = true)',
             [req.params.id, organizationId]
         );
 
@@ -618,7 +651,22 @@ router.patch('/posts/:id/pin', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        const currentlyPinned = postResult.rows[0].pinned;
+        const post = postResult.rows[0];
+
+        // Global posts: only super admins can pin/unpin
+        if (post.is_global) {
+            const superAdmin = await isSuperAdmin(req.userId);
+            if (!superAdmin) {
+                return res.status(403).json({ error: 'Only super admins can pin global posts' });
+            }
+        } else {
+            const admin = await isAdmin(req.userId, organizationId);
+            if (!admin) {
+                return res.status(403).json({ error: 'Admin access required' });
+            }
+        }
+
+        const currentlyPinned = post.pinned;
 
         // If unpinning, just do it and reset pin_order
         if (currentlyPinned) {
@@ -629,9 +677,9 @@ router.patch('/posts/:id/pin', authenticate, async (req, res) => {
             return res.json({ pinned: false });
         }
 
-        // If pinning, check max limit
+        // If pinning, check max limit (scoped to org, global pins count separately)
         const pinnedCount = await pool.query(
-            'SELECT COUNT(*)::int AS count FROM home_base_posts WHERE organization_id = $1 AND pinned = true',
+            'SELECT COUNT(*)::int AS count FROM home_base_posts WHERE (organization_id = $1 OR is_global = true) AND pinned = true',
             [organizationId]
         );
 
@@ -644,7 +692,7 @@ router.patch('/posts/:id/pin', authenticate, async (req, res) => {
 
         // Assign next pin_order
         const maxOrder = await pool.query(
-            'SELECT COALESCE(MAX(pin_order), 0) + 1 AS next FROM home_base_posts WHERE organization_id = $1 AND pinned = true',
+            'SELECT COALESCE(MAX(pin_order), 0) + 1 AS next FROM home_base_posts WHERE (organization_id = $1 OR is_global = true) AND pinned = true',
             [organizationId]
         );
 
@@ -714,7 +762,9 @@ router.patch('/posts/:id', authenticate, [
 
         const organizationId = req.organizationId;
         const postResult = await pool.query(
-            'SELECT author_id, created_at FROM home_base_posts WHERE id = $1 AND organization_id = $2 AND COALESCE(archived, false) = false',
+            `SELECT author_id, created_at, is_global FROM home_base_posts
+             WHERE id = $1 AND (organization_id = $2 OR is_global = true)
+               AND COALESCE(archived, false) = false`,
             [req.params.id, organizationId]
         );
 
@@ -722,21 +772,30 @@ router.patch('/posts/:id', authenticate, [
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        if (postResult.rows[0].author_id !== req.userId) {
-            return res.status(403).json({ error: 'Only the author can edit this post' });
-        }
+        const post = postResult.rows[0];
 
-        const createdAt = new Date(postResult.rows[0].created_at);
-        if (Date.now() - createdAt.getTime() > EDIT_WINDOW_MS) {
-            return res.status(400).json({ error: 'Edit window has expired (15 minutes)' });
+        // Global posts: only super admins can edit (no time window)
+        if (post.is_global) {
+            const superAdmin = await isSuperAdmin(req.userId);
+            if (!superAdmin) {
+                return res.status(403).json({ error: 'Only super admins can edit global posts' });
+            }
+        } else {
+            if (post.author_id !== req.userId) {
+                return res.status(403).json({ error: 'Only the author can edit this post' });
+            }
+            const createdAt = new Date(post.created_at);
+            if (Date.now() - createdAt.getTime() > EDIT_WINDOW_MS) {
+                return res.status(400).json({ error: 'Edit window has expired (15 minutes)' });
+            }
         }
 
         const result = await pool.query(
             `UPDATE home_base_posts SET body = $1, edited_at = NOW(), updated_at = NOW(),
                     search_vector = to_tsvector('english', $1)
-             WHERE id = $2 AND organization_id = $3
+             WHERE id = $2
              RETURNING *`,
-            [req.body.body, req.params.id, organizationId]
+            [req.body.body, req.params.id]
         );
 
         res.json({ post: result.rows[0] });
@@ -1344,7 +1403,7 @@ router.get('/search', authenticate, async (req, res) => {
 
         const result = await pool.query(
             `SELECT p.id, p.body, p.category, p.pinned, p.created_at, p.updated_at,
-                    p.author_id, p.edited_at,
+                    p.author_id, p.edited_at, COALESCE(p.is_global, false) AS is_global,
                     u.first_name, u.last_name,
                     COALESCE(c.comment_count, 0)::int AS comment_count,
                     ts_rank(p.search_vector, plainto_tsquery('english', $2)) AS rank
@@ -1355,7 +1414,7 @@ router.get('/search', authenticate, async (req, res) => {
                  FROM home_base_comments
                  GROUP BY post_id
              ) c ON c.post_id = p.id
-             WHERE p.organization_id = $1
+             WHERE (p.organization_id = $1 OR p.is_global = true)
                AND COALESCE(p.archived, false) = false
                AND p.search_vector @@ plainto_tsquery('english', $2)
              ORDER BY rank DESC, p.created_at DESC
