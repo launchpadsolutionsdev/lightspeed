@@ -22836,7 +22836,8 @@ async function hbCreatePost() {
         hbLoadPosts();
     } catch (err) {
         console.error(err);
-        lsModal.alert({ title: 'Something went wrong', message: 'Please try again. If this keeps happening, contact support.', variant: 'error' });
+        const errorMsg = (err && err.message) ? err.message : 'Please try again. If this keeps happening, contact support.';
+        lsModal.alert({ title: 'Something went wrong', message: errorMsg, variant: 'error' });
     } finally {
         btn.disabled = false;
         btn.textContent = 'Post';

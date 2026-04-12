@@ -96,6 +96,10 @@ describe('Home Base Routes', () => {
             pool.query.mockResolvedValueOnce({
                 rows: [{ slug: 'general' }, { slug: 'urgent' }]
             });
+            // hasGlobalColumn -> information_schema check (cached on first call)
+            pool.query.mockResolvedValueOnce({
+                rows: [{ column_name: 'is_global' }]
+            });
             // SELECT posts
             pool.query.mockResolvedValueOnce({
                 rows: [
@@ -103,7 +107,7 @@ describe('Home Base Routes', () => {
                         id: 1, body: 'Hello team', category: 'general', pinned: false,
                         pin_order: 0, created_at: '2025-01-01', author_id: 'user-1',
                         first_name: 'Test', last_name: 'User', comment_count: 0,
-                        attachment_count: 0, requires_ack: false
+                        attachment_count: 0, requires_ack: false, is_global: false
                     }
                 ]
             });
