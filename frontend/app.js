@@ -22791,6 +22791,17 @@ async function hbCreatePost() {
             }
             hbEditingDraftId = null;
         } else {
+            // Convert local datetime-local string to a UTC ISO string so the
+            // backend (running in UTC on Render) compares against the correct
+            // moment in time. Without this, "2026-04-12T14:00" is interpreted
+            // as UTC by the server instead of the user's local time.
+            const schedRaw = document.getElementById('hbScheduleFor')?.value;
+            let scheduledIso = null;
+            if (schedRaw) {
+                const d = new Date(schedRaw);
+                if (!isNaN(d.getTime())) scheduledIso = d.toISOString();
+            }
+
             // Create new post
             const resp = await fetch(`${API_BASE_URL}/api/home-base/posts`, {
                 method: 'POST',
@@ -22799,7 +22810,7 @@ async function hbCreatePost() {
                     body,
                     category: hbSelectedCategory,
                     requires_ack: document.getElementById('hbRequiresAck')?.checked || false,
-                    scheduled_for: document.getElementById('hbScheduleFor')?.value || null,
+                    scheduled_for: scheduledIso,
                     is_global: document.getElementById('hbIsGlobal')?.checked || false
                 })
             });
