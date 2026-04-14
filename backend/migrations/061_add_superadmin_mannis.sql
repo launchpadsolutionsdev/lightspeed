@@ -1,14 +1,16 @@
--- Add mannis2025@gmail.com as super admin with Thunder Bay Regional Health Sciences Foundation
+-- Migration 061: (historical) Super-admin grant.
+--
+-- Previously hardcoded a specific personal email address as a super
+-- admin and org owner. That grant has been migrated to the runtime
+-- bootstrap (backend/src/services/superAdminBootstrap.js, driven by
+-- the SUPER_ADMINS environment variable).
+--
+-- This migration is kept as a no-op so the filename sequence stays
+-- intact. The user already granted in production by the original
+-- version of this migration retains their super_admin flag (it was
+-- applied unconditionally to the existing row) and their org
+-- membership — no data change is needed for the existing deployment.
 
--- Insert the user if they don't already exist
-INSERT INTO users (email, is_super_admin, email_verified, created_at)
-VALUES ('mannis2025@gmail.com', TRUE, TRUE, NOW())
-ON CONFLICT (email) DO UPDATE SET is_super_admin = TRUE;
-
--- Associate user with Thunder Bay org as owner (if org exists)
-INSERT INTO organization_memberships (user_id, organization_id, role, accepted_at, created_at)
-SELECT u.id, o.id, 'owner', NOW(), NOW()
-FROM users u, organizations o
-WHERE u.email = 'mannis2025@gmail.com'
-  AND o.name = 'Thunder Bay Regional Health Sciences Foundation'
-ON CONFLICT (user_id, organization_id) DO UPDATE SET role = 'owner';
+DO $$ BEGIN
+    RAISE NOTICE 'Migration 061: no-op (super-admin grant moved to SUPER_ADMINS env bootstrap)';
+END $$;
