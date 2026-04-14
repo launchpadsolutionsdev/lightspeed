@@ -6,6 +6,7 @@
 
 const pool = require('../../config/database');
 const log = require('./logger');
+const { encrypt, decrypt, isLegacyPlaintext } = require('./encryption');
 
 const SHOPIFY_API_VERSION = '2025-04';
 
@@ -113,10 +114,27 @@ async function getStoreConnection(organizationId) {
         'SELECT * FROM shopify_stores WHERE organization_id = $1 AND is_active = TRUE',
         [organizationId]
     );
-    return result.rows[0] || null;
+    const row = result.rows[0];
+    if (!row) return null;
+
+    // Decrypt the access token. Legacy plaintext rows pass through
+    // unchanged; they'll get upgraded on the next saveStoreConnection.
+    if (row.access_token) {
+        try {
+            if (isLegacyPlaintext(row.access_token)) {
+                log.warn('Shopify access_token is stored as legacy plaintext and will be encrypted on next save', { organizationId });
+            }
+            row.access_token = decrypt(row.access_token);
+        } catch (err) {
+            log.error('Failed to decrypt Shopify access_token', { organizationId, error: err.message });
+            throw new Error('Shopify store credentials could not be decrypted');
+        }
+    }
+    return row;
 }
 
 async function saveStoreConnection(organizationId, { shopDomain, accessToken, scope }) {
+    const encryptedToken = encrypt(accessToken);
     const result = await pool.query(
         `INSERT INTO shopify_stores (id, organization_id, shop_domain, access_token, scope)
          VALUES (gen_random_uuid(), $1, $2, $3, $4)
@@ -127,9 +145,13 @@ async function saveStoreConnection(organizationId, { shopDomain, accessToken, sc
             is_active = TRUE,
             updated_at = NOW()
          RETURNING *`,
-        [organizationId, shopDomain, accessToken, scope]
+        [organizationId, shopDomain, encryptedToken, scope]
     );
-    return result.rows[0];
+    // Return the row with the plaintext token so callers can use it
+    // immediately without an extra round-trip.
+    const row = result.rows[0];
+    if (row) row.access_token = accessToken;
+    return row;
 }
 
 async function disconnectStore(organizationId) {
