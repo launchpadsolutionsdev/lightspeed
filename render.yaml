@@ -48,6 +48,6 @@ services:
 
 databases:
   - name: lightspeed-db
-    plan: free
+    plan: standard
     databaseName: lightspeed
     user: lightspeed
