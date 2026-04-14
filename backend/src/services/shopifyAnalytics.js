@@ -879,12 +879,16 @@ async function syncRecentOrders(store, organizationId) {
 
 /**
  * Sync customer metrics using GraphQL customers query.
- * Uses GraphQL to fetch top customers by order count — no REST pagination.
+ *
+ * Shopify's CustomerSortKeys enum does not expose a "total spent" option, so we
+ * fetch the most recently-updated customers (any order bumps updated_at) and
+ * rank them by amountSpent in memory. This captures top spenders among
+ * recently-active customers; fully dormant high-spenders may be missed.
  */
 async function syncCustomerMetrics(store, organizationId) {
     try {
         const query = `{
-            customers(first: 50, sortKey: TOTAL_SPENT, reverse: true) {
+            customers(first: 250, sortKey: UPDATED_AT, reverse: true) {
                 edges {
                     node {
                         email
@@ -899,7 +903,13 @@ async function syncCustomerMetrics(store, organizationId) {
         }`;
 
         const data = await shopifyGraphQL(store.shop_domain, store.access_token, query);
-        const customers = data?.customers?.edges || [];
+        const allCustomers = data?.customers?.edges || [];
+
+        // Rank by total spent in memory and keep the top 50.
+        const customers = allCustomers
+            .filter(({ node: c }) => c.email)
+            .sort((a, b) => parseFloat(b.node.amountSpent?.amount || 0) - parseFloat(a.node.amountSpent?.amount || 0))
+            .slice(0, 50);
 
         await pool.query('DELETE FROM shopify_top_customers WHERE organization_id = $1', [organizationId]);
         for (const { node: c } of customers) {
