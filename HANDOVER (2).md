@@ -1,6 +1,6 @@
 # Handover Notes
 
-Torin writing. This is what I'd want to know if I were on your side of the desk picking up a codebase. Not comprehensive — just what's bit me, what I'd break if I forgot it, and what's still rough.
+Hi, Torin speaking to potentially BUMP in the future. This is what I'd want to know if I were on your side of the desk picking up a codebase. Not comprehensive — just what's bit me, what I'd break if I forgot it, and what's still rough.
 
 Companion docs: `README.md` (quick overview), `DEPLOYMENT.md` (infra details), `LICENSE` (MIT).
 
@@ -8,11 +8,11 @@ Companion docs: `README.md` (quick overview), `DEPLOYMENT.md` (infra details), `
 
 ## Background
 
-I built Lightspeed over about six weeks while running the Thunder Bay 50/50 — one of the largest hospital lotteries in Canada ($180M+ since January 2021). Every feature started as something I needed operationally and couldn't find a tool for. The codebase reflects that: it's practical and battle-tested against real workflows at TBRHSF, but it grew fast and some of the architecture shows it.
+I built Lightspeed over about three while running the Thunder Bay 50/50, Every feature started as something I needed operationally and couldn't find a tool for. The codebase reflects that: it's practical and battle-tested against real workflows at TBRHSF, but it grew fast and some of the architecture shows it.
 
 The `SEED_TBRHSF` env var and `backend/data/tbrhsf-seed.json` contain our org-specific seed data (profile, KB entries, content config). It's gated behind the flag and should stay off in the generalized product — it's there so our instance keeps working, not because it belongs in yours.
 
-Glenn Craig (TBRHSF CEO) has the operational context for how the tools map to real lottery workflows if that's useful during onboarding. Matt, Kirk, and Dave on your side have seen the demos and know what they're getting.
+I have the operational context for how the tools map to real lottery workflows if that's useful during onboarding. Matt, Kirk, and Dave on your side have seen the demos and know what they're getting.
 
 ---
 
@@ -22,7 +22,7 @@ Node 22 + Express 4 on Render Web. Vanilla JS (no build step) on Render Static. 
 
 Entry point is `backend/src/index.js`. Read it first. It's the map — CORS, auth middleware, every mounted router (18 route files), all five `setInterval` scheduled jobs, and the migration runner that runs on every boot.
 
-Frontend is one ~21k-line `index.html` + ~25k-line `app.js`. Marketing site and logged-in app are both in there with view switching in JS. Started that way when the app was small and never got split out. There's also a full marketing site with subpages (about, pricing, case study, FAQ, help, integrations, security, status) and 25 "What's New" changelog entries — one for every major feature release.
+Frontend is one ~21k-line `index.html` + ~25k-line `app.js`. Marketing site and logged-in app are both in there with view switching in JS. Started that way when the app was small and never got split out. There's also a full marketing site with subpages (about, pricing, case study, FAQ, help, integrations, security, status) and 25 "What's New" changelog entries — one for every major feature release. I figured if someone was acquiring this (this was eluded to during a TBRHSF x BUMP strategy meeting in early 2026) that team would want to restructure things the "way you do them", so that's why I didn't break things into pieces or I guess the term would be "componentizing".
 
 ---
 
@@ -56,6 +56,7 @@ The README lists 5 tools. The real platform is quite a bit bigger than that. Her
 - Multi-tenant with isolated data, roles (owner/admin/member), invitations, onboarding wizard.
 - Configurable per-org data retention policies with batch cleanup.
 - In-app bug reporting and org-level data export.
+- We planned to bring this to market ourselves, so this was all built (probably not necessary in your case).
 
 ---
 
@@ -75,7 +76,7 @@ Schema gotchas I've hit:
 
 This is the batch at the end of the commit log. Context for review, not a sales pitch.
 
-- Usage-limit middleware was bypassed with an early `return next()`. Re-enabled, tests unskipped.
+- Usage-limit middleware was bypassed with an early `return next()`. Re-enabled, tests unskipped. I disabled this because only TBRHSF has been using Lightspeed since the talks of a potential acquisition.
 - Invite-accept route wasn't checking the invitee email against the caller. Added that check — anyone with a token could have joined.
 - `/api/feedback` super-admin view returned every org's feedback by default. Scoped to caller's org; `?scope=all` for the old behavior.
 - Feed dashboard URL proxy was SSRF-able. Any org admin could point it at `169.254.169.254` or a private IP. Added `services/urlValidator.js`, applied on both save and fetch.
@@ -161,6 +162,8 @@ SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_EMAIL`, `FROM_NA
 `BACKEND_URL`, `DASHBOARD_FEED_URL`.
 
 `render.yaml` doesn't list all of these. The live service is configured via the Render dashboard. There's some drift between the two — pick one source of truth if you care about IaC.
+
+Let me know how you'd like me to send these over if I haven't already at the time you're reading this.^
 
 ---
 
