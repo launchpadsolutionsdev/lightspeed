@@ -332,6 +332,15 @@ runMigrations().then(async () => {
         log.error('Compliance KB seed error (non-fatal)', { error: seedErr.message });
     }
 
+    // Optional: load TBRHSF-specific profile / content / KB seed.
+    // No-op unless SEED_TBRHSF=true. See src/services/tbrhsfSeeder.js.
+    try {
+        const { runTbrhsfSeeder } = require('./services/tbrhsfSeeder');
+        await runTbrhsfSeeder();
+    } catch (tbrhsfErr) {
+        log.error('TBRHSF seed error (non-fatal)', { error: tbrhsfErr.message });
+    }
+
     const server = app.listen(PORT, '0.0.0.0', () => {
         log.info('Lightspeed API server running', { port: PORT });
 
