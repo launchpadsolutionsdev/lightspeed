@@ -34,6 +34,7 @@ Internal reference for the Lightspeed platform infrastructure.
 DATABASE_URL=              # Render PostgreSQL connection string
 ANTHROPIC_API_KEY=         # sk-ant-api-...
 JWT_SECRET=                # Random secret for signing JWTs
+ENCRYPTION_KEY=            # 32-byte key (base64 or hex) for AES-256-GCM at-rest encryption of Shopify access tokens
 GOOGLE_CLIENT_ID=          # Google OAuth client ID
 NODE_ENV=production
 FRONTEND_URL=https://www.lightspeedutility.ca
@@ -74,8 +75,9 @@ CONTACT_EMAIL=hello@launchpadsolutions.ca
 VOYAGE_API_KEY=            # Voyage AI embeddings (semantic search)
 MICROSOFT_CLIENT_ID=       # Microsoft/Azure AD OAuth
 MICROSOFT_CLIENT_SECRET=
+SUPER_ADMINS=              # Comma-separated emails granted is_super_admin on every startup (additive only)
 ANTHROPIC_MODEL=           # Default: claude-sonnet-4-6
-JWT_EXPIRES_IN=            # Default: 7d
+JWT_EXPIRES_IN=            # Code default: 7d. Production pinned to 30d via render.yaml
 LOG_LEVEL=                 # Default: info (debug, info, warn, error)
 TRIAL_DAYS=                # Default: 14
 TRIAL_USAGE_LIMIT=         # Default: 300
@@ -95,6 +97,7 @@ These run in-process via `setInterval` (no external cron or queue):
 | Home Base scheduled posts | 60 sec | Publish posts scheduled for the current time |
 | Home Base digest emails | 1 hour | Send digest emails to subscribed users |
 | Cache cleanup | 60 sec | Evict expired in-memory cache entries |
+| Data retention cleanup | 24 hours | Purge records past their retention window |
 
 ## Deployment
 
@@ -102,7 +105,7 @@ Render auto-deploys when code is pushed to the `main` branch on GitHub.
 
 **Backend:**
 - Root directory: `backend`
-- Build command: `npm install`
+- Build command: `npm ci --no-audit`
 - Start command: `npm start`
 - Health check: `/health`
 
