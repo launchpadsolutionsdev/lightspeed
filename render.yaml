@@ -6,7 +6,7 @@ services:
   - type: web
     name: lightspeed-api
     env: node
-    plan: free
+    plan: standard
     rootDir: backend
     buildCommand: npm ci --no-audit
     startCommand: npm start
