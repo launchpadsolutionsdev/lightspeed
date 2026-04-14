@@ -171,8 +171,75 @@ const USAGE_LIMITS = {
 };
 
 const checkUsageLimit = async (req, res, next) => {
-    // TEMPORARY: All usage limits bypassed — remove this line to re-enable
-    return next();
+    try {
+        // Super admins bypass
+        if (req.user?.is_super_admin) return next();
+
+        // Resolve the active organization's subscription info. Prefer the
+        // org already attached to the request by `authenticate`; fall back
+        // to the user's first membership for safety.
+        const orgResult = await pool.query(
+            `SELECT o.id AS organization_id, o.subscription_status, o.trial_ends_at
+             FROM organizations o
+             WHERE o.id = COALESCE(
+                 $1::uuid,
+                 (SELECT organization_id FROM organization_memberships WHERE user_id = $2 LIMIT 1)
+             )`,
+            [req.organizationId || null, req.userId]
+        );
+
+        if (orgResult.rows.length === 0) {
+            return res.status(403).json({
+                error: 'You must belong to an organization to use this feature.',
+                code: 'AUTH_REQUIRED'
+            });
+        }
+
+        const { subscription_status, organization_id } = orgResult.rows[0];
+
+        if (subscription_status === 'cancelled') {
+            return res.status(403).json({
+                error: 'Your subscription has been cancelled. Reactivate to continue.',
+                code: 'SUBSCRIPTION_CANCELLED'
+            });
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(USAGE_LIMITS, subscription_status)) {
+            return res.status(403).json({
+                error: 'Your subscription is not active.',
+                code: 'SUBSCRIPTION_INVALID'
+            });
+        }
+
+        const limit = USAGE_LIMITS[subscription_status];
+
+        // Count generations this calendar month
+        const usageResult = await pool.query(
+            `SELECT COUNT(*) AS count FROM usage_logs
+             WHERE organization_id = $1
+               AND created_at >= date_trunc('month', NOW())`,
+            [organization_id]
+        );
+
+        const used = parseInt(usageResult.rows[0]?.count || '0', 10);
+
+        if (used >= limit) {
+            return res.status(429).json({
+                error: `Monthly usage limit reached (${used}/${limit}).`,
+                code: 'USAGE_LIMIT_REACHED',
+                limit,
+                used
+            });
+        }
+
+        next();
+    } catch (error) {
+        log.error('checkUsageLimit error', { error: error.message });
+        res.status(503).json({
+            error: 'Unable to verify usage limit. Please try again.',
+            code: 'USAGE_CHECK_FAILED'
+        });
+    }
 };
 
 /**

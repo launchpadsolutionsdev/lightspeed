@@ -22,8 +22,7 @@ jest.mock('../../src/services/cache', () => ({
 const pool = require('../../config/database');
 const { checkUsageLimit } = require('../../src/middleware/auth');
 
-// TEMPORARY: Tests skipped while usage limits are bypassed
-describe.skip('checkUsageLimit', () => {
+describe('checkUsageLimit', () => {
     let req, res, next;
 
     beforeEach(() => {

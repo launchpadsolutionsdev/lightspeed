@@ -12,6 +12,7 @@ const { authenticate, requireOrganization, requireAdmin, requireOwner } = requir
 const { sendInvitationEmail } = require('../services/email');
 const auditLog = require('../services/auditLog');
 const log = require('../services/logger');
+const { assertSafeHttpUrl } = require('../services/urlValidator');
 
 const FRONTEND_URL = 'https://www.lightspeedutility.ca';
 
@@ -111,6 +112,25 @@ router.patch('/:orgId', authenticate, requireOrganization, requireAdmin, [
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
+        }
+
+        // SSRF guard: validate any feed URLs before they get saved. The
+        // server will later fetch these URLs, so a private-IP value would
+        // let an org admin probe internal services via the dashboard
+        // proxy. Empty strings are treated as "clear" and skipped.
+        const urlFields = ['bumpFeedUrl', 'bumpWinnersFeedUrl', 'bumpSalesFeedUrl'];
+        for (const field of urlFields) {
+            const value = req.body[field];
+            if (value === undefined || value === null || value === '') continue;
+            try {
+                await assertSafeHttpUrl(value);
+            } catch (err) {
+                return res.status(400).json({
+                    error: `Invalid ${field}: ${err.message}`,
+                    code: 'INVALID_FEED_URL',
+                    field
+                });
+            }
         }
 
         const fieldMap = {
@@ -349,6 +369,19 @@ router.post('/accept-invite', authenticate, async (req, res) => {
         }
 
         const invite = inviteResult.rows[0];
+
+        // The invitation is bound to a specific email address — the
+        // authenticated user must match. Without this check, anyone who
+        // obtains an invite token (leaked via email forwarding, browser
+        // history, etc.) could join an organization they were not
+        // invited to. Email comparison is case-insensitive since we
+        // store emails in their registration casing.
+        if (!invite.email || invite.email.toLowerCase() !== (req.user.email || '').toLowerCase()) {
+            return res.status(403).json({
+                error: 'This invitation was issued to a different email address.',
+                code: 'INVITE_EMAIL_MISMATCH'
+            });
+        }
 
         // Check if user is already a member
         const existingMember = await pool.query(

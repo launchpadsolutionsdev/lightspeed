@@ -332,6 +332,24 @@ runMigrations().then(async () => {
         log.error('Compliance KB seed error (non-fatal)', { error: seedErr.message });
     }
 
+    // Ensure super admins listed in the SUPER_ADMINS env var have the
+    // is_super_admin flag set. No-op if SUPER_ADMINS is unset.
+    try {
+        const { runSuperAdminBootstrap } = require('./services/superAdminBootstrap');
+        await runSuperAdminBootstrap();
+    } catch (bootstrapErr) {
+        log.error('Super admin bootstrap error (non-fatal)', { error: bootstrapErr.message });
+    }
+
+    // Optional: load TBRHSF-specific profile / content / KB seed.
+    // No-op unless SEED_TBRHSF=true. See src/services/tbrhsfSeeder.js.
+    try {
+        const { runTbrhsfSeeder } = require('./services/tbrhsfSeeder');
+        await runTbrhsfSeeder();
+    } catch (tbrhsfErr) {
+        log.error('TBRHSF seed error (non-fatal)', { error: tbrhsfErr.message });
+    }
+
     const server = app.listen(PORT, '0.0.0.0', () => {
         log.info('Lightspeed API server running', { port: PORT });
 

@@ -10,7 +10,6 @@
     "test:watch": "jest --watch --forceExit --detectOpenHandles"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.17.1",
     "@azure/msal-node": "^5.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
