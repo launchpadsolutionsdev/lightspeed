@@ -16,6 +16,7 @@ const { XMLParser } = require('fast-xml-parser');
 const { authenticate } = require('../middleware/auth');
 const log = require('../services/logger');
 const pool = require('../../config/database');
+const { assertSafeHttpUrl } = require('../services/urlValidator');
 
 // Optional env-var feed URLs — only used as fallback during migration period.
 // No hardcoded defaults; orgs must configure their own URLs via Teams > BUMP Feed Configuration.
@@ -151,13 +152,22 @@ const xmlParser = new XMLParser({
  * Fetch a single XML feed with timeout and parse it.
  */
 async function fetchXmlFeed(url) {
+    // SSRF guard: feed URLs come from organization settings and are therefore
+    // attacker-influencable by any org admin. Block non-HTTP(S) schemes and
+    // hostnames that resolve to private / loopback / cloud-metadata
+    // addresses before issuing the request.
+    await assertSafeHttpUrl(url);
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
         const response = await fetch(url, {
             signal: controller.signal,
-            headers: { 'Accept': 'application/xml, text/xml, */*' }
+            headers: { 'Accept': 'application/xml, text/xml, */*' },
+            redirect: 'error' // refuse to follow redirects — a redirect could
+                              // land us on a private address that the initial
+                              // hostname check couldn't anticipate.
         });
         clearTimeout(timeout);
 
