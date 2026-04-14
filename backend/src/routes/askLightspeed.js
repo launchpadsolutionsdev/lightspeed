@@ -223,7 +223,7 @@ Use this tool whenever the user asks you to draft, write, compose, or generate A
             properties: {
                 orderNumber: { type: 'string', description: 'Order number to look up (e.g. "1042" or "#1042")' },
                 email: { type: 'string', description: 'Customer email to search orders by' },
-                customerName: { type: 'string', description: 'Customer name to search orders by (e.g. "Glenn Craig")' }
+                customerName: { type: 'string', description: 'Customer name to search orders by (e.g. "Jane Smith")' }
             },
             required: []
         }
