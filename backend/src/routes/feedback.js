@@ -45,7 +45,17 @@ router.post('/', authenticate, async (req, res) => {
 
 /**
  * GET /api/feedback
- * Get all feedback (admin only)
+ * Get feedback entries.
+ *
+ * Access model:
+ *   - `is_super_admin` is a platform-operator flag (not a customer role).
+ *     It should be granted only to staff of the platform provider, never
+ *     to customer organization admins.
+ *   - By default returns only feedback for the caller's active
+ *     organization. A super admin can pass `?scope=all` to see
+ *     cross-tenant feedback, or `?organizationId=<uuid>` to scope to a
+ *     specific org. Non-super-admins are always restricted to their own
+ *     org.
  */
 router.get('/', authenticate, async (req, res) => {
     try {
@@ -55,13 +65,32 @@ router.get('/', authenticate, async (req, res) => {
             [req.userId]
         );
 
-        if (!userResult.rows[0]?.is_super_admin) {
+        const isSuperAdmin = Boolean(userResult.rows[0]?.is_super_admin);
+
+        if (!isSuperAdmin) {
             return res.status(403).json({ error: 'Admin access required' });
         }
 
-        const result = await pool.query(
-            'SELECT * FROM feedback ORDER BY created_at DESC LIMIT 100'
-        );
+        const { scope, organizationId } = req.query;
+
+        let result;
+        if (organizationId) {
+            result = await pool.query(
+                'SELECT * FROM feedback WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 100',
+                [organizationId]
+            );
+        } else if (scope === 'all') {
+            result = await pool.query(
+                'SELECT * FROM feedback ORDER BY created_at DESC LIMIT 100'
+            );
+        } else {
+            // Default: scope to caller's active org to avoid accidental
+            // cross-tenant exposure when a super admin opens the page.
+            result = await pool.query(
+                'SELECT * FROM feedback WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 100',
+                [req.organizationId || null]
+            );
+        }
 
         res.json({ entries: result.rows });
 
