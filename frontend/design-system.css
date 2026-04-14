@@ -62,6 +62,16 @@
     --radius-xl: 24px;
 }
 
+/* --- Brand gradient utilities --- */
+.ls-gradient-text {
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    -webkit-font-smoothing: antialiased;
+}
+
 /* --- Reset --- */
 *, *::before, *::after {
     margin: 0;
