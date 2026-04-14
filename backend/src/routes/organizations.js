@@ -350,6 +350,19 @@ router.post('/accept-invite', authenticate, async (req, res) => {
 
         const invite = inviteResult.rows[0];
 
+        // The invitation is bound to a specific email address — the
+        // authenticated user must match. Without this check, anyone who
+        // obtains an invite token (leaked via email forwarding, browser
+        // history, etc.) could join an organization they were not
+        // invited to. Email comparison is case-insensitive since we
+        // store emails in their registration casing.
+        if (!invite.email || invite.email.toLowerCase() !== (req.user.email || '').toLowerCase()) {
+            return res.status(403).json({
+                error: 'This invitation was issued to a different email address.',
+                code: 'INVITE_EMAIL_MISMATCH'
+            });
+        }
+
         // Check if user is already a member
         const existingMember = await pool.query(
             'SELECT id FROM organization_memberships WHERE user_id = $1 AND organization_id = $2',
